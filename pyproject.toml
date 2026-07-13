@@ -1,0 +1,90 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "olivia"
+version = "0.1.0"
+description = "Open Learning Intelligence & Virtual Investigation Assistant — an AI agent for study, learning, and scientific discovery"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.10"
+authors = [{ name = "Matheus Soranço", email = "matheussoranco@gmail.com" }]
+keywords = ["agent", "science", "research", "learning", "neuro-symbolic", "langgraph"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Education",
+]
+
+# Core is deliberately lean: everything heavier is an optional extra with a
+# graceful in-code fallback, so OLIVIA imports and runs offline.
+dependencies = [
+    "httpx>=0.27",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "typer>=0.12",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+llm = [
+    "anthropic>=0.50",
+]
+graph = [
+    "langgraph>=0.2",
+    "langchain-core>=0.3",
+]
+science = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "sympy>=1.12",
+    "networkx>=3.2",
+]
+docs = [
+    "pymupdf>=1.24",
+    "beautifulsoup4>=4.12",
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+all = [
+    "anthropic>=0.50",
+    "langgraph>=0.2",
+    "langchain-core>=0.3",
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "sympy>=1.12",
+    "networkx>=3.2",
+    "pymupdf>=1.24",
+    "beautifulsoup4>=4.12",
+]
+
+[project.scripts]
+olivia = "olivia.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/olivia"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    # Allow non-ASCII punctuation in docstrings/strings (en-dashes, arrows).
+    "RUF001",
+    "RUF002",
+    "RUF003",
+    # Tool/expert JSON-Schema class attributes are read-only signatures.
+    "RUF012",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

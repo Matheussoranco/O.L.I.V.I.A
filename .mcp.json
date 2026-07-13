@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "olivia": {
+      "command": "olivia",
+      "args": ["mcp-serve"]
+    }
+  }
+}
