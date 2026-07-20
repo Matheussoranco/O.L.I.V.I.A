@@ -34,6 +34,22 @@ def ask(question: str) -> None:
 
 
 @app.command()
+def solve(
+    problem: str,
+    subject: str = typer.Option(
+        "auto", help="math | chemistry | physics | units | auto."
+    ),
+) -> None:
+    """Solve a STEM problem step by step (GPAI-style worked solution)."""
+    from olivia.study import solution_to_markdown, solve_problem
+
+    solution = solve_problem(problem, subject=subject)
+    console.print(Markdown(solution_to_markdown(solution)))
+    if solution.method == "none":
+        raise typer.Exit(1)
+
+
+@app.command()
 def research(
     question: str,
     output: str = typer.Option("", "--output", "-o", help="Write the report markdown here."),
@@ -129,6 +145,33 @@ def study_quiz(
         console.print(f"{mark} Q{i}: expected — {result['expected']}")
         if result["explanation"]:
             console.print(f"   [dim]{result['explanation']}[/dim]")
+
+
+@study_app.command("worksheet")
+def study_worksheet(
+    topic: str,
+    n: int = typer.Option(5, "-n", min=1),
+    difficulty: str = typer.Option("medium", help="easy | medium | hard."),
+    seed: int = typer.Option(0, help="Seed for the offline problem generator."),
+    output: str = typer.Option("", "--output", "-o", help="Write the worksheet here."),
+) -> None:
+    """Generate a practice worksheet with a worked-solution answer key."""
+    from pathlib import Path
+
+    from olivia.study import generate_worksheet, worksheet_to_markdown
+
+    solutions = generate_worksheet(topic, n=n, difficulty=difficulty, seed=seed)
+    if not solutions:
+        console.print(
+            "[yellow]No worksheet generated (need an LLM backend, or a maths topic "
+            "like 'linear equations', 'quadratics', 'derivatives').[/yellow]"
+        )
+        raise typer.Exit(1)
+    markdown = worksheet_to_markdown(solutions, topic=topic)
+    console.print(Markdown(markdown))
+    if output:
+        Path(output).write_text(markdown, encoding="utf-8")
+        console.print(f"[dim]worksheet written to {output}[/dim]")
 
 
 @study_app.command("review")

@@ -6,3 +6,7 @@
 venv/
 *.egg-info/
 .env
+dist/
+build/
+*.db
+.olivia/

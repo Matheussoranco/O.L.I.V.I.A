@@ -43,6 +43,52 @@ def _olivia_research(question: str) -> Any:
     return report.report_markdown if report else "research cycle produced no report"
 
 
+def _olivia_solve(problem: str, subject: str = "auto") -> Any:
+    from olivia.study import solve_problem
+
+    solution = solve_problem(problem, subject=subject)
+    return {
+        "answer": solution.final_answer,
+        "method": solution.method,
+        "confidence": solution.confidence,
+        "steps": [{"n": s.n, "description": s.description, "result": s.result}
+                  for s in solution.steps],
+    }
+
+
+def _olivia_worksheet(topic: str, n: int = 5, difficulty: str = "medium") -> Any:
+    from olivia.study import generate_worksheet, worksheet_to_markdown
+
+    solutions = generate_worksheet(topic, n=n, difficulty=difficulty, seed=0)
+    if not solutions:
+        return "no worksheet generated (LLM backend or a maths topic required)"
+    return worksheet_to_markdown(solutions, topic=topic)
+
+
+def _molar_mass(formula: str) -> Any:
+    from olivia.tools.chemistry import molar_mass
+
+    return molar_mass(formula)
+
+
+def _balance_equation(equation: str) -> Any:
+    from olivia.tools.chemistry import balance_equation
+
+    return balance_equation(equation)
+
+
+def _convert_units(value: float, from_unit: str, to_unit: str) -> Any:
+    from olivia.tools.units import convert_units
+
+    return convert_units(value, from_unit, to_unit)
+
+
+def _physical_constant(query: str) -> Any:
+    from olivia.tools.physics import physical_constant
+
+    return physical_constant(query)
+
+
 def _olivia_study_plan(topic: str, goal: str = "", weeks: int = 4) -> Any:
     from olivia.study import make_study_plan, plan_to_markdown
 
@@ -122,6 +168,65 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
         "analysis → critique → report. Returns the report markdown.",
         _schema({"question": {"type": "string"}}, ["question"]),
         _olivia_research,
+    ),
+    "olivia_solve": (
+        "Solve a STEM problem step by step (GPAI-style). Symbolic-first: sympy for "
+        "maths, periodic table for chemistry, CODATA for physics, dimensional "
+        "analysis for units. Returns ordered steps and a final answer.",
+        _schema(
+            {
+                "problem": {"type": "string"},
+                "subject": {
+                    "type": "string",
+                    "enum": ["auto", "math", "chemistry", "physics", "units"],
+                },
+            },
+            ["problem"],
+        ),
+        _olivia_solve,
+    ),
+    "olivia_worksheet": (
+        "Generate a practice worksheet with a worked-solution answer key. Offline it "
+        "produces randomised maths problems (linear, quadratic, derivative, arithmetic).",
+        _schema(
+            {
+                "topic": {"type": "string"},
+                "n": {"type": "integer"},
+                "difficulty": {"type": "string", "enum": ["easy", "medium", "hard"]},
+            },
+            ["topic"],
+        ),
+        _olivia_worksheet,
+    ),
+    "molar_mass": (
+        "Compute the molar mass (g/mol) of a chemical formula, with a per-element "
+        "breakdown. Understands groups and hydrates (e.g. CuSO4·5H2O).",
+        _schema({"formula": {"type": "string"}}, ["formula"]),
+        _molar_mass,
+    ),
+    "balance_equation": (
+        "Balance a chemical equation (e.g. 'H2 + O2 -> H2O') by exact conservation "
+        "of atoms.",
+        _schema({"equation": {"type": "string"}}, ["equation"]),
+        _balance_equation,
+    ),
+    "convert_units": (
+        "Convert a physical quantity between units (SI, imperial, temperature).",
+        _schema(
+            {
+                "value": {"type": "number"},
+                "from_unit": {"type": "string"},
+                "to_unit": {"type": "string"},
+            },
+            ["value", "from_unit", "to_unit"],
+        ),
+        _convert_units,
+    ),
+    "physical_constant": (
+        "Look up a physical constant by name or symbol (e.g. 'speed of light', "
+        "'Planck constant', 'N_A'). Returns value and SI unit.",
+        _schema({"query": {"type": "string"}}, ["query"]),
+        _physical_constant,
     ),
     "olivia_study_plan": (
         "Create a week-by-week study plan for a topic.",

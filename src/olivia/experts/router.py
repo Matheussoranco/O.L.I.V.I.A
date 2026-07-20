@@ -16,6 +16,7 @@ from olivia.experts.code_expert import CodeExpert
 from olivia.experts.general_expert import GeneralExpert
 from olivia.experts.literature_expert import LiteratureExpert
 from olivia.experts.math_expert import MathExpert
+from olivia.experts.science_expert import ScienceExpert
 from olivia.experts.stats_expert import StatsExpert
 from olivia.llm.client import LLMClient
 
@@ -32,7 +33,10 @@ def get_experts() -> list[Expert]:
     """The expert singletons, specialists before the general catch-all."""
     global _experts
     if _experts is None:
-        _experts = [MathExpert(), StatsExpert(), CodeExpert(), LiteratureExpert(), GeneralExpert()]
+        _experts = [
+            MathExpert(), StatsExpert(), ScienceExpert(), CodeExpert(),
+            LiteratureExpert(), GeneralExpert(),
+        ]
     return _experts
 
 

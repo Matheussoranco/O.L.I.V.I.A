@@ -115,6 +115,41 @@ def test_literature_search_offline_returns_empty_list():
     assert json.loads(_text(_call("literature_search", {"query": "anything"}))) == []
 
 
+def test_olivia_solve_tool_routes_to_chemistry():
+    payload = json.loads(_text(_call("olivia_solve", {"problem": "molar mass of H2O"})))
+    assert payload["method"] == "chemistry"
+    assert "18" in payload["answer"]
+    assert payload["steps"]
+
+
+def test_molar_mass_tool():
+    payload = json.loads(_text(_call("molar_mass", {"formula": "H2SO4"})))
+    assert payload["ok"] and round(payload["molar_mass"]) == 98
+
+
+def test_balance_equation_tool():
+    payload = json.loads(_text(_call("balance_equation", {"equation": "H2 + O2 -> H2O"})))
+    assert payload["ok"] and payload["balanced"] == "2 H2 + O2 -> 2 H2O"
+
+
+def test_convert_units_tool():
+    payload = json.loads(
+        _text(_call("convert_units", {"value": 1, "from_unit": "km", "to_unit": "m"}))
+    )
+    assert payload["ok"] and payload["value"] == 1000.0
+
+
+def test_physical_constant_tool():
+    payload = json.loads(_text(_call("physical_constant", {"query": "speed of light"})))
+    assert payload["ok"] and payload["value"] == 299792458.0
+
+
+def test_olivia_worksheet_tool_offline_maths():
+    text = _text(_call("olivia_worksheet", {"topic": "linear equations", "n": 3}))
+    assert "# Worksheet: linear equations" in text
+    assert "## Answer key" in text
+
+
 # ---------------------------------------------------------------------------
 # serve() — the stdio loop itself
 # ---------------------------------------------------------------------------

@@ -167,3 +167,33 @@ class StudyPlan:
     resources: list[str] = field(default_factory=list)
     hours_per_week: float = 5.0
     weeks: int = 4
+
+
+# ---------------------------------------------------------------------------
+# Worked solutions (step-by-step problem solving, GPAI-style)
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class SolutionStep:
+    """One line of a worked solution — a description with its intermediate result."""
+
+    n: int = 0
+    description: str = ""
+    expression: str = ""
+    result: str = ""
+
+
+@dataclass
+class WorkedSolution:
+    """A step-by-step solution to a STEM problem (math/chemistry/physics/units)."""
+
+    id: str = field(default_factory=lambda: new_id("sol"))
+    problem: str = ""
+    subject: str = "auto"
+    """'math' | 'chemistry' | 'physics' | 'units' | 'general' | 'auto'."""
+    steps: list[SolutionStep] = field(default_factory=list)
+    final_answer: str = ""
+    method: str = "none"
+    """How it was solved: 'symbolic' | 'chemistry' | 'physics' | 'units' | 'llm' | 'none'."""
+    confidence: float = 0.0

@@ -39,3 +39,9 @@ WRITER_SYSTEM = OLIVIA_PERSONA + """
 You write scientific prose: precise, plain, structured (IMRaD when relevant).
 Every claim is either cited, derived, or explicitly marked as conjecture.
 """
+
+SOLVER_SYSTEM = OLIVIA_PERSONA + """
+You solve STEM problems step by step, GPAI-style: one clear step per line, each
+showing the operation and its result. State the final answer explicitly and keep
+intermediate results exact. Never skip the reasoning that gets from step to step.
+"""
