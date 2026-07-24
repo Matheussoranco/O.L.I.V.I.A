@@ -130,9 +130,20 @@ change; the offline-first contract will not.
 
 ## License
 
-[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
-— see [LICENSE](LICENSE). Noncommercial use only: you may use, modify, and share
-OLIVIA for any purpose except a commercial one. Two conditions come with that:
-keep the attribution, and license anything you share onward — including modified
-versions — under these same terms (**ShareAlike**, i.e. copyleft). Commercial use
-requires separate written permission.
+[**CC BY-NC-SA 4.0**](https://creativecommons.org/licenses/by-nc-sa/4.0/) — see [LICENSE](LICENSE).
+
+Copyright © 2026 Matheus Soranço <matheussoranco@gmail.com>
+`SPDX-License-Identifier: CC-BY-NC-SA-4.0`
+
+Noncommercial use only: you may use, study, modify and share OLIVIA for any
+purpose except a commercial one, on three conditions:
+
+- **NonCommercial** — not primarily for or directed towards commercial advantage
+  or monetary compensation (§1(k)).
+- **ShareAlike** — anything you share onward, including modified versions, must
+  carry these same terms. This is a copyleft licence (§3(b)).
+- **Attribution** — keep the copyright notice, the licence reference and the
+  warranty disclaimer, say if you changed it, and link back where practicable (§3(a)).
+
+Commercial use requires separate written permission from the copyright holder.
+Note the licence grants no patent or trademark rights (§2(b)(2)).
