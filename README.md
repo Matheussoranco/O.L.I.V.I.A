@@ -1,5 +1,7 @@
 # O.L.I.V.I.A.
 
+[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-lightgrey.svg)](LICENSE)
+
 **Open Learning Intelligence & Virtual Investigation Assistant** — an AI agent
 specialised in study, learning, and scientific research and discovery.
 
