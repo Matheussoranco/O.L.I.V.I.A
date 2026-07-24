@@ -130,4 +130,6 @@ change; the offline-first contract will not.
 
 ## License
 
-AGPL-3.0-or-later — see [LICENSE](LICENSE).
+[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)
+— see [LICENSE](LICENSE). Noncommercial use only: you may use, modify, and share
+OLIVIA for any purpose except a commercial one.
