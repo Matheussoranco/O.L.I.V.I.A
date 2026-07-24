@@ -178,8 +178,7 @@ def register_tools(registry: ToolRegistry) -> None:
         Tool(
             name="symbolic_math",
             description=(
-                "Symbolic mathematics via sympy: simplify, expand, factor, solve, "
-                "diff, integrate."
+                "Symbolic mathematics via sympy: simplify, expand, factor, solve, diff, integrate."
             ),
             parameters={
                 "type": "object",

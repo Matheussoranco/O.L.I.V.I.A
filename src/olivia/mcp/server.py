@@ -51,8 +51,9 @@ def _olivia_solve(problem: str, subject: str = "auto") -> Any:
         "answer": solution.final_answer,
         "method": solution.method,
         "confidence": solution.confidence,
-        "steps": [{"n": s.n, "description": s.description, "result": s.result}
-                  for s in solution.steps],
+        "steps": [
+            {"n": s.n, "description": s.description, "result": s.result} for s in solution.steps
+        ],
     }
 
 
@@ -205,8 +206,7 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
         _molar_mass,
     ),
     "balance_equation": (
-        "Balance a chemical equation (e.g. 'H2 + O2 -> H2O') by exact conservation "
-        "of atoms.",
+        "Balance a chemical equation (e.g. 'H2 + O2 -> H2O') by exact conservation of atoms.",
         _schema({"equation": {"type": "string"}}, ["equation"]),
         _balance_equation,
     ),
@@ -344,8 +344,10 @@ def _handle(request: dict[str, Any]) -> dict[str, Any] | None:
             return _error(request_id, -32602, f"unknown tool '{name}'")
         try:
             output = entry[2](**arguments)
-            text = output if isinstance(output, str) else json.dumps(
-                output, ensure_ascii=False, default=str, indent=2
+            text = (
+                output
+                if isinstance(output, str)
+                else json.dumps(output, ensure_ascii=False, default=str, indent=2)
             )
             result = {"content": [{"type": "text", "text": text}], "isError": False}
         except Exception as exc:

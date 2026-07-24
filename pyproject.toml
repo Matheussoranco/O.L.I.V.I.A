@@ -7,12 +7,13 @@ name = "olivia"
 version = "0.1.0"
 description = "Open Learning Intelligence & Virtual Investigation Assistant — an AI agent for study, learning, and scientific discovery"
 readme = "README.md"
-license = "AGPL-3.0-or-later"
+license = { text = "CC-BY-NC-SA-4.0" }
 requires-python = ">=3.10"
 authors = [{ name = "Matheus Soranço", email = "matheussoranco@gmail.com" }]
 keywords = ["agent", "science", "research", "learning", "neuro-symbolic", "langgraph"]
 classifiers = [
     "Development Status :: 3 - Alpha",
+    "License :: Other/Proprietary License",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -50,7 +51,7 @@ docs = [
 ]
 dev = [
     "pytest>=8.0",
-    "ruff>=0.6",
+    "ruff==0.15.2",   # pinned exactly: see .github/workflows/ci.yml
 ]
 all = [
     "anthropic>=0.50",

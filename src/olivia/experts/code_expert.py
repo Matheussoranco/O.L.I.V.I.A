@@ -14,8 +14,18 @@ from olivia.llm.prompts import OLIVIA_PERSONA
 from olivia.tools.science import python_exec
 
 _KEYWORDS = [
-    "code", "function", "python", "bug", "error", "traceback", "implement",
-    "script", "algorithm", "refactor", "debug", "exception",
+    "code",
+    "function",
+    "python",
+    "bug",
+    "error",
+    "traceback",
+    "implement",
+    "script",
+    "algorithm",
+    "refactor",
+    "debug",
+    "exception",
 ]
 _FENCE_RE = re.compile(r"```(?:python)?\s*\n(.*?)```", re.DOTALL)
 _RUN_INTENT_RE = re.compile(r"\b(run|execute|output|result|print)\b", re.IGNORECASE)
@@ -58,7 +68,6 @@ class CodeExpert(Expert):
                 return ExpertAnswer(expert=self.name, answer=text, confidence=0.6)
         return ExpertAnswer(
             expert=self.name,
-            answer="Cannot answer: no runnable code block found and no LLM backend "
-            "is configured.",
+            answer="Cannot answer: no runnable code block found and no LLM backend is configured.",
             confidence=0.0,
         )

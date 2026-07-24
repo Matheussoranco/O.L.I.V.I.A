@@ -50,10 +50,14 @@ _CONVERT_RE = re.compile(
 )
 
 
-def _new_step(steps: list[SolutionStep], description: str, result: str = "",
-              expression: str = "") -> None:
-    steps.append(SolutionStep(n=len(steps) + 1, description=description,
-                              expression=expression, result=result))
+def _new_step(
+    steps: list[SolutionStep], description: str, result: str = "", expression: str = ""
+) -> None:
+    steps.append(
+        SolutionStep(
+            n=len(steps) + 1, description=description, expression=expression, result=result
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -102,8 +106,14 @@ def _solve_math(problem: str) -> WorkedSolution | None:
             _new_step(steps, "Factor", f"{factored} = 0")
         answer = ", ".join(f"{var} = {sympy.nsimplify(r)}" for r in roots) or "no solution"
         _new_step(steps, f"Solve for {var}", answer)
-        return WorkedSolution(problem=problem, subject="math", steps=steps,
-                              final_answer=answer, method="symbolic", confidence=0.9)
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=answer,
+            method="symbolic",
+            confidence=0.9,
+        )
 
     for pattern, op, verb in (
         (_DERIV_RE, "diff", "Differentiate"),
@@ -121,9 +131,14 @@ def _solve_math(problem: str) -> WorkedSolution | None:
             symbol = "+ C" if op == "integrate" else ""
             _new_step(steps, f"{verb} with respect to {var}", f"{expr}")
             _new_step(steps, "Apply the rules", f"{result} {symbol}".strip())
-            return WorkedSolution(problem=problem, subject="math", steps=steps,
-                                  final_answer=f"{result} {symbol}".strip(),
-                                  method="symbolic", confidence=0.9)
+            return WorkedSolution(
+                problem=problem,
+                subject="math",
+                steps=steps,
+                final_answer=f"{result} {symbol}".strip(),
+                method="symbolic",
+                confidence=0.9,
+            )
 
     for pattern, fn_name, verb in (
         (_SIMPLIFY_RE, "simplify", "Simplify"),
@@ -140,8 +155,14 @@ def _solve_math(problem: str) -> WorkedSolution | None:
             steps = []
             _new_step(steps, "Start from", f"{expr}")
             _new_step(steps, verb, f"{result}")
-            return WorkedSolution(problem=problem, subject="math", steps=steps,
-                                  final_answer=f"{result}", method="symbolic", confidence=0.9)
+            return WorkedSolution(
+                problem=problem,
+                subject="math",
+                steps=steps,
+                final_answer=f"{result}",
+                method="symbolic",
+                confidence=0.9,
+            )
 
     return _evaluate_arithmetic(problem, text)
 
@@ -163,16 +184,36 @@ def _evaluate_arithmetic(problem: str, text: str) -> WorkedSolution | None:
     value = expr if expr.is_Rational else sympy.N(expr)
     steps: list[SolutionStep] = []
     _new_step(steps, "Evaluate the expression", f"{expr} = {value}")
-    return WorkedSolution(problem=problem, subject="math", steps=steps,
-                          final_answer=f"{value}", method="symbolic", confidence=0.85)
+    return WorkedSolution(
+        problem=problem,
+        subject="math",
+        steps=steps,
+        final_answer=f"{value}",
+        method="symbolic",
+        confidence=0.85,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Chemistry
 # ---------------------------------------------------------------------------
 
-_STOPWORDS = {"of", "the", "for", "and", "mass", "molar", "weight", "molecular",
-              "formula", "compound", "what", "is", "balance", "calculate"}
+_STOPWORDS = {
+    "of",
+    "the",
+    "for",
+    "and",
+    "mass",
+    "molar",
+    "weight",
+    "molecular",
+    "formula",
+    "compound",
+    "what",
+    "is",
+    "balance",
+    "calculate",
+}
 
 
 def _extract_formula(text: str) -> str | None:
@@ -202,29 +243,32 @@ def _solve_chemistry(problem: str) -> WorkedSolution | None:
                         f"{item['count']} × {item['element']} ({weight:g} g/mol)",
                         f"{item['mass']:g} g/mol",
                     )
-                _new_step(steps, "Sum the atomic masses",
-                          f"{result['molar_mass']:g} g/mol")
+                _new_step(steps, "Sum the atomic masses", f"{result['molar_mass']:g} g/mol")
                 return WorkedSolution(
-                    problem=problem, subject="chemistry", steps=steps,
+                    problem=problem,
+                    subject="chemistry",
+                    steps=steps,
                     final_answer=f"{result['molar_mass']:g} g/mol",
-                    method="chemistry", confidence=0.95,
+                    method="chemistry",
+                    confidence=0.95,
                 )
 
     if "balance" in problem.lower():
-        stripped = re.sub(
-            r"(?i)\bbalance(?:\s+the)?(?:\s+equation)?\s*:?\s*", "", problem, count=1
-        )
+        stripped = re.sub(r"(?i)\bbalance(?:\s+the)?(?:\s+equation)?\s*:?\s*", "", problem, count=1)
         match = _EQUATION_RE.search(stripped)
         if match:
             result = balance_equation(match.group(1).strip())
             if result.get("ok"):
                 steps = []
                 _new_step(steps, "Unbalanced equation", match.group(1).strip())
-                _new_step(steps, "Conserve atoms of every element",
-                          result["balanced"])
+                _new_step(steps, "Conserve atoms of every element", result["balanced"])
                 return WorkedSolution(
-                    problem=problem, subject="chemistry", steps=steps,
-                    final_answer=result["balanced"], method="chemistry", confidence=0.9,
+                    problem=problem,
+                    subject="chemistry",
+                    steps=steps,
+                    final_answer=result["balanced"],
+                    method="chemistry",
+                    confidence=0.9,
                 )
     return None
 
@@ -252,8 +296,12 @@ def _solve_physics(problem: str) -> WorkedSolution | None:
     steps: list[SolutionStep] = []
     _new_step(steps, f"Look up the {result['name']}", f"{result['symbol']} = {value}")
     return WorkedSolution(
-        problem=problem, subject="physics", steps=steps,
-        final_answer=value, method="physics", confidence=0.9,
+        problem=problem,
+        subject="physics",
+        steps=steps,
+        final_answer=value,
+        method="physics",
+        confidence=0.9,
     )
 
 
@@ -269,11 +317,16 @@ def _solve_units(problem: str) -> WorkedSolution | None:
     if not result["ok"]:
         return None
     steps: list[SolutionStep] = []
-    _new_step(steps, f"Convert {value:g} {from_unit} to {to_unit}",
-              f"{result['value']:.6g} {to_unit}")
+    _new_step(
+        steps, f"Convert {value:g} {from_unit} to {to_unit}", f"{result['value']:.6g} {to_unit}"
+    )
     return WorkedSolution(
-        problem=problem, subject="units", steps=steps,
-        final_answer=f"{result['value']:.6g} {to_unit}", method="units", confidence=0.9,
+        problem=problem,
+        subject="units",
+        steps=steps,
+        final_answer=f"{result['value']:.6g} {to_unit}",
+        method="units",
+        confidence=0.9,
     )
 
 
@@ -294,32 +347,66 @@ def _solve_llm(problem: str, subject: str, client: LLMClient) -> WorkedSolution 
     steps: list[SolutionStep] = []
     for item in payload["steps"]:
         if isinstance(item, dict) and str(item.get("description", "")).strip():
-            _new_step(steps, str(item["description"]).strip(),
-                      str(item.get("result", "")).strip())
+            _new_step(steps, str(item["description"]).strip(), str(item.get("result", "")).strip())
     if not steps:
         return None
-    return WorkedSolution(problem=problem, subject=subject, steps=steps,
-                          final_answer=str(payload.get("answer", "")).strip(),
-                          method="llm", confidence=0.7)
+    return WorkedSolution(
+        problem=problem,
+        subject=subject,
+        steps=steps,
+        final_answer=str(payload.get("answer", "")).strip(),
+        method="llm",
+        confidence=0.7,
+    )
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-_MATH_HINTS = ("solve", "differentiate", "derivative", "integrate", "integral",
-               "simplify", "factor", "expand", "equation", "calculate", "evaluate")
-_CHEM_HINTS = ("molar mass", "molecular weight", "balance", "mole", "reaction",
-               "compound", "chemical")
-_PHYS_HINTS = ("constant", "speed of light", "planck", "avogadro", "boltzmann",
-               "gravitational", "permittivity", "permeability")
+_MATH_HINTS = (
+    "solve",
+    "differentiate",
+    "derivative",
+    "integrate",
+    "integral",
+    "simplify",
+    "factor",
+    "expand",
+    "equation",
+    "calculate",
+    "evaluate",
+)
+_CHEM_HINTS = (
+    "molar mass",
+    "molecular weight",
+    "balance",
+    "mole",
+    "reaction",
+    "compound",
+    "chemical",
+)
+_PHYS_HINTS = (
+    "constant",
+    "speed of light",
+    "planck",
+    "avogadro",
+    "boltzmann",
+    "gravitational",
+    "permittivity",
+    "permeability",
+)
 _UNIT_HINTS = ("convert", " to ", " in ", "how many")
 
 
 def _classify(problem: str) -> str:
     low = problem.lower()
-    for subject, hints in (("chemistry", _CHEM_HINTS), ("physics", _PHYS_HINTS),
-                           ("math", _MATH_HINTS), ("units", _UNIT_HINTS)):
+    for subject, hints in (
+        ("chemistry", _CHEM_HINTS),
+        ("physics", _PHYS_HINTS),
+        ("math", _MATH_HINTS),
+        ("units", _UNIT_HINTS),
+    ):
         if any(hint in low for hint in hints):
             return subject
     return "general"
@@ -363,12 +450,17 @@ def solve_problem(
             return solution
 
     return WorkedSolution(
-        problem=problem, subject=label, method="none", confidence=0.0,
-        steps=[SolutionStep(
-            n=1,
-            description="No symbolic method matched this problem and no LLM "
-            "backend is configured, so it cannot be solved offline.",
-        )],
+        problem=problem,
+        subject=label,
+        method="none",
+        confidence=0.0,
+        steps=[
+            SolutionStep(
+                n=1,
+                description="No symbolic method matched this problem and no LLM "
+                "backend is configured, so it cannot be solved offline.",
+            )
+        ],
     )
 
 
@@ -382,11 +474,13 @@ def solution_to_markdown(solution: WorkedSolution) -> str:
         lines.append(f"{step.n}. {detail}")
     if solution.final_answer:
         lines += ["", f"**Answer:** {solution.final_answer}"]
-    method = {"symbolic": "computed symbolically (sympy)",
-              "chemistry": "computed from the periodic table",
-              "physics": "looked up (CODATA constants)",
-              "units": "converted by dimensional analysis",
-              "llm": "reasoned by the language model",
-              "none": "unsolved"}.get(solution.method, solution.method)
+    method = {
+        "symbolic": "computed symbolically (sympy)",
+        "chemistry": "computed from the periodic table",
+        "physics": "looked up (CODATA constants)",
+        "units": "converted by dimensional analysis",
+        "llm": "reasoned by the language model",
+        "none": "unsolved",
+    }.get(solution.method, solution.method)
     lines += ["", f"*Method: {method}.*"]
     return "\n".join(lines)

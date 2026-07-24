@@ -91,9 +91,7 @@ def critique_research(
                 sections.append("Reviewer critique:\n" + text)
             fixes = payload.get("fixes")
             if isinstance(fixes, list) and fixes:
-                sections.append(
-                    "Proposed fixes:\n" + "\n".join(f"- {f}" for f in map(str, fixes))
-                )
+                sections.append("Proposed fixes:\n" + "\n".join(f"- {f}" for f in map(str, fixes)))
             needs_revision = needs_revision or bool(payload.get("needs_revision"))
 
     if not sections:

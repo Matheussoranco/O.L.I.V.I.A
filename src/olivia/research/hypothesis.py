@@ -71,8 +71,7 @@ def generate_hypotheses(
 
     if client.available:
         context = "\n".join(
-            f"[{i}] {p.title} ({p.year}) — {p.abstract[:300]}"
-            for i, p in enumerate(papers[:10], 1)
+            f"[{i}] {p.title} ({p.year}) — {p.abstract[:300]}" for i, p in enumerate(papers[:10], 1)
         )
         prompt = (
             f"Research question: {question}\n\n"

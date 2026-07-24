@@ -104,16 +104,24 @@ def _llm_worksheet(topic: str, n: int, difficulty: str, client: LLMClient) -> li
             continue
         raw_steps = entry.get("steps") if isinstance(entry.get("steps"), list) else []
         steps = [
-            SolutionStep(n=i + 1, description=str(s.get("description", "")).strip(),
-                         result=str(s.get("result", "")).strip())
+            SolutionStep(
+                n=i + 1,
+                description=str(s.get("description", "")).strip(),
+                result=str(s.get("result", "")).strip(),
+            )
             for i, s in enumerate(raw_steps)
             if isinstance(s, dict) and str(s.get("description", "")).strip()
         ]
-        solutions.append(WorkedSolution(
-            problem=str(entry["problem"]).strip(), subject="general", steps=steps,
-            final_answer=str(entry.get("answer", "")).strip(),
-            method="llm", confidence=0.7,
-        ))
+        solutions.append(
+            WorkedSolution(
+                problem=str(entry["problem"]).strip(),
+                subject="general",
+                steps=steps,
+                final_answer=str(entry.get("answer", "")).strip(),
+                method="llm",
+                confidence=0.7,
+            )
+        )
     return solutions[:n]
 
 

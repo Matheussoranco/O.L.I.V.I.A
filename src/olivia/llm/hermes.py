@@ -74,8 +74,7 @@ class AgentResult:
 def render_tool_prompt(tools: list[Any]) -> str:
     """Render the Hermes system-prompt section for a list of Tools."""
     schemas = [
-        {"name": t.name, "description": t.description, "parameters": t.parameters}
-        for t in tools
+        {"name": t.name, "description": t.description, "parameters": t.parameters} for t in tools
     ]
     return HERMES_TOOL_PROMPT.format(tool_schemas=json.dumps(schemas, indent=2))
 

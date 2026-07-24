@@ -34,8 +34,12 @@ def get_experts() -> list[Expert]:
     global _experts
     if _experts is None:
         _experts = [
-            MathExpert(), StatsExpert(), ScienceExpert(), CodeExpert(),
-            LiteratureExpert(), GeneralExpert(),
+            MathExpert(),
+            StatsExpert(),
+            ScienceExpert(),
+            CodeExpert(),
+            LiteratureExpert(),
+            GeneralExpert(),
         ]
     return _experts
 
@@ -58,9 +62,7 @@ def route(question: str) -> list[tuple[Expert, float]]:
         score = expert.score(question)
         history = _win_rate(expert.name)
         blended = (
-            _SYMBOLIC_WEIGHT * score + _HISTORY_WEIGHT * history
-            if history is not None
-            else score
+            _SYMBOLIC_WEIGHT * score + _HISTORY_WEIGHT * history if history is not None else score
         )
         ranked.append((expert, blended))
     ranked.sort(key=lambda pair: pair[1], reverse=True)

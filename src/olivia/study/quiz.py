@@ -26,9 +26,7 @@ def _coerce_question(item: object) -> QuizQuestion | None:
         return None
     options = [str(o).strip() for o in item.get("options", []) if str(o).strip()]
     answer_index = item.get("answer_index")
-    if options and (
-        not isinstance(answer_index, int) or not 0 <= answer_index < len(options)
-    ):
+    if options and (not isinstance(answer_index, int) or not 0 <= answer_index < len(options)):
         return None
     difficulty = str(item.get("difficulty", "medium")).lower()
     return QuizQuestion(

@@ -33,11 +33,11 @@ def _from_execution(plan: ExperimentPlan, output: dict) -> AnalysisResult:
     if not isinstance(payload, dict):
         payload = {}
 
-    statistics = {
-        k: v
-        for k, v in (payload.get("statistics") or {}).items()
-        if isinstance(v, (int, float))
-    } if isinstance(payload.get("statistics"), dict) else {}
+    statistics = (
+        {k: v for k, v in (payload.get("statistics") or {}).items() if isinstance(v, (int, float))}
+        if isinstance(payload.get("statistics"), dict)
+        else {}
+    )
     effect_size = _as_float(payload.get("effect_size"))
     p_value = _as_float(payload.get("p_value"))
     supports = p_value is not None and p_value < _ALPHA
@@ -102,8 +102,7 @@ def run_analysis(
                 experiment_id=plan.id,
                 summary=str(payload.get("summary", "")).strip(),
                 interpretation=(
-                    "REASONED, NOT MEASURED: "
-                    + str(payload.get("interpretation", "")).strip()
+                    "REASONED, NOT MEASURED: " + str(payload.get("interpretation", "")).strip()
                 ),
                 supports_hypothesis=supports if isinstance(supports, bool) else None,
             )

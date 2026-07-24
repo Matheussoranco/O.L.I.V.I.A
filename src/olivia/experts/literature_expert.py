@@ -15,8 +15,19 @@ from olivia.llm.prompts import RESEARCH_SYSTEM
 logger = logging.getLogger(__name__)
 
 _KEYWORDS = [
-    "paper", "papers", "literature", "cite", "citation", "published",
-    "state of the art", "survey", "arxiv", "doi", "study", "studies", "research on",
+    "paper",
+    "papers",
+    "literature",
+    "cite",
+    "citation",
+    "published",
+    "state of the art",
+    "survey",
+    "arxiv",
+    "doi",
+    "study",
+    "studies",
+    "research on",
 ]
 
 
@@ -53,8 +64,7 @@ class LiteratureExpert(Expert):
         client = client or get_client()
         if client.available:
             context = "\n".join(
-                f"[{i}] {p.title} ({p.year}) — {p.abstract[:300]}"
-                for i, p in enumerate(papers, 1)
+                f"[{i}] {p.title} ({p.year}) — {p.abstract[:300]}" for i, p in enumerate(papers, 1)
             )
             synthesis = client.ask(
                 f"Question: {question}\n\nPapers:\n{context}\n\n"

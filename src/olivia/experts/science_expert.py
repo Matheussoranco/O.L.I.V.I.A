@@ -14,15 +14,32 @@ from olivia.llm.client import LLMClient, get_client
 from olivia.llm.prompts import OLIVIA_PERSONA
 
 _KEYWORDS = [
-    "molar mass", "molecular weight", "molecular mass", "stoichiometry",
-    "balance", "chemical", "chemistry", "compound", "reaction", "mole",
-    "molarity", "periodic", "physics", "constant", "speed of light", "planck",
-    "avogadro", "boltzmann", "gravitational constant", "convert",
-    "dimensional analysis", "unit conversion", "atomic mass", "atomic weight",
+    "molar mass",
+    "molecular weight",
+    "molecular mass",
+    "stoichiometry",
+    "balance",
+    "chemical",
+    "chemistry",
+    "compound",
+    "reaction",
+    "mole",
+    "molarity",
+    "periodic",
+    "physics",
+    "constant",
+    "speed of light",
+    "planck",
+    "avogadro",
+    "boltzmann",
+    "gravitational constant",
+    "convert",
+    "dimensional analysis",
+    "unit conversion",
+    "atomic mass",
+    "atomic weight",
 ]
-_FORMULA_HINT = re.compile(
-    r"\b[A-Z][a-z]?\d|->|→|\bmol\b|\d+\s*(?:kg|km|mph|mol|mL|nm|°[CF])\b"
-)
+_FORMULA_HINT = re.compile(r"\b[A-Z][a-z]?\d|->|→|\bmol\b|\d+\s*(?:kg|km|mph|mol|mL|nm|°[CF])\b")
 _SCIENCE_ADDENDUM = (
     "\nAnswer as a scientist: state assumptions, carry units through, and give "
     "the numeric result with its unit."

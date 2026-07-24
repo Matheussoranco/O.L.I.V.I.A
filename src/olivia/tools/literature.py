@@ -81,9 +81,7 @@ def search_arxiv(query: str, max_results: int = 10) -> list[Paper]:
                 venue="arXiv",
                 source="arxiv",
                 keywords=[
-                    c.get("term", "")
-                    for c in entry.findall(f"{_ATOM}category")
-                    if c.get("term")
+                    c.get("term", "") for c in entry.findall(f"{_ATOM}category") if c.get("term")
                 ],
             )
         )
