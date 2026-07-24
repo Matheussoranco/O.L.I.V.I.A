@@ -49,7 +49,10 @@ def test_search_offline_returns_empty(monkeypatch):
 def test_literature_search_dedupes_and_ranks(monkeypatch):
     a = Paper(title="Same Title!", doi="", citations=1, abstract="short", source="arxiv")
     b = Paper(
-        title="Same title", doi="10.1/x", citations=50, abstract="longer abstract",
+        title="Same title",
+        doi="10.1/x",
+        citations=50,
+        abstract="longer abstract",
         source="crossref",
     )
     c = Paper(title="Other work", citations=5, source="semanticscholar")

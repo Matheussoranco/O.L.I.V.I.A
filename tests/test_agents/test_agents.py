@@ -57,7 +57,7 @@ def test_strip_think_separates_reasoning_from_answer():
 
 def test_hermes_agent_executes_tool_then_answers(fake_client):
     client = fake_client(
-        '<think>need the echo</think>\n'
+        "<think>need the echo</think>\n"
         '<tool_call>\n{"name": "echo", "arguments": {"text": "hi"}}\n</tool_call>',
         "The echo said hi.",
     )
@@ -103,7 +103,10 @@ def test_subagent_registry_is_filtered_by_role():
 
     experimenter = SubAgent("experimenter", client=NullClient())
     assert set(experimenter.registry.names()) == {
-        "python_exec", "sample_size", "stats_test", "symbolic_math",
+        "python_exec",
+        "sample_size",
+        "stats_test",
+        "symbolic_math",
     }
 
     critic = SubAgent("critic", client=NullClient())

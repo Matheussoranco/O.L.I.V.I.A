@@ -254,12 +254,26 @@ def test_write_report_offline_sections_and_conclusion():
     analysis = AnalysisResult(
         experiment_id=exp.id, summary="ran", p_value=0.01, effect_size=0.7, supports_hypothesis=True
     )
-    report = write_report("q", [Paper(title="P1", year=2020)], [h], [exp], [analysis],
-                          critique="minor", client=NullClient())
+    report = write_report(
+        "q",
+        [Paper(title="P1", year=2020)],
+        [h],
+        [exp],
+        [analysis],
+        critique="minor",
+        client=NullClient(),
+    )
     assert "1 of 1 hypotheses were supported" in report.conclusion
     assert report.confidence == 0.6  # mean confidence of supported hypotheses
-    for section in ("## Literature", "## Hypotheses", "## Experiments", "## Results",
-                    "## Limitations", "## Conclusion", "## Open Questions"):
+    for section in (
+        "## Literature",
+        "## Hypotheses",
+        "## Experiments",
+        "## Results",
+        "## Limitations",
+        "## Conclusion",
+        "## Open Questions",
+    ):
         assert section in report.report_markdown
     assert "P1" in report.report_markdown
 

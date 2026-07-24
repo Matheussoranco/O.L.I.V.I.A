@@ -15,9 +15,21 @@ from olivia.llm.prompts import OLIVIA_PERSONA
 from olivia.tools.science import required_sample_size
 
 _KEYWORDS = [
-    "p-value", "p value", "effect size", "sample size", "power", "t-test",
-    "significance", "significant", "confidence interval", "standard deviation",
-    "variance", "correlation", "regression", "anova", "hypothesis test",
+    "p-value",
+    "p value",
+    "effect size",
+    "sample size",
+    "power",
+    "t-test",
+    "significance",
+    "significant",
+    "confidence interval",
+    "standard deviation",
+    "variance",
+    "correlation",
+    "regression",
+    "anova",
+    "hypothesis test",
 ]
 _EFFECT_RE = re.compile(r"(?:\bd\s*=\s*|effect size (?:of\s*)?)([0-9]*\.?[0-9]+)", re.IGNORECASE)
 _SAMPLE_INTENT_RE = re.compile(

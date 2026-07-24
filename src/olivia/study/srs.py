@@ -41,9 +41,7 @@ def review_card(card: Flashcard, quality: int, today: date | None = None) -> Fla
             interval = 6.0
         else:
             interval = float(round(card.interval_days * card.ease))
-        ease = max(
-            _MIN_EASE, card.ease + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02)
-        )
+        ease = max(_MIN_EASE, card.ease + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
 
     return dataclasses.replace(
         card,
@@ -101,7 +99,5 @@ class Deck:
     def save(self) -> Path:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = [dataclasses.asdict(c) for c in self.cards]
-        self.path.write_text(
-            json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        self.path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
         return self.path

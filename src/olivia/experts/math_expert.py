@@ -15,8 +15,19 @@ from olivia.llm.prompts import OLIVIA_PERSONA
 from olivia.tools.science import symbolic_math
 
 _KEYWORDS = [
-    "solve", "equation", "integrate", "integral", "derivative", "differentiate",
-    "simplify", "factor", "expand", "polynomial", "limit", "algebra", "calculus",
+    "solve",
+    "equation",
+    "integrate",
+    "integral",
+    "derivative",
+    "differentiate",
+    "simplify",
+    "factor",
+    "expand",
+    "polynomial",
+    "limit",
+    "algebra",
+    "calculus",
 ]
 _EXPR_RE = re.compile(r"[0-9a-z)\s]\s*[-+*/^]\s*[0-9a-z(]|\*\*|sqrt|sin\(|cos\(|exp\(|log\(")
 

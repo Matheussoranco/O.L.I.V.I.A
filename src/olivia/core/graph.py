@@ -42,8 +42,12 @@ def node_literature(state: OliviaState, client: LLMClient | None = None) -> dict
     papers, synthesis = review_literature(
         state.get("question", ""), client=client, max_papers=settings.research.max_papers
     )
-    return {"papers": papers, "critique": "", "phase": "literature",
-            "messages": [{"role": "assistant", "content": f"Literature review:\n{synthesis}"}]}
+    return {
+        "papers": papers,
+        "critique": "",
+        "phase": "literature",
+        "messages": [{"role": "assistant", "content": f"Literature review:\n{synthesis}"}],
+    }
 
 
 def node_hypotheses(state: OliviaState, client: LLMClient | None = None) -> dict[str, Any]:
@@ -147,8 +151,16 @@ def node_study(state: OliviaState, client: LLMClient | None = None) -> dict[str,
 def _merge(state: OliviaState, delta: dict[str, Any]) -> None:
     """Apply a node delta using the state's append/replace semantics."""
     for key, value in delta.items():
-        if key in ("messages", "errors", "papers", "hypotheses", "experiments", "analyses",
-                   "flashcards", "quiz"):
+        if key in (
+            "messages",
+            "errors",
+            "papers",
+            "hypotheses",
+            "experiments",
+            "analyses",
+            "flashcards",
+            "quiz",
+        ):
             state.setdefault(key, []).extend(value)  # type: ignore[typeddict-item]
         else:
             state[key] = value  # type: ignore[literal-required]

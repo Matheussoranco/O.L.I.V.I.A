@@ -36,9 +36,7 @@ def ask(question: str) -> None:
 @app.command()
 def solve(
     problem: str,
-    subject: str = typer.Option(
-        "auto", help="math | chemistry | physics | units | auto."
-    ),
+    subject: str = typer.Option("auto", help="math | chemistry | physics | units | auto."),
 ) -> None:
     """Solve a STEM problem step by step (GPAI-style worked solution)."""
     from olivia.study import solution_to_markdown, solve_problem

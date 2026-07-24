@@ -157,7 +157,13 @@ def write_report(
         open_questions=open_questions,
         confidence=confidence,
         report_markdown=_markdown(
-            question, papers, hypotheses, experiments, analyses, critique, conclusion,
+            question,
+            papers,
+            hypotheses,
+            experiments,
+            analyses,
+            critique,
+            conclusion,
             open_questions,
         ),
     )

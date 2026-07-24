@@ -49,8 +49,7 @@ class ResearchLab:
             )
             if draft:
                 draft_task += (
-                    "\n\nRevise your previous draft to answer this critique:\n"
-                    f"{result['critique']}"
+                    f"\n\nRevise your previous draft to answer this critique:\n{result['critique']}"
                 )
             drafted = researcher.run(draft_task)
             if drafted.error:
