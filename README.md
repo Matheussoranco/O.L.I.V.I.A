@@ -130,6 +130,9 @@ change; the offline-first contract will not.
 
 ## License
 
-[PolyForm Noncommercial License 1.0.0](https://polyformproject.org/licenses/noncommercial/1.0.0)
+[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 — see [LICENSE](LICENSE). Noncommercial use only: you may use, modify, and share
-OLIVIA for any purpose except a commercial one.
+OLIVIA for any purpose except a commercial one. Two conditions come with that:
+keep the attribution, and license anything you share onward — including modified
+versions — under these same terms (**ShareAlike**, i.e. copyleft). Commercial use
+requires separate written permission.
