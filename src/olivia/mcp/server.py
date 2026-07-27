@@ -16,11 +16,15 @@ from collections.abc import Callable
 from dataclasses import asdict
 from typing import Any
 
+from olivia import __version__
+
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 PROTOCOL_VERSION = "2024-11-05"
-SERVER_INFO = {"name": "olivia", "version": "0.1.0"}
+# Derived, never hardcoded: a literal here silently drifts from the package
+# version on every release and reports a stale version to the MCP client.
+SERVER_INFO = {"name": "olivia", "version": __version__}
 
 
 # ---------------------------------------------------------------------------

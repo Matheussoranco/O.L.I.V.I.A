@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "olivia"
-version = "0.1.0"
+version = "0.2.0"
 description = "Open Learning Intelligence & Virtual Investigation Assistant — an AI agent for study, learning, and scientific discovery"
 readme = "README.md"
 license = { text = "CC-BY-NC-SA-4.0" }
