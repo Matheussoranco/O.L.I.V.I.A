@@ -4,6 +4,49 @@ All notable changes to O.L.I.V.I.A. are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project aims to
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] — 2026-07-27
+
+A licensing and toolchain release. **No behavioural change** — the only code
+touched since `0.1.0-alpha` was reformatted by `ruff format`, and the suite is
+byte-for-byte the same 166 offline tests.
+
+The minor bump reflects the licence change, not new features. SemVer governs the
+public API and says nothing about licensing, but the terms you may use O.L.I.V.I.A.
+under have changed materially, and that is not a patch.
+
+### Changed
+
+- **Relicensed from AGPL-3.0-or-later to
+  [CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/).** Read
+  this before upgrading — it is a *trade*, not a tightening:
+  - **Commercial use is now prohibited** without separate written permission.
+    AGPL-3.0 permitted it, subject to copyleft. If you were relying on that, stay
+    on `0.1.0-alpha`: **a licence already granted cannot be retroactively
+    revoked**, so anyone who received an earlier commit keeps their AGPL rights
+    to that version.
+  - **Copyleft is retained** via ShareAlike (§3(b)): anything you share onward,
+    modified or not, must carry these same terms.
+  - **No patent or trademark grant** (§2(b)(2)). This is the one place the new
+    licence is genuinely weaker than AGPL-3.0.
+  - GitHub reports this repository as `NOASSERTION`. That is expected and
+    unfixable: its detector only recognises the licences on choosealicense.com,
+    whose sole Creative Commons entry is CC0-1.0, so every NonCommercial licence
+    is excluded by design. The README badge exists to compensate.
+- `LICENSE` now holds the **verbatim** canonical CC BY-NC-SA 4.0 legal text and
+  nothing else; the copyright line, SPDX identifier and plain-language summary
+  live in the README, which is where §3(a)(1) attribution expects them.
+- Whole tree normalised with `ruff format`.
+
+### Added
+
+- **CI** (`.github/workflows/ci.yml`) — `ruff check`, `ruff format --check`, and
+  the full offline suite on Python 3.10 / 3.11 / 3.12.
+- `ruff` is **pinned exactly** (`ruff==0.15.2`) in the dev extra rather than
+  floated. An unpinned `ruff>=0.4` is a time bomb: ruff 0.16.0 widened its
+  built-in default rule set and
+  turned green pipelines red across sibling projects with no source change.
+  The lint configuration selects its rules explicitly for the same reason.
+
 ## [0.1.0-alpha] — 2026-07-20
 
 First public alpha. The whole system imports, runs, and tests **fully offline**
@@ -65,4 +108,5 @@ LLM consumer.
   fixtures; the LLM provider is forced to `none`).
 - `ruff check src tests` clean (target py310, line length 100).
 
+[0.2.0]: https://github.com/matheussoranco/O.L.I.V.I.A/releases/tag/v0.2.0
 [0.1.0-alpha]: https://github.com/matheussoranco/O.L.I.V.I.A/releases/tag/v0.1.0-alpha

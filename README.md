@@ -127,7 +127,7 @@ python -m pytest -q     # 166 tests, fully offline: no keys, no network
 
 ## Status
 
-**0.1.0 — Alpha.** See [CHANGELOG.md](CHANGELOG.md). The API and CLI may still
+**0.2.0 — Alpha.** See [CHANGELOG.md](CHANGELOG.md). The API and CLI may still
 change; the offline-first contract will not.
 
 ## License
