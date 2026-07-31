@@ -252,6 +252,350 @@ def info() -> None:
     console.print(table)
 
 
+@app.command()
+def experts(
+    action: str = typer.Argument("list", help="'list' or 'route'."),
+    question: str = typer.Argument("", help="Question to route (for 'route')."),
+) -> None:
+    """List the Mixture-of-Experts panel, or show how a question would route.
+
+    Example::
+
+        olivia experts list
+        olivia experts route "why does entropy increase?"
+    """
+    from olivia.experts import get_experts, route
+
+    act = (action or "list").strip().lower()
+
+    if act == "list":
+        table = Table(title="Experts", show_header=True)
+        table.add_column("name")
+        table.add_column("description")
+        for expert in get_experts():
+            table.add_row(expert.name, expert.description)
+        console.print(table)
+        return
+
+    if act == "route":
+        if not question:
+            console.print("[red]'route' needs a question.[/red]")
+            raise typer.Exit(2)
+        ranked = route(question)
+        if not ranked:
+            console.print("[dim]no expert scored above zero[/dim]")
+            return
+        table = Table(title=f"Routing: {question}", show_header=True)
+        table.add_column("expert")
+        table.add_column("score", justify="right")
+        for expert, score in ranked:
+            table.add_row(expert.name, f"{score:.3f}")
+        console.print(table)
+        return
+
+    console.print(f"[red]Unknown action: {action}[/red] — try 'list' or 'route'.")
+    raise typer.Exit(2)
+
+
+@app.command()
+def tools(
+    action: str = typer.Argument("list", help="'list', 'show <name>', or 'run <name>'."),
+    name: str = typer.Argument("", help="Tool name for 'show' / 'run'."),
+    args: str = typer.Option("{}", "--args", help="JSON object of arguments for 'run'."),
+) -> None:
+    """Inspect and invoke the science tool registry.
+
+    Example::
+
+        olivia tools list
+        olivia tools show sample_size
+        olivia tools run convert_units --args '{"value": 1, "frm": "eV", "to": "J"}'
+    """
+    import json as _json
+
+    from olivia.tools import build_default_registry
+
+    registry = build_default_registry()
+    act = (action or "list").strip().lower()
+
+    if act == "list":
+        table = Table(title="Tools", show_header=True)
+        table.add_column("name")
+        table.add_column("risk", justify="right")
+        table.add_column("description")
+        for tool in registry.list():
+            table.add_row(tool.name, str(tool.risk), (tool.description or "").split("\n")[0])
+        console.print(table)
+        return
+
+    if not name:
+        console.print(f"[red]'{act}' needs a tool name.[/red]")
+        raise typer.Exit(2)
+
+    tool = registry.get(name)
+    if tool is None:
+        console.print(f"[red]No such tool: {name}[/red]")
+        raise typer.Exit(2)
+
+    if act == "show":
+        console.print(f"[bold]{tool.name}[/bold]")
+        console.print(tool.description or "")
+        console.print(_json.dumps(tool.parameters, indent=2))
+        return
+
+    if act == "run":
+        try:
+            parsed = _json.loads(args)
+        except _json.JSONDecodeError as exc:
+            console.print(f"[red]--args is not valid JSON: {exc}[/red]")
+            raise typer.Exit(2) from exc
+        result = registry.execute(name, parsed)
+        console.print(_json.dumps(result, indent=2, default=str))
+        return
+
+    console.print(f"[red]Unknown action: {action}[/red] — try 'list', 'show', or 'run'.")
+    raise typer.Exit(2)
+
+
+@app.command()
+def notebook(
+    action: str = typer.Argument("list", help="'list', 'search <query>', 'add', or 'path'."),
+    query: str = typer.Argument("", help="Search query, or the text to add."),
+    kind: str = typer.Option("", "--kind", "-k", help="Filter/label by entry kind."),
+    tags: str = typer.Option("", "--tags", help="Comma-separated tags (for 'add')."),
+    limit: int = typer.Option(20, "--limit", "-n", help="Max entries to show."),
+) -> None:
+    """Read and append to the research notebook (long-term memory).
+
+    Example::
+
+        olivia notebook list
+        olivia notebook search "diffusion" --kind hypothesis
+        olivia notebook add "recheck the 2019 replication" --kind todo
+    """
+    from olivia.memory.notebook import Notebook
+
+    nb = Notebook()
+    act = (action or "list").strip().lower()
+
+    if act == "path":
+        console.print(str(nb.path))
+        return
+
+    if act == "add":
+        if not query:
+            console.print("[red]'add' needs some text.[/red]")
+            raise typer.Exit(2)
+        tag_list = [t.strip() for t in tags.split(",") if t.strip()]
+        entry = nb.add(kind or "note", query, tags=tag_list)
+        console.print(f"[dim]added {entry['id']} ({entry['kind']})[/dim]")
+        return
+
+    if act in {"list", "search"}:
+        if act == "search":
+            if not query:
+                console.print("[red]'search' needs a query.[/red]")
+                raise typer.Exit(2)
+            found = nb.search(query, kind=kind or None, limit=limit)
+        else:
+            found = nb.entries(kind or None)
+
+        if not found:
+            console.print("[dim]notebook is empty[/dim]")
+            return
+
+        table = Table(show_header=True)
+        table.add_column("ts")
+        table.add_column("kind")
+        table.add_column("content")
+        for entry in found[-limit:]:
+            content = entry.get("content", "").replace("\n", " ")
+            table.add_row(
+                entry.get("ts", ""),
+                entry.get("kind", ""),
+                content[:90] + ("…" if len(content) > 90 else ""),
+            )
+        console.print(table)
+        console.print(f"[dim]{len(found)} entries — {nb.path}[/dim]")
+        return
+
+    console.print(f"[red]Unknown action: {action}[/red] — try 'list', 'search', 'add', or 'path'.")
+    raise typer.Exit(2)
+
+
+@app.command()
+def agents(
+    action: str = typer.Argument("list", help="'list' or 'show <role>'."),
+    role: str = typer.Argument("", help="Role name for 'show'."),
+) -> None:
+    """List the sub-agent roles the research lab can staff.
+
+    Example::
+
+        olivia agents list
+        olivia agents show critic
+    """
+    from olivia.agents.roles import ROLES
+
+    act = (action or "list").strip().lower()
+
+    if act == "list":
+        table = Table(title="Sub-agent roles", show_header=True)
+        table.add_column("role")
+        table.add_column("tools")
+        table.add_column("max turns", justify="right")
+        for spec in ROLES.values():
+            tool_desc = "all" if spec.tool_names is None else (", ".join(spec.tool_names) or "none")
+            table.add_row(spec.name, tool_desc, str(spec.max_turns))
+        console.print(table)
+        return
+
+    if act == "show":
+        if not role:
+            console.print("[red]'show' needs a role name.[/red]")
+            raise typer.Exit(2)
+        spec = ROLES.get(role)
+        if spec is None:
+            console.print(f"[red]No such role: {role}[/red] — try: {', '.join(ROLES)}")
+            raise typer.Exit(2)
+        tool_desc = "all" if spec.tool_names is None else (", ".join(spec.tool_names) or "none")
+        console.print(f"[bold]{spec.name}[/bold]  tools={tool_desc}  max_turns={spec.max_turns}")
+        console.print(spec.system_prompt)
+        return
+
+    console.print(f"[red]Unknown action: {action}[/red] — try 'list' or 'show'.")
+    raise typer.Exit(2)
+
+
+@app.command()
+def learn(
+    action: str = typer.Argument("stats", help="'stats' or 'rank <task_kind>'."),
+    task_kind: str = typer.Argument("", help="Task kind for 'rank'."),
+) -> None:
+    """Show what the meta-learner has learned about strategy win-rates.
+
+    Example::
+
+        olivia learn stats
+        olivia learn rank research
+    """
+    from olivia.meta.learner import get_meta_learner
+
+    learner = get_meta_learner()
+    act = (action or "stats").strip().lower()
+
+    if act == "stats":
+        stats = learner.stats()
+        if not stats:
+            console.print("[dim]no recorded outcomes yet[/dim]")
+            return
+        # stats() returns {"total": int, "by_task": {kind: {strategy: {...}}}};
+        # flatten it so the numbers are comparable at a glance.
+        by_task = stats.get("by_task", {})
+        if not by_task:
+            console.print(f"[dim]no recorded outcomes yet (total={stats.get('total', 0)})[/dim]")
+            return
+        table = Table(title="Meta-learner win rates", show_header=True)
+        table.add_column("task kind")
+        table.add_column("strategy")
+        table.add_column("n", justify="right")
+        table.add_column("wins", justify="right")
+        table.add_column("win rate", justify="right")
+        for kind_name, strategies in sorted(by_task.items()):
+            for strategy, rec in sorted(strategies.items()):
+                table.add_row(
+                    kind_name,
+                    strategy,
+                    str(rec.get("n", "")),
+                    str(rec.get("wins", "")),
+                    f"{rec.get('win_rate', 0.0):.0%}",
+                )
+        console.print(table)
+        console.print(f"[dim]{stats.get('total', 0)} recorded outcomes[/dim]")
+        return
+
+    if act == "rank":
+        if not task_kind:
+            console.print("[red]'rank' needs a task kind.[/red]")
+            raise typer.Exit(2)
+        from olivia.experts import get_experts
+
+        names = [e.name for e in get_experts()]
+        ranked = learner.rank_strategies(task_kind, names)
+        table = Table(title=f"Strategies for {task_kind}", show_header=True)
+        table.add_column("strategy")
+        table.add_column("win rate", justify="right")
+        for strategy in ranked:
+            table.add_row(strategy, f"{learner.win_rate(task_kind, strategy):.0%}")
+        console.print(table)
+        return
+
+    console.print(f"[red]Unknown action: {action}[/red] — try 'stats' or 'rank'.")
+    raise typer.Exit(2)
+
+
+@app.command()
+def config(
+    action: str = typer.Argument("show", help="'show', 'get <dotted.key>', or 'paths'."),
+    key: str = typer.Argument("", help="Dotted key for 'get' (e.g. llm.model)."),
+) -> None:
+    """Inspect the effective configuration.
+
+    Read-only by design: settings resolve per-process from the environment and
+    ``.env``, so a write here would not survive the process.
+
+    Example::
+
+        olivia config show
+        olivia config get llm.model
+    """
+    import json as _json
+
+    from olivia.config import settings
+
+    act = (action or "show").strip().lower()
+
+    if act == "paths":
+        table = Table(title="Paths", show_header=False)
+        table.add_row("home_dir", str(settings.home_dir))
+        table.add_row("data_dir", str(settings.data_dir()))
+        console.print(table)
+        return
+
+    data = settings.model_dump(mode="json")
+
+    def _redact(obj: object, path: str = "") -> object:
+        if isinstance(obj, dict):
+            return {k: _redact(v, f"{path}.{k}" if path else k) for k, v in obj.items()}
+        if isinstance(obj, str) and obj and ("api_key" in path or "token" in path):
+            return f"<set: {len(obj)} chars>"
+        return obj
+
+    data = _redact(data)
+
+    if act == "get":
+        if not key:
+            console.print("[red]'get' needs a dotted key, e.g. llm.model[/red]")
+            raise typer.Exit(2)
+        node: object = data
+        for part in key.split("."):
+            if not isinstance(node, dict) or part not in node:
+                console.print(f"[red]No such setting: {key}[/red]")
+                raise typer.Exit(2)
+            node = node[part]
+        console.print(
+            _json.dumps(node, indent=2) if isinstance(node, (dict, list)) else str(node)
+        )
+        return
+
+    if act == "show":
+        console.print(_json.dumps(data, indent=2, default=str))
+        return
+
+    console.print(f"[red]Unknown action: {action}[/red] — try 'show', 'get', or 'paths'.")
+    raise typer.Exit(2)
+
+
 def main() -> None:
     app()
 
