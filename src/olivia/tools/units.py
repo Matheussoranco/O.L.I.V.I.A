@@ -318,7 +318,7 @@ def register_tools(registry) -> None:
         Tool(
             name="dimensional_analysis",
             description=(
-                "Reduce a unit to its SI factor and base dimensions (e.g. 'N' → kg·m·s^-2, force)."
+                "Reduce a unit to its SI factor and base dimensions (e.g. 'N' -> kg*m*s^-2, force)."
             ),
             parameters={
                 "type": "object",

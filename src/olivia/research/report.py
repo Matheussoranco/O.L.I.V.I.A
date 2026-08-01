@@ -96,7 +96,7 @@ def _markdown(
             verdict = {True: "supports", False: "refutes", None: "inconclusive"}[
                 a.supports_hypothesis
             ]
-            lines.append(f"- {a.experiment_id}: {a.summary} ({effect}, {p}) → **{verdict}**")
+            lines.append(f"- {a.experiment_id}: {a.summary} ({effect}, {p}) -> **{verdict}**")
     else:
         lines.append("_No analyses run._")
 

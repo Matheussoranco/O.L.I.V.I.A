@@ -377,6 +377,15 @@ def _error(request_id: Any, code: int, message: str) -> dict[str, Any]:
 
 def serve() -> None:
     """Blocking stdio loop: one JSON-RPC message per line."""
+    # A subprocess's stdio streams default to the platform's legacy codepage
+    # on Windows (cp1252 etc.), not UTF-8. Tool descriptions, research
+    # reports, and literature abstracts are arbitrary Unicode text (e.g. the
+    # 'olivia_research' description below contains '→'), so the very first
+    # non-ASCII character written would otherwise crash the server with
+    # UnicodeEncodeError before any client ever sees a response.
+    for stream in (sys.stdin, sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8")
     logger.warning("olivia MCP server listening on stdio")
     for line in sys.stdin:
         line = line.strip()
