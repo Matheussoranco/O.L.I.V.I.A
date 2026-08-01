@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from datetime import date
 
+import pytest
+
 from olivia.core.records import Flashcard, QuizQuestion
 from olivia.llm.client import NullClient
 from olivia.study import (
@@ -48,11 +50,45 @@ def test_sm2_first_three_perfect_reviews():
     assert card.interval_days == round(6.0 * 2.6)  # ease grew to 2.6 after two q=5 reviews
 
 
-def test_sm2_lapse_resets_schedule_not_ease_floor():
+def test_sm2_lapse_resets_schedule_and_updates_ease():
+    # Canonical SM-2 (Wikipedia / SuperMemo reference pseudocode): the
+    # EF'=EF+(0.1-(5-q)*(0.08+(5-q)*0.02)) update is unconditional, applied
+    # on every review including lapses. Only repetitions/interval reset on
+    # q < 3 — EF is not *reset* to a default, but it does move, and a q=1
+    # lapse is a hefty penalty (-0.54 here), unlike a no-op.
     card = Flashcard(front="f", back="b", repetitions=3, interval_days=15.0, ease=2.5)
     lapsed = review_card(card, 1, today=_TODAY)
     assert (lapsed.repetitions, lapsed.interval_days) == (0, 1.0)
-    assert lapsed.ease == 2.5  # lapse does not change ease in SM-2
+    assert lapsed.ease == pytest.approx(2.5 + 0.1 - 4 * (0.08 + 4 * 0.02))  # == 1.96
+    assert lapsed.ease == pytest.approx(1.96)
+
+
+def test_sm2_known_review_sequence_matches_hand_computation():
+    """Step a card through q=5,5,5,1,5 and check every field against the
+    canonical SM-2 formula computed by hand (see CHANGELOG/audit notes)."""
+    card = Flashcard(front="f", back="b")  # ease=2.5, repetitions=0, interval=0
+
+    card = review_card(card, 5, today=_TODAY)
+    assert (card.repetitions, card.interval_days) == (1, 1.0)
+    assert card.ease == pytest.approx(2.6)
+
+    card = review_card(card, 5, today=_TODAY)
+    assert (card.repetitions, card.interval_days) == (2, 6.0)
+    assert card.ease == pytest.approx(2.7)
+
+    card = review_card(card, 5, today=_TODAY)
+    assert (card.repetitions, card.interval_days) == (3, 16.0)  # round(6.0 * 2.7)
+    assert card.ease == pytest.approx(2.8)
+
+    # Lapse: repetitions/interval reset to (0, 1), EF takes the full penalty.
+    card = review_card(card, 1, today=_TODAY)
+    assert (card.repetitions, card.interval_days) == (0, 1.0)
+    assert card.ease == pytest.approx(2.26)
+
+    # Recovery starts the interval ladder over at 1 day, from the lapsed EF.
+    card = review_card(card, 5, today=_TODAY)
+    assert (card.repetitions, card.interval_days) == (1, 1.0)
+    assert card.ease == pytest.approx(2.36)
 
 
 def test_sm2_ease_never_drops_below_floor():

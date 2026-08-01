@@ -31,8 +31,13 @@ def review_card(card: Flashcard, quality: int, today: date | None = None) -> Fla
     quality = max(0, min(5, int(quality)))
     today = today or date.today()
 
+    # The ease-factor update runs on *every* review, lapses included — a card
+    # that keeps failing must get harder to schedule, not keep whatever ease
+    # it had going in. Only the repetition count and interval reset on q < 3.
+    ease = max(_MIN_EASE, card.ease + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
+
     if quality < 3:
-        repetitions, interval, ease = 0, 1.0, card.ease
+        repetitions, interval = 0, 1.0
     else:
         repetitions = card.repetitions + 1
         if repetitions == 1:
@@ -41,7 +46,6 @@ def review_card(card: Flashcard, quality: int, today: date | None = None) -> Fla
             interval = 6.0
         else:
             interval = float(round(card.interval_days * card.ease))
-        ease = max(_MIN_EASE, card.ease + 0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02))
 
     return dataclasses.replace(
         card,

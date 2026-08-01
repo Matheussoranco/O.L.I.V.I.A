@@ -309,7 +309,7 @@ def tools(
 
         olivia tools list
         olivia tools show sample_size
-        olivia tools run convert_units --args '{"value": 1, "frm": "eV", "to": "J"}'
+        olivia tools run convert_units --args '{"value": 1, "from_unit": "eV", "to_unit": "J"}'
     """
     import json as _json
 
@@ -583,9 +583,7 @@ def config(
                 console.print(f"[red]No such setting: {key}[/red]")
                 raise typer.Exit(2)
             node = node[part]
-        console.print(
-            _json.dumps(node, indent=2) if isinstance(node, (dict, list)) else str(node)
-        )
+        console.print(_json.dumps(node, indent=2) if isinstance(node, (dict, list)) else str(node))
         return
 
     if act == "show":

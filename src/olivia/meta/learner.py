@@ -38,6 +38,7 @@ class MetaLearner:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as conn:
             conn.execute(_SCHEMA)
+        conn.close()
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path, timeout=10.0)
@@ -63,6 +64,7 @@ class MetaLearner:
                     json.dumps(meta or {}, default=str),
                 ),
             )
+        conn.close()
 
     def win_rate(self, task_kind: str, strategy: str, default: float = 0.5) -> float:
         """Laplace-smoothed ``(wins + 1) / (n + 2)``; ``default`` when unseen."""
@@ -72,6 +74,7 @@ class MetaLearner:
                 " WHERE task_kind = ? AND strategy = ?",
                 (task_kind, strategy),
             ).fetchone()
+        conn.close()
         n, wins = row
         if n == 0:
             return default
@@ -92,6 +95,7 @@ class MetaLearner:
                 "SELECT task_kind, strategy, COUNT(*), COALESCE(SUM(success), 0)"
                 " FROM outcomes GROUP BY task_kind, strategy"
             ).fetchall()
+        conn.close()
         by_task: dict[str, dict] = {}
         total = 0
         for task_kind, strategy, n, wins in rows:

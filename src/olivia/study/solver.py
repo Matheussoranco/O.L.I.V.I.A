@@ -76,9 +76,18 @@ def _pick_symbol(expr):
 
 
 def _sympify(text: str):
-    import sympy
+    from sympy.parsing.sympy_parser import (
+        implicit_multiplication_application,
+        parse_expr,
+        standard_transformations,
+    )
 
-    return sympy.sympify(text.replace("^", "**"))
+    # Allow implicit multiplication ('5x', '3x^2', 'sin(x)cos(x)') — the way
+    # people actually write equations, and how the README's own examples
+    # ('solve x**2 - 5x + 6 = 0 for x') are phrased. Plain sympy.sympify()
+    # raises a SyntaxError on these and the caller treats that as "no match".
+    transformations = (*standard_transformations, implicit_multiplication_application)
+    return parse_expr(text.replace("^", "**"), transformations=transformations)
 
 
 def _solve_math(problem: str) -> WorkedSolution | None:
@@ -470,7 +479,7 @@ def solution_to_markdown(solution: WorkedSolution) -> str:
     for step in solution.steps:
         detail = f"{step.description}"
         if step.result:
-            detail += f" → `{step.result}`"
+            detail += f" -> `{step.result}`"
         lines.append(f"{step.n}. {detail}")
     if solution.final_answer:
         lines += ["", f"**Answer:** {solution.final_answer}"]
