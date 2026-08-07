@@ -152,9 +152,18 @@ def load_dataset(name: str) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def load_gates() -> dict[str, float]:
-    """Regression floors, keyed ``suite.metric``."""
-    return {k: float(v) for k, v in load_dataset("gates").get("floors", {}).items()}
+def load_gates() -> dict[str, dict[str, float]]:
+    """Regression bounds keyed ``suite.metric``.
+
+    ``floors`` are metrics where higher is better; ``ceilings`` are the ones
+    where lower is better (a wrong-answer rate, a false-alarm rate). Both are
+    needed: gating a wrong-answer rate from below would reward getting worse.
+    """
+    data = load_dataset("gates")
+    return {
+        "floors": {k: float(v) for k, v in data.get("floors", {}).items()},
+        "ceilings": {k: float(v) for k, v in data.get("ceilings", {}).items()},
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -203,8 +212,8 @@ def run_all(client: LLMClient | None = None, suites: list[str] | None = None) ->
 # ---------------------------------------------------------------------------
 
 
-def check_gates(run: EvalRun, gates: dict[str, float] | None = None) -> list[str]:
-    """Return one message per breached floor; empty means no regression.
+def check_gates(run: EvalRun, gates: dict[str, dict[str, float]] | None = None) -> list[str]:
+    """Return one message per breached bound; empty means no regression.
 
     A gate whose metric is missing (its suite was skipped) is *not* a failure —
     CI must never go red because a key is absent.
@@ -212,11 +221,12 @@ def check_gates(run: EvalRun, gates: dict[str, float] | None = None) -> list[str
     gates = load_gates() if gates is None else gates
     measured = run.flat_metrics()
     breaches: list[str] = []
-    for key, floor in sorted(gates.items()):
-        if key not in measured:
-            continue
-        if measured[key] + 1e-9 < floor:
+    for key, floor in sorted(gates.get("floors", {}).items()):
+        if key in measured and measured[key] + 1e-9 < floor:
             breaches.append(f"{key}: {measured[key]:.4f} < floor {floor:.4f}")
+    for key, ceiling in sorted(gates.get("ceilings", {}).items()):
+        if key in measured and measured[key] - 1e-9 > ceiling:
+            breaches.append(f"{key}: {measured[key]:.4f} > ceiling {ceiling:.4f}")
     return breaches
 
 

@@ -594,6 +594,97 @@ def config(
     raise typer.Exit(2)
 
 
+@app.command("eval")
+def eval_command(
+    suite: str = typer.Option("", "--suite", "-s", help="Comma-separated suites; default all."),
+    use_llm: bool = typer.Option(
+        False, "--llm", help="Also score the LLM-dependent paths (needs a backend)."
+    ),
+    check: bool = typer.Option(
+        False, "--check", help="Exit 1 if any measured metric falls below its gate."
+    ),
+    json_out: str = typer.Option("", "--json", help="Write the full results JSON here."),
+    markdown_out: str = typer.Option("", "--markdown", help="Write the scoreboard markdown here."),
+    verbose: bool = typer.Option(False, "--verbose", "-v", help="List the failing cases."),
+) -> None:
+    """Score O.L.I.V.I.A. against the held-out eval suites.
+
+    Everything runs offline by default. ``--llm`` additionally scores the
+    fallback solver, the LLM critic, and LLM-generated cards; without a backend
+    those are reported as skipped, never as failures.
+
+    Example::
+
+        olivia eval
+        olivia eval --suite symbolic,study --check
+        olivia eval --llm --json results.json
+    """
+    import json as _json
+    from pathlib import Path
+
+    from olivia.eval import check_gates, run_all, run_to_markdown, suite_names
+    from olivia.eval.harness import run_to_dict
+    from olivia.llm.client import get_client
+
+    chosen = [s.strip() for s in suite.split(",") if s.strip()] or None
+    if chosen:
+        unknown = [s for s in chosen if s not in suite_names()]
+        if unknown:
+            console.print(f"[red]Unknown suite(s): {', '.join(unknown)}[/red]")
+            console.print(f"[dim]available: {', '.join(suite_names())}[/dim]")
+            raise typer.Exit(2)
+
+    client = get_client("strong") if use_llm else None
+    if use_llm and (client is None or not client.available):
+        console.print(
+            "[yellow]--llm requested but no backend is configured; "
+            "LLM-dependent metrics will be reported as skipped.[/yellow]"
+        )
+
+    # No spinner here on purpose: rich's default spinner glyphs are braille,
+    # which a cp1252 Windows console cannot encode, and this command has to be
+    # runnable on the machine that develops it.
+    console.print("[dim]running eval suites…[/dim]")
+    run = run_all(client=client, suites=chosen)
+
+    for report in run.reports:
+        table = Table(title=f"{report.suite} suite", show_header=True)
+        table.add_column("metric")
+        table.add_column("value", justify="right")
+        table.add_column("n", justify="right")
+        table.add_column("note")
+        for metric in report.metrics:
+            table.add_row(metric.name, metric.as_percent(), str(metric.n), metric.note)
+        console.print(table)
+        for note in report.notes:
+            console.print(f"[dim]- {note}[/dim]")
+        if verbose:
+            for case in report.cases:
+                if case.outcome in ("wrong", "abstain"):
+                    console.print(
+                        f"[dim]  {case.id} [{case.outcome}] "
+                        f"expected {case.expected!r} got {case.got!r}[/dim]"
+                    )
+
+    if json_out:
+        Path(json_out).write_text(
+            _json.dumps(run_to_dict(run), indent=2, default=str), encoding="utf-8"
+        )
+        console.print(f"[dim]results written to {json_out}[/dim]")
+    if markdown_out:
+        Path(markdown_out).write_text(run_to_markdown(run, verbose=True), encoding="utf-8")
+        console.print(f"[dim]scoreboard written to {markdown_out}[/dim]")
+
+    if check:
+        breaches = check_gates(run)
+        if breaches:
+            console.print("[red]Regression against the recorded baseline:[/red]")
+            for breach in breaches:
+                console.print(f"  [red]{breach}[/red]")
+            raise typer.Exit(1)
+        console.print("[green]All gates hold.[/green]")
+
+
 def main() -> None:
     app()
 
