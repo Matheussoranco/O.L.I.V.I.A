@@ -172,6 +172,7 @@ def load_gates() -> dict[str, dict[str, float]]:
 
 SuiteFn = Callable[[LLMClient | None], SuiteReport]
 _REGISTRY: dict[str, SuiteFn] = {}
+_LOADED = False
 
 
 def register_suite(name: str, fn: SuiteFn) -> None:
@@ -184,11 +185,17 @@ def suite_names() -> list[str]:
 
 
 def _load_suites() -> None:
-    if _REGISTRY:
+    # Guarded by an explicit flag, never by "is the registry non-empty": any
+    # module that imports one suite directly registers it, which would make a
+    # truthiness check declare the registry loaded and silently hide the rest.
+    global _LOADED
+    if _LOADED:
         return
     # Imported for their registration side-effect; kept lazy so `import
     # olivia.eval` stays cheap and sympy-free until a suite actually runs.
     from olivia.eval import research_eval, study_eval, symbolic_eval  # noqa: F401
+
+    _LOADED = True
 
 
 def run_suite(name: str, client: LLMClient | None = None) -> SuiteReport:
