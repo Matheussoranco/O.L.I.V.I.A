@@ -1,0 +1,3295 @@
+{
+  "llm_backend": "none",
+  "metrics": {
+    "research.symbolic.catch_rate": 0.2631578947368421,
+    "research.symbolic.false_alarm_rate": 0.0,
+    "research.symbolic.balanced_accuracy": 0.631578947368421,
+    "research.symbolic.youden_j": 0.2631578947368421,
+    "research.symbolic.catch.circular": 0.0,
+    "research.symbolic.catch.contradicted_by_evidence": 0.0,
+    "research.symbolic.catch.overfit_n1_semantic": 0.0,
+    "research.symbolic.catch.overfit_n1_structural": 1.0,
+    "research.symbolic.catch.unfalsifiable_semantic": 0.0,
+    "research.symbolic.catch.unfalsifiable_structural": 1.0,
+    "research.llm.measured": 0.0,
+    "study.sm2.sequence_exact": 0.9583333333333334,
+    "study.sm2.step_exact": 0.9872611464968153,
+    "study.sm2.lapse_step_exact": 1.0,
+    "study.sm2.ease_exact": 1.0,
+    "study.sm2.interval_exact": 0.9872611464968153,
+    "study.sm2.repetitions_exact": 1.0,
+    "study.sm2.due_exact": 0.9872611464968153,
+    "study.grading.accuracy": 1.0,
+    "study.generation.card_yield": 1.0,
+    "study.generation.answer_in_source": 1.0,
+    "study.generation.answer_not_in_front": 1.0,
+    "study.generation.blank_present": 1.0,
+    "study.generation.front_grounded": 1.0,
+    "study.generation.deck_unique_fronts": 1.0,
+    "study.generation.quiz_answer_not_in_prompt": 0.0,
+    "study.generation.llm_measured": 0.0,
+    "symbolic.symbolic.accuracy": 0.625,
+    "symbolic.symbolic.precision": 0.975609756097561,
+    "symbolic.symbolic.wrong_rate": 0.015625,
+    "symbolic.symbolic.abstain_rate": 0.359375,
+    "symbolic.symbolic.core.chemistry.accuracy": 1.0,
+    "symbolic.symbolic.core.math.accuracy": 1.0,
+    "symbolic.symbolic.core.physics.accuracy": 1.0,
+    "symbolic.symbolic.core.units.accuracy": 1.0,
+    "symbolic.symbolic.reach.chemistry.accuracy": 0.16666666666666666,
+    "symbolic.symbolic.reach.math.accuracy": 0.0,
+    "symbolic.symbolic.reach.physics.accuracy": 0.0,
+    "symbolic.symbolic.reach.units.accuracy": 0.0,
+    "symbolic.routed_to.chemistry": 0.140625,
+    "symbolic.routed_to.none": 0.359375,
+    "symbolic.routed_to.physics": 0.09375,
+    "symbolic.routed_to.symbolic": 0.296875,
+    "symbolic.routed_to.units": 0.109375,
+    "symbolic.symbolic.coverage": 0.640625,
+    "symbolic.fallback.measured": 0.0
+  },
+  "suites": [
+    {
+      "suite": "research",
+      "metrics": [
+        {
+          "name": "symbolic.catch_rate",
+          "value": 0.2631578947368421,
+          "n": 19,
+          "note": "flawed cycles sent for revision"
+        },
+        {
+          "name": "symbolic.false_alarm_rate",
+          "value": 0.0,
+          "n": 8,
+          "note": "sound controls wrongly flagged"
+        },
+        {
+          "name": "symbolic.balanced_accuracy",
+          "value": 0.631578947368421,
+          "n": 27,
+          "note": "0.5 for a critic that always (or never) flags"
+        },
+        {
+          "name": "symbolic.youden_j",
+          "value": 0.2631578947368421,
+          "n": 27,
+          "note": "0.0 for either degenerate critic"
+        },
+        {
+          "name": "symbolic.catch.circular",
+          "value": 0.0,
+          "n": 4,
+          "note": ""
+        },
+        {
+          "name": "symbolic.catch.contradicted_by_evidence",
+          "value": 0.0,
+          "n": 4,
+          "note": ""
+        },
+        {
+          "name": "symbolic.catch.overfit_n1_semantic",
+          "value": 0.0,
+          "n": 2,
+          "note": ""
+        },
+        {
+          "name": "symbolic.catch.overfit_n1_structural",
+          "value": 1.0,
+          "n": 2,
+          "note": ""
+        },
+        {
+          "name": "symbolic.catch.unfalsifiable_semantic",
+          "value": 0.0,
+          "n": 4,
+          "note": ""
+        },
+        {
+          "name": "symbolic.catch.unfalsifiable_structural",
+          "value": 1.0,
+          "n": 3,
+          "note": ""
+        },
+        {
+          "name": "llm.measured",
+          "value": 0.0,
+          "n": 27,
+          "note": "no LLM backend"
+        }
+      ],
+      "cases": [
+        {
+          "id": "unf-str-001",
+          "outcome": "correct",
+          "group": "unfalsifiable_structural",
+          "expected": "needs_revision",
+          "got": "needs_revision",
+          "detail": "No predictions and no refutation test.",
+          "meta": {
+            "label": "flawed",
+            "family": "unfalsifiable_structural",
+            "flagged": true,
+            "critique": "Structural checks:\n- Hypothesis 'Motivation is the primary driver of long-term learning outcomes.\u2026' is not falsifiable (missing predictions or a concrete refutation test)."
+          }
+        },
+        {
+          "id": "unf-str-002",
+          "outcome": "correct",
+          "group": "unfalsifiable_structural",
+          "expected": "needs_revision",
+          "got": "needs_revision",
+          "detail": "Predictions present but no refutation test.",
+          "meta": {
+            "label": "flawed",
+            "family": "unfalsifiable_structural",
+            "flagged": true,
+            "critique": "Structural checks:\n- Hypothesis 'Slow-wave sleep in the first half of the night consolidates declarative memory.\u2026' is not falsifiable (missing predictions or a concrete refutation test)."
+          }
+        },
+        {
+          "id": "unf-str-003",
+          "outcome": "correct",
+          "group": "unfalsifiable_structural",
+          "expected": "needs_revision",
+          "got": "needs_revision",
+          "detail": "Refutation test present but no predictions.",
+          "meta": {
+            "label": "flawed",
+            "family": "unfalsifiable_structural",
+            "flagged": true,
+            "critique": "Structural checks:\n- Hypothesis 'Interleaved practice improves transfer to novel problems relative to blocked pra\u2026' is not falsifiable (missing predictions or a concrete refutation test)."
+          }
+        },
+        {
+          "id": "unf-sem-001",
+          "outcome": "wrong",
+          "group": "unfalsifiable_semantic",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "Ad hoc immunisation: any failure is reattributed to misidentification of the style, so no result can count against it.",
+          "meta": {
+            "label": "flawed",
+            "family": "unfalsifiable_semantic",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "unf-sem-002",
+          "outcome": "wrong",
+          "group": "unfalsifiable_semantic",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "The posited entity has no independent trace: the only evidence for the field is the outcome it is invoked to explain.",
+          "meta": {
+            "label": "flawed",
+            "family": "unfalsifiable_semantic",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "unf-sem-003",
+          "outcome": "wrong",
+          "group": "unfalsifiable_semantic",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "The key term is defined by the outcome: 'truly learned' just means 'retained', so no forgetting can ever count against it.",
+          "meta": {
+            "label": "flawed",
+            "family": "unfalsifiable_semantic",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "unf-sem-004",
+          "outcome": "wrong",
+          "group": "unfalsifiable_semantic",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "Every possible outcome confirms it: any schedule that helps is evidence, and individual variation absorbs every schedule that does not.",
+          "meta": {
+            "label": "flawed",
+            "family": "unfalsifiable_semantic",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "circ-001",
+          "outcome": "wrong",
+          "group": "circular",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "'Effective study' is operationalised as 'study that yields better grades', so the hypothesis states an identity.",
+          "meta": {
+            "label": "flawed",
+            "family": "circular",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "circ-002",
+          "outcome": "wrong",
+          "group": "circular",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "Dormitive-virtue explanation: the cause is named after the effect it is supposed to explain.",
+          "meta": {
+            "label": "flawed",
+            "family": "circular",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "circ-003",
+          "outcome": "wrong",
+          "group": "circular",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "The independent variable is identified by the dependent variable, so the prediction cannot fail.",
+          "meta": {
+            "label": "flawed",
+            "family": "circular",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "circ-004",
+          "outcome": "wrong",
+          "group": "circular",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "The refutation test is stated in terms that the hypothesis's own definitions make impossible to satisfy.",
+          "meta": {
+            "label": "flawed",
+            "family": "circular",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "contra-001",
+          "outcome": "wrong",
+          "group": "contradicted_by_evidence",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "A null result with a tight interval is carried forward as support; the hypothesis is marked supported at 0.85 confidence.",
+          "meta": {
+            "label": "flawed",
+            "family": "contradicted_by_evidence",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "contra-002",
+          "outcome": "wrong",
+          "group": "contradicted_by_evidence",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "The measured effect runs opposite to the prediction and is significant, yet the hypothesis is retained at 0.9 confidence.",
+          "meta": {
+            "label": "flawed",
+            "family": "contradicted_by_evidence",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "contra-003",
+          "outcome": "wrong",
+          "group": "contradicted_by_evidence",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "A null result is reported and the hypothesis is nonetheless left standing as supported.",
+          "meta": {
+            "label": "flawed",
+            "family": "contradicted_by_evidence",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "contra-004",
+          "outcome": "wrong",
+          "group": "contradicted_by_evidence",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "Disconfirming evidence is present in evidence_against and ignored in the hypothesis's status and confidence.",
+          "meta": {
+            "label": "flawed",
+            "family": "contradicted_by_evidence",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "ofit-str-001",
+          "outcome": "correct",
+          "group": "overfit_n1_structural",
+          "expected": "needs_revision",
+          "got": "needs_revision",
+          "detail": "The experiment declares a sample size of 1.",
+          "meta": {
+            "label": "flawed",
+            "family": "overfit_n1_structural",
+            "flagged": true,
+            "critique": "Structural checks:\n- Experiment e1 has sample size 1 < 10 \u2014 underpowered."
+          }
+        },
+        {
+          "id": "ofit-str-002",
+          "outcome": "correct",
+          "group": "overfit_n1_structural",
+          "expected": "needs_revision",
+          "got": "needs_revision",
+          "detail": "The experiment declares a sample size of 3.",
+          "meta": {
+            "label": "flawed",
+            "family": "overfit_n1_structural",
+            "flagged": true,
+            "critique": "Structural checks:\n- Experiment e1 has sample size 3 < 10 \u2014 underpowered."
+          }
+        },
+        {
+          "id": "ofit-sem-001",
+          "outcome": "wrong",
+          "group": "overfit_n1_semantic",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "A universal claim rests on an analysis of one participant, while the plan on paper claims a sample of 40.",
+          "meta": {
+            "label": "flawed",
+            "family": "overfit_n1_semantic",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "ofit-sem-002",
+          "outcome": "wrong",
+          "group": "overfit_n1_semantic",
+          "expected": "needs_revision",
+          "got": "clean",
+          "detail": "A single classroom's result is generalised to every subject and every age group.",
+          "meta": {
+            "label": "flawed",
+            "family": "overfit_n1_semantic",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "sound-001",
+          "outcome": "correct",
+          "group": "sound",
+          "expected": "clean",
+          "got": "clean",
+          "detail": "",
+          "meta": {
+            "label": "sound",
+            "family": "sound",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "sound-002",
+          "outcome": "correct",
+          "group": "sound",
+          "expected": "clean",
+          "got": "clean",
+          "detail": "",
+          "meta": {
+            "label": "sound",
+            "family": "sound",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "sound-003",
+          "outcome": "correct",
+          "group": "sound",
+          "expected": "clean",
+          "got": "clean",
+          "detail": "",
+          "meta": {
+            "label": "sound",
+            "family": "sound",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "sound-004",
+          "outcome": "correct",
+          "group": "sound",
+          "expected": "clean",
+          "got": "clean",
+          "detail": "",
+          "meta": {
+            "label": "sound",
+            "family": "sound",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "sound-005",
+          "outcome": "correct",
+          "group": "sound",
+          "expected": "clean",
+          "got": "clean",
+          "detail": "",
+          "meta": {
+            "label": "sound",
+            "family": "sound",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "sound-006",
+          "outcome": "correct",
+          "group": "sound",
+          "expected": "clean",
+          "got": "clean",
+          "detail": "",
+          "meta": {
+            "label": "sound",
+            "family": "sound",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "sound-007",
+          "outcome": "correct",
+          "group": "sound",
+          "expected": "clean",
+          "got": "clean",
+          "detail": "",
+          "meta": {
+            "label": "sound",
+            "family": "sound",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        },
+        {
+          "id": "sound-008",
+          "outcome": "correct",
+          "group": "sound",
+          "expected": "clean",
+          "got": "clean",
+          "detail": "",
+          "meta": {
+            "label": "sound",
+            "family": "sound",
+            "flagged": false,
+            "critique": "No structural flaws found."
+          }
+        }
+      ],
+      "skipped": false,
+      "skip_reason": "",
+      "notes": [
+        "symbolic critic missed 14 flawed cycles, in: circular, contradicted_by_evidence, overfit_n1_semantic, unfalsifiable_semantic",
+        "LLM critic not measured: no LLM backend configured"
+      ]
+    },
+    {
+      "suite": "study",
+      "metrics": [
+        {
+          "name": "sm2.sequence_exact",
+          "value": 0.9583333333333334,
+          "n": 24,
+          "note": "all steps match"
+        },
+        {
+          "name": "sm2.step_exact",
+          "value": 0.9872611464968153,
+          "n": 157,
+          "note": "per-review"
+        },
+        {
+          "name": "sm2.lapse_step_exact",
+          "value": 1.0,
+          "n": 39,
+          "note": "q<3 only"
+        },
+        {
+          "name": "sm2.ease_exact",
+          "value": 1.0,
+          "n": 157,
+          "note": ""
+        },
+        {
+          "name": "sm2.interval_exact",
+          "value": 0.9872611464968153,
+          "n": 157,
+          "note": ""
+        },
+        {
+          "name": "sm2.repetitions_exact",
+          "value": 1.0,
+          "n": 157,
+          "note": ""
+        },
+        {
+          "name": "sm2.due_exact",
+          "value": 0.9872611464968153,
+          "n": 157,
+          "note": ""
+        },
+        {
+          "name": "grading.accuracy",
+          "value": 1.0,
+          "n": 20,
+          "note": ""
+        },
+        {
+          "name": "generation.card_yield",
+          "value": 1.0,
+          "n": 36,
+          "note": "cards per card requested"
+        },
+        {
+          "name": "generation.answer_in_source",
+          "value": 1.0,
+          "n": 36,
+          "note": ""
+        },
+        {
+          "name": "generation.answer_not_in_front",
+          "value": 1.0,
+          "n": 36,
+          "note": ""
+        },
+        {
+          "name": "generation.blank_present",
+          "value": 1.0,
+          "n": 36,
+          "note": ""
+        },
+        {
+          "name": "generation.front_grounded",
+          "value": 1.0,
+          "n": 36,
+          "note": ""
+        },
+        {
+          "name": "generation.deck_unique_fronts",
+          "value": 1.0,
+          "n": 6,
+          "note": ""
+        },
+        {
+          "name": "generation.quiz_answer_not_in_prompt",
+          "value": 0.0,
+          "n": 36,
+          "note": "question does not give away its answer"
+        },
+        {
+          "name": "generation.llm_measured",
+          "value": 0.0,
+          "n": 0,
+          "note": "no LLM backend"
+        }
+      ],
+      "cases": [
+        {
+          "id": "sm2-001",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ],
+            "note": "perfect run; exercises the n>2 recurrence and interval growth"
+          }
+        },
+        {
+          "id": "sm2-002",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4,
+              4
+            ],
+            "note": "steady 'good' answers; ease stays at its initial value"
+          }
+        },
+        {
+          "id": "sm2-003",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3
+            ],
+            "note": "borderline passes; ease decays on every review"
+          }
+        },
+        {
+          "id": "sm2-004",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5,
+              5,
+              5,
+              0,
+              5,
+              5,
+              5
+            ],
+            "note": "lapse mid-run: the relearning branch after a mature interval"
+          }
+        },
+        {
+          "id": "sm2-005",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5,
+              0,
+              5,
+              0,
+              5,
+              0,
+              5
+            ],
+            "note": "repeated lapses alternating with successes"
+          }
+        },
+        {
+          "id": "sm2-006",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "note": "total failure run; drives ease to the 1.3 floor"
+          }
+        },
+        {
+          "id": "sm2-007",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5,
+              5,
+              2,
+              4,
+              4,
+              4
+            ],
+            "note": "q=2 is the lapse boundary (q<3 relearns)"
+          }
+        },
+        {
+          "id": "sm2-008",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              3,
+              5,
+              3,
+              5,
+              3,
+              5
+            ],
+            "note": "q=3 is the pass boundary (q>=3 advances)"
+          }
+        },
+        {
+          "id": "sm2-009",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ],
+            "note": "long perfect run; interval grows past 100 days"
+          }
+        },
+        {
+          "id": "sm2-010",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1,
+              1
+            ],
+            "note": "ease floor stress: q=1 throughout"
+          }
+        },
+        {
+          "id": "sm2-011",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              0,
+              5,
+              5,
+              5,
+              5
+            ],
+            "note": "lapse on the very first review"
+          }
+        },
+        {
+          "id": "sm2-012",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5,
+              0,
+              5,
+              5,
+              5
+            ],
+            "note": "lapse on the second review, before the 6-day step"
+          }
+        },
+        {
+          "id": "sm2-013",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5
+            ],
+            "note": "single review only"
+          }
+        },
+        {
+          "id": "sm2-014",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              0
+            ],
+            "note": "single failed review only"
+          }
+        },
+        {
+          "id": "sm2-015",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              4,
+              4
+            ],
+            "note": "two reviews: the I(2)=6 step"
+          }
+        },
+        {
+          "id": "sm2-016",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              4,
+              4,
+              4
+            ],
+            "note": "three reviews: the first application of the recurrence"
+          }
+        },
+        {
+          "id": "sm2-017",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              4,
+              5,
+              3,
+              4,
+              2,
+              4,
+              5,
+              5
+            ],
+            "note": "mixed realistic session"
+          }
+        },
+        {
+          "id": "sm2-018",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              0,
+              0,
+              0,
+              5,
+              5,
+              5,
+              5,
+              5
+            ],
+            "note": "recovery after a run of failures"
+          }
+        },
+        {
+          "id": "sm2-019",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5,
+              4,
+              3,
+              2,
+              1,
+              0
+            ],
+            "note": "descending quality"
+          }
+        },
+        {
+          "id": "sm2-020",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              0,
+              1,
+              2,
+              3,
+              4,
+              5
+            ],
+            "note": "ascending quality"
+          }
+        },
+        {
+          "id": "sm2-021",
+          "outcome": "wrong",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "2 divergent steps",
+          "detail": "step 11 (q=3): ease 1.3000 vs 1.3000, interval 552 vs 553, reps 11 vs 11; step 12 (q=3): ease 1.3000 vs 1.3000, interval 718 vs 719, reps 12 vs 12",
+          "meta": {
+            "grades": [
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3,
+              3
+            ],
+            "note": "long borderline run at the ease floor"
+          }
+        },
+        {
+          "id": "sm2-022",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              3,
+              2,
+              3,
+              2,
+              3,
+              2
+            ],
+            "note": "alternating pass/fail at the boundary"
+          }
+        },
+        {
+          "id": "sm2-023",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              5,
+              5,
+              5,
+              5,
+              5,
+              0,
+              5,
+              0,
+              5
+            ],
+            "note": "mature card lapses twice late"
+          }
+        },
+        {
+          "id": "sm2-024",
+          "outcome": "correct",
+          "group": "sm2",
+          "expected": "matches SM-2 reference at every step",
+          "got": "exact",
+          "detail": "",
+          "meta": {
+            "grades": [
+              4,
+              5,
+              5,
+              5,
+              5,
+              5,
+              5
+            ],
+            "note": "all q=5 after a q=4 opening; ease diverges from 2.5"
+          }
+        },
+        {
+          "id": "grade-001",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "0-based index typed as a digit",
+          "meta": {
+            "given": "2"
+          }
+        },
+        {
+          "id": "grade-002",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "lowercase option letter",
+          "meta": {
+            "given": "c"
+          }
+        },
+        {
+          "id": "grade-003",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "uppercase option letter",
+          "meta": {
+            "given": "C"
+          }
+        },
+        {
+          "id": "grade-004",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "the option's exact text",
+          "meta": {
+            "given": "Chloroplast"
+          }
+        },
+        {
+          "id": "grade-005",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "the option's text in a different case",
+          "meta": {
+            "given": "chloroplast"
+          }
+        },
+        {
+          "id": "grade-006",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "surrounding whitespace must not change the verdict",
+          "meta": {
+            "given": "  Chloroplast  "
+          }
+        },
+        {
+          "id": "grade-007",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "False",
+          "got": "False",
+          "detail": "wrong option text",
+          "meta": {
+            "given": "Mitochondrion"
+          }
+        },
+        {
+          "id": "grade-008",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "False",
+          "got": "False",
+          "detail": "wrong index",
+          "meta": {
+            "given": "0"
+          }
+        },
+        {
+          "id": "grade-009",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "False",
+          "got": "False",
+          "detail": "wrong letter",
+          "meta": {
+            "given": "a"
+          }
+        },
+        {
+          "id": "grade-010",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "False",
+          "got": "False",
+          "detail": "an unanswered multiple-choice question is not correct",
+          "meta": {
+            "given": ""
+          }
+        },
+        {
+          "id": "grade-011",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "False",
+          "got": "False",
+          "detail": "an out-of-range index is not correct",
+          "meta": {
+            "given": "9"
+          }
+        },
+        {
+          "id": "grade-012",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "False",
+          "got": "False",
+          "detail": "a letter beyond the option list is not correct",
+          "meta": {
+            "given": "z"
+          }
+        },
+        {
+          "id": "grade-013",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "index 0 as a digit \u2014 the falsy-index trap",
+          "meta": {
+            "given": "0"
+          }
+        },
+        {
+          "id": "grade-014",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "index 0 as a letter",
+          "meta": {
+            "given": "a"
+          }
+        },
+        {
+          "id": "grade-015",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "False",
+          "got": "False",
+          "detail": "index 0, wrong answer given \u2014 must not pass by falsiness",
+          "meta": {
+            "given": "Transform"
+          }
+        },
+        {
+          "id": "grade-016",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "open question answered exactly",
+          "meta": {
+            "given": "agreed sequence numbers"
+          }
+        },
+        {
+          "id": "grade-017",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "None",
+          "got": "None",
+          "detail": "open question paraphrased \u2014 ungraded, not wrong",
+          "meta": {
+            "given": "both sides agree on sequence numbers"
+          }
+        },
+        {
+          "id": "grade-018",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "None",
+          "got": "None",
+          "detail": "open question left blank \u2014 ungraded",
+          "meta": {
+            "given": ""
+          }
+        },
+        {
+          "id": "grade-019",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "None",
+          "got": "None",
+          "detail": "open question with no reference answer \u2014 ungraded",
+          "meta": {
+            "given": "the denser plate sinks"
+          }
+        },
+        {
+          "id": "grade-020",
+          "outcome": "correct",
+          "group": "quiz_grading",
+          "expected": "True",
+          "got": "True",
+          "detail": "open question answered exactly but in a different case",
+          "meta": {
+            "given": "Agreed Sequence Numbers"
+          }
+        },
+        {
+          "id": "src-photosynthesis-card1",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='____ converts light energy into chemical energy stored in glucose.' back='Photosynthesis'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-card2",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The light-dependent reactions take place in the thylakoid membranes of the ____.' back='chloroplast'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-card3",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Water is split there, ____ oxygen as a by-product.' back='releasing'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-card4",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The ____ ATP and NADPH drive the Calvin cycle in the stroma.' back='resulting'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-card5",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Carbon dioxide is fixed by the enzyme rubisco into a three-carbon ____.' back='compound'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-card6",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The overall process is the ____ source of almost all food energy on Earth.' back='ultimate'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-quiz1",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cPhotosynthesis converts l",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-quiz2",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe light-dependent react",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-quiz3",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cWater is split there, rel",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-quiz4",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe resulting ATP and NAD",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-quiz5",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cCarbon dioxide is fixed b",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-photosynthesis-quiz6",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe overall process is th",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-card1",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The lithosphere is broken into rigid plates that move over the ductile ____.' back='asthenosphere'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-card2",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Plates diverge at mid-ocean ridges, where new oceanic crust forms from ____ magma.' back='upwelling'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-card3",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='They converge at ____ zones, where the denser plate sinks back into the mantle.' back='subduction'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-card4",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Transform boundaries occur where plates slide past one another ____.' back='horizontally'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-card5",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Most earthquakes and volcanoes are ____ along these boundaries.' back='concentrated'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-card6",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The theory replaced older ideas of fixed ____ during the 1960s.' back='continents'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-quiz1",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe lithosphere is broken",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-quiz2",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cPlates diverge at mid-oce",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-quiz3",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThey converge at subducti",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-quiz4",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cTransform boundaries occu",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-quiz5",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cMost earthquakes and volc",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-plate-tectonics-quiz6",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe theory replaced older",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-card1",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='A TCP ____ begins with a three-way handshake between client and server.' back='connection'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-card2",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The client sends a segment with the SYN flag set and an initial ____ number.' back='sequence'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-card3",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The server replies with a segment ____ both SYN and ACK flags.' back='carrying'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-card4",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The client completes the exchange by sending a final ____.' back='acknowledgement'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-card5",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Only then may ____ data flow in either direction.' back='application'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-card6",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The handshake establishes agreed sequence numbers so that lost segments can be ____.' back='retransmitted'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-quiz1",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cA TCP connection begins w",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-quiz2",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe client sends a segmen",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-quiz3",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe server replies with a",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-quiz4",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe client completes the ",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-quiz5",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cOnly then may application",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-tcp-handshake-quiz6",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe handshake establishes",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-insulin-card1",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Insulin is a peptide hormone secreted by the beta cells of the ____ islets.' back='pancreatic'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-insulin-card2",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Its release is ____ by a rise in blood glucose after a meal.' back='triggered'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-insulin-card3",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Insulin promotes glucose uptake in muscle and adipose tissue through the GLUT4 ____.' back='transporter'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-insulin-card4",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='It also stimulates glycogen synthesis in the liver and suppresses ____.' back='gluconeogenesis'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-insulin-card5",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='____ opposes these actions when blood glucose falls between meals.' back='Glucagon'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-insulin-card6",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The two hormones together hold ____ glucose within a narrow range.' back='circulating'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-insulin-quiz1",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cInsulin is a peptide horm",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-insulin-quiz2",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cIts release is triggered ",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-insulin-quiz3",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cInsulin promotes glucose ",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-insulin-quiz4",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cIt also stimulates glycog",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-insulin-quiz5",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cGlucagon opposes these ac",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-insulin-quiz6",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe two hormones together",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-bayes-card1",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front=\"Bayes' theorem relates the ____ probability of a hypothesis to the evidence observed.\" back='conditional'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-bayes-card2",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The posterior is ____ to the likelihood multiplied by the prior.' back='proportional'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-bayes-card3",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='A test with high ____ can still yield many false positives when the condition is rare.' back='sensitivity'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-bayes-card4",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='This happens because the base rate dominates the ____.' back='calculation'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-bayes-card5",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Reasoning that ignores the prior ____ is known as the base-rate fallacy.' back='probability'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-bayes-card6",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Updating beliefs ____ to evidence is the core of Bayesian inference.' back='proportionally'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-bayes-quiz1",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cBayes' theorem relates th",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-bayes-quiz2",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe posterior is proporti",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-bayes-quiz3",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cA test with high sensitiv",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-bayes-quiz4",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThis happens because the ",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-bayes-quiz5",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cReasoning that ignores th",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-bayes-quiz6",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cUpdating beliefs proporti",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-french-revolution-card1",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='By 1788 the French crown was ____ far more on debt service than on anything else.' back='spending'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-french-revolution-card2",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Wars, including support for the American ____, had been financed by borrowing rather than taxation.' back='revolutionaries'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-french-revolution-card3",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The ____ orders were largely exempt from the direct land tax.' back='privileged'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-french-revolution-card4",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Attempts at fiscal reform were blocked by the ____ and by the nobility.' back='parlements'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-french-revolution-card5",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='Louis the ____ summoned the Estates-General in 1789 for the first time since 1614.' back='Sixteenth'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-french-revolution-card6",
+          "outcome": "correct",
+          "group": "flashcard_fidelity",
+          "expected": "tests the source, answer hidden",
+          "got": "front='The assembly that followed transformed a budgetary emergency into a ____ one.' back='constitutional'",
+          "detail": "",
+          "meta": {
+            "blank_present": true,
+            "answer_in_source": true,
+            "answer_not_in_front": true,
+            "front_grounded": true
+          }
+        },
+        {
+          "id": "src-french-revolution-quiz1",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cBy 1788 the French crown ",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-french-revolution-quiz2",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cWars, including support f",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-french-revolution-quiz3",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe privileged orders wer",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-french-revolution-quiz4",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cAttempts at fiscal reform",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-french-revolution-quiz5",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cLouis the Sixteenth summo",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        },
+        {
+          "id": "src-french-revolution-quiz6",
+          "outcome": "wrong",
+          "group": "quiz_fidelity",
+          "expected": "prompt does not contain its own answer",
+          "got": "Explain in your own words: what does this describe? \u2014 \u201cThe assembly that followe",
+          "detail": "answer appears verbatim in the prompt",
+          "meta": {
+            "leaked": true
+          }
+        }
+      ],
+      "skipped": false,
+      "skip_reason": "",
+      "notes": [
+        "SM-2 interval diverged from the reference on 2/157 reviews",
+        "every offline quiz question contains its own expected answer verbatim: the prompt quotes the source sentence and answer_text is that same sentence",
+        "LLM-generated card fidelity not measured: no LLM backend configured"
+      ]
+    },
+    {
+      "suite": "symbolic",
+      "metrics": [
+        {
+          "name": "symbolic.accuracy",
+          "value": 0.625,
+          "n": 64,
+          "note": ""
+        },
+        {
+          "name": "symbolic.precision",
+          "value": 0.975609756097561,
+          "n": 41,
+          "note": "over answered cases"
+        },
+        {
+          "name": "symbolic.wrong_rate",
+          "value": 0.015625,
+          "n": 64,
+          "note": "confidently wrong"
+        },
+        {
+          "name": "symbolic.abstain_rate",
+          "value": 0.359375,
+          "n": 64,
+          "note": ""
+        },
+        {
+          "name": "symbolic.core.chemistry.accuracy",
+          "value": 1.0,
+          "n": 8,
+          "note": ""
+        },
+        {
+          "name": "symbolic.core.math.accuracy",
+          "value": 1.0,
+          "n": 18,
+          "note": ""
+        },
+        {
+          "name": "symbolic.core.physics.accuracy",
+          "value": 1.0,
+          "n": 6,
+          "note": ""
+        },
+        {
+          "name": "symbolic.core.units.accuracy",
+          "value": 1.0,
+          "n": 7,
+          "note": ""
+        },
+        {
+          "name": "symbolic.reach.chemistry.accuracy",
+          "value": 0.16666666666666666,
+          "n": 6,
+          "note": ""
+        },
+        {
+          "name": "symbolic.reach.math.accuracy",
+          "value": 0.0,
+          "n": 10,
+          "note": ""
+        },
+        {
+          "name": "symbolic.reach.physics.accuracy",
+          "value": 0.0,
+          "n": 6,
+          "note": ""
+        },
+        {
+          "name": "symbolic.reach.units.accuracy",
+          "value": 0.0,
+          "n": 3,
+          "note": ""
+        },
+        {
+          "name": "routed_to.chemistry",
+          "value": 0.140625,
+          "n": 64,
+          "note": ""
+        },
+        {
+          "name": "routed_to.none",
+          "value": 0.359375,
+          "n": 64,
+          "note": ""
+        },
+        {
+          "name": "routed_to.physics",
+          "value": 0.09375,
+          "n": 64,
+          "note": ""
+        },
+        {
+          "name": "routed_to.symbolic",
+          "value": 0.296875,
+          "n": 64,
+          "note": ""
+        },
+        {
+          "name": "routed_to.units",
+          "value": 0.109375,
+          "n": 64,
+          "note": ""
+        },
+        {
+          "name": "symbolic.coverage",
+          "value": 0.640625,
+          "n": 64,
+          "note": "cases a solver claimed"
+        },
+        {
+          "name": "fallback.measured",
+          "value": 0.0,
+          "n": 23,
+          "note": "no LLM backend \u2014 see notes"
+        }
+      ],
+      "cases": [
+        {
+          "id": "math-001",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "2, 3",
+          "got": "x = 2, x = 3",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "solve x^2 - 5x + 6 = 0 for x"
+          }
+        },
+        {
+          "id": "math-002",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "6",
+          "got": "x = 6",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "solve 2*x + 7 = 19 for x"
+          }
+        },
+        {
+          "id": "math-003",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "5",
+          "got": "x = 5",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "solve 3x - 4 = 11 for x"
+          }
+        },
+        {
+          "id": "math-004",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "-3, 3",
+          "got": "x = -3, x = 3",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "Solve x^2 - 9 = 0 for x"
+          }
+        },
+        {
+          "id": "math-005",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "-1",
+          "got": "x = -1",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "solve x^2 + 2x + 1 = 0 for x"
+          }
+        },
+        {
+          "id": "math-006",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "1, 2, 3",
+          "got": "x = 1, x = 2, x = 3",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "solve x^3 - 6x^2 + 11x - 6 = 0 for x"
+          }
+        },
+        {
+          "id": "math-007",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "3*x**2 + 2",
+          "got": "3*x**2 + 2",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "differentiate x^3 + 2x"
+          }
+        },
+        {
+          "id": "math-008",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "cos(2*x)",
+          "got": "-sin(x)**2 + cos(x)**2",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "differentiate sin(x)*cos(x)"
+          }
+        },
+        {
+          "id": "math-009",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "1/x",
+          "got": "1/x",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "differentiate ln(x)"
+          }
+        },
+        {
+          "id": "math-010",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "x**2",
+          "got": "x**2 + C",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "integrate 2*x"
+          }
+        },
+        {
+          "id": "math-011",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "log(x)",
+          "got": "log(x) + C",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "integrate 1/x"
+          }
+        },
+        {
+          "id": "math-012",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "x + 1",
+          "got": "x + 1",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "simplify (x^2 - 1)/(x - 1)"
+          }
+        },
+        {
+          "id": "math-013",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "1",
+          "got": "1",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "simplify sin(x)^2 + cos(x)^2"
+          }
+        },
+        {
+          "id": "math-014",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "(x - 2)*(x + 2)",
+          "got": "(x - 2)*(x + 2)",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "factor x^2 - 4"
+          }
+        },
+        {
+          "id": "math-015",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "x**2 + 6*x + 9",
+          "got": "x**2 + 6*x + 9",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "expand (x + 3)^2"
+          }
+        },
+        {
+          "id": "math-016",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "101",
+          "got": "101",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.85,
+            "problem": "what is 12 * 8 + 5"
+          }
+        },
+        {
+          "id": "math-017",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "47",
+          "got": "47",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.85,
+            "problem": "calculate 7 * (3 + 4) - 2"
+          }
+        },
+        {
+          "id": "math-018",
+          "outcome": "correct",
+          "group": "core.math",
+          "expected": "2.5",
+          "got": "5/2",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "core",
+            "method": "symbolic",
+            "confidence": 0.85,
+            "problem": "what is 10/4"
+          }
+        },
+        {
+          "id": "math-019",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "2*x",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What is the derivative of x^2 with respect to x?"
+          }
+        },
+        {
+          "id": "math-020",
+          "outcome": "wrong",
+          "group": "reach.math",
+          "expected": "exp(x)",
+          "got": "e**x*f*o*log(e)",
+          "detail": "",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "symbolic",
+            "confidence": 0.9,
+            "problem": "d/dx of e^x"
+          }
+        },
+        {
+          "id": "math-021",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "3, 4",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "Find the roots of x^2 - 7x + 12"
+          }
+        },
+        {
+          "id": "math-022",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "6*x + 2",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "If f(x) = 3x^2 + 2x, what is f'(x)?"
+          }
+        },
+        {
+          "id": "math-023",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "72",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "A rectangle has a perimeter of 36 cm and its length is twice its width. What is its area in square centimetres?"
+          }
+        },
+        {
+          "id": "math-024",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "36",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What is 15% of 240?"
+          }
+        },
+        {
+          "id": "math-025",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "5050",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What is the sum of the first 100 positive integers?"
+          }
+        },
+        {
+          "id": "math-026",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "1",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "Evaluate the limit of sin(x)/x as x approaches 0"
+          }
+        },
+        {
+          "id": "math-027",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "x = 4, y = 2",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "Solve the system 2x + y = 10 and x - y = 2"
+          }
+        },
+        {
+          "id": "math-028",
+          "outcome": "abstain",
+          "group": "reach.math",
+          "expected": "0.375",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "math",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "Convert the fraction 3/8 to a decimal"
+          }
+        },
+        {
+          "id": "chem-001",
+          "outcome": "correct",
+          "group": "core.chemistry",
+          "expected": "98.072",
+          "got": "98.072 g/mol",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "core",
+            "method": "chemistry",
+            "confidence": 0.95,
+            "problem": "molar mass of H2SO4"
+          }
+        },
+        {
+          "id": "chem-002",
+          "outcome": "correct",
+          "group": "core.chemistry",
+          "expected": "180.156",
+          "got": "180.156 g/mol",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "core",
+            "method": "chemistry",
+            "confidence": 0.95,
+            "problem": "molar mass of C6H12O6"
+          }
+        },
+        {
+          "id": "chem-003",
+          "outcome": "correct",
+          "group": "core.chemistry",
+          "expected": "58.44",
+          "got": "58.4398 g/mol",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "core",
+            "method": "chemistry",
+            "confidence": 0.95,
+            "problem": "What is the molecular weight of NaCl?"
+          }
+        },
+        {
+          "id": "chem-004",
+          "outcome": "correct",
+          "group": "core.chemistry",
+          "expected": "74.092",
+          "got": "74.092 g/mol",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "core",
+            "method": "chemistry",
+            "confidence": 0.95,
+            "problem": "molar mass of Ca(OH)2"
+          }
+        },
+        {
+          "id": "chem-005",
+          "outcome": "correct",
+          "group": "core.chemistry",
+          "expected": "2 H2 + O2, 2 H2O",
+          "got": "2 H2 + O2 -> 2 H2O",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "core",
+            "method": "chemistry",
+            "confidence": 0.9,
+            "problem": "balance H2 + O2 -> H2O"
+          }
+        },
+        {
+          "id": "chem-006",
+          "outcome": "correct",
+          "group": "core.chemistry",
+          "expected": "CH4 + 2 O2, CO2 + 2 H2O",
+          "got": "CH4 + 2 O2 -> CO2 + 2 H2O",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "core",
+            "method": "chemistry",
+            "confidence": 0.9,
+            "problem": "balance the equation: CH4 + O2 -> CO2 + H2O"
+          }
+        },
+        {
+          "id": "chem-007",
+          "outcome": "correct",
+          "group": "core.chemistry",
+          "expected": "4 Fe + 3 O2, 2 Fe2O3",
+          "got": "4 Fe + 3 O2 -> 2 Fe2O3",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "core",
+            "method": "chemistry",
+            "confidence": 0.9,
+            "problem": "balance Fe + O2 -> Fe2O3"
+          }
+        },
+        {
+          "id": "chem-008",
+          "outcome": "correct",
+          "group": "core.chemistry",
+          "expected": "C3H8 + 5 O2, 3 CO2 + 4 H2O",
+          "got": "C3H8 + 5 O2 -> 3 CO2 + 4 H2O",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "core",
+            "method": "chemistry",
+            "confidence": 0.9,
+            "problem": "balance C3H8 + O2 -> CO2 + H2O"
+          }
+        },
+        {
+          "id": "chem-009",
+          "outcome": "correct",
+          "group": "reach.chemistry",
+          "expected": "249.677",
+          "got": "249.677 g/mol",
+          "detail": "",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "reach",
+            "method": "chemistry",
+            "confidence": 0.95,
+            "problem": "molar mass of CuSO4.5H2O"
+          }
+        },
+        {
+          "id": "chem-010",
+          "outcome": "abstain",
+          "group": "reach.chemistry",
+          "expected": "1.998",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "How many moles are in 36 g of water?"
+          }
+        },
+        {
+          "id": "chem-011",
+          "outcome": "abstain",
+          "group": "reach.chemistry",
+          "expected": "29.22",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What mass of NaCl contains 0.5 mol?"
+          }
+        },
+        {
+          "id": "chem-012",
+          "outcome": "abstain",
+          "group": "reach.chemistry",
+          "expected": "88.81",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What is the percent composition by mass of oxygen in H2O?"
+          }
+        },
+        {
+          "id": "chem-013",
+          "outcome": "abstain",
+          "group": "reach.chemistry",
+          "expected": "+6",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What is the oxidation state of sulfur in H2SO4?"
+          }
+        },
+        {
+          "id": "chem-014",
+          "outcome": "abstain",
+          "group": "reach.chemistry",
+          "expected": "27.43",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "chemistry",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "How many grams of CO2 are produced by completely burning 10 g of CH4?"
+          }
+        },
+        {
+          "id": "phys-001",
+          "outcome": "correct",
+          "group": "core.physics",
+          "expected": "299792458.0",
+          "got": "299792458 m/s",
+          "detail": "",
+          "meta": {
+            "domain": "physics",
+            "tier": "core",
+            "method": "physics",
+            "confidence": 0.9,
+            "problem": "what is the speed of light"
+          }
+        },
+        {
+          "id": "phys-002",
+          "outcome": "correct",
+          "group": "core.physics",
+          "expected": "6.62607015e-34",
+          "got": "6.62607015e-34 J s",
+          "detail": "",
+          "meta": {
+            "domain": "physics",
+            "tier": "core",
+            "method": "physics",
+            "confidence": 0.9,
+            "problem": "value of Planck's constant"
+          }
+        },
+        {
+          "id": "phys-003",
+          "outcome": "correct",
+          "group": "core.physics",
+          "expected": "6.02214076e+23",
+          "got": "6.02214076e+23 mol^-1",
+          "detail": "",
+          "meta": {
+            "domain": "physics",
+            "tier": "core",
+            "method": "physics",
+            "confidence": 0.9,
+            "problem": "What is Avogadro's number?"
+          }
+        },
+        {
+          "id": "phys-004",
+          "outcome": "correct",
+          "group": "core.physics",
+          "expected": "1.380649e-23",
+          "got": "1.380649e-23 J/K",
+          "detail": "",
+          "meta": {
+            "domain": "physics",
+            "tier": "core",
+            "method": "physics",
+            "confidence": 0.9,
+            "problem": "what is the Boltzmann constant"
+          }
+        },
+        {
+          "id": "phys-005",
+          "outcome": "correct",
+          "group": "core.physics",
+          "expected": "6.6743e-11",
+          "got": "6.6743e-11 m^3 kg^-1 s^-2",
+          "detail": "",
+          "meta": {
+            "domain": "physics",
+            "tier": "core",
+            "method": "physics",
+            "confidence": 0.9,
+            "problem": "what is the gravitational constant"
+          }
+        },
+        {
+          "id": "phys-006",
+          "outcome": "correct",
+          "group": "core.physics",
+          "expected": "1.602176634e-19",
+          "got": "1.602176634e-19 C",
+          "detail": "",
+          "meta": {
+            "domain": "physics",
+            "tier": "core",
+            "method": "physics",
+            "confidence": 0.9,
+            "problem": "what is the elementary charge"
+          }
+        },
+        {
+          "id": "phys-007",
+          "outcome": "abstain",
+          "group": "reach.physics",
+          "expected": "15",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "physics",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "A car accelerates from rest at 3 m/s^2 for 5 s. What is its final velocity?"
+          }
+        },
+        {
+          "id": "phys-008",
+          "outcome": "abstain",
+          "group": "reach.physics",
+          "expected": "9",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "physics",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What is the kinetic energy of a 2 kg object moving at 3 m/s?"
+          }
+        },
+        {
+          "id": "phys-009",
+          "outcome": "abstain",
+          "group": "reach.physics",
+          "expected": "20",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "physics",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "How much force is needed to accelerate a 10 kg mass at 2 m/s^2?"
+          }
+        },
+        {
+          "id": "phys-010",
+          "outcome": "abstain",
+          "group": "reach.physics",
+          "expected": "413.3",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "physics",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What is the wavelength in nanometres of a photon with energy 3.0 eV?"
+          }
+        },
+        {
+          "id": "phys-011",
+          "outcome": "abstain",
+          "group": "reach.physics",
+          "expected": "19.61",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "physics",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "An object is dropped and falls for 2 seconds. How far does it fall, in metres?"
+          }
+        },
+        {
+          "id": "phys-012",
+          "outcome": "abstain",
+          "group": "reach.physics",
+          "expected": "2.006",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "physics",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "What is the period of a simple pendulum of length 1 m, in seconds?"
+          }
+        },
+        {
+          "id": "unit-001",
+          "outcome": "correct",
+          "group": "core.units",
+          "expected": "26.8224",
+          "got": "26.8224 m/s",
+          "detail": "",
+          "meta": {
+            "domain": "units",
+            "tier": "core",
+            "method": "units",
+            "confidence": 0.9,
+            "problem": "convert 60 mph to m/s"
+          }
+        },
+        {
+          "id": "unit-002",
+          "outcome": "correct",
+          "group": "core.units",
+          "expected": "62.1371",
+          "got": "62.1371 mile",
+          "detail": "",
+          "meta": {
+            "domain": "units",
+            "tier": "core",
+            "method": "units",
+            "confidence": 0.9,
+            "problem": "convert 100 km to mile"
+          }
+        },
+        {
+          "id": "unit-003",
+          "outcome": "correct",
+          "group": "core.units",
+          "expected": "11.0231",
+          "got": "11.0231 lb",
+          "detail": "",
+          "meta": {
+            "domain": "units",
+            "tier": "core",
+            "method": "units",
+            "confidence": 0.9,
+            "problem": "convert 5 kg to lb"
+          }
+        },
+        {
+          "id": "unit-004",
+          "outcome": "correct",
+          "group": "core.units",
+          "expected": "150",
+          "got": "150 min",
+          "detail": "",
+          "meta": {
+            "domain": "units",
+            "tier": "core",
+            "method": "units",
+            "confidence": 0.9,
+            "problem": "convert 2.5 h to min"
+          }
+        },
+        {
+          "id": "unit-005",
+          "outcome": "correct",
+          "group": "core.units",
+          "expected": "101.325",
+          "got": "101.325 kPa",
+          "detail": "",
+          "meta": {
+            "domain": "units",
+            "tier": "core",
+            "method": "units",
+            "confidence": 0.9,
+            "problem": "convert 1 atm to kPa"
+          }
+        },
+        {
+          "id": "unit-006",
+          "outcome": "correct",
+          "group": "core.units",
+          "expected": "5000",
+          "got": "5000 angstrom",
+          "detail": "",
+          "meta": {
+            "domain": "units",
+            "tier": "core",
+            "method": "units",
+            "confidence": 0.9,
+            "problem": "convert 500 nm to angstrom"
+          }
+        },
+        {
+          "id": "unit-007",
+          "outcome": "correct",
+          "group": "core.units",
+          "expected": "77",
+          "got": "77 degF",
+          "detail": "",
+          "meta": {
+            "domain": "units",
+            "tier": "core",
+            "method": "units",
+            "confidence": 0.9,
+            "problem": "convert 25 degC to degF"
+          }
+        },
+        {
+          "id": "unit-008",
+          "outcome": "abstain",
+          "group": "reach.units",
+          "expected": "77",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "units",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "convert 25 C to F"
+          }
+        },
+        {
+          "id": "unit-009",
+          "outcome": "abstain",
+          "group": "reach.units",
+          "expected": "4828.03",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "units",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "How many metres are there in 3 miles?"
+          }
+        },
+        {
+          "id": "unit-010",
+          "outcome": "abstain",
+          "group": "reach.units",
+          "expected": "12.346",
+          "got": "",
+          "detail": "no solver matched and no fallback available",
+          "meta": {
+            "domain": "units",
+            "tier": "reach",
+            "method": "none",
+            "confidence": 0.0,
+            "problem": "A recipe needs 350 g of flour. How many ounces is that?"
+          }
+        }
+      ],
+      "skipped": false,
+      "skip_reason": "",
+      "notes": [
+        "fallback path not measured: no LLM backend configured (23 cases would have been routed to it)"
+      ]
+    }
+  ]
+}

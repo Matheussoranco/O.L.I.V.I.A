@@ -32,7 +32,6 @@ from olivia.eval.harness import (
 )
 from olivia.llm.client import LLMClient, NullClient
 
-
 # ---------------------------------------------------------------------------
 # JSON -> records
 # ---------------------------------------------------------------------------
@@ -196,7 +195,9 @@ def run(client: LLMClient | None = None) -> SuiteReport:
         case.id = f"{case.id}@llm"
     report.cases += llm_cases
     report.metrics += llm_metrics
-    report.metrics.append(Metric("llm.measured", 1.0, len(llm_cases), "cases re-scored with a model"))
+    report.metrics.append(
+        Metric("llm.measured", 1.0, len(llm_cases), "cases re-scored with a model")
+    )
     return report
 
 

@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import re
 from datetime import date, timedelta
-from typing import Any
 
 from olivia.core.records import Flashcard, QuizQuestion
 from olivia.eval.harness import (
@@ -267,7 +266,9 @@ def _fidelity_cases(client: LLMClient) -> tuple[list[CaseResult], list[Metric], 
             "every offline quiz question contains its own expected answer verbatim: "
             "the prompt quotes the source sentence and answer_text is that same sentence"
         )
-    leaking = [c for c in cases if c.group == "flashcard_fidelity" and not c.meta["answer_not_in_front"]]
+    leaking = [
+        c for c in cases if c.group == "flashcard_fidelity" and not c.meta["answer_not_in_front"]
+    ]
     if leaking:
         notes.append(
             f"{len(leaking)} cloze cards still show their answer in the front "
