@@ -1,0 +1,1211 @@
+{
+  "name": "research_critique",
+  "version": "0.3",
+  "authored": "2026-08-06",
+  "held_out": "Each case was written from a named flaw in the philosophy-of-science literature (ad hoc immunisation, circularity, ignoring disconfirming evidence, generalising from a single case), not from reading olivia/research/critic.py's checks. No case was edited or removed after scores were seen, and no marker phrase from the solver's _UNFALSIFIABLE_MARKERS list was planted deliberately.",
+  "fairness_rule": "Every flawed case is structurally clean apart from its single target flaw: each experiment declares a controlled variable, has sample_size >= 10, and is analysed; every analysis reporting a p-value also reports an effect size. So a catch on a semantic family is a catch on the epistemics, not an accidental hit on a structural rule. The two *_structural families are the deliberate exception — they exist to confirm the structural rules still fire.",
+  "families": {
+    "unfalsifiable_structural": "Hypothesis missing its predictions or its refutation test — the form the symbolic checker was built to catch.",
+    "unfalsifiable_semantic": "All fields present and plausible-looking, but the content cannot be refuted by any observation.",
+    "circular": "The prediction or the refutation test restates the hypothesis; the explanation is true by construction.",
+    "contradicted_by_evidence": "The cycle's own analysis disconfirms the hypothesis, which is nonetheless carried forward as supported.",
+    "overfit_n1_structural": "Experiment declares a sample size below the underpowered threshold.",
+    "overfit_n1_semantic": "A universal claim rests on an analysis of a single case, while the plan on paper claims a full sample.",
+    "sound": "Control cases: falsifiable, controlled, powered, analysed, and honestly interpreted. Flagging these is a false alarm."
+  },
+  "cases": [
+    {
+      "id": "unf-str-001",
+      "label": "flawed",
+      "family": "unfalsifiable_structural",
+      "flaw": "No predictions and no refutation test.",
+      "question": "What drives long-term learning outcomes?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Motivation is the primary driver of long-term learning outcomes.",
+          "rationale": "Motivated learners persist longer.",
+          "predictions": [],
+          "falsification_test": "",
+          "confidence": 0.6
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled",
+          "variables": [
+            {"name": "motivational framing", "kind": "independent"},
+            {"name": "retention score at 8 weeks", "kind": "dependent"},
+            {"name": "prior knowledge", "kind": "controlled"}
+          ],
+          "sample_size": 90,
+          "analysis_plan": "Two-sample t-test with Hedges' g."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Framed group scored higher at 8 weeks.",
+          "effect_size": 0.31,
+          "p_value": 0.02,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "unf-str-002",
+      "label": "flawed",
+      "family": "unfalsifiable_structural",
+      "flaw": "Predictions present but no refutation test.",
+      "question": "How does sleep affect memory consolidation?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Slow-wave sleep in the first half of the night consolidates declarative memory.",
+          "rationale": "Consolidation is thought to depend on hippocampal replay during slow-wave sleep.",
+          "predictions": [
+            "Recall of word pairs is higher after a night with intact slow-wave sleep than after selective slow-wave deprivation."
+          ],
+          "falsification_test": "",
+          "confidence": 0.7
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "within-subject crossover",
+          "variables": [
+            {"name": "slow-wave deprivation", "kind": "independent"},
+            {"name": "word-pair recall", "kind": "dependent"},
+            {"name": "total time in bed", "kind": "controlled"}
+          ],
+          "sample_size": 32,
+          "analysis_plan": "Paired t-test with Cohen's dz."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Recall dropped after selective deprivation.",
+          "effect_size": 0.55,
+          "p_value": 0.004,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "unf-str-003",
+      "label": "flawed",
+      "family": "unfalsifiable_structural",
+      "flaw": "Refutation test present but no predictions.",
+      "question": "Does interleaving improve transfer?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Interleaved practice improves transfer to novel problems relative to blocked practice.",
+          "rationale": "Interleaving forces discrimination between problem types.",
+          "predictions": [],
+          "falsification_test": "Randomise learners to interleaved or blocked practice; equal transfer scores refute the hypothesis.",
+          "confidence": 0.65
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled",
+          "variables": [
+            {"name": "practice schedule", "kind": "independent"},
+            {"name": "transfer score", "kind": "dependent"},
+            {"name": "total practice time", "kind": "controlled"}
+          ],
+          "sample_size": 120,
+          "analysis_plan": "ANCOVA on transfer score with pretest as covariate."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Interleaved group transferred better.",
+          "effect_size": 0.42,
+          "p_value": 0.001,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "unf-sem-001",
+      "label": "flawed",
+      "family": "unfalsifiable_semantic",
+      "flaw": "Ad hoc immunisation: any failure is reattributed to misidentification of the style, so no result can count against it.",
+      "question": "Should instruction be matched to a learner's cognitive style?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Every learner has a latent cognitive style that fixes the optimal mode of instruction; where matched instruction fails to help, the learner's style was misidentified.",
+          "rationale": "Style-matched instruction is widely reported to help when the match is correct.",
+          "predictions": [
+            "Instruction matched to a correctly identified style outperforms mismatched instruction."
+          ],
+          "falsification_test": "Re-identify the learner's true style and repeat the matched instruction; persistent failure indicates the style was still mislabelled.",
+          "confidence": 0.75
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised crossover",
+          "variables": [
+            {"name": "instruction mode", "kind": "independent"},
+            {"name": "post-test score", "kind": "dependent"},
+            {"name": "content difficulty", "kind": "controlled"}
+          ],
+          "sample_size": 64,
+          "analysis_plan": "Mixed-effects model with style as a moderator."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "No style-by-mode interaction; cases of no benefit were reclassified as mislabelled styles.",
+          "effect_size": 0.03,
+          "p_value": 0.81,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "unf-sem-002",
+      "label": "flawed",
+      "family": "unfalsifiable_semantic",
+      "flaw": "The posited entity has no independent trace: the only evidence for the field is the outcome it is invoked to explain.",
+      "question": "Why do some study groups outperform others?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "A field of collective attention modulates group study performance; the field leaves no trace apart from the performance it produces.",
+          "rationale": "Groups sometimes outperform the sum of their members.",
+          "predictions": [
+            "Groups under a stronger collective-attention field score higher on the group task."
+          ],
+          "falsification_test": "Compare the performance of groups with a strong field against groups with a weak field.",
+          "confidence": 0.5
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "observational cohort",
+          "variables": [
+            {"name": "field strength (inferred from performance)", "kind": "independent"},
+            {"name": "group task score", "kind": "dependent"},
+            {"name": "group size", "kind": "controlled"}
+          ],
+          "sample_size": 40,
+          "analysis_plan": "Correlate inferred field strength with task score."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Inferred field strength correlates with task score, as it must by construction.",
+          "effect_size": 0.94,
+          "p_value": 0.0001,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "unf-sem-003",
+      "label": "flawed",
+      "family": "unfalsifiable_semantic",
+      "flaw": "The key term is defined by the outcome: 'truly learned' just means 'retained', so no forgetting can ever count against it.",
+      "question": "Is forgetting evidence of incomplete learning?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Anything a student forgets was never truly learned, since true learning is permanent by its nature.",
+          "rationale": "Durable knowledge is the mark of genuine understanding.",
+          "predictions": [
+            "No item that was truly learned is ever found to be forgotten at a later test."
+          ],
+          "falsification_test": "Identify an item a student truly learned and later forgot.",
+          "confidence": 0.55
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "longitudinal retention study",
+          "variables": [
+            {"name": "initial mastery classification", "kind": "independent"},
+            {"name": "retention at 6 months", "kind": "dependent"},
+            {"name": "review exposure", "kind": "controlled"}
+          ],
+          "sample_size": 75,
+          "analysis_plan": "Compare retention across mastery classes."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Forgotten items were reclassified after the fact as never mastered.",
+          "effect_size": 0.88,
+          "p_value": 0.0001,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "unf-sem-004",
+      "label": "flawed",
+      "family": "unfalsifiable_semantic",
+      "flaw": "Every possible outcome confirms it: any schedule that helps is evidence, and individual variation absorbs every schedule that does not.",
+      "question": "Why does spaced repetition work?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Spaced repetition works because memory is attuned to an inner rhythm that expresses itself differently in each person, so whichever schedule helps a given learner reveals that learner's rhythm.",
+          "rationale": "Optimal spacing intervals differ between individuals.",
+          "predictions": [
+            "For every learner there exists some spacing schedule that outperforms massed practice."
+          ],
+          "falsification_test": "Find a learner for whom no spacing schedule whatsoever beats massed practice.",
+          "confidence": 0.6
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "within-subject multi-schedule",
+          "variables": [
+            {"name": "spacing schedule", "kind": "independent"},
+            {"name": "delayed recall", "kind": "dependent"},
+            {"name": "total study time", "kind": "controlled"}
+          ],
+          "sample_size": 50,
+          "analysis_plan": "Per-learner best-schedule comparison against massed practice."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "The best-performing schedule per learner beat massed practice, by selection.",
+          "effect_size": 0.6,
+          "p_value": 0.002,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "circ-001",
+      "label": "flawed",
+      "family": "circular",
+      "flaw": "'Effective study' is operationalised as 'study that yields better grades', so the hypothesis states an identity.",
+      "question": "Does effective study improve grades?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Students who study effectively obtain better grades, because effective study is precisely the study that produces better grades.",
+          "rationale": "Effectiveness is measured by the grades achieved.",
+          "predictions": [
+            "Students classified as effective studiers obtain better grades than those classified as ineffective."
+          ],
+          "falsification_test": "Find a student classified as an effective studier whose grades are poor.",
+          "confidence": 0.8
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "observational cohort",
+          "variables": [
+            {"name": "study effectiveness class", "kind": "independent"},
+            {"name": "end-of-term grade", "kind": "dependent"},
+            {"name": "course load", "kind": "controlled"}
+          ],
+          "sample_size": 200,
+          "analysis_plan": "Compare mean grades across effectiveness classes."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Effective studiers had higher grades, as the classification guarantees.",
+          "effect_size": 1.4,
+          "p_value": 1e-9,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "circ-002",
+      "label": "flawed",
+      "family": "circular",
+      "flaw": "Dormitive-virtue explanation: the cause is named after the effect it is supposed to explain.",
+      "question": "Why does compound A induce sleep?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Compound A induces sleep because it possesses a soporific property, that property being its capacity to induce sleep.",
+          "rationale": "Subjects given compound A fall asleep sooner.",
+          "predictions": [
+            "Subjects given compound A fall asleep sooner than subjects given placebo."
+          ],
+          "falsification_test": "Administer compound A and observe no reduction in sleep latency.",
+          "confidence": 0.7
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "double-blind placebo-controlled",
+          "variables": [
+            {"name": "compound A vs placebo", "kind": "independent"},
+            {"name": "sleep latency", "kind": "dependent"},
+            {"name": "caffeine intake", "kind": "controlled"}
+          ],
+          "sample_size": 60,
+          "analysis_plan": "Two-sample comparison of sleep latency."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Sleep latency fell in the compound A arm.",
+          "effect_size": 0.5,
+          "p_value": 0.006,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "circ-003",
+      "label": "flawed",
+      "family": "circular",
+      "flaw": "The independent variable is identified by the dependent variable, so the prediction cannot fail.",
+      "question": "What makes a school high performing?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "High-performing schools perform highly because they possess a culture of excellence, and a culture of excellence is identified by the school's high performance.",
+          "rationale": "Site visits to top schools consistently report a culture of excellence.",
+          "predictions": [
+            "Schools identified as having a culture of excellence outperform schools that lack one."
+          ],
+          "falsification_test": "Find a school with a culture of excellence whose performance is low.",
+          "confidence": 0.7
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "matched observational study",
+          "variables": [
+            {"name": "culture-of-excellence rating", "kind": "independent"},
+            {"name": "school performance index", "kind": "dependent"},
+            {"name": "intake demographics", "kind": "controlled"}
+          ],
+          "sample_size": 48,
+          "analysis_plan": "Regress performance index on culture rating."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Culture rating predicts performance almost perfectly, as the rating is derived from it.",
+          "effect_size": 0.97,
+          "p_value": 1e-12,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "circ-004",
+      "label": "flawed",
+      "family": "circular",
+      "flaw": "The refutation test is stated in terms that the hypothesis's own definitions make impossible to satisfy.",
+      "question": "Do adaptive learning systems personalise instruction?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "An adaptive system personalises instruction, where personalised instruction means whatever an adaptive system delivers.",
+          "rationale": "Adaptive systems adjust content per learner.",
+          "predictions": [
+            "Instruction delivered by an adaptive system is personalised."
+          ],
+          "falsification_test": "Observe an adaptive system delivering instruction that is not personalised.",
+          "confidence": 0.65
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "instrumented platform study",
+          "variables": [
+            {"name": "adaptive vs fixed sequencing", "kind": "independent"},
+            {"name": "personalisation index", "kind": "dependent"},
+            {"name": "content pool", "kind": "controlled"}
+          ],
+          "sample_size": 150,
+          "analysis_plan": "Compare personalisation index across arms."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Adaptive arm scored higher on the personalisation index, which is computed from adaptivity.",
+          "effect_size": 2.1,
+          "p_value": 1e-15,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "contra-001",
+      "label": "flawed",
+      "family": "contradicted_by_evidence",
+      "flaw": "A null result with a tight interval is carried forward as support; the hypothesis is marked supported at 0.85 confidence.",
+      "question": "Do blue-light filters before bed improve next-day recall?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Wearing blue-light filtering glasses for two hours before bed improves next-day recall of studied material.",
+          "rationale": "Blue light suppresses melatonin, which may impair consolidation.",
+          "predictions": [
+            "Filter nights are followed by higher morning recall than control nights."
+          ],
+          "falsification_test": "A crossover trial in which filter and control nights yield equal recall refutes the hypothesis.",
+          "confidence": 0.85,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised crossover",
+          "variables": [
+            {"name": "blue-light filter", "kind": "independent"},
+            {"name": "morning recall score", "kind": "dependent"},
+            {"name": "bedtime", "kind": "controlled"}
+          ],
+          "sample_size": 44,
+          "analysis_plan": "Paired comparison with Cohen's dz and a 95% CI."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "No detectable difference between filter and control nights.",
+          "effect_size": 0.02,
+          "p_value": 0.71,
+          "ci_low": -0.19,
+          "ci_high": 0.23,
+          "interpretation": "The interval excludes any effect of practical size.",
+          "supports_hypothesis": false
+        }
+      ]
+    },
+    {
+      "id": "contra-002",
+      "label": "flawed",
+      "family": "contradicted_by_evidence",
+      "flaw": "The measured effect runs opposite to the prediction and is significant, yet the hypothesis is retained at 0.9 confidence.",
+      "question": "Does a pre-study mindfulness session raise quiz scores?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "A ten-minute mindfulness session immediately before studying raises quiz scores.",
+          "rationale": "Reduced mind-wandering should improve encoding.",
+          "predictions": [
+            "The mindfulness arm scores higher on the post-study quiz than the control arm."
+          ],
+          "falsification_test": "A randomised trial in which the mindfulness arm scores no higher refutes the hypothesis.",
+          "confidence": 0.9,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled",
+          "variables": [
+            {"name": "mindfulness session", "kind": "independent"},
+            {"name": "quiz score", "kind": "dependent"},
+            {"name": "study duration", "kind": "controlled"}
+          ],
+          "sample_size": 88,
+          "analysis_plan": "Two-sample t-test with Hedges' g."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "The mindfulness arm scored lower than control.",
+          "effect_size": -0.31,
+          "p_value": 0.004,
+          "ci_low": -0.52,
+          "ci_high": -0.1,
+          "interpretation": "The effect is significant and in the opposite direction to the prediction.",
+          "supports_hypothesis": false
+        }
+      ]
+    },
+    {
+      "id": "contra-003",
+      "label": "flawed",
+      "family": "contradicted_by_evidence",
+      "flaw": "A null result is reported and the hypothesis is nonetheless left standing as supported.",
+      "question": "Do handwritten notes beat typed notes for conceptual recall?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Taking notes by hand produces better conceptual recall than typing them.",
+          "rationale": "Handwriting is slower and may force generative processing.",
+          "predictions": [
+            "The handwriting arm scores higher on conceptual items one week later."
+          ],
+          "falsification_test": "A randomised trial in which the two arms score equally on conceptual items refutes the hypothesis.",
+          "confidence": 0.8,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled",
+          "variables": [
+            {"name": "note-taking medium", "kind": "independent"},
+            {"name": "conceptual recall at 1 week", "kind": "dependent"},
+            {"name": "lecture content", "kind": "controlled"}
+          ],
+          "sample_size": 142,
+          "analysis_plan": "ANCOVA with prior-knowledge covariate."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Conceptual recall did not differ by medium.",
+          "effect_size": 0.05,
+          "p_value": 0.62,
+          "ci_low": -0.15,
+          "ci_high": 0.25,
+          "interpretation": "No support for a medium effect at this sample size.",
+          "supports_hypothesis": false
+        }
+      ]
+    },
+    {
+      "id": "contra-004",
+      "label": "flawed",
+      "family": "contradicted_by_evidence",
+      "flaw": "Disconfirming evidence is present in evidence_against and ignored in the hypothesis's status and confidence.",
+      "question": "Does background music raise reading comprehension?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Instrumental background music raises reading comprehension.",
+          "rationale": "Music is reported to raise arousal during study.",
+          "predictions": [
+            "Comprehension scores are higher with background music than in silence."
+          ],
+          "falsification_test": "A within-subject trial in which silence yields equal or better comprehension refutes the hypothesis.",
+          "confidence": 0.8,
+          "status": "supported",
+          "evidence_against": [
+            "Our own trial found comprehension lower with music (g = -0.42, p = 0.001)."
+          ]
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "within-subject randomised",
+          "variables": [
+            {"name": "background music", "kind": "independent"},
+            {"name": "comprehension score", "kind": "dependent"},
+            {"name": "passage difficulty", "kind": "controlled"}
+          ],
+          "sample_size": 96,
+          "analysis_plan": "Paired comparison with Hedges' g."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Comprehension was lower with music than in silence.",
+          "effect_size": -0.42,
+          "p_value": 0.001,
+          "ci_low": -0.63,
+          "ci_high": -0.21,
+          "interpretation": "The evidence points the other way.",
+          "supports_hypothesis": false
+        }
+      ]
+    },
+    {
+      "id": "ofit-str-001",
+      "label": "flawed",
+      "family": "overfit_n1_structural",
+      "flaw": "The experiment declares a sample size of 1.",
+      "question": "Does a ketogenic diet raise exam performance in adolescents?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "A ketogenic diet raises exam performance in adolescents.",
+          "rationale": "One student's marks rose after starting the diet.",
+          "predictions": [
+            "Adolescents on the diet score higher on end-of-term exams than matched controls."
+          ],
+          "falsification_test": "A controlled trial in which diet and control groups score equally refutes the hypothesis.",
+          "confidence": 0.7
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "single-case ABA",
+          "variables": [
+            {"name": "diet", "kind": "independent"},
+            {"name": "exam score", "kind": "dependent"},
+            {"name": "sleep duration", "kind": "controlled"}
+          ],
+          "sample_size": 1,
+          "analysis_plan": "Compare exam scores across phases."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "The participant's scores rose during the diet phase.",
+          "effect_size": 1.9,
+          "p_value": 0.04,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "ofit-str-002",
+      "label": "flawed",
+      "family": "overfit_n1_structural",
+      "flaw": "The experiment declares a sample size of 3.",
+      "question": "Does a standing desk improve sustained attention?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Working at a standing desk improves sustained attention during study.",
+          "rationale": "Postural change may raise arousal.",
+          "predictions": [
+            "Sustained-attention task scores are higher at a standing desk than seated."
+          ],
+          "falsification_test": "A crossover trial in which the two conditions score equally refutes the hypothesis.",
+          "confidence": 0.6
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "crossover",
+          "variables": [
+            {"name": "desk posture", "kind": "independent"},
+            {"name": "sustained-attention score", "kind": "dependent"},
+            {"name": "time of day", "kind": "controlled"}
+          ],
+          "sample_size": 3,
+          "analysis_plan": "Paired comparison across conditions."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Two of three participants scored higher standing.",
+          "effect_size": 0.8,
+          "p_value": 0.3,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "ofit-sem-001",
+      "label": "flawed",
+      "family": "overfit_n1_semantic",
+      "flaw": "A universal claim rests on an analysis of one participant, while the plan on paper claims a sample of 40.",
+      "question": "Does a morning cold shower improve learning?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "A morning cold shower improves learning for everyone who takes one.",
+          "rationale": "A single volunteer reported sharper focus and better recall after adopting the habit.",
+          "predictions": [
+            "Recall scores rise on cold-shower mornings relative to warm-shower mornings."
+          ],
+          "falsification_test": "A crossover trial in which recall does not differ by shower temperature refutes the hypothesis.",
+          "confidence": 0.75,
+          "evidence_for": ["One volunteer's self-reported improvement over three weeks."]
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised crossover",
+          "variables": [
+            {"name": "shower temperature", "kind": "independent"},
+            {"name": "recall score", "kind": "dependent"},
+            {"name": "sleep duration", "kind": "controlled"}
+          ],
+          "sample_size": 40,
+          "analysis_plan": "Paired comparison across conditions."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Only one participant completed the protocol; that participant's recall rose 18%, and the result is reported as if it were the group finding.",
+          "statistics": {"n_analysed": 1},
+          "effect_size": 1.8,
+          "p_value": 0.02,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "ofit-sem-002",
+      "label": "flawed",
+      "family": "overfit_n1_semantic",
+      "flaw": "A single classroom's result is generalised to every subject and every age group.",
+      "question": "Does a flipped classroom raise achievement?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "The flipped-classroom format raises achievement in every subject and at every age.",
+          "rationale": "One flipped Year 10 physics class outperformed its previous cohort.",
+          "predictions": [
+            "Flipped classes outscore conventional classes on end-of-unit assessments."
+          ],
+          "falsification_test": "A trial in which flipped and conventional classes score equally refutes the hypothesis.",
+          "confidence": 0.8,
+          "evidence_for": ["One Year 10 physics class, one term."]
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "matched cohort",
+          "variables": [
+            {"name": "class format", "kind": "independent"},
+            {"name": "unit assessment score", "kind": "dependent"},
+            {"name": "teacher", "kind": "controlled"}
+          ],
+          "sample_size": 29,
+          "analysis_plan": "Compare assessment means between cohorts."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "The single flipped class outscored its comparison cohort; the conclusion is stated for all subjects and ages.",
+          "statistics": {"n_classes": 1},
+          "effect_size": 0.6,
+          "p_value": 0.03,
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "sound-001",
+      "label": "sound",
+      "family": "sound",
+      "flaw": "",
+      "question": "Does retrieval practice beat rereading for long-term retention?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Retrieval practice produces higher retention at one week than an equal amount of rereading.",
+          "rationale": "Retrieval is thought to strengthen the memory trace more than restudy.",
+          "predictions": [
+            "The retrieval arm scores higher on a one-week delayed test.",
+            "The advantage grows with retention interval."
+          ],
+          "falsification_test": "A randomised trial with matched study time in which retrieval scores no higher at one week refutes the hypothesis.",
+          "confidence": 0.7,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled",
+          "variables": [
+            {"name": "practice type", "kind": "independent"},
+            {"name": "delayed recall", "kind": "dependent"},
+            {"name": "total study time", "kind": "controlled"}
+          ],
+          "sample_size": 120,
+          "analysis_plan": "Two-sample t-test with Hedges' g and a 95% CI."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Retrieval practice outperformed rereading at one week.",
+          "effect_size": 0.52,
+          "p_value": 0.001,
+          "ci_low": 0.21,
+          "ci_high": 0.83,
+          "interpretation": "A moderate effect with an interval excluding zero.",
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "sound-002",
+      "label": "sound",
+      "family": "sound",
+      "flaw": "",
+      "question": "Does spacing beat massing at a fixed total study time?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Distributing study across three sessions produces higher two-week retention than one massed session of the same total length.",
+          "rationale": "The spacing effect is among the most replicated findings in memory research.",
+          "predictions": [
+            "The spaced arm scores higher at two weeks.",
+            "Immediate post-test scores do not differ, or favour massing."
+          ],
+          "falsification_test": "A trial with equal total study time in which the spaced arm scores no higher at two weeks refutes the hypothesis.",
+          "confidence": 0.75,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled",
+          "variables": [
+            {"name": "session distribution", "kind": "independent"},
+            {"name": "two-week retention", "kind": "dependent"},
+            {"name": "total study minutes", "kind": "controlled"}
+          ],
+          "sample_size": 96,
+          "analysis_plan": "ANCOVA with pretest covariate; report g and CI."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Spaced study retained more at two weeks.",
+          "effect_size": 0.61,
+          "p_value": 0.0004,
+          "ci_low": 0.28,
+          "ci_high": 0.94,
+          "interpretation": "Consistent with the spacing literature.",
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "sound-003",
+      "label": "sound",
+      "family": "sound",
+      "flaw": "",
+      "question": "Does worked-example study beat problem solving for novices?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "For learners without prior algebra knowledge, studying worked examples yields higher post-test scores than solving equivalent problems unaided.",
+          "rationale": "Cognitive-load theory predicts an advantage for novices.",
+          "predictions": [
+            "Novices in the worked-example arm score higher on the post-test.",
+            "The advantage shrinks or reverses for learners with prior knowledge."
+          ],
+          "falsification_test": "A trial in which novices in both arms score equally refutes the hypothesis.",
+          "confidence": 0.65,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled with prior-knowledge stratification",
+          "variables": [
+            {"name": "instruction type", "kind": "independent"},
+            {"name": "post-test score", "kind": "dependent"},
+            {"name": "time on task", "kind": "controlled"}
+          ],
+          "sample_size": 110,
+          "analysis_plan": "Stratified analysis reporting g and CI per stratum."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Novices gained from worked examples; the effect reversed for the high-prior-knowledge stratum.",
+          "effect_size": 0.47,
+          "p_value": 0.003,
+          "ci_low": 0.16,
+          "ci_high": 0.78,
+          "interpretation": "Supports the hypothesis, including its boundary condition.",
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "sound-004",
+      "label": "sound",
+      "family": "sound",
+      "flaw": "",
+      "question": "Does sleep after study beat an equal waking interval for retention?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "A twelve-hour interval containing sleep produces higher retention than a twelve-hour waking interval.",
+          "rationale": "Consolidation is thought to be favoured by sleep.",
+          "predictions": [
+            "The sleep-interval group recalls more at test.",
+            "The difference is larger for declarative than for procedural material."
+          ],
+          "falsification_test": "Equal recall across the two intervals, with time of day counterbalanced, refutes the hypothesis.",
+          "confidence": 0.7,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "counterbalanced between-subjects",
+          "variables": [
+            {"name": "interval contains sleep", "kind": "independent"},
+            {"name": "recall at 12 h", "kind": "dependent"},
+            {"name": "time of day at encoding", "kind": "controlled"}
+          ],
+          "sample_size": 84,
+          "analysis_plan": "Two-way ANOVA; report partial eta squared and CIs."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Recall was higher across the sleep interval.",
+          "effect_size": 0.44,
+          "p_value": 0.006,
+          "ci_low": 0.13,
+          "ci_high": 0.75,
+          "interpretation": "Moderate effect, time of day counterbalanced.",
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "sound-005",
+      "label": "sound",
+      "family": "sound",
+      "flaw": "",
+      "question": "Does self-explanation improve transfer in physics problem solving?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Prompting learners to self-explain each solution step raises transfer-problem scores relative to unprompted study.",
+          "rationale": "Self-explanation is thought to surface gaps in the learner's model.",
+          "predictions": [
+            "The prompted arm scores higher on transfer problems.",
+            "Near-transfer and far-transfer gains differ in size."
+          ],
+          "falsification_test": "Equal transfer scores between prompted and unprompted arms refute the hypothesis.",
+          "confidence": 0.6,
+          "status": "proposed"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled",
+          "variables": [
+            {"name": "self-explanation prompt", "kind": "independent"},
+            {"name": "transfer score", "kind": "dependent"},
+            {"name": "problem set", "kind": "controlled"}
+          ],
+          "sample_size": 72,
+          "analysis_plan": "Report g with 95% CI for near and far transfer separately."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Near transfer improved; far transfer showed a smaller, uncertain gain.",
+          "effect_size": 0.38,
+          "p_value": 0.02,
+          "ci_low": 0.06,
+          "ci_high": 0.7,
+          "interpretation": "Partial support; far transfer remains open.",
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "sound-006",
+      "label": "sound",
+      "family": "sound",
+      "flaw": "",
+      "question": "Does handwriting speed predict essay quality once vocabulary is controlled?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Handwriting speed does not predict essay quality once vocabulary breadth is controlled.",
+          "rationale": "Earlier correlations may be confounded by vocabulary.",
+          "predictions": [
+            "The partial correlation between handwriting speed and essay quality is near zero.",
+            "The zero-order correlation is positive."
+          ],
+          "falsification_test": "A substantial partial correlation after controlling vocabulary refutes the hypothesis.",
+          "confidence": 0.55,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "observational with covariate control",
+          "variables": [
+            {"name": "handwriting speed", "kind": "independent"},
+            {"name": "essay quality rating", "kind": "dependent"},
+            {"name": "vocabulary breadth", "kind": "controlled"}
+          ],
+          "sample_size": 160,
+          "analysis_plan": "Partial correlation with bootstrap CI."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "The partial correlation was near zero once vocabulary was controlled.",
+          "effect_size": 0.04,
+          "p_value": 0.6,
+          "ci_low": -0.11,
+          "ci_high": 0.19,
+          "interpretation": "Consistent with the null hypothesis as stated.",
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "sound-007",
+      "label": "sound",
+      "family": "sound",
+      "flaw": "",
+      "question": "Does immediate feedback beat delayed feedback on procedural skills?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "Immediate feedback produces faster skill acquisition but no better one-week retention than delayed feedback.",
+          "rationale": "Immediate feedback may support performance during practice without aiding consolidation.",
+          "predictions": [
+            "Acquisition curves are steeper under immediate feedback.",
+            "One-week retention does not differ between conditions."
+          ],
+          "falsification_test": "Higher one-week retention under immediate feedback refutes the second half of the hypothesis.",
+          "confidence": 0.6,
+          "status": "supported"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled with delayed retention test",
+          "variables": [
+            {"name": "feedback timing", "kind": "independent"},
+            {"name": "retention at 1 week", "kind": "dependent"},
+            {"name": "practice trials", "kind": "controlled"}
+          ],
+          "sample_size": 64,
+          "analysis_plan": "Mixed model over trials; report g and CI at retention."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Acquisition was faster with immediate feedback; retention did not differ.",
+          "effect_size": 0.07,
+          "p_value": 0.55,
+          "ci_low": -0.16,
+          "ci_high": 0.3,
+          "interpretation": "Both halves of the prediction held.",
+          "supports_hypothesis": true
+        }
+      ]
+    },
+    {
+      "id": "sound-008",
+      "label": "sound",
+      "family": "sound",
+      "flaw": "",
+      "question": "Does a pre-lecture quiz improve lecture recall?",
+      "hypotheses": [
+        {
+          "id": "h1",
+          "statement": "A short quiz taken before a lecture raises recall of lecture content measured one day later.",
+          "rationale": "Pretesting is reported to direct attention during subsequent study.",
+          "predictions": [
+            "The pre-quiz arm recalls more one day later.",
+            "The gain is concentrated on content the pre-quiz touched."
+          ],
+          "falsification_test": "Equal next-day recall between pre-quiz and control arms refutes the hypothesis.",
+          "confidence": 0.6,
+          "status": "proposed"
+        }
+      ],
+      "experiments": [
+        {
+          "id": "e1",
+          "hypothesis_id": "h1",
+          "design": "randomised controlled",
+          "variables": [
+            {"name": "pre-lecture quiz", "kind": "independent"},
+            {"name": "next-day recall", "kind": "dependent"},
+            {"name": "lecture content", "kind": "controlled"}
+          ],
+          "sample_size": 130,
+          "analysis_plan": "Two-sample comparison split by pre-quizzed and non-pre-quizzed content."
+        }
+      ],
+      "analyses": [
+        {
+          "experiment_id": "e1",
+          "summary": "Next-day recall was higher, concentrated on pre-quizzed content.",
+          "effect_size": 0.35,
+          "p_value": 0.008,
+          "ci_low": 0.09,
+          "ci_high": 0.61,
+          "interpretation": "Supports both predictions.",
+          "supports_hypothesis": true
+        }
+      ]
+    }
+  ]
+}

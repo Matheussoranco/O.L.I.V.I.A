@@ -1,0 +1,6 @@
+{
+  "name": "gates",
+  "version": "0.3",
+  "policy": "Each floor is the 0.3 baseline the harness actually measured, minus nothing. A gate is a ratchet, not an aspiration: raise it when the code improves, never lower it to make CI green. Metrics whose suite was skipped (no LLM backend) are not gated.",
+  "floors": {}
+}

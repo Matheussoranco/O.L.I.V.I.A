@@ -1,0 +1,460 @@
+{
+  "name": "symbolic_solving",
+  "version": "0.3",
+  "authored": "2026-08-06",
+  "held_out": "Authored from secondary-school / first-year-undergraduate curriculum topic lists before any run of the harness, without reading the solver's regexes for the 'reach' tier. No case was edited or removed after scores were seen. Disjoint from tests/ fixtures.",
+  "tiers": {
+    "core": "Squarely inside a capability the README advertises: algebra, calculus, arithmetic, molar mass, equation balancing, constant lookup, unit conversion.",
+    "reach": "What a study agent is plausibly asked but has never claimed: word problems, stoichiometry, applied physics, alternative phrasings."
+  },
+  "cases": [
+    {
+      "id": "math-001",
+      "domain": "math",
+      "tier": "core",
+      "problem": "solve x^2 - 5x + 6 = 0 for x",
+      "check": {"kind": "roots", "values": ["2", "3"]}
+    },
+    {
+      "id": "math-002",
+      "domain": "math",
+      "tier": "core",
+      "problem": "solve 2*x + 7 = 19 for x",
+      "check": {"kind": "roots", "values": ["6"]}
+    },
+    {
+      "id": "math-003",
+      "domain": "math",
+      "tier": "core",
+      "problem": "solve 3x - 4 = 11 for x",
+      "check": {"kind": "roots", "values": ["5"]}
+    },
+    {
+      "id": "math-004",
+      "domain": "math",
+      "tier": "core",
+      "problem": "Solve x^2 - 9 = 0 for x",
+      "check": {"kind": "roots", "values": ["-3", "3"]}
+    },
+    {
+      "id": "math-005",
+      "domain": "math",
+      "tier": "core",
+      "problem": "solve x^2 + 2x + 1 = 0 for x",
+      "check": {"kind": "roots", "values": ["-1"]}
+    },
+    {
+      "id": "math-006",
+      "domain": "math",
+      "tier": "core",
+      "problem": "solve x^3 - 6x^2 + 11x - 6 = 0 for x",
+      "check": {"kind": "roots", "values": ["1", "2", "3"]}
+    },
+    {
+      "id": "math-007",
+      "domain": "math",
+      "tier": "core",
+      "problem": "differentiate x^3 + 2x",
+      "check": {"kind": "math_equal", "expr": "3*x**2 + 2"}
+    },
+    {
+      "id": "math-008",
+      "domain": "math",
+      "tier": "core",
+      "problem": "differentiate sin(x)*cos(x)",
+      "check": {"kind": "math_equal", "expr": "cos(2*x)"}
+    },
+    {
+      "id": "math-009",
+      "domain": "math",
+      "tier": "core",
+      "problem": "differentiate ln(x)",
+      "check": {"kind": "math_equal", "expr": "1/x"}
+    },
+    {
+      "id": "math-010",
+      "domain": "math",
+      "tier": "core",
+      "problem": "integrate 2*x",
+      "check": {"kind": "math_equal", "expr": "x**2"}
+    },
+    {
+      "id": "math-011",
+      "domain": "math",
+      "tier": "core",
+      "problem": "integrate 1/x",
+      "check": {"kind": "math_equal", "expr": "log(x)"}
+    },
+    {
+      "id": "math-012",
+      "domain": "math",
+      "tier": "core",
+      "problem": "simplify (x^2 - 1)/(x - 1)",
+      "check": {"kind": "math_equal", "expr": "x + 1"}
+    },
+    {
+      "id": "math-013",
+      "domain": "math",
+      "tier": "core",
+      "problem": "simplify sin(x)^2 + cos(x)^2",
+      "check": {"kind": "math_equal", "expr": "1"}
+    },
+    {
+      "id": "math-014",
+      "domain": "math",
+      "tier": "core",
+      "problem": "factor x^2 - 4",
+      "check": {"kind": "math_equal", "expr": "(x - 2)*(x + 2)"}
+    },
+    {
+      "id": "math-015",
+      "domain": "math",
+      "tier": "core",
+      "problem": "expand (x + 3)^2",
+      "check": {"kind": "math_equal", "expr": "x**2 + 6*x + 9"}
+    },
+    {
+      "id": "math-016",
+      "domain": "math",
+      "tier": "core",
+      "problem": "what is 12 * 8 + 5",
+      "check": {"kind": "numeric", "value": 101, "rtol": 1e-9}
+    },
+    {
+      "id": "math-017",
+      "domain": "math",
+      "tier": "core",
+      "problem": "calculate 7 * (3 + 4) - 2",
+      "check": {"kind": "numeric", "value": 47, "rtol": 1e-9}
+    },
+    {
+      "id": "math-018",
+      "domain": "math",
+      "tier": "core",
+      "problem": "what is 10/4",
+      "check": {"kind": "numeric", "value": 2.5, "rtol": 1e-9}
+    },
+    {
+      "id": "math-019",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "What is the derivative of x^2 with respect to x?",
+      "check": {"kind": "math_equal", "expr": "2*x"}
+    },
+    {
+      "id": "math-020",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "d/dx of e^x",
+      "check": {"kind": "math_equal", "expr": "exp(x)"}
+    },
+    {
+      "id": "math-021",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "Find the roots of x^2 - 7x + 12",
+      "check": {"kind": "roots", "values": ["3", "4"]}
+    },
+    {
+      "id": "math-022",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "If f(x) = 3x^2 + 2x, what is f'(x)?",
+      "check": {"kind": "math_equal", "expr": "6*x + 2"}
+    },
+    {
+      "id": "math-023",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "A rectangle has a perimeter of 36 cm and its length is twice its width. What is its area in square centimetres?",
+      "check": {"kind": "numeric", "value": 72, "rtol": 1e-6}
+    },
+    {
+      "id": "math-024",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "What is 15% of 240?",
+      "check": {"kind": "numeric", "value": 36, "rtol": 1e-6}
+    },
+    {
+      "id": "math-025",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "What is the sum of the first 100 positive integers?",
+      "check": {"kind": "numeric", "value": 5050, "rtol": 1e-9}
+    },
+    {
+      "id": "math-026",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "Evaluate the limit of sin(x)/x as x approaches 0",
+      "check": {"kind": "numeric", "value": 1, "rtol": 1e-6}
+    },
+    {
+      "id": "math-027",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "Solve the system 2x + y = 10 and x - y = 2",
+      "check": {"kind": "contains", "values": ["x = 4", "y = 2"]}
+    },
+    {
+      "id": "math-028",
+      "domain": "math",
+      "tier": "reach",
+      "problem": "Convert the fraction 3/8 to a decimal",
+      "check": {"kind": "numeric", "value": 0.375, "rtol": 1e-6}
+    },
+    {
+      "id": "chem-001",
+      "domain": "chemistry",
+      "tier": "core",
+      "problem": "molar mass of H2SO4",
+      "check": {"kind": "numeric", "value": 98.072, "rtol": 0.01}
+    },
+    {
+      "id": "chem-002",
+      "domain": "chemistry",
+      "tier": "core",
+      "problem": "molar mass of C6H12O6",
+      "check": {"kind": "numeric", "value": 180.156, "rtol": 0.01}
+    },
+    {
+      "id": "chem-003",
+      "domain": "chemistry",
+      "tier": "core",
+      "problem": "What is the molecular weight of NaCl?",
+      "check": {"kind": "numeric", "value": 58.44, "rtol": 0.01}
+    },
+    {
+      "id": "chem-004",
+      "domain": "chemistry",
+      "tier": "core",
+      "problem": "molar mass of Ca(OH)2",
+      "check": {"kind": "numeric", "value": 74.092, "rtol": 0.01}
+    },
+    {
+      "id": "chem-005",
+      "domain": "chemistry",
+      "tier": "core",
+      "problem": "balance H2 + O2 -> H2O",
+      "check": {"kind": "contains", "values": ["2 H2 + O2", "2 H2O"]}
+    },
+    {
+      "id": "chem-006",
+      "domain": "chemistry",
+      "tier": "core",
+      "problem": "balance the equation: CH4 + O2 -> CO2 + H2O",
+      "check": {"kind": "contains", "values": ["CH4 + 2 O2", "CO2 + 2 H2O"]}
+    },
+    {
+      "id": "chem-007",
+      "domain": "chemistry",
+      "tier": "core",
+      "problem": "balance Fe + O2 -> Fe2O3",
+      "check": {"kind": "contains", "values": ["4 Fe + 3 O2", "2 Fe2O3"]}
+    },
+    {
+      "id": "chem-008",
+      "domain": "chemistry",
+      "tier": "core",
+      "problem": "balance C3H8 + O2 -> CO2 + H2O",
+      "check": {"kind": "contains", "values": ["C3H8 + 5 O2", "3 CO2 + 4 H2O"]}
+    },
+    {
+      "id": "chem-009",
+      "domain": "chemistry",
+      "tier": "reach",
+      "problem": "molar mass of CuSO4.5H2O",
+      "check": {"kind": "numeric", "value": 249.677, "rtol": 0.01}
+    },
+    {
+      "id": "chem-010",
+      "domain": "chemistry",
+      "tier": "reach",
+      "problem": "How many moles are in 36 g of water?",
+      "check": {"kind": "numeric", "value": 1.998, "rtol": 0.01}
+    },
+    {
+      "id": "chem-011",
+      "domain": "chemistry",
+      "tier": "reach",
+      "problem": "What mass of NaCl contains 0.5 mol?",
+      "check": {"kind": "numeric", "value": 29.22, "rtol": 0.01}
+    },
+    {
+      "id": "chem-012",
+      "domain": "chemistry",
+      "tier": "reach",
+      "problem": "What is the percent composition by mass of oxygen in H2O?",
+      "check": {"kind": "numeric", "value": 88.81, "rtol": 0.01}
+    },
+    {
+      "id": "chem-013",
+      "domain": "chemistry",
+      "tier": "reach",
+      "problem": "What is the oxidation state of sulfur in H2SO4?",
+      "check": {"kind": "contains", "values": ["+6"]}
+    },
+    {
+      "id": "chem-014",
+      "domain": "chemistry",
+      "tier": "reach",
+      "problem": "How many grams of CO2 are produced by completely burning 10 g of CH4?",
+      "check": {"kind": "numeric", "value": 27.43, "rtol": 0.01}
+    },
+    {
+      "id": "phys-001",
+      "domain": "physics",
+      "tier": "core",
+      "problem": "what is the speed of light",
+      "check": {"kind": "numeric", "value": 299792458.0, "rtol": 1e-9}
+    },
+    {
+      "id": "phys-002",
+      "domain": "physics",
+      "tier": "core",
+      "problem": "value of Planck's constant",
+      "check": {"kind": "numeric", "value": 6.62607015e-34, "rtol": 1e-9}
+    },
+    {
+      "id": "phys-003",
+      "domain": "physics",
+      "tier": "core",
+      "problem": "What is Avogadro's number?",
+      "check": {"kind": "numeric", "value": 6.02214076e23, "rtol": 1e-9}
+    },
+    {
+      "id": "phys-004",
+      "domain": "physics",
+      "tier": "core",
+      "problem": "what is the Boltzmann constant",
+      "check": {"kind": "numeric", "value": 1.380649e-23, "rtol": 1e-9}
+    },
+    {
+      "id": "phys-005",
+      "domain": "physics",
+      "tier": "core",
+      "problem": "what is the gravitational constant",
+      "check": {"kind": "numeric", "value": 6.6743e-11, "rtol": 1e-6}
+    },
+    {
+      "id": "phys-006",
+      "domain": "physics",
+      "tier": "core",
+      "problem": "what is the elementary charge",
+      "check": {"kind": "numeric", "value": 1.602176634e-19, "rtol": 1e-9}
+    },
+    {
+      "id": "phys-007",
+      "domain": "physics",
+      "tier": "reach",
+      "problem": "A car accelerates from rest at 3 m/s^2 for 5 s. What is its final velocity?",
+      "check": {"kind": "numeric", "value": 15, "rtol": 1e-3}
+    },
+    {
+      "id": "phys-008",
+      "domain": "physics",
+      "tier": "reach",
+      "problem": "What is the kinetic energy of a 2 kg object moving at 3 m/s?",
+      "check": {"kind": "numeric", "value": 9, "rtol": 1e-3}
+    },
+    {
+      "id": "phys-009",
+      "domain": "physics",
+      "tier": "reach",
+      "problem": "How much force is needed to accelerate a 10 kg mass at 2 m/s^2?",
+      "check": {"kind": "numeric", "value": 20, "rtol": 1e-3}
+    },
+    {
+      "id": "phys-010",
+      "domain": "physics",
+      "tier": "reach",
+      "problem": "What is the wavelength in nanometres of a photon with energy 3.0 eV?",
+      "check": {"kind": "numeric", "value": 413.3, "rtol": 0.01}
+    },
+    {
+      "id": "phys-011",
+      "domain": "physics",
+      "tier": "reach",
+      "problem": "An object is dropped and falls for 2 seconds. How far does it fall, in metres?",
+      "check": {"kind": "numeric", "value": 19.61, "rtol": 0.01}
+    },
+    {
+      "id": "phys-012",
+      "domain": "physics",
+      "tier": "reach",
+      "problem": "What is the period of a simple pendulum of length 1 m, in seconds?",
+      "check": {"kind": "numeric", "value": 2.006, "rtol": 0.01}
+    },
+    {
+      "id": "unit-001",
+      "domain": "units",
+      "tier": "core",
+      "problem": "convert 60 mph to m/s",
+      "check": {"kind": "numeric", "value": 26.8224, "rtol": 1e-5}
+    },
+    {
+      "id": "unit-002",
+      "domain": "units",
+      "tier": "core",
+      "problem": "convert 100 km to mile",
+      "check": {"kind": "numeric", "value": 62.1371, "rtol": 1e-5}
+    },
+    {
+      "id": "unit-003",
+      "domain": "units",
+      "tier": "core",
+      "problem": "convert 5 kg to lb",
+      "check": {"kind": "numeric", "value": 11.0231, "rtol": 1e-5}
+    },
+    {
+      "id": "unit-004",
+      "domain": "units",
+      "tier": "core",
+      "problem": "convert 2.5 h to min",
+      "check": {"kind": "numeric", "value": 150, "rtol": 1e-6}
+    },
+    {
+      "id": "unit-005",
+      "domain": "units",
+      "tier": "core",
+      "problem": "convert 1 atm to kPa",
+      "check": {"kind": "numeric", "value": 101.325, "rtol": 1e-6}
+    },
+    {
+      "id": "unit-006",
+      "domain": "units",
+      "tier": "core",
+      "problem": "convert 500 nm to angstrom",
+      "check": {"kind": "numeric", "value": 5000, "rtol": 1e-6}
+    },
+    {
+      "id": "unit-007",
+      "domain": "units",
+      "tier": "core",
+      "problem": "convert 25 degC to degF",
+      "check": {"kind": "numeric", "value": 77, "rtol": 1e-6}
+    },
+    {
+      "id": "unit-008",
+      "domain": "units",
+      "tier": "reach",
+      "problem": "convert 25 C to F",
+      "check": {"kind": "numeric", "value": 77, "rtol": 1e-6}
+    },
+    {
+      "id": "unit-009",
+      "domain": "units",
+      "tier": "reach",
+      "problem": "How many metres are there in 3 miles?",
+      "check": {"kind": "numeric", "value": 4828.03, "rtol": 1e-4}
+    },
+    {
+      "id": "unit-010",
+      "domain": "units",
+      "tier": "reach",
+      "problem": "A recipe needs 350 g of flour. How many ounces is that?",
+      "check": {"kind": "numeric", "value": 12.346, "rtol": 1e-3}
+    }
+  ]
+}
