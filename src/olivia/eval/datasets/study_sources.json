@@ -1,0 +1,46 @@
+{
+  "name": "study_sources",
+  "version": "0.3",
+  "authored": "2026-08-06",
+  "held_out": "Six short expository passages written for this harness on topics chosen to span the sciences, computing, mathematics and history. They were written as ordinary teaching prose, not shaped around the cloze generator's sentence filter or its longest-word heuristic, and they appear nowhere in tests/ or in any prompt.",
+  "fidelity_criteria": {
+    "blank_present": "The generated card front must contain exactly one blank.",
+    "answer_in_source": "The card's answer must appear verbatim in the source material — the generator may recombine the learner's material, never invent.",
+    "answer_not_in_front": "The answer must not still be readable in the front of its own card. A card that shows its answer tests nothing.",
+    "front_grounded": "Restoring the blank with the answer must reproduce text that occurs in the source.",
+    "unique_fronts": "No two cards in a deck may share a front.",
+    "quiz_answer_not_in_prompt": "A quiz question must not contain its own expected answer verbatim."
+  },
+  "sources": [
+    {
+      "id": "src-photosynthesis",
+      "topic": "Photosynthesis",
+      "text": "Photosynthesis converts light energy into chemical energy stored in glucose. The light-dependent reactions take place in the thylakoid membranes of the chloroplast. Water is split there, releasing oxygen as a by-product. The resulting ATP and NADPH drive the Calvin cycle in the stroma. Carbon dioxide is fixed by the enzyme rubisco into a three-carbon compound. The overall process is the ultimate source of almost all food energy on Earth."
+    },
+    {
+      "id": "src-plate-tectonics",
+      "topic": "Plate tectonics",
+      "text": "The lithosphere is broken into rigid plates that move over the ductile asthenosphere. Plates diverge at mid-ocean ridges, where new oceanic crust forms from upwelling magma. They converge at subduction zones, where the denser plate sinks back into the mantle. Transform boundaries occur where plates slide past one another horizontally. Most earthquakes and volcanoes are concentrated along these boundaries. The theory replaced older ideas of fixed continents during the 1960s."
+    },
+    {
+      "id": "src-tcp-handshake",
+      "topic": "The TCP three-way handshake",
+      "text": "A TCP connection begins with a three-way handshake between client and server. The client sends a segment with the SYN flag set and an initial sequence number. The server replies with a segment carrying both SYN and ACK flags. The client completes the exchange by sending a final acknowledgement. Only then may application data flow in either direction. The handshake establishes agreed sequence numbers so that lost segments can be retransmitted."
+    },
+    {
+      "id": "src-insulin",
+      "topic": "Insulin and blood glucose",
+      "text": "Insulin is a peptide hormone secreted by the beta cells of the pancreatic islets. Its release is triggered by a rise in blood glucose after a meal. Insulin promotes glucose uptake in muscle and adipose tissue through the GLUT4 transporter. It also stimulates glycogen synthesis in the liver and suppresses gluconeogenesis. Glucagon opposes these actions when blood glucose falls between meals. The two hormones together hold circulating glucose within a narrow range."
+    },
+    {
+      "id": "src-bayes",
+      "topic": "Bayes' theorem",
+      "text": "Bayes' theorem relates the conditional probability of a hypothesis to the evidence observed. The posterior is proportional to the likelihood multiplied by the prior. A test with high sensitivity can still yield many false positives when the condition is rare. This happens because the base rate dominates the calculation. Reasoning that ignores the prior probability is known as the base-rate fallacy. Updating beliefs proportionally to evidence is the core of Bayesian inference."
+    },
+    {
+      "id": "src-french-revolution",
+      "topic": "The fiscal crisis of the French Revolution",
+      "text": "By 1788 the French crown was spending far more on debt service than on anything else. Wars, including support for the American revolutionaries, had been financed by borrowing rather than taxation. The privileged orders were largely exempt from the direct land tax. Attempts at fiscal reform were blocked by the parlements and by the nobility. Louis the Sixteenth summoned the Estates-General in 1789 for the first time since 1614. The assembly that followed transformed a budgetary emergency into a constitutional one."
+    }
+  ]
+}
