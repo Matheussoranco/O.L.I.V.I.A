@@ -58,3 +58,47 @@ jobs:
         # No API keys: the suite is offline by contract — conftest forces the
         # null LLM provider and hard-fails any attempted network call.
         run: pytest tests/ --tb=short -q
+
+  eval:
+    name: Eval Suites (offline)
+    runs-on: ubuntu-latest
+    # Every PR. These suites need no API key at all: the symbolic solver, the
+    # symbolic Popperian critic, SM-2 scheduling, quiz grading and the offline
+    # card generator are all deterministic. They are also the paths most likely
+    # to regress silently, which is the entire reason this job exists.
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,science]"
+
+      - name: Score the held-out suites against the recorded baseline
+        # --check exits 1 only when a measured metric breaches a gate in
+        # src/olivia/eval/datasets/gates.json. Metrics belonging to suites that
+        # skipped for want of a backend are never gated, so this cannot go red
+        # for a missing secret.
+        run: |
+          olivia eval --check \
+            --json eval-results.json \
+            --markdown eval-scoreboard.md \
+            --verbose
+
+      - name: Publish the scoreboard to the job summary
+        if: always()
+        run: cat eval-scoreboard.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-offline
+          path: |
+            eval-results.json
+            eval-scoreboard.md
+          if-no-files-found: warn
