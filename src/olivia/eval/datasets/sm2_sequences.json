@@ -1,0 +1,33 @@
+{
+  "name": "sm2_sequences",
+  "version": "0.3",
+  "authored": "2026-08-06",
+  "held_out": "Grade sequences enumerated from the branch structure of the published SM-2 algorithm (first review, second review, the n>2 recurrence, the q<3 relearning branch, the 1.3 E-factor floor) rather than from olivia/study/srs.py. Disjoint from tests/test_study/test_study.py, which exercises single reviews; these are multi-step trajectories.",
+  "scoring": "Every state after every grade is compared field by field against olivia.eval.sm2_reference. A sequence counts as exact only if ease, interval, and repetition count all match at every step.",
+  "sequences": [
+    {"id": "sm2-001", "note": "perfect run; exercises the n>2 recurrence and interval growth", "grades": [5, 5, 5, 5, 5, 5, 5, 5]},
+    {"id": "sm2-002", "note": "steady 'good' answers; ease stays at its initial value", "grades": [4, 4, 4, 4, 4, 4, 4, 4]},
+    {"id": "sm2-003", "note": "borderline passes; ease decays on every review", "grades": [3, 3, 3, 3, 3, 3, 3, 3]},
+    {"id": "sm2-004", "note": "lapse mid-run: the relearning branch after a mature interval", "grades": [5, 5, 5, 0, 5, 5, 5]},
+    {"id": "sm2-005", "note": "repeated lapses alternating with successes", "grades": [5, 0, 5, 0, 5, 0, 5]},
+    {"id": "sm2-006", "note": "total failure run; drives ease to the 1.3 floor", "grades": [0, 0, 0, 0, 0, 0]},
+    {"id": "sm2-007", "note": "q=2 is the lapse boundary (q<3 relearns)", "grades": [5, 5, 2, 4, 4, 4]},
+    {"id": "sm2-008", "note": "q=3 is the pass boundary (q>=3 advances)", "grades": [3, 5, 3, 5, 3, 5]},
+    {"id": "sm2-009", "note": "long perfect run; interval grows past 100 days", "grades": [5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]},
+    {"id": "sm2-010", "note": "ease floor stress: q=1 throughout", "grades": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]},
+    {"id": "sm2-011", "note": "lapse on the very first review", "grades": [0, 5, 5, 5, 5]},
+    {"id": "sm2-012", "note": "lapse on the second review, before the 6-day step", "grades": [5, 0, 5, 5, 5]},
+    {"id": "sm2-013", "note": "single review only", "grades": [5]},
+    {"id": "sm2-014", "note": "single failed review only", "grades": [0]},
+    {"id": "sm2-015", "note": "two reviews: the I(2)=6 step", "grades": [4, 4]},
+    {"id": "sm2-016", "note": "three reviews: the first application of the recurrence", "grades": [4, 4, 4]},
+    {"id": "sm2-017", "note": "mixed realistic session", "grades": [4, 5, 3, 4, 2, 4, 5, 5]},
+    {"id": "sm2-018", "note": "recovery after a run of failures", "grades": [0, 0, 0, 5, 5, 5, 5, 5]},
+    {"id": "sm2-019", "note": "descending quality", "grades": [5, 4, 3, 2, 1, 0]},
+    {"id": "sm2-020", "note": "ascending quality", "grades": [0, 1, 2, 3, 4, 5]},
+    {"id": "sm2-021", "note": "long borderline run at the ease floor", "grades": [3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3]},
+    {"id": "sm2-022", "note": "alternating pass/fail at the boundary", "grades": [3, 2, 3, 2, 3, 2]},
+    {"id": "sm2-023", "note": "mature card lapses twice late", "grades": [5, 5, 5, 5, 5, 0, 5, 0, 5]},
+    {"id": "sm2-024", "note": "all q=5 after a q=4 opening; ease diverges from 2.5", "grades": [4, 5, 5, 5, 5, 5, 5]}
+  ]
+}

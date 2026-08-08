@@ -1,0 +1,101 @@
+name: Eval (LLM paths)
+
+# The model-dependent halves of the eval: the solver's LLM fallback, the LLM
+# critic, and LLM-generated flashcards. These cost money and need a key, so
+# they never run on a pull request.
+#
+# The hard rule this workflow obeys: a repository with no ANTHROPIC_API_KEY
+# secret configured must end green, not red. A fork, a clone, or a first-time
+# contributor has no secret and has done nothing wrong. The preflight job
+# decides whether the scoring job runs at all, and says so out loud in the job
+# summary either way.
+
+on:
+  schedule:
+    # Weekly, Monday 04:00 UTC. Frequent enough to catch drift in a paid path,
+    # rare enough not to matter on the bill.
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+    inputs:
+      suites:
+        description: "Comma-separated suites (blank = all)"
+        required: false
+        default: ""
+
+jobs:
+  preflight:
+    name: Check for a backend
+    runs-on: ubuntu-latest
+    outputs:
+      has_key: ${{ steps.probe.outputs.has_key }}
+    steps:
+      - name: Probe for the API key secret
+        id: probe
+        # Secrets are not readable in `if:` conditions on a job, so the presence
+        # check happens here and is passed down as an output.
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then
+            echo "has_key=true" >> "$GITHUB_OUTPUT"
+            echo "ANTHROPIC_API_KEY is configured — the LLM eval will run." \
+              >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "has_key=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "### LLM eval skipped"
+              echo
+              echo "No \`ANTHROPIC_API_KEY\` secret is configured for this repository,"
+              echo "so the model-dependent suites were not scored. This is a skip, not"
+              echo "a failure: the offline suites in the \`CI\` workflow cover every"
+              echo "deterministic path and run on every pull request."
+              echo
+              echo "To enable this workflow, add \`ANTHROPIC_API_KEY\` under"
+              echo "Settings → Secrets and variables → Actions."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  eval-llm:
+    name: Eval Suites (with a model)
+    needs: preflight
+    if: needs.preflight.outputs.has_key == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -e ".[dev,science,llm]"
+
+      - name: Score every suite, LLM paths included
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OLIVIA_LLM__PROVIDER: anthropic
+        # No --check here. The gates in gates.json are the offline baseline;
+        # holding a paid, non-deterministic path to them would make a red build
+        # mean "the model had an off day". The numbers are published and read.
+        run: |
+          olivia eval --llm \
+            ${{ inputs.suites && format('--suite {0}', inputs.suites) || '' }} \
+            --json eval-results-llm.json \
+            --markdown eval-scoreboard-llm.md \
+            --verbose
+
+      - name: Publish the scoreboard to the job summary
+        if: always()
+        run: cat eval-scoreboard-llm.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results-llm
+          path: |
+            eval-results-llm.json
+            eval-scoreboard-llm.md
+          if-no-files-found: warn

@@ -1,0 +1,45 @@
+{
+  "name": "gates",
+  "version": "0.3",
+  "measured": "2026-08-06, olivia 0.3, Python 3.10.11, offline (provider=none), science extra installed",
+  "policy": "Every bound is the 0.3 baseline the harness actually measured, rounded outward to four decimals to absorb float noise. A gate is a ratchet: raise it when the code improves, never lower it to make CI green. Metrics whose suite was skipped for want of an LLM backend are not gated at all, so CI is never red for lack of a secret.",
+  "floors_note": "Higher is better.",
+  "ceilings_note": "Lower is better. A wrong-answer rate gated from below would reward getting worse.",
+  "ungated": {
+    "study.generation.quiz_answer_not_in_prompt": "Measured 0.000 — every offline quiz question contains its own answer. A floor at zero is not a gate; this is an exit criterion for 0.4 in docs/ROADMAP-1.0.md instead.",
+    "symbolic.symbolic.reach.*": "The reach tier scores 0.040 overall and is the point of the tier, not a regression surface. Gated only once 0.4 sets a target.",
+    "*.measured": "Bookkeeping flags for whether an LLM path ran, not quality metrics."
+  },
+  "floors": {
+    "symbolic.symbolic.accuracy": 0.625,
+    "symbolic.symbolic.precision": 0.9756,
+    "symbolic.symbolic.coverage": 0.6406,
+    "symbolic.symbolic.core.math.accuracy": 1.0,
+    "symbolic.symbolic.core.chemistry.accuracy": 1.0,
+    "symbolic.symbolic.core.physics.accuracy": 1.0,
+    "symbolic.symbolic.core.units.accuracy": 1.0,
+    "research.symbolic.catch_rate": 0.2631,
+    "research.symbolic.balanced_accuracy": 0.6315,
+    "research.symbolic.youden_j": 0.2631,
+    "research.symbolic.catch.unfalsifiable_structural": 1.0,
+    "research.symbolic.catch.overfit_n1_structural": 1.0,
+    "study.sm2.sequence_exact": 0.9583,
+    "study.sm2.step_exact": 0.9872,
+    "study.sm2.lapse_step_exact": 1.0,
+    "study.sm2.ease_exact": 1.0,
+    "study.sm2.repetitions_exact": 1.0,
+    "study.sm2.interval_exact": 0.9872,
+    "study.sm2.due_exact": 0.9872,
+    "study.grading.accuracy": 1.0,
+    "study.generation.card_yield": 1.0,
+    "study.generation.answer_in_source": 1.0,
+    "study.generation.answer_not_in_front": 1.0,
+    "study.generation.blank_present": 1.0,
+    "study.generation.front_grounded": 1.0,
+    "study.generation.deck_unique_fronts": 1.0
+  },
+  "ceilings": {
+    "symbolic.symbolic.wrong_rate": 0.0157,
+    "research.symbolic.false_alarm_rate": 0.0
+  }
+}

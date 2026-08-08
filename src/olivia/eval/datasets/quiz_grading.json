@@ -1,0 +1,149 @@
+{
+  "name": "quiz_grading",
+  "version": "0.3",
+  "authored": "2026-08-06",
+  "held_out": "Enumerated from the answer forms a learner can plausibly type — a 0-based index, a letter, the option's own text, the wrong option, nothing at all — plus the open-question path. Written against what grading *should* do, not against grade_quiz()'s branches.",
+  "conventions": "Indices are 0-based, matching QuizQuestion.answer_index. A free-form answer that does not match exactly is reported as ungraded (null), never guessed wrong.",
+  "cases": [
+    {
+      "id": "grade-001",
+      "note": "0-based index typed as a digit",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "2",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-002",
+      "note": "lowercase option letter",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "c",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-003",
+      "note": "uppercase option letter",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "C",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-004",
+      "note": "the option's exact text",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "Chloroplast",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-005",
+      "note": "the option's text in a different case",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "chloroplast",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-006",
+      "note": "surrounding whitespace must not change the verdict",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "  Chloroplast  ",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-007",
+      "note": "wrong option text",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "Mitochondrion",
+      "expect_correct": false
+    },
+    {
+      "id": "grade-008",
+      "note": "wrong index",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "0",
+      "expect_correct": false
+    },
+    {
+      "id": "grade-009",
+      "note": "wrong letter",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "a",
+      "expect_correct": false
+    },
+    {
+      "id": "grade-010",
+      "note": "an unanswered multiple-choice question is not correct",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "",
+      "expect_correct": false
+    },
+    {
+      "id": "grade-011",
+      "note": "an out-of-range index is not correct",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "9",
+      "expect_correct": false
+    },
+    {
+      "id": "grade-012",
+      "note": "a letter beyond the option list is not correct",
+      "question": {"prompt": "Which organelle hosts the Calvin cycle?", "options": ["Nucleus", "Mitochondrion", "Chloroplast", "Ribosome"], "answer_index": 2},
+      "given": "z",
+      "expect_correct": false
+    },
+    {
+      "id": "grade-013",
+      "note": "index 0 as a digit — the falsy-index trap",
+      "question": {"prompt": "Which plate boundary produces new oceanic crust?", "options": ["Divergent", "Convergent", "Transform", "Passive"], "answer_index": 0},
+      "given": "0",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-014",
+      "note": "index 0 as a letter",
+      "question": {"prompt": "Which plate boundary produces new oceanic crust?", "options": ["Divergent", "Convergent", "Transform", "Passive"], "answer_index": 0},
+      "given": "a",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-015",
+      "note": "index 0, wrong answer given — must not pass by falsiness",
+      "question": {"prompt": "Which plate boundary produces new oceanic crust?", "options": ["Divergent", "Convergent", "Transform", "Passive"], "answer_index": 0},
+      "given": "Transform",
+      "expect_correct": false
+    },
+    {
+      "id": "grade-016",
+      "note": "open question answered exactly",
+      "question": {"prompt": "What does the TCP handshake establish?", "options": [], "answer_text": "agreed sequence numbers"},
+      "given": "agreed sequence numbers",
+      "expect_correct": true
+    },
+    {
+      "id": "grade-017",
+      "note": "open question paraphrased — ungraded, not wrong",
+      "question": {"prompt": "What does the TCP handshake establish?", "options": [], "answer_text": "agreed sequence numbers"},
+      "given": "both sides agree on sequence numbers",
+      "expect_correct": null
+    },
+    {
+      "id": "grade-018",
+      "note": "open question left blank — ungraded",
+      "question": {"prompt": "What does the TCP handshake establish?", "options": [], "answer_text": "agreed sequence numbers"},
+      "given": "",
+      "expect_correct": null
+    },
+    {
+      "id": "grade-019",
+      "note": "open question with no reference answer — ungraded",
+      "question": {"prompt": "Explain subduction in your own words.", "options": [], "answer_text": ""},
+      "given": "the denser plate sinks",
+      "expect_correct": null
+    },
+    {
+      "id": "grade-020",
+      "note": "open question answered exactly but in a different case",
+      "question": {"prompt": "What does the TCP handshake establish?", "options": [], "answer_text": "agreed sequence numbers"},
+      "given": "Agreed Sequence Numbers",
+      "expect_correct": true
+    }
+  ]
+}
