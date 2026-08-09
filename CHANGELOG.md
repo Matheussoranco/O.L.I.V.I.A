@@ -4,6 +4,84 @@ All notable changes to O.L.I.V.I.A. are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project aims to
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] — 2026-08-09 — The evaluation harness, and the first honest baseline
+
+O.L.I.V.I.A. had never been benchmarked. 0.3.0 builds the harness, runs it, and
+records what came back — including the parts that are bad. Nothing was fixed in
+response to its own measurements; each failure became a roadmap exit criterion
+instead, so this baseline describes the code as it stood rather than as the eval
+prompted it to become.
+
+### Added
+
+- **Three held-out eval suites**, with explicit chance baselines.
+  - *Symbolic solving* — 64 cases (39 `core`, 25 `reach`) across maths, chemistry,
+    physics and units, scoring the symbolic-first path and the LLM fallback
+    **separately**, so a regression in the former cannot hide behind the latter.
+  - *Research-cycle critique* — 27 cases: 19 deliberately flawed across 6 families
+    plus **8 sound controls**, scoring catch rate *and* false-alarm rate. A critic
+    that rejects everything is not a good critic.
+  - *Study tools* — 104 items: 24 SM-2 sequences (157 reviews) replayed against an
+    independent reference implementation, 20 grading cases, and 6 source passages
+    yielding 36 flashcards and 36 quiz questions.
+- **`olivia eval`**, with `--check` gating on measured floors *and* ceilings.
+- `tests/test_eval/` asserts the datasets' own honesty rules, so the eval cannot be
+  softened one commit at a time.
+
+### Measured — the 0.3.0 baseline
+
+| suite | result |
+|---|---|
+| Symbolic solving | **62.5%** overall — core 39/39 (100%), reach 1/25 (4%) |
+| | precision 97.6%, abstain 35.9%, **wrong_rate 1.6%** |
+| Critique | **26.3%** catch (5/19), **0.0%** false alarm (0/8), Youden's J 0.263 |
+| SM-2 | **98.7%** step-exact (155/157), **lapse branch 100%** (39/39) |
+| Grading | 100% (20/20) |
+| Flashcard fidelity | 100% on all four checks |
+| Offline quiz | **0/36** |
+
+Three findings worth stating plainly:
+
+- **The Popperian critique is a schema validator.** It catches
+  `unfalsifiable_structural` 3/3 and `overfit_n1_structural` 2/2, and **0/4
+  circular, 0/4 contradicted-by-own-evidence, 0/4 semantically unfalsifiable,
+  0/2 overgeneralised-from-n=1**. It catches exactly what it was coded for and
+  nothing requiring semantic judgement. The 0% false-alarm rate is genuine, not
+  the artefact of a critic that never fires — the structural families prove it fires.
+- **Offline quiz generation is broken.** Every question contains its own answer
+  verbatim, because the prompt quotes the source sentence and `answer_text` *is*
+  that sentence.
+- **`d/dx of e^x` returns `e**x*f*o*log(e)` at `confidence=0.9`** — implicit
+  multiplication parses the English word "of" as `o*f`. Confidently wrong, which
+  is worse than the abstention the solver manages elsewhere.
+
+The 2/157 SM-2 divergence is banker's rounding: `425 × 1.3 = 552.5 → 552`, where
+half-up gives 553.
+
+### Fixed
+
+- **`_load_suites()` could silently skip whole eval suites.** It guarded its lazy
+  imports with `if _REGISTRY: return`, treating "non-empty" as "loaded" — so any
+  module importing one suite prevented the other two from ever loading. The visible
+  symptom was a `KeyError` on `--suite study`; the dangerous one was silent, with
+  `run_all()` scoring only whatever happened to be imported and publishing it as a
+  full run. A green "all gates hold" while two thirds of the eval never executed.
+  Caught by the harness's own tests on their first run.
+
+### CI
+
+- **`CI / eval`** runs on every push and PR with no key required; `--check` exits
+  non-zero only on a breached gate.
+- **`Eval (LLM paths)`** runs weekly and on demand, never on a PR. A preflight job
+  probes for `ANTHROPIC_API_KEY` and passes the answer down, because secrets cannot
+  be read in a job-level `if:`. With no secret the workflow **ends green** with a
+  "skipped, not failed" note.
+
+### Docs
+
+- `docs/ROADMAP-1.0.md`, following the I.S.A.A.C. pattern: every version-line claim
+  gated behind a measured number rather than an adjective.
+
 ## [0.2.0] — 2026-07-27
 
 A licensing and toolchain release. **No behavioural change** — the only code
