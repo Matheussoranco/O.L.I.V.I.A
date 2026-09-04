@@ -128,11 +128,13 @@ class HermesAgent:
         registry: ToolRegistry,
         system_prompt: str = "",
         max_turns: int = 8,
+        allow_risky_tools: bool = False,
     ) -> None:
         self.client = client
         self.registry = registry
         self.system_prompt = system_prompt
         self.max_turns = max_turns
+        self.allow_risky_tools = allow_risky_tools
 
     def run(self, task: str, context: str = "") -> AgentResult:
         if not self.client.available:
@@ -159,7 +161,10 @@ class HermesAgent:
                 break
             result.tool_calls.extend(calls)
             responses = [
-                format_tool_response(c.name, self.registry.execute(c.name, c.arguments))
+                format_tool_response(
+                    c.name,
+                    self.registry.execute(c.name, c.arguments, allow_risky=self.allow_risky_tools),
+                )
                 for c in calls
             ]
             messages.append({"role": "user", "content": "\n".join(responses)})

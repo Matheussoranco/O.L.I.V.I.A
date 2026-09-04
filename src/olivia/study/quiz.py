@@ -18,7 +18,26 @@ from olivia.llm.structured import ask_json
 logger = logging.getLogger(__name__)
 
 _SENTENCE_RE = re.compile(r"[^.!?]+[.!?]")
+_WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{4,}")
 _DIFFICULTIES = ("easy", "medium", "hard")
+_STOPWORDS = {
+    "about",
+    "after",
+    "between",
+    "could",
+    "does",
+    "from",
+    "have",
+    "into",
+    "that",
+    "their",
+    "these",
+    "this",
+    "through",
+    "using",
+    "which",
+    "with",
+}
 
 
 def _coerce_question(item: object) -> QuizQuestion | None:
@@ -64,17 +83,22 @@ def generate_quiz(
             if questions:
                 return questions[:n]
 
-    # Offline: open questions built from the learner's own material.
+    n = min(max(int(n), 1), 100)
+    # Offline: cloze questions built from the learner's own material. The
+    # answer is deliberately removed from the prompt, so the item tests
+    # retrieval rather than merely quoting the source sentence.
     questions = []
     for match in _SENTENCE_RE.finditer(content):
         sentence = " ".join(match.group().split())
         if not 30 <= len(sentence) <= 300:
             continue
+        words = [word for word in _WORD_RE.findall(sentence) if word.casefold() not in _STOPWORDS]
+        if not words:
+            continue
+        target = max(words, key=len)
+        masked = re.sub(rf"\b{re.escape(target)}\b", "____", sentence, count=1)
         questions.append(
-            QuizQuestion(
-                prompt=f"Explain in your own words: what does this describe? — “{sentence}”",
-                answer_text=sentence,
-            )
+            QuizQuestion(prompt=f"Complete the missing term: “{masked}”", answer_text=target)
         )
         if len(questions) >= n:
             break

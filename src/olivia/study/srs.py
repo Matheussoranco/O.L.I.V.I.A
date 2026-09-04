@@ -15,6 +15,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from olivia.core.records import Flashcard
+from olivia.core.storage import atomic_write_json, quarantine_corrupt_file
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +66,15 @@ class Deck:
         self.topic = topic
         self.path = (root or settings.data_dir() / "decks") / f"{slugify(topic)}.json"
         self.cards: list[Flashcard] = []
+        self._load_failed = False
         if self.path.exists():
             try:
                 raw = json.loads(self.path.read_text(encoding="utf-8"))
+                if not isinstance(raw, list):
+                    raise ValueError("deck root must be a list")
                 self.cards = [Flashcard(**item) for item in raw]
             except Exception as exc:
+                self._load_failed = True
                 logger.warning("Could not load deck %s: %s", self.path, exc)
 
     def add(self, cards: list[Flashcard]) -> int:
@@ -103,5 +108,10 @@ class Deck:
     def save(self) -> Path:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         payload = [dataclasses.asdict(c) for c in self.cards]
-        self.path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        if self._load_failed:
+            backup = quarantine_corrupt_file(self.path)
+            if backup:
+                logger.warning("Preserved corrupt deck as %s", backup)
+            self._load_failed = False
+        atomic_write_json(self.path, payload)
         return self.path

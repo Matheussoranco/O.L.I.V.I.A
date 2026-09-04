@@ -8,6 +8,7 @@ codeless plans, and its output is explicitly labelled reasoning, not data.
 from __future__ import annotations
 
 import logging
+import math
 
 from olivia.core.records import AnalysisResult, ExperimentPlan
 from olivia.llm.client import LLMClient, get_client
@@ -22,7 +23,8 @@ _ALPHA = 0.05
 
 def _as_float(value: object) -> float | None:
     try:
-        return float(value)  # type: ignore[arg-type]
+        result = float(value)  # type: ignore[arg-type]
+        return result if math.isfinite(result) else None
     except (TypeError, ValueError):
         return None
 
@@ -40,7 +42,26 @@ def _from_execution(plan: ExperimentPlan, output: dict) -> AnalysisResult:
     )
     effect_size = _as_float(payload.get("effect_size"))
     p_value = _as_float(payload.get("p_value"))
-    supports = p_value is not None and p_value < _ALPHA
+    ci_low = _as_float(payload.get("ci_low"))
+    ci_high = _as_float(payload.get("ci_high"))
+    direction = plan.expected_effect_direction
+    direction_ok = effect_size is not None and (
+        direction == "any"
+        or (direction == "positive" and effect_size > 0)
+        or (direction == "negative" and effect_size < 0)
+    )
+    ci_consistent = not (ci_low is not None and ci_high is not None and ci_low <= 0 <= ci_high)
+    supports = (
+        (
+            p_value is not None
+            and 0.0 <= p_value <= 1.0
+            and direction_ok
+            and ci_consistent
+            and p_value < _ALPHA
+        )
+        if effect_size is not None
+        else None
+    )
 
     pieces = [f"Simulation executed ({plan.design})."]
     if effect_size is not None:
@@ -55,8 +76,8 @@ def _from_execution(plan: ExperimentPlan, output: dict) -> AnalysisResult:
         summary="; ".join(pieces),
         statistics=statistics,
         effect_size=effect_size,
-        ci_low=_as_float(payload.get("ci_low")),
-        ci_high=_as_float(payload.get("ci_high")),
+        ci_low=ci_low,
+        ci_high=ci_high,
         p_value=p_value,
         interpretation=(
             f"Measured outcome of executed simulation code (alpha = {_ALPHA})."

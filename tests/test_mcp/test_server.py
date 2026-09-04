@@ -59,8 +59,8 @@ def test_unknown_method_and_unknown_tool():
 
 def test_tool_exception_returns_is_error_result():
     response = _call("notebook_add", {"kind": "note"})  # missing required 'content'
-    assert response["result"]["isError"] is True
-    assert "error" in _text(response)
+    assert response["error"]["code"] == -32602
+    assert "content" in response["error"]["message"]
 
 
 # ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 from olivia.core.records import new_id
+from olivia.core.storage import atomic_write_json, quarantine_corrupt_file
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +26,16 @@ class Notebook:
 
         self.path = path or settings.data_dir() / "notebook.json"
         self._entries: list[dict] = []
+        self._load_failed = False
         if self.path.exists():
             try:
                 self._entries = json.loads(self.path.read_text(encoding="utf-8"))
+                if not isinstance(self._entries, list) or not all(
+                    isinstance(entry, dict) for entry in self._entries
+                ):
+                    raise ValueError("notebook root must be a list of objects")
             except Exception as exc:
+                self._load_failed = True
                 logger.warning("Could not load notebook %s: %s", self.path, exc)
 
     def add(
@@ -83,7 +90,10 @@ class Notebook:
 
     def save(self) -> Path:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        self.path.write_text(
-            json.dumps(self._entries, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        if self._load_failed:
+            backup = quarantine_corrupt_file(self.path)
+            if backup:
+                logger.warning("Preserved corrupt notebook as %s", backup)
+            self._load_failed = False
+        atomic_write_json(self.path, self._entries)
         return self.path

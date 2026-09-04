@@ -22,6 +22,7 @@ logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger(__name__)
 
 PROTOCOL_VERSION = "2024-11-05"
+_MAX_RESPONSE_CHARS = 50_000
 # Derived, never hardcoded: a literal here silently drifts from the package
 # version on every release and reports a stale version to the MCP client.
 SERVER_INFO = {"name": "olivia", "version": __version__}
@@ -115,10 +116,10 @@ def _olivia_quiz(topic: str, content: str = "", n: int = 5) -> Any:
     return [asdict(q) for q in generate_quiz(topic, content=content, n=n)]
 
 
-def _literature_search(query: str, max_results: int = 10) -> Any:
+def _literature_search(query: str, max_results: int = 10, allow_network: bool = False) -> Any:
     from olivia.tools.literature import literature_search
 
-    return [asdict(p) for p in literature_search(query, max_results)]
+    return [asdict(p) for p in literature_search(query, max_results, allow_network=allow_network)]
 
 
 def _python_exec(code: str, timeout: float = 30.0) -> Any:
@@ -196,7 +197,7 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
         _schema(
             {
                 "topic": {"type": "string"},
-                "n": {"type": "integer"},
+                "n": {"type": "integer", "minimum": 1, "maximum": 100},
                 "difficulty": {"type": "string", "enum": ["easy", "medium", "hard"]},
             },
             ["topic"],
@@ -238,7 +239,7 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
             {
                 "topic": {"type": "string"},
                 "goal": {"type": "string"},
-                "weeks": {"type": "integer"},
+                "weeks": {"type": "integer", "minimum": 1, "maximum": 52},
             },
             ["topic"],
         ),
@@ -250,7 +251,7 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
             {
                 "topic": {"type": "string"},
                 "content": {"type": "string"},
-                "n": {"type": "integer"},
+                "n": {"type": "integer", "minimum": 1, "maximum": 100},
             },
             ["topic"],
         ),
@@ -262,7 +263,7 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
             {
                 "topic": {"type": "string"},
                 "content": {"type": "string"},
-                "n": {"type": "integer"},
+                "n": {"type": "integer", "minimum": 1, "maximum": 100},
             },
             ["topic"],
         ),
@@ -271,17 +272,36 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
     "olivia_lab": (
         "Multi-agent seminar on a question: researcher drafts, critic attacks, writer "
         "synthesises. Requires an LLM backend.",
-        _schema({"question": {"type": "string"}, "rounds": {"type": "integer"}}, ["question"]),
+        _schema(
+            {
+                "question": {"type": "string"},
+                "rounds": {"type": "integer", "minimum": 1, "maximum": 5},
+            },
+            ["question"],
+        ),
         _lab_investigate,
     ),
     "literature_search": (
         "Search arXiv, Crossref, and Semantic Scholar; returns deduplicated records.",
-        _schema({"query": {"type": "string"}, "max_results": {"type": "integer"}}, ["query"]),
+        _schema(
+            {
+                "query": {"type": "string"},
+                "max_results": {"type": "integer", "minimum": 1, "maximum": 100},
+                "allow_network": {"type": "boolean", "default": False},
+            },
+            ["query"],
+        ),
         _literature_search,
     ),
     "python_exec": (
         "Execute Python code in an isolated subprocess; returns {ok, stdout, stderr}.",
-        _schema({"code": {"type": "string"}, "timeout": {"type": "number"}}, ["code"]),
+        _schema(
+            {
+                "code": {"type": "string"},
+                "timeout": {"type": "number", "minimum": 0.1, "maximum": 30.0},
+            },
+            ["code"],
+        ),
         _python_exec,
     ),
     "notebook_add": (
@@ -302,7 +322,7 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
             {
                 "query": {"type": "string"},
                 "kind": {"type": "string"},
-                "limit": {"type": "integer"},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 100},
             },
             [],
         ),
@@ -323,9 +343,14 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
 
 def _handle(request: dict[str, Any]) -> dict[str, Any] | None:
     """Dispatch one JSON-RPC request; None for notifications."""
+    if not isinstance(request, dict) or request.get("jsonrpc") != "2.0":
+        request_id = request.get("id") if isinstance(request, dict) else None
+        return _error(request_id, -32600, "invalid request")
     method = request.get("method", "")
     request_id = request.get("id")
-    params = request.get("params") or {}
+    params = request.get("params", {})
+    if not isinstance(params, dict):
+        return _error(request_id, -32602, "params must be an object")
 
     if method == "initialize":
         result: Any = {
@@ -342,10 +367,15 @@ def _handle(request: dict[str, Any]) -> dict[str, Any] | None:
         }
     elif method == "tools/call":
         name = params.get("name", "")
-        arguments = params.get("arguments") or {}
+        arguments = params.get("arguments", {})
         entry = TOOLS.get(name)
         if entry is None:
             return _error(request_id, -32602, f"unknown tool '{name}'")
+        if not isinstance(name, str) or not isinstance(arguments, dict):
+            return _error(request_id, -32602, "tool name and arguments are invalid")
+        validation_error = _validate_arguments(entry[1], arguments)
+        if validation_error:
+            return _error(request_id, -32602, validation_error)
         try:
             output = entry[2](**arguments)
             text = (
@@ -353,6 +383,8 @@ def _handle(request: dict[str, Any]) -> dict[str, Any] | None:
                 if isinstance(output, str)
                 else json.dumps(output, ensure_ascii=False, default=str, indent=2)
             )
+            if len(text) > _MAX_RESPONSE_CHARS:
+                text = text[:_MAX_RESPONSE_CHARS] + "\n[response truncated]"
             result = {"content": [{"type": "text", "text": text}], "isError": False}
         except Exception as exc:
             logger.exception("tool %s failed", name)
@@ -369,6 +401,50 @@ def _handle(request: dict[str, Any]) -> dict[str, Any] | None:
     if request_id is None:
         return None
     return {"jsonrpc": "2.0", "id": request_id, "result": result}
+
+
+def _validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> str | None:
+    """Validate the small JSON-schema subset used by the local tool registry."""
+    properties = schema.get("properties", {})
+    required = schema.get("required", [])
+    missing = [name for name in required if name not in arguments]
+    if missing:
+        return f"missing required argument(s): {', '.join(missing)}"
+    unknown = [name for name in arguments if name not in properties]
+    if unknown:
+        return f"unknown argument(s): {', '.join(unknown)}"
+
+    def check(name: str, value: Any, rule: dict[str, Any]) -> str | None:
+        kind = rule.get("type")
+        valid = {
+            "string": isinstance(value, str),
+            "boolean": isinstance(value, bool),
+            "integer": isinstance(value, int) and not isinstance(value, bool),
+            "number": isinstance(value, (int, float)) and not isinstance(value, bool),
+            "array": isinstance(value, list),
+            "object": isinstance(value, dict),
+        }.get(kind, True)
+        if not valid:
+            return f"argument '{name}' must be {kind}"
+        if "enum" in rule and value not in rule["enum"]:
+            return f"argument '{name}' must be one of {rule['enum']}"
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if "minimum" in rule and value < rule["minimum"]:
+                return f"argument '{name}' is below the minimum"
+            if "maximum" in rule and value > rule["maximum"]:
+                return f"argument '{name}' exceeds the maximum"
+        if isinstance(value, list) and isinstance(rule.get("items"), dict):
+            for index, item in enumerate(value):
+                error = check(f"{name}[{index}]", item, rule["items"])
+                if error:
+                    return error
+        return None
+
+    for name, value in arguments.items():
+        error = check(name, value, properties[name])
+        if error:
+            return error
+    return None
 
 
 def _error(request_id: Any, code: int, message: str) -> dict[str, Any]:

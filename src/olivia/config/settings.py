@@ -53,6 +53,8 @@ class Settings(BaseSettings):
 
     llm: LLMSettings = Field(default_factory=LLMSettings)
     research: ResearchSettings = Field(default_factory=ResearchSettings)
+    network_enabled: bool = False
+    """Allow outbound literature/page requests; disabled by default."""
     home_dir: Path = Field(default_factory=lambda: Path.home() / ".olivia")
     anthropic_api_key: str = ""
     """Optional explicit key; falls back to ANTHROPIC_API_KEY / ant profiles."""

@@ -85,7 +85,7 @@ def test_run_cycle_ask_records_meta_outcome():
     run_cycle(_STATS_QUESTION, mode="ask", client=NullClient())
     stats = get_meta_learner().stats()
     assert "cycle:ask" in stats["by_task"]["ask"]  # the cycle itself
-    assert "stats" in stats["by_task"]["ask"]  # and the expert attempt
+    assert "stats" in stats["by_task"]["ask_observed"]  # telemetry, not ground truth
 
 
 def test_build_graph_optional_langgraph():

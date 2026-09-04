@@ -51,11 +51,17 @@ def solve(
 def research(
     question: str,
     output: str = typer.Option("", "--output", "-o", help="Write the report markdown here."),
+    network: bool = typer.Option(
+        False, "--network", help="Explicitly enable outbound literature requests for this run."
+    ),
 ) -> None:
     """Run a full scientific discovery cycle."""
     from pathlib import Path
 
+    from olivia.config import settings
     from olivia.core.graph import run_cycle
+
+    settings.network_enabled = network
 
     with console.status("running research cycle…"):
         state = run_cycle(question, mode="research")
@@ -67,6 +73,31 @@ def research(
     if output:
         Path(output).write_text(report.report_markdown, encoding="utf-8")
         console.print(f"[dim]report written to {output}[/dim]")
+
+
+@app.command("academic")
+def academic_route(
+    request: str,
+    workflow: str = typer.Option(
+        "", "--workflow", help="ARS alias, e.g. paper, review, experiment."
+    ),
+    show_workflow: bool = typer.Option(False, "--show-workflow", help="Print the selected recipe."),
+) -> None:
+    """Route an academic request through the vendored ARS-Codex workflows."""
+    from olivia.academic_research import manifest, route_request, workflow_text
+
+    try:
+        selected = route_request(request, workflow=workflow or None)
+        info = manifest()
+    except (RuntimeError, ValueError) as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+    console.print(f"workflow: [bold]{selected.workflow}[/bold] ({selected.mode})")
+    console.print(f"reason: {selected.reason}")
+    console.print(f"ARS-Codex adapter: {info.get('adapter_version', 'unknown')}")
+    console.print(f"recipe: {selected.recipe}")
+    if show_workflow:
+        console.print(Markdown(workflow_text(selected)))
 
 
 @study_app.command("plan")
@@ -302,6 +333,9 @@ def tools(
     action: str = typer.Argument("list", help="'list', 'show <name>', or 'run <name>'."),
     name: str = typer.Argument("", help="Tool name for 'show' / 'run'."),
     args: str = typer.Option("{}", "--args", help="JSON object of arguments for 'run'."),
+    allow_risky: bool = typer.Option(
+        False, "--allow-risky", help="Explicitly allow tools marked as code-execution risk."
+    ),
 ) -> None:
     """Inspect and invoke the science tool registry.
 
@@ -349,7 +383,7 @@ def tools(
         except _json.JSONDecodeError as exc:
             console.print(f"[red]--args is not valid JSON: {exc}[/red]")
             raise typer.Exit(2) from exc
-        result = registry.execute(name, parsed)
+        result = registry.execute(name, parsed, allow_risky=allow_risky)
         console.print(_json.dumps(result, indent=2, default=str))
         return
 

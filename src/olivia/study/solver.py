@@ -24,7 +24,8 @@ _SOLVE_RE = re.compile(
     r"\bsolve\b[^:]*?:?\s*(.+?)\s*=\s*(.+?)(?:\s+for\s+\w+)?\s*[.?]?\s*$", re.IGNORECASE
 )
 _DERIV_RE = re.compile(
-    r"\b(?:differentiate|derivative of|d/dx)\b\s*:?\s*(.+?)\s*[.?]?\s*$", re.IGNORECASE
+    r"\b(?:differentiate|derivative\s+of|d/dx)\b\s*:?\s*(?:of\s+)?(.+?)\s*[.?]?\s*$",
+    re.IGNORECASE,
 )
 _INTEGRATE_RE = re.compile(
     r"\bintegra(?:te|l of)\b\s*:?\s*(.+?)\s*(?:\bdx\b)?\s*[.?]?\s*$", re.IGNORECASE
@@ -76,18 +77,11 @@ def _pick_symbol(expr):
 
 
 def _sympify(text: str):
-    from sympy.parsing.sympy_parser import (
-        implicit_multiplication_application,
-        parse_expr,
-        standard_transformations,
-    )
+    from olivia.tools.science import safe_sympify
 
-    # Allow implicit multiplication ('5x', '3x^2', 'sin(x)cos(x)') — the way
-    # people actually write equations, and how the README's own examples
-    # ('solve x**2 - 5x + 6 = 0 for x') are phrased. Plain sympy.sympify()
-    # raises a SyntaxError on these and the caller treats that as "no match".
-    transformations = (*standard_transformations, implicit_multiplication_application)
-    return parse_expr(text.replace("^", "**"), transformations=transformations)
+    # Allow implicit multiplication ('5x', '3x^2', 'sin(x)cos(x)') while
+    # keeping the parser's Python builtins and imports disabled.
+    return safe_sympify(text, implicit_multiplication=True)
 
 
 def _solve_math(problem: str) -> WorkedSolution | None:

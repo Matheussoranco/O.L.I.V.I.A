@@ -8,11 +8,15 @@ execution backend for experiment simulations designed by the research cycle.
 
 from __future__ import annotations
 
+import ast
 import logging
 import math
+import os
+import re
 import statistics
 import subprocess
 import sys
+import textwrap
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -22,26 +26,218 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
-# Sandboxed execution
+# Restricted execution
 # ---------------------------------------------------------------------------
 
 
-def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
-    """Run Python code in an isolated subprocess; return {ok, stdout, stderr}."""
+_MAX_CODE_CHARS = 50_000
+_MAX_OUTPUT_CHARS = 20_000
+_MAX_TIMEOUT = 30.0
+_SAFE_IMPORTS = {
+    "collections",
+    "decimal",
+    "fractions",
+    "itertools",
+    "json",
+    "math",
+    "random",
+    "statistics",
+}
+_BLOCKED_CALLS = {
+    "breakpoint",
+    "compile",
+    "eval",
+    "exec",
+    "getattr",
+    "globals",
+    "input",
+    "locals",
+    "open",
+    "setattr",
+    "vars",
+}
+
+
+class _UnsafeCode(ValueError):
+    """A code snippet violates the restricted execution policy."""
+
+
+class _CodePolicy(ast.NodeVisitor):
+    """Reject filesystem, process, reflection, and dynamic-code primitives."""
+
+    def visit_Import(self, node: ast.Import) -> None:
+        for alias in node.names:
+            if alias.name.split(".", 1)[0] not in _SAFE_IMPORTS:
+                raise _UnsafeCode(f"import '{alias.name}' is not allowed")
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if not node.module or node.module.split(".", 1)[0] not in _SAFE_IMPORTS:
+            raise _UnsafeCode(f"import '{node.module or ''}' is not allowed")
+        self.generic_visit(node)
+
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id.startswith("_") or node.id in _BLOCKED_CALLS:
+            raise _UnsafeCode(f"name '{node.id}' is not allowed")
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:
+        if node.attr.startswith("_"):
+            raise _UnsafeCode(f"private attribute '{node.attr}' is not allowed")
+        self.generic_visit(node)
+
+    def visit_Constant(self, node: ast.Constant) -> None:
+        if isinstance(node.value, str) and "__" in node.value:
+            raise _UnsafeCode("dunder strings are not allowed")
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:
+        if isinstance(node.func, ast.Name) and node.func.id in _BLOCKED_CALLS:
+            raise _UnsafeCode(f"call '{node.func.id}' is not allowed")
+        self.generic_visit(node)
+
+
+def _validate_code(code: str) -> None:
+    if not isinstance(code, str) or not code.strip():
+        raise _UnsafeCode("code must be a non-empty string")
+    if len(code) > _MAX_CODE_CHARS:
+        raise _UnsafeCode(f"code exceeds {_MAX_CODE_CHARS} characters")
     try:
+        tree = ast.parse(code, mode="exec")
+    except SyntaxError as exc:
+        raise _UnsafeCode(f"invalid Python: {exc}") from exc
+    _CodePolicy().visit(tree)
+
+
+def _safe_environment() -> dict[str, str]:
+    """Keep interpreter plumbing but do not expose user credentials."""
+    keep = {"LANG", "LC_ALL", "PATH", "PATHEXT", "SYSTEMROOT", "TEMP", "TMP", "WINDIR"}
+    return {key: value for key, value in os.environ.items() if key in keep}
+
+
+def _restricted_wrapper(code: str) -> str:
+    """Build a subprocess wrapper with a small builtin and import surface."""
+    return textwrap.dedent(
+        f"""
+        import builtins as _builtins
+        import io as _io
+        import sys as _sys
+        import traceback as _traceback
+
+        class _LimitedWriter(_io.TextIOBase):
+            def __init__(self, stream, limit):
+                self.stream = stream
+                self.limit = limit
+                self.count = 0
+
+            def write(self, value):
+                value = str(value)
+                remaining = self.limit - self.count
+                if remaining <= 0:
+                    raise RuntimeError("output limit exceeded")
+                self.stream.write(value[:remaining])
+                self.stream.flush()
+                self.count += min(len(value), remaining)
+                if len(value) > remaining:
+                    raise RuntimeError("output limit exceeded")
+                return len(value)
+
+            def flush(self):
+                self.stream.flush()
+
+        _safe_modules = {sorted(_SAFE_IMPORTS)!r}
+        _real_import = _builtins.__import__
+        def _safe_import(name, globals=None, locals=None, fromlist=(), level=0):
+            if level or name.split('.', 1)[0] not in _safe_modules:
+                raise ImportError("module is not allowed by the OLIVIA execution policy")
+            return _real_import(name, globals, locals, fromlist, level)
+
+        _safe_builtins = {{
+            name: getattr(_builtins, name) for name in (
+                "ArithmeticError", "AssertionError", "BaseException", "Exception",
+                "TypeError", "ValueError", "RuntimeError",
+                "abs", "all", "any", "bool", "dict", "enumerate", "filter", "float",
+                "int", "isinstance", "len", "list", "map", "max", "min", "print",
+                "range", "repr", "round", "set", "sorted", "str", "sum", "tuple",
+                "zip",
+            )
+        }}
+        _safe_builtins.update({{"False": False, "None": None, "True": True}})
+        _safe_builtins["__import__"] = _safe_import
+        _globals = {{"__name__": "__main__", "__builtins__": _safe_builtins}}
+        _sys.stdout = _LimitedWriter(_sys.__stdout__, {_MAX_OUTPUT_CHARS})
+        _sys.stderr = _LimitedWriter(_sys.__stderr__, 4000)
+        try:
+            exec(compile({code!r}, "<olivia-restricted>", "exec"), _globals, _globals)
+        except BaseException:
+            _traceback.print_exc(file=_sys.__stderr__.stream)
+            _sys.exit(1)
+        """
+    )
+
+
+def safe_sympify(expression: str, implicit_multiplication: bool = False):
+    """Parse a mathematical expression without Python builtins or imports."""
+    import sympy
+    from sympy.parsing.sympy_parser import (
+        implicit_multiplication_application,
+        parse_expr,
+        standard_transformations,
+    )
+
+    if not isinstance(expression, str) or not expression.strip() or len(expression) > 10_000:
+        raise ValueError("expression is empty or too long")
+    if "__" in expression or any(
+        token.startswith("_") for token in re.findall(r"[A-Za-z_]\w*", expression)
+    ):
+        raise ValueError("private names are not allowed")
+    try:
+        _CodePolicy().visit(ast.parse(expression, mode="eval"))
+    except SyntaxError:
+        if not implicit_multiplication or not re.fullmatch(
+            r"[A-Za-z0-9_+\-*/^().,\s]+", expression
+        ):
+            raise ValueError("invalid mathematical expression") from None
+    transformations = standard_transformations
+    if implicit_multiplication:
+        transformations = (*transformations, implicit_multiplication_application)
+    globals_dict = {name: value for name, value in vars(sympy).items() if not name.startswith("_")}
+    globals_dict["e"] = sympy.E
+    globals_dict["__builtins__"] = {}
+    return parse_expr(
+        expression.replace("^", "**"),
+        transformations=transformations,
+        global_dict=globals_dict,
+    )
+
+
+def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
+    """Run restricted pure-Python code; return ``{ok, stdout, stderr}``.
+
+    This is a constrained simulation runner, not a complete OS security
+    boundary. Hostile workloads still belong in a real container or job
+    sandbox. Filesystem/process/network imports and credential-bearing
+    environment variables are intentionally unavailable here.
+    """
+    try:
+        _validate_code(code)
+        timeout = min(max(float(timeout), 0.1), _MAX_TIMEOUT)
         proc = subprocess.run(
-            [sys.executable, "-I", "-X", "utf8", "-c", code],
+            [sys.executable, "-I", "-X", "utf8", "-c", _restricted_wrapper(code)],
             capture_output=True,
             text=True,
             timeout=timeout,
             encoding="utf-8",
             errors="replace",
+            env=_safe_environment(),
         )
         return {
             "ok": proc.returncode == 0,
-            "stdout": proc.stdout[-20000:],
+            "stdout": proc.stdout[-_MAX_OUTPUT_CHARS:],
             "stderr": proc.stderr[-4000:],
         }
+    except _UnsafeCode as exc:
+        return {"ok": False, "stdout": "", "stderr": f"execution blocked: {exc}"}
     except subprocess.TimeoutExpired:
         return {"ok": False, "stdout": "", "stderr": f"timeout after {timeout}s"}
     except Exception as exc:
@@ -64,8 +260,10 @@ def symbolic_math(expression: str, operation: str = "simplify", variable: str = 
     except ImportError:
         return "error: sympy not installed (pip install olivia[science])"
     try:
+        if not isinstance(variable, str) or not variable.isidentifier() or variable.startswith("_"):
+            return "error: invalid variable name"
         symbol = sympy.Symbol(variable)
-        expr = sympy.sympify(expression)
+        expr = safe_sympify(expression)
         if operation == "solve":
             return str(sympy.solve(expr, symbol))
         if operation == "diff":
@@ -166,7 +364,12 @@ def register_tools(registry: ToolRegistry) -> None:
                 "type": "object",
                 "properties": {
                     "code": {"type": "string"},
-                    "timeout": {"type": "number", "default": 30.0},
+                    "timeout": {
+                        "type": "number",
+                        "default": 30.0,
+                        "minimum": 0.1,
+                        "maximum": 30.0,
+                    },
                 },
                 "required": ["code"],
             },

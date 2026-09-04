@@ -78,6 +78,9 @@ def design_experiment(
                 risks=_str_list(payload.get("risks")),
                 code=str(payload.get("code") or "").strip(),
             )
+            direction = str(payload.get("expected_effect_direction", "any")).lower()
+            if direction in {"positive", "negative", "any"}:
+                plan.expected_effect_direction = direction  # type: ignore[assignment]
             effect = payload.get("expected_effect_size")
             if isinstance(effect, (int, float)) and effect > 0:
                 plan.sample_size = required_sample_size(float(effect))

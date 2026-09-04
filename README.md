@@ -21,8 +21,8 @@ specialised in study, learning, and scientific research and discovery.
 2. **Popperian rigour** — every hypothesis carries explicit predictions and a
    concrete falsification test; unfalsifiable hypotheses are rejected.
 3. **Graceful degradation** — the whole system imports, runs, and tests
-   **offline**: no API keys, no network. Every LLM consumer has a
-   deterministic symbolic fallback.
+   **offline**: outbound literature/page requests are disabled by default.
+   Every LLM consumer has a deterministic symbolic fallback.
 4. **Quantitative care** — effect sizes and uncertainty, not just p-values.
 
 ## Install
@@ -48,6 +48,8 @@ olivia ask "Why is the sky blue?"                 # Mixture-of-Experts answer
 olivia solve "solve x**2 - 5x + 6 = 0 for x"      # GPAI-style worked solution
 olivia solve "molar mass of C6H12O6"              # chemistry, physics, units too
 olivia research "Does spaced repetition beat massed practice?"
+olivia research "Does spaced repetition beat massed practice?" --network
+olivia academic "Review this manuscript's methods and citations"
 olivia study plan "Linear algebra" --weeks 6
 olivia study cards "Krebs cycle" -n 15            # flashcards → SM-2 deck
 olivia study quiz "Bayesian statistics"
@@ -83,7 +85,7 @@ src/olivia/
 ├── llm/         client.py (Anthropic | Ollama | Null) · hermes.py (tool-calling loop)
 │                prompts.py · structured.py (tolerant JSON extraction)
 ├── tools/       registry.py · literature.py (arXiv/Crossref/S2) · science.py
-│                (sandboxed python_exec, sympy, Welch t-test, power analysis)
+│                (restricted python_exec, sympy, Welch t-test, power analysis)
 │                units.py (dimensional analysis) · chemistry.py (molar mass,
 │                balancing) · physics.py (CODATA constants)
 ├── research/    literature → hypothesis → experiment → analysis → critic → report
@@ -119,15 +121,30 @@ stdio (17 tools: `olivia_ask`, `olivia_solve`, `olivia_research`,
 {"mcpServers": {"olivia": {"command": "olivia", "args": ["mcp-serve"]}}}
 ```
 
+### Academic Research Suite integration
+
+O.L.I.V.I.A. vendors the ARS-Codex router under
+[`skills/academic-research-suite`](skills/academic-research-suite) and exposes
+the native route inspector as `olivia academic`. It resolves research,
+paper-writing, peer-review, end-to-end pipeline, and experiment requests to
+the corresponding `WORKFLOW.md` recipe. The same snapshot is available as a
+local Codex plugin under [`plugins/ars-codex`](plugins/ars-codex), registered by
+the local marketplace at
+[`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json).
+
+The global Codex installation is also available after installing the skill
+from GitHub; restart or refresh the Codex session if its skill inventory was
+already loaded.
+
 ## Tests
 
 ```bash
-python -m pytest -q     # 166 tests, fully offline: no keys, no network
+python -m pytest -q     # 202 tests, fully offline by default
 ```
 
 ## Status
 
-**0.2.0 — Alpha.** See [CHANGELOG.md](CHANGELOG.md). The API and CLI may still
+**0.4.0 — Alpha.** See [CHANGELOG.md](CHANGELOG.md). The API and CLI may still
 change; the offline-first contract will not.
 
 ## License

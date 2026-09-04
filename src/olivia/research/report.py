@@ -7,6 +7,7 @@ conclusion, open questions, and a calibrated confidence.
 
 from __future__ import annotations
 
+import dataclasses
 import logging
 from contextlib import suppress
 from statistics import fmean
@@ -28,10 +29,16 @@ logger = logging.getLogger(__name__)
 def _supported_ids(analyses: list[AnalysisResult], experiments: list[ExperimentPlan]) -> set[str]:
     """Hypothesis ids whose experiments produced supporting analyses."""
     by_experiment = {e.id: e.hypothesis_id for e in experiments}
+    grouped: dict[str, list[bool | None]] = {}
+    for analysis in analyses:
+        hypothesis_id = by_experiment.get(analysis.experiment_id)
+        if hypothesis_id:
+            grouped.setdefault(hypothesis_id, []).append(analysis.supports_hypothesis)
     return {
-        by_experiment[a.experiment_id]
-        for a in analyses
-        if a.supports_hypothesis and a.experiment_id in by_experiment
+        hypothesis_id
+        for hypothesis_id, verdicts in grouped.items()
+        if any(verdict is True for verdict in verdicts)
+        and not any(verdict is False for verdict in verdicts)
     }
 
 
@@ -119,6 +126,27 @@ def write_report(
     """Assemble the end-to-end product of one research cycle."""
     client = client or get_client("strong")
     supported = _supported_ids(analyses, experiments)
+    analysed_by_hypothesis: dict[str, list[bool | None]] = {}
+    by_experiment = {e.id: e.hypothesis_id for e in experiments}
+    for analysis in analyses:
+        hypothesis_id = by_experiment.get(analysis.experiment_id)
+        if hypothesis_id:
+            analysed_by_hypothesis.setdefault(hypothesis_id, []).append(
+                analysis.supports_hypothesis
+            )
+    rendered_hypotheses = [
+        dataclasses.replace(
+            hypothesis,
+            status=(
+                "supported"
+                if hypothesis.id in supported
+                else "refuted"
+                if any(v is False for v in analysed_by_hypothesis.get(hypothesis.id, []))
+                else hypothesis.status
+            ),
+        )
+        for hypothesis in hypotheses
+    ]
 
     supported_confidences = [h.confidence for h in hypotheses if h.id in supported]
     confidence = fmean(supported_confidences) if supported_confidences else 0.0
@@ -150,7 +178,7 @@ def write_report(
     return DiscoveryReport(
         question=question,
         papers=papers,
-        hypotheses=hypotheses,
+        hypotheses=rendered_hypotheses,
         experiments=experiments,
         analyses=analyses,
         conclusion=conclusion,
@@ -159,7 +187,7 @@ def write_report(
         report_markdown=_markdown(
             question,
             papers,
-            hypotheses,
+            rendered_hypotheses,
             experiments,
             analyses,
             critique,

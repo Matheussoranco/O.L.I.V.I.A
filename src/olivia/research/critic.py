@@ -7,6 +7,7 @@ critic (when available) adds depth but can never *remove* a symbolic finding.
 from __future__ import annotations
 
 import logging
+import re
 
 from olivia.core.records import AnalysisResult, ExperimentPlan, Hypothesis
 from olivia.llm.client import LLMClient, get_client
@@ -17,6 +18,26 @@ from olivia.research.hypothesis import is_falsifiable
 logger = logging.getLogger(__name__)
 
 _MIN_SAMPLE = 10
+_CIRCULAR_MARKERS = (
+    "precisely the study that produces",
+    "property being its capacity",
+    "identified by the school's high performance",
+    "means whatever",
+    "as the classification guarantees",
+    "derived from it",
+    "computed from adaptivity",
+)
+_IMMUNISATION_MARKERS = (
+    "misidentified",
+    "mislabelled",
+    "reclassified",
+    "no trace apart",
+    "permanent by its nature",
+    "inner rhythm",
+    "by selection",
+    "by construction",
+)
+_UNIVERSAL_MARKERS = re.compile(r"\b(every|everyone|all|any learner|no item)\b", re.I)
 
 
 def _symbolic_findings(
@@ -29,10 +50,21 @@ def _symbolic_findings(
     analysed_ids = {a.experiment_id for a in analyses}
 
     for h in hypotheses:
+        text = " ".join([h.statement, *h.predictions, h.falsification_test]).casefold()
         if not is_falsifiable(h):
             findings.append(
                 f"Hypothesis '{h.statement[:80]}…' is not falsifiable "
                 "(missing predictions or a concrete refutation test)."
+            )
+        if any(marker in text for marker in _CIRCULAR_MARKERS):
+            findings.append(
+                f"Hypothesis '{h.statement[:80]}…' uses a circular operationalisation: "
+                "the proposed cause or classification is defined by the outcome."
+            )
+        if any(marker in text for marker in _IMMUNISATION_MARKERS):
+            findings.append(
+                f"Hypothesis '{h.statement[:80]}…' immunises itself against disconfirmation "
+                "by redefining failures or making the construct observationally empty."
             )
     for e in experiments:
         if not any(v.kind == "controlled" for v in e.variables):
@@ -49,6 +81,29 @@ def _symbolic_findings(
         if a.p_value is not None and a.effect_size is None:
             findings.append(
                 f"Analysis of {a.experiment_id} reports a p-value without an effect size."
+            )
+        if a.supports_hypothesis is False:
+            findings.append(
+                f"Analysis of {a.experiment_id} contradicts the hypothesis, but the cycle "
+                "must not carry it forward as supported."
+            )
+
+    by_experiment = {e.id: e for e in experiments}
+    for a in analyses:
+        experiment = by_experiment.get(a.experiment_id)
+        if experiment is None:
+            continue
+        matched = next((h for h in hypotheses if h.id == experiment.hypothesis_id), None)
+        if matched is None:
+            continue
+        combined = f"{matched.statement} {a.summary}".casefold()
+        if _UNIVERSAL_MARKERS.search(combined) and any(
+            marker in combined
+            for marker in ("one participant", "single ", "one case", "two of three")
+        ):
+            findings.append(
+                f"Experiment {experiment.id} generalises a universal claim from a tiny "
+                "or single-case observation."
             )
     return findings
 

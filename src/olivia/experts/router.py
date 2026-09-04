@@ -70,10 +70,23 @@ def route(question: str) -> list[tuple[Expert, float]]:
 
 
 def _record(expert: Expert, success: bool, duration_s: float) -> None:
+    """Record telemetry without treating confidence as ground-truth success.
+
+    A confidence threshold is an acceptance signal, not a correctness label.
+    Automatic observations therefore live in a separate task bucket and never
+    feed back into routing. Callers with an external answer key may still use
+    ``MetaLearner.record("ask", ...)`` for validated outcomes.
+    """
     try:
         from olivia.meta.learner import get_meta_learner
 
-        get_meta_learner().record("ask", expert.name, success, duration_s)
+        get_meta_learner().record(
+            "ask_observed",
+            expert.name,
+            success,
+            duration_s,
+            meta={"validated": False, "source": "confidence_threshold"},
+        )
     except Exception as exc:
         logger.debug("meta record failed: %s", exc)
 

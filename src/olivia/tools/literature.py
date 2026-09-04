@@ -7,10 +7,14 @@ its own knowledge and says so, per the epistemic-honesty principle).
 
 from __future__ import annotations
 
+import inspect
+import ipaddress
 import logging
 import re
+import socket
 import xml.etree.ElementTree as ET
 from typing import TYPE_CHECKING
+from urllib.parse import urlparse
 
 from olivia.core.records import Paper
 
@@ -26,13 +30,49 @@ _ATOM = "{http://www.w3.org/2005/Atom}"
 _ARXIV = "{http://arxiv.org/schemas/atom}"
 
 
-def _get(url: str, params: dict | None = None) -> object | None:
+def _network_enabled(allow_network: bool | None) -> bool:
+    if allow_network is not None:
+        return allow_network
+    from olivia.config import settings
+
+    return settings.network_enabled
+
+
+def _safe_url(url: str) -> bool:
+    """Reject non-web, credential-bearing, and private-network destinations."""
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username:
+        return False
+    try:
+        addresses = {
+            item[4][0]
+            for item in socket.getaddrinfo(
+                parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM
+            )
+        }
+    except OSError:
+        return False
+    return all(
+        not (ip := ipaddress.ip_address(address)).is_private
+        and not ip.is_loopback
+        and not ip.is_link_local
+        and not ip.is_multicast
+        and not ip.is_reserved
+        and not ip.is_unspecified
+        for address in addresses
+    )
+
+
+def _get(url: str, params: dict | None = None, allow_network: bool | None = None) -> object | None:
     """One guarded GET; returns the httpx.Response or None."""
     import httpx
 
+    if not _network_enabled(allow_network) or not _safe_url(url):
+        logger.info("network request blocked by policy: %s", url)
+        return None
     try:
         response = httpx.get(
-            url, params=params, headers=_UA, timeout=_TIMEOUT, follow_redirects=True
+            url, params=params, headers=_UA, timeout=_TIMEOUT, follow_redirects=False
         )
         response.raise_for_status()
         return response
@@ -41,16 +81,26 @@ def _get(url: str, params: dict | None = None) -> object | None:
         return None
 
 
+def _request(url: str, params: dict, allow_network: bool | None) -> object | None:
+    """Call the low-level fetcher compatibly with test/custom source adapters."""
+    if allow_network is None:
+        return _get(url, params)
+    return _get(url, params, allow_network=allow_network)
+
+
 # ---------------------------------------------------------------------------
 # arXiv
 # ---------------------------------------------------------------------------
 
 
-def search_arxiv(query: str, max_results: int = 10) -> list[Paper]:
+def search_arxiv(
+    query: str, max_results: int = 10, allow_network: bool | None = None
+) -> list[Paper]:
     """Search the arXiv Atom API."""
-    response = _get(
+    response = _request(
         "https://export.arxiv.org/api/query",
         {"search_query": f"all:{query}", "max_results": max_results, "sortBy": "relevance"},
+        allow_network,
     )
     if response is None:
         return []
@@ -95,15 +145,18 @@ def search_arxiv(query: str, max_results: int = 10) -> list[Paper]:
 _JATS_TAG_RE = re.compile(r"<[^>]+>")
 
 
-def search_crossref(query: str, max_results: int = 10) -> list[Paper]:
+def search_crossref(
+    query: str, max_results: int = 10, allow_network: bool | None = None
+) -> list[Paper]:
     """Search the Crossref works API (peer-reviewed venues, DOIs, citations)."""
-    response = _get(
+    response = _request(
         "https://api.crossref.org/works",
         {
             "query": query,
             "rows": max_results,
             "select": "title,author,issued,abstract,URL,DOI,container-title,is-referenced-by-count",
         },
+        allow_network,
     )
     if response is None:
         return []
@@ -145,15 +198,18 @@ def search_crossref(query: str, max_results: int = 10) -> list[Paper]:
 # ---------------------------------------------------------------------------
 
 
-def search_semanticscholar(query: str, max_results: int = 10) -> list[Paper]:
+def search_semanticscholar(
+    query: str, max_results: int = 10, allow_network: bool | None = None
+) -> list[Paper]:
     """Search the Semantic Scholar Graph API (free tier, rate-limited)."""
-    response = _get(
+    response = _request(
         "https://api.semanticscholar.org/graph/v1/paper/search",
         {
             "query": query,
             "limit": max_results,
             "fields": "title,authors,year,abstract,url,externalIds,venue,citationCount",
         },
+        allow_network,
     )
     if response is None:
         return []
@@ -209,15 +265,24 @@ def literature_search(
     query: str,
     max_results: int = 12,
     sources: list[str] | None = None,
+    allow_network: bool | None = None,
 ) -> list[Paper]:
     """Fan out across sources concurrently, dedupe by DOI/title, rank by citations."""
     from concurrent.futures import ThreadPoolExecutor
 
+    max_results = min(max(int(max_results), 1), 100)
     chosen = [s for s in (sources or list(_SOURCES)) if s in _SOURCES]
     per_source = max(3, max_results // max(len(chosen), 1) + 2)
 
     with ThreadPoolExecutor(max_workers=len(chosen) or 1) as pool:
-        futures = [pool.submit(_SOURCES[s], query, per_source) for s in chosen]
+        futures = []
+        for source_name in chosen:
+            source = _SOURCES[source_name]
+            accepts_policy = "allow_network" in inspect.signature(source).parameters
+            if accepts_policy:
+                futures.append(pool.submit(source, query, per_source, allow_network=allow_network))
+            else:
+                futures.append(pool.submit(source, query, per_source))
         batches = [f.result() for f in futures]
 
     seen: dict[str, Paper] = {}
@@ -243,9 +308,10 @@ _SCRIPT_RE = re.compile(r"<(script|style)[^>]*>.*?</\1>", re.DOTALL | re.IGNOREC
 _TAG_RE = re.compile(r"<[^>]+>")
 
 
-def fetch_url(url: str, max_chars: int = 20000) -> str:
+def fetch_url(url: str, max_chars: int = 20000, allow_network: bool | None = None) -> str:
     """Fetch a URL and return readable plain text (bs4 when installed)."""
-    response = _get(url)
+    max_chars = min(max(int(max_chars), 100), 100_000)
+    response = _get(url) if allow_network is None else _get(url, allow_network=allow_network)
     if response is None:
         return ""
     html = response.text
@@ -282,12 +348,19 @@ def register_tools(registry: ToolRegistry) -> None:
                 "type": "object",
                 "properties": {
                     "query": {"type": "string", "description": "Search query"},
-                    "max_results": {"type": "integer", "default": 12},
+                    "max_results": {
+                        "type": "integer",
+                        "default": 12,
+                        "minimum": 1,
+                        "maximum": 100,
+                    },
+                    "allow_network": {"type": "boolean", "default": False},
                 },
                 "required": ["query"],
             },
-            fn=lambda query, max_results=12: [
-                to_dict(p) for p in literature_search(query, max_results)
+            fn=lambda query, max_results=12, allow_network=False: [
+                to_dict(p)
+                for p in literature_search(query, max_results, allow_network=allow_network)
             ],
             risk=1,
         )
@@ -300,7 +373,13 @@ def register_tools(registry: ToolRegistry) -> None:
                 "type": "object",
                 "properties": {
                     "url": {"type": "string"},
-                    "max_chars": {"type": "integer", "default": 20000},
+                    "max_chars": {
+                        "type": "integer",
+                        "default": 20000,
+                        "minimum": 100,
+                        "maximum": 100000,
+                    },
+                    "allow_network": {"type": "boolean", "default": False},
                 },
                 "required": ["url"],
             },

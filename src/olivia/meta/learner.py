@@ -1,4 +1,4 @@
-"""MetaLearner — record every task outcome, learn which strategies win.
+"""MetaLearner — record labelled task outcomes, learn which strategies win.
 
 Inherited from I.S.A.A.C.: a small SQLite ledger of (task_kind, strategy,
 success) rows whose Laplace-smoothed win-rates feed back into expert routing.
@@ -29,7 +29,11 @@ CREATE TABLE IF NOT EXISTS outcomes (
 
 
 class MetaLearner:
-    """Outcome ledger with win-rate queries."""
+    """Outcome ledger with win-rate queries.
+
+    Routing consumers should only query buckets whose rows have an external
+    correctness label. Self-reported confidence belongs in a separate bucket.
+    """
 
     def __init__(self, db_path: Path | None = None) -> None:
         from olivia.config import settings

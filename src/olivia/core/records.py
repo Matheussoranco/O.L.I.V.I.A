@@ -85,6 +85,7 @@ class ExperimentPlan:
     procedure: list[str] = field(default_factory=list)
     sample_size: int | None = None
     power: float | None = None
+    expected_effect_direction: Literal["positive", "negative", "any"] = "any"
     materials: list[str] = field(default_factory=list)
     analysis_plan: str = ""
     code: str = ""

@@ -69,11 +69,22 @@ class ToolRegistry:
     def names(self) -> list[str]:
         return sorted(self._tools)
 
-    def execute(self, name: str, arguments: dict[str, Any] | None = None) -> Any:
-        """Invoke a tool; return an error string rather than raising."""
+    def execute(
+        self,
+        name: str,
+        arguments: dict[str, Any] | None = None,
+        *,
+        allow_risky: bool = False,
+    ) -> Any:
+        """Invoke a tool; risky tools require an explicit caller opt-in."""
         tool = self._tools.get(name)
         if tool is None or tool.fn is None:
             return f"error: unknown tool '{name}'"
+        if tool.risk >= 5 and not allow_risky:
+            return f"error: tool '{name}' requires explicit allow_risky=True"
+        validation_error = _validate_arguments(tool.parameters, arguments or {})
+        if validation_error:
+            return f"error: {validation_error}"
         try:
             return tool.fn(**(arguments or {}))
         except TypeError as exc:
@@ -84,3 +95,41 @@ class ToolRegistry:
 
 
 default_registry = ToolRegistry()
+
+
+def _validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> str | None:
+    """Validate the bounded JSON-schema subset used by local tools."""
+    properties = schema.get("properties", {})
+    missing = [key for key in schema.get("required", []) if key not in arguments]
+    if missing:
+        return f"missing required argument(s): {', '.join(missing)}"
+    unknown = [key for key in arguments if key not in properties]
+    if unknown:
+        return f"unknown argument(s): {', '.join(unknown)}"
+    for name, value in arguments.items():
+        rule = properties[name]
+        kind = rule.get("type")
+        valid = {
+            "string": isinstance(value, str),
+            "boolean": isinstance(value, bool),
+            "integer": isinstance(value, int) and not isinstance(value, bool),
+            "number": isinstance(value, (int, float)) and not isinstance(value, bool),
+            "array": isinstance(value, list),
+            "object": isinstance(value, dict),
+        }.get(kind, True)
+        if not valid:
+            return f"argument '{name}' must be {kind}"
+        if "enum" in rule and value not in rule["enum"]:
+            return f"argument '{name}' must be one of {rule['enum']}"
+        if isinstance(value, (int, float)) and not isinstance(value, bool):
+            if "minimum" in rule and value < rule["minimum"]:
+                return f"argument '{name}' is below the minimum"
+            if "maximum" in rule and value > rule["maximum"]:
+                return f"argument '{name}' exceeds the maximum"
+        if isinstance(value, list) and isinstance(rule.get("items"), dict):
+            for index, item in enumerate(value):
+                item_rule = rule["items"]
+                item_kind = item_rule.get("type")
+                if item_kind == "string" and not isinstance(item, str):
+                    return f"argument '{name}[{index}]' must be string"
+    return None

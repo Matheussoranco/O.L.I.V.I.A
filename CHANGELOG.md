@@ -4,6 +4,30 @@ All notable changes to O.L.I.V.I.A. are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project aims to
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] — 2026-09-03 — Security boundaries and ARS-Codex integration
+
+### Added
+
+- ARS-Codex academic research workflows, native project routing, and local
+  Codex plugin packaging.
+- Explicit offline-by-default network policy with URL and SSRF checks.
+- MCP argument validation, bounded inputs, bounded outputs, and JSON-RPC errors.
+- Atomic JSON persistence with preservation of corrupt prior files.
+
+### Changed
+
+- Restricted Python execution and symbolic parsing no longer expose system
+  imports, credentials, dynamic execution, or filesystem primitives.
+- Scientific conclusions now require compatible effect direction, finite values,
+  and confidence intervals that do not contradict the claim.
+- Research critique detects circular, immunised, contradicted, and overfit claims.
+- Offline quizzes use answer-masked cloze prompts; expert telemetry no longer
+  treats confidence as correctness.
+
+### Validation
+
+- 202 tests pass; Ruff passes; `olivia eval --check` passes.
+
 ## [0.3.0] — 2026-08-09 — The evaluation harness, and the first honest baseline
 
 O.L.I.V.I.A. had never been benchmarked. 0.3.0 builds the harness, runs it, and
@@ -187,4 +211,5 @@ LLM consumer.
 - `ruff check src tests` clean (target py310, line length 100).
 
 [0.2.0]: https://github.com/matheussoranco/O.L.I.V.I.A/releases/tag/v0.2.0
+[0.4.0]: https://github.com/Matheussoranco/O.L.I.V.I.A/releases/tag/v0.4.0
 [0.1.0-alpha]: https://github.com/matheussoranco/O.L.I.V.I.A/releases/tag/v0.1.0-alpha
