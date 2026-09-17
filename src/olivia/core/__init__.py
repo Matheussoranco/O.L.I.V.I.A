@@ -1,5 +1,6 @@
 """Core package: records, state, and the cognitive graph."""
 
+from olivia.core.errors import OliviaError, SolverParseError
 from olivia.core.graph import build_graph, run_cycle
 from olivia.core.records import (
     AnalysisResult,
@@ -23,9 +24,11 @@ __all__ = [
     "Flashcard",
     "Hypothesis",
     "Mode",
+    "OliviaError",
     "OliviaState",
     "Paper",
     "QuizQuestion",
+    "SolverParseError",
     "StudyPlan",
     "Variable",
     "build_graph",

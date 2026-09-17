@@ -11,13 +11,39 @@ from __future__ import annotations
 
 import logging
 import re
+from tokenize import TokenError
 
+from olivia.core.errors import OliviaError, SolverParseError
 from olivia.core.records import SolutionStep, WorkedSolution
 from olivia.llm.client import LLMClient, get_client
 from olivia.llm.prompts import SOLVER_SYSTEM
 from olivia.llm.structured import ask_json
 
 logger = logging.getLogger(__name__)
+
+# Base failures for expression parsing/evaluation. SympifyError subclasses
+# Exception (not ValueError), so it is appended lazily via _parse_errors() —
+# sympy stays an optional, lazily-imported extra. TokenError is what sympy's
+# parser raises on truncated input such as ``"(2+3"``.
+_BASE_PARSE_ERRORS: tuple[type[BaseException], ...] = (
+    ValueError,
+    TypeError,
+    ZeroDivisionError,
+    ArithmeticError,
+    AttributeError,
+    SyntaxError,
+    TokenError,
+)
+
+
+def _parse_errors() -> tuple[type[BaseException], ...]:
+    """Except-tuple for parse/eval failures, incl. SympifyError when present."""
+    try:
+        from sympy.core.sympify import SympifyError
+    except ImportError:
+        return _BASE_PARSE_ERRORS
+    return (SympifyError, *_BASE_PARSE_ERRORS)
+
 
 # ── Maths intent patterns ───────────────────────────────────────────────────
 _SOLVE_RE = re.compile(
@@ -98,8 +124,11 @@ def _solve_math(problem: str) -> WorkedSolution | None:
             expr = _sympify(f"({lhs})-({rhs})")
             var = _pick_symbol(expr)
             roots = sympy.solve(expr, var)
-        except Exception:
-            return None
+        except _parse_errors() as exc:
+            logger.exception("solve: cannot parse equation %r", f"{lhs} = {rhs}")
+            raise SolverParseError(
+                f"cannot parse equation: {lhs} = {rhs}", expression=f"{lhs} = {rhs}"
+            ) from exc
         steps: list[SolutionStep] = []
         _new_step(steps, "Restate the equation", f"{lhs} = {rhs}")
         moved = sympy.simplify(expr)
@@ -128,8 +157,12 @@ def _solve_math(problem: str) -> WorkedSolution | None:
                 expr = _sympify(match.group(1).strip())
                 var = _pick_symbol(expr)
                 result = sympy.diff(expr, var) if op == "diff" else sympy.integrate(expr, var)
-            except Exception:
-                return None
+            except _parse_errors() as exc:
+                logger.exception("%s: cannot parse expression %r", verb, match.group(1).strip())
+                raise SolverParseError(
+                    f"cannot parse expression for {verb.lower()}: {match.group(1).strip()}",
+                    expression=match.group(1).strip(),
+                ) from exc
             steps = []
             symbol = "+ C" if op == "integrate" else ""
             _new_step(steps, f"{verb} with respect to {var}", f"{expr}")
@@ -153,8 +186,12 @@ def _solve_math(problem: str) -> WorkedSolution | None:
             try:
                 expr = _sympify(match.group(1).strip())
                 result = getattr(sympy, fn_name)(expr)
-            except Exception:
-                return None
+            except _parse_errors() as exc:
+                logger.exception("%s: cannot parse expression %r", verb, match.group(1).strip())
+                raise SolverParseError(
+                    f"cannot parse expression for {verb.lower()}: {match.group(1).strip()}",
+                    expression=match.group(1).strip(),
+                ) from exc
             steps = []
             _new_step(steps, "Start from", f"{expr}")
             _new_step(steps, verb, f"{result}")
@@ -179,9 +216,12 @@ def _evaluate_arithmetic(problem: str, text: str) -> WorkedSolution | None:
     if not _ARITH_RE.match(candidate) or not re.search(r"[-+*/]", candidate):
         return None
     try:
-        expr = sympy.sympify(normalised)
-    except Exception:
-        return None
+        expr = _sympify(normalised)
+    except _parse_errors() as exc:
+        logger.exception("evaluate: cannot parse arithmetic %r", normalised)
+        raise SolverParseError(
+            f"cannot parse arithmetic expression: {normalised}", expression=normalised
+        ) from exc
     if expr.free_symbols:
         return None
     value = expr if expr.is_Rational else sympy.N(expr)
@@ -440,6 +480,9 @@ def solve_problem(
     for attempt in attempts:
         try:
             solution = attempt(problem)
+        except OliviaError as exc:  # matched intent, broken expression: surfaced, not "no match"
+            logger.warning("solver %s parse error: %s", attempt.__name__, exc)
+            solution = None
         except Exception as exc:  # a solver bug must not sink the whole call
             logger.debug("solver %s failed: %s", attempt.__name__, exc)
             solution = None

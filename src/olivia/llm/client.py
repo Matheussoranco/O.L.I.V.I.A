@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import abc
 import logging
+import time
 from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Literal
@@ -116,7 +117,9 @@ class AnthropicClient(LLMClient):
             import anthropic  # noqa: F401
         except ImportError:
             return False
-        return True
+        from olivia.config import settings
+
+        return bool(settings.resolved_anthropic_key())
 
     def complete(
         self,
@@ -154,23 +157,38 @@ class AnthropicClient(LLMClient):
 class OllamaClient(LLMClient):
     name = "ollama"
 
+    #: How long a reachability probe stays valid before re-probing.
+    probe_ttl_s: float = 60.0
+    #: Short timeout so ``available`` stays a cheap check.
+    probe_timeout_s: float = 1.0
+
     def __init__(self, model: str | None = None, base_url: str | None = None) -> None:
         from olivia.config import settings
 
         self.model = model or settings.llm.ollama_model
         self.base_url = (base_url or settings.llm.ollama_base_url).rstrip("/")
         self._reachable: bool | None = None
+        self._reachable_at: float = 0.0
+        self._probed_url: str | None = None
 
     @property
     def available(self) -> bool:
-        if self._reachable is None:
-            import httpx
+        now = time.monotonic()
+        if (
+            self._reachable is not None
+            and self._probed_url == self.base_url
+            and (now - self._reachable_at) < self.probe_ttl_s
+        ):
+            return self._reachable
+        import httpx
 
-            try:
-                httpx.get(f"{self.base_url}/api/tags", timeout=1.0)
-                self._reachable = True
-            except Exception:
-                self._reachable = False
+        try:
+            httpx.get(f"{self.base_url}/api/tags", timeout=self.probe_timeout_s)
+            self._reachable = True
+        except Exception:
+            self._reachable = False
+        self._reachable_at = now
+        self._probed_url = self.base_url
         return self._reachable
 
     def complete(
@@ -212,25 +230,46 @@ class OllamaClient(LLMClient):
 # ---------------------------------------------------------------------------
 
 
-@lru_cache(maxsize=8)
+@lru_cache(maxsize=32)
+def _build_client(tier: Tier, provider: str, model: str, base_url: str) -> LLMClient:
+    """Build (and cache) one client per ``(tier, provider, model, base_url)``."""
+    if provider == "ollama":
+        return OllamaClient(base_url=base_url)
+    if provider == "anthropic":
+        return AnthropicClient(model=model)
+    return NullClient()
+
+
 def get_client(tier: Tier = "default") -> LLMClient:
-    """Return the configured client for a tier (cached per process)."""
+    """Return the configured client for a tier.
+
+    Results are cached per ``(tier, provider, model, base_url)`` so a settings
+    change yields a fresh client instead of a stale one. Call
+    :func:`refresh_clients` (or ``get_client.cache_clear()``) after changing
+    the configuration to drop cached instances eagerly.
+    """
     from olivia.config import settings
 
     cfg = settings.llm
     model = {"default": cfg.model, "fast": cfg.fast_model, "strong": cfg.strong_model}[tier]
     provider = cfg.provider.lower()
+    base_url = cfg.ollama_base_url
 
-    if provider == "none":
-        return NullClient()
-    if provider == "ollama":
-        return OllamaClient()
-    if provider == "anthropic":
-        return AnthropicClient(model=model)
-    # auto: Anthropic only when credentials are explicitly visible, so a bare
-    # offline checkout never fires network calls by surprise.
-    if settings.resolved_anthropic_key():
-        client = AnthropicClient(model=model)
-        if client.available:
-            return client
-    return NullClient()
+    if provider == "auto":
+        # Anthropic only when credentials are explicitly visible, so a bare
+        # offline checkout never fires network calls by surprise.
+        provider = "anthropic" if settings.resolved_anthropic_key() else "none"
+    if provider not in ("none", "ollama", "anthropic"):
+        provider = "none"
+    return _build_client(tier, provider, model, base_url)
+
+
+def refresh_clients() -> None:
+    """Drop all cached LLM clients; the next :func:`get_client` rebuilds them."""
+    _build_client.cache_clear()
+
+
+# Backwards compatibility: ``get_client.cache_clear()`` (lru_cache API) keeps
+# working — it now clears the underlying per-config client cache.
+get_client.cache_clear = refresh_clients  # type: ignore[attr-defined]
+get_client.cache_info = _build_client.cache_info  # type: ignore[attr-defined]

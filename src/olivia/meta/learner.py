@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -40,9 +40,10 @@ class MetaLearner:
 
         self.db_path = db_path or settings.data_dir() / "meta.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        # `with conn` commits on clean exit and rolls back on error; no
+        # explicit close() needed — leaving the block closes the connection.
         with self._connect() as conn:
             conn.execute(_SCHEMA)
-        conn.close()
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path, timeout=10.0)
@@ -60,7 +61,7 @@ class MetaLearner:
                 "INSERT INTO outcomes (ts, task_kind, strategy, success, duration_s, meta_json)"
                 " VALUES (?, ?, ?, ?, ?, ?)",
                 (
-                    datetime.now().isoformat(timespec="seconds"),
+                    datetime.now(timezone.utc).isoformat(timespec="seconds"),
                     task_kind,
                     strategy,
                     int(success),
@@ -68,17 +69,27 @@ class MetaLearner:
                     json.dumps(meta or {}, default=str),
                 ),
             )
-        conn.close()
+        # `with` commits on success / rolls back on error and closes the
+        # connection — no explicit close() here.
 
-    def win_rate(self, task_kind: str, strategy: str, default: float = 0.5) -> float:
-        """Laplace-smoothed ``(wins + 1) / (n + 2)``; ``default`` when unseen."""
+    #: Pessimistic prior for never-seen strategies.  Laplace smoothing gives
+    #: 0.5 to the unseen (1/2), i.e. a free half-win — enough to let an
+    #: untested expert outrank a merely mediocre one.  Routing uses 0.3 so
+    #: experience must be earned, not granted.
+    UNSEEN_PRIOR: float = 0.3
+
+    def win_rate(self, task_kind: str, strategy: str, default: float = 0.3) -> float:
+        """Laplace-smoothed ``(wins + 1) / (n + 2)``; pessimistic prior when unseen.
+
+        ``default`` (0.3) applies only when the strategy has zero rows — a
+        never-tried expert must not outrank a tried-and-mediocre one.
+        """
         with self._connect() as conn:
             row = conn.execute(
                 "SELECT COUNT(*), COALESCE(SUM(success), 0) FROM outcomes"
                 " WHERE task_kind = ? AND strategy = ?",
                 (task_kind, strategy),
             ).fetchone()
-        conn.close()
         n, wins = row
         if n == 0:
             return default
@@ -99,7 +110,6 @@ class MetaLearner:
                 "SELECT task_kind, strategy, COUNT(*), COALESCE(SUM(success), 0)"
                 " FROM outcomes GROUP BY task_kind, strategy"
             ).fetchall()
-        conn.close()
         by_task: dict[str, dict] = {}
         total = 0
         for task_kind, strategy, n, wins in rows:

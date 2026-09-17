@@ -122,7 +122,17 @@ def _literature_search(query: str, max_results: int = 10, allow_network: bool = 
     return [asdict(p) for p in literature_search(query, max_results, allow_network=allow_network)]
 
 
-def _python_exec(code: str, timeout: float = 30.0) -> Any:
+def _python_exec(code: str, timeout: float = 30.0, allow_risky: bool = False) -> Any:
+    # Gate risk=5: execução de código via MCP exige confirmação explícita do
+    # chamador (allow_risky=true), igual ao registry (Tool risk=5) e ao CLI
+    # `olivia tools run --allow-risky`. Sem isso, bloqueia sem executar.
+    if not allow_risky:
+        return {
+            "ok": False,
+            "stdout": "",
+            "stderr": "python_exec blocked: risky tool (risk=5) requires "
+            "explicit 'allow_risky': true confirmation",
+        }
     from olivia.tools.science import python_exec
 
     return python_exec(code, timeout)
@@ -294,11 +304,13 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
         _literature_search,
     ),
     "python_exec": (
-        "Execute Python code in an isolated subprocess; returns {ok, stdout, stderr}.",
+        "Execute Python code in an isolated subprocess; returns {ok, stdout, stderr}. "
+        "RISKY (risk=5): requires explicit 'allow_risky': true confirmation.",
         _schema(
             {
                 "code": {"type": "string"},
                 "timeout": {"type": "number", "minimum": 0.1, "maximum": 30.0},
+                "allow_risky": {"type": "boolean", "default": False},
             },
             ["code"],
         ),

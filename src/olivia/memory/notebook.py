@@ -27,6 +27,11 @@ class Notebook:
         self.path = path or settings.data_dir() / "notebook.json"
         self._entries: list[dict] = []
         self._load_failed = False
+        #: Inverted index term -> set(entry index).  Built lazily on first
+        #: search and incrementally on add(); keeps search O(terms) instead
+        #: of O(entries) per query.
+        self._index: dict[str, set[int]] = {}
+        self._indexed_upto: int = 0
         if self.path.exists():
             try:
                 self._entries = json.loads(self.path.read_text(encoding="utf-8"))
@@ -55,8 +60,27 @@ class Notebook:
             "meta": meta or {},
         }
         self._entries.append(entry)
+        self._index_entry(len(self._entries) - 1, entry)
         self.save()
         return entry
+
+    @staticmethod
+    def _terms(entry: dict) -> set[str]:
+        text = entry.get("content", "").casefold() + " " + " ".join(
+            str(t).casefold() for t in entry.get("tags", [])
+        )
+        return {t for t in text.split() if t}
+
+    def _index_entry(self, idx: int, entry: dict) -> None:
+        for term in self._terms(entry):
+            self._index.setdefault(term, set()).add(idx)
+
+    def _ensure_index(self) -> None:
+        # Index entries added before the index existed (load from disk) plus
+        # any appended since the last search.
+        for idx in range(self._indexed_upto, len(self._entries)):
+            self._index_entry(idx, self._entries[idx])
+        self._indexed_upto = len(self._entries)
 
     def entries(self, kind: str | None = None) -> list[dict]:
         return [e for e in self._entries if kind is None or e.get("kind") == kind]
@@ -71,9 +95,20 @@ class Notebook:
         """Keyword-scored search; empty query ranks by recency alone."""
         wanted_tags = {t.casefold() for t in (tags or [])}
         terms = [t for t in query.casefold().split() if t]
+        self._ensure_index()
+
+        if terms:
+            # Inverted-index prefilter: only entries containing at least one
+            # term are scored (O(terms + candidates), not O(entries)).
+            hit_idx: set[int] = set()
+            for term in terms:
+                hit_idx |= self._index.get(term, set())
+            pool = [self._entries[i] for i in hit_idx]
+        else:
+            pool = self._entries
 
         candidates = []
-        for entry in self._entries:
+        for entry in pool:
             if kind is not None and entry.get("kind") != kind:
                 continue
             entry_tags = {str(t).casefold() for t in entry.get("tags", [])}

@@ -33,6 +33,11 @@ logger = logging.getLogger(__name__)
 _MAX_CODE_CHARS = 50_000
 _MAX_OUTPUT_CHARS = 20_000
 _MAX_TIMEOUT = 30.0
+# Limite de memória do subprocesso (Linux via resource.setrlimit). Não é
+# boundary OS: `python_exec` é um sandbox incompleto — contenção best-effort
+# contra loops/alocações acidentais, NÃO contra adversário determinado.
+# Carga hostil pertence a container/job sandbox real (Docker/gVisor).
+_MAX_MEMORY_BYTES = int(os.environ.get("OLIVIA_PYEXEC_MAX_BYTES", str(256 * 1024 * 1024)))
 _SAFE_IMPORTS = {
     "collections",
     "decimal",
@@ -42,6 +47,14 @@ _SAFE_IMPORTS = {
     "math",
     "random",
     "statistics",
+}
+# Bloqueio explícito (defesa em profundidade além do allowlist acima): estes
+# nunca passam, mesmo que alguém amplie _SAFE_IMPORTS no futuro.
+_BLOCKED_MODULES = {
+    "os", "sys", "subprocess", "socket", "pathlib", "shutil", "tempfile",
+    "ctypes", "importlib", "inspect", "ast", "builtins", "__builtin__",
+    "io", "multiprocessing", "threading", "signal", "pty", "fcntl",
+    "urllib", "http", "ssl", "pickle", "marshal", "code", "codecs",
 }
 _BLOCKED_CALLS = {
     "breakpoint",
@@ -67,12 +80,18 @@ class _CodePolicy(ast.NodeVisitor):
 
     def visit_Import(self, node: ast.Import) -> None:
         for alias in node.names:
-            if alias.name.split(".", 1)[0] not in _SAFE_IMPORTS:
+            top = alias.name.split(".", 1)[0]
+            if top in _BLOCKED_MODULES:
+                raise _UnsafeCode(f"import '{alias.name}' is blocked (not an OS boundary)")
+            if top not in _SAFE_IMPORTS:
                 raise _UnsafeCode(f"import '{alias.name}' is not allowed")
         self.generic_visit(node)
 
     def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
-        if not node.module or node.module.split(".", 1)[0] not in _SAFE_IMPORTS:
+        top = (node.module or "").split(".", 1)[0]
+        if top in _BLOCKED_MODULES or not node.module:
+            raise _UnsafeCode(f"import '{node.module or ''}' is blocked (not an OS boundary)")
+        if top not in _SAFE_IMPORTS:
             raise _UnsafeCode(f"import '{node.module or ''}' is not allowed")
         self.generic_visit(node)
 
@@ -215,13 +234,27 @@ def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
     """Run restricted pure-Python code; return ``{ok, stdout, stderr}``.
 
     This is a constrained simulation runner, not a complete OS security
-    boundary. Hostile workloads still belong in a real container or job
+    boundary (PT: NÃO é boundary OS — não use contra código hostil).
+    Hostile workloads still belong in a real container or job
     sandbox. Filesystem/process/network imports and credential-bearing
-    environment variables are intentionally unavailable here.
+    environment variables are intentionally unavailable here. No Linux,
+    aplica-se ainda limite de memória (RLIMIT_AS) + CPU best-effort além
+    do timeout; no Windows vale só timeout + allowlist.
     """
     try:
         _validate_code(code)
         timeout = min(max(float(timeout), 0.1), _MAX_TIMEOUT)
+
+        def _preexec_limit() -> None:
+            # Só Linux/POSIX: contenção best-effort, não boundary OS.
+            try:
+                import resource as _res
+                _res.setrlimit(_res.RLIMIT_AS, (_MAX_MEMORY_BYTES, _MAX_MEMORY_BYTES))
+                cpu = max(int(timeout) + 5, 35)
+                _res.setrlimit(_res.RLIMIT_CPU, (cpu, cpu))
+            except Exception:
+                pass
+
         proc = subprocess.run(
             [sys.executable, "-I", "-X", "utf8", "-c", _restricted_wrapper(code)],
             capture_output=True,
@@ -230,6 +263,7 @@ def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
             encoding="utf-8",
             errors="replace",
             env=_safe_environment(),
+            preexec_fn=_preexec_limit if os.name != "nt" else None,
         )
         return {
             "ok": proc.returncode == 0,

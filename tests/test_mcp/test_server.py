@@ -69,7 +69,13 @@ def test_tool_exception_returns_is_error_result():
 
 
 def test_python_exec_tool():
-    response = _call("python_exec", {"code": "print(2 + 3)"})
+    # Sem confirmação explícita o gate risk=5 bloqueia sem executar.
+    blocked = _call("python_exec", {"code": "print(2 + 3)"})
+    payload_blocked = json.loads(_text(blocked))
+    assert payload_blocked["ok"] is False
+    assert "allow_risky" in payload_blocked["stderr"]
+
+    response = _call("python_exec", {"code": "print(2 + 3)", "allow_risky": True})
     payload = json.loads(_text(response))
     assert payload["ok"] and payload["stdout"].strip() == "5"
     assert response["result"]["isError"] is False

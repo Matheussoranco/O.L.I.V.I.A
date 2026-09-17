@@ -8,5 +8,8 @@ venv/
 .env
 dist/
 build/
+# Generated Codex plugin bundle — canonical source is skills/academic-research-suite.
+# Regenerate with: python skills/academic-research-suite/codex/scripts/ars_codex_quality_gates.py desktop-plugin-bundle --json
+plugins/ars-codex/skills/
 *.db
 .olivia/

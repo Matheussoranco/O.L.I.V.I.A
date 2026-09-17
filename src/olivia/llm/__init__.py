@@ -7,6 +7,7 @@ from olivia.llm.client import (
     NullClient,
     OllamaClient,
     get_client,
+    refresh_clients,
 )
 from olivia.llm.hermes import (
     AgentResult,
@@ -30,6 +31,7 @@ __all__ = [
     "format_tool_response",
     "get_client",
     "parse_tool_calls",
+    "refresh_clients",
     "render_tool_prompt",
     "strip_think",
 ]

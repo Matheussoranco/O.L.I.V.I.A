@@ -29,7 +29,6 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_TOOL_CALL_RE = re.compile(r"<tool_call>\s*(\{.*?\})\s*</tool_call>", re.DOTALL)
 _THINK_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL)
 
 HERMES_TOOL_PROMPT = """\
@@ -71,6 +70,79 @@ class AgentResult:
     error: str = ""
 
 
+def _extract_tool_json_blocks(text: str) -> list[str]:
+    """Raw JSON payloads inside ``<tool_call>…</tool_call>`` blocks.
+
+    Balanced-brace parser (brace-depth stack), NOT a non-greedy regex:
+    ``\\{.*?\\}`` stops at the first ``}`` so nested ``arguments`` objects
+    (``{"arguments": {"q": {"a": 1}}}``) were truncated to invalid JSON.
+    This scans from each ``<tool_call>`` to its closing tag, then takes the
+    first balanced ``{…}`` span (respecting strings/escapes).
+    """
+    out: list[str] = []
+    pos = 0
+    while True:
+        start_tag = text.find("<tool_call>", pos)
+        if start_tag == -1:
+            break
+        end_tag = text.find("</tool_call>", start_tag)
+        if end_tag == -1:
+            break
+        inner = text[start_tag + len("<tool_call>") : end_tag]
+        payload = _balanced_json_span(inner)
+        if payload is not None:
+            out.append(payload)
+        pos = end_tag + len("</tool_call>")
+    return out
+
+
+def _balanced_json_span(s: str) -> str | None:
+    """First balanced ``{…}`` span in *s*, respecting JSON strings/escapes."""
+    i = s.find("{")
+    if i == -1:
+        return None
+    depth = 0
+    in_str = False
+    esc = False
+    for j in range(i, len(s)):
+        ch = s[j]
+        if in_str:
+            if esc:
+                esc = False
+            elif ch == "\\":
+                esc = True
+            elif ch == '"':
+                in_str = False
+            continue
+        if ch == '"':
+            in_str = True
+        elif ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return s[i : j + 1]
+    return None  # unbalanced — caller skips
+
+
+def _strip_tool_call_blocks(text: str) -> str:
+    """Remove ``<tool_call>…</tool_call>`` spans (balanced-tag strip)."""
+    out: list[str] = []
+    pos = 0
+    while True:
+        start_tag = text.find("<tool_call>", pos)
+        if start_tag == -1:
+            out.append(text[pos:])
+            break
+        end_tag = text.find("</tool_call>", start_tag)
+        if end_tag == -1:
+            out.append(text[pos:])
+            break
+        out.append(text[pos:start_tag])
+        pos = end_tag + len("</tool_call>")
+    return "".join(out)
+
+
 def render_tool_prompt(tools: list[Any]) -> str:
     """Render the Hermes system-prompt section for a list of Tools."""
     schemas = [
@@ -82,11 +154,11 @@ def render_tool_prompt(tools: list[Any]) -> str:
 def parse_tool_calls(text: str) -> list[ToolCall]:
     """Extract every ``<tool_call>`` block; tolerate malformed JSON."""
     calls: list[ToolCall] = []
-    for match in _TOOL_CALL_RE.finditer(text):
+    for raw in _extract_tool_json_blocks(text):
         try:
-            payload = json.loads(match.group(1))
+            payload = json.loads(raw)
         except json.JSONDecodeError:
-            logger.debug("Skipping malformed tool_call: %.120s", match.group(1))
+            logger.debug("Skipping malformed tool_call: %.120s", raw)
             continue
         name = payload.get("name")
         if not name:
@@ -102,7 +174,7 @@ def strip_think(text: str) -> tuple[str, str]:
     """Split text into (visible, reasoning-trace) parts."""
     thoughts = "\n".join(m.group(1).strip() for m in _THINK_RE.finditer(text))
     visible = _THINK_RE.sub("", text)
-    visible = _TOOL_CALL_RE.sub("", visible).strip()
+    visible = _strip_tool_call_blocks(visible).strip()
     return visible, thoughts
 
 
