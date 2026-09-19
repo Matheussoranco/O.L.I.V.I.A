@@ -428,14 +428,15 @@ def _validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> st
 
     def check(name: str, value: Any, rule: dict[str, Any]) -> str | None:
         kind = rule.get("type")
-        valid = {
+        types_map: dict[str, bool] = {
             "string": isinstance(value, str),
             "boolean": isinstance(value, bool),
             "integer": isinstance(value, int) and not isinstance(value, bool),
             "number": isinstance(value, (int, float)) and not isinstance(value, bool),
             "array": isinstance(value, list),
             "object": isinstance(value, dict),
-        }.get(kind, True)
+        }
+        valid = types_map.get(str(kind), True) if kind is not None else True
         if not valid:
             return f"argument '{name}' must be {kind}"
         if "enum" in rule and value not in rule["enum"]:
@@ -472,8 +473,9 @@ def serve() -> None:
     # non-ASCII character written would otherwise crash the server with
     # UnicodeEncodeError before any client ever sees a response.
     for stream in (sys.stdin, sys.stdout, sys.stderr):
-        if hasattr(stream, "reconfigure"):
-            stream.reconfigure(encoding="utf-8")
+        reconfigure = getattr(stream, "reconfigure", None)
+        if callable(reconfigure):
+            reconfigure(encoding="utf-8")
     logger.warning("olivia MCP server listening on stdio")
     for line in sys.stdin:
         line = line.strip()

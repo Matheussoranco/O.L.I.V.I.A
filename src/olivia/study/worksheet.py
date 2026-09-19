@@ -12,6 +12,7 @@ from __future__ import annotations
 import logging
 import random
 import re
+from typing import Any
 
 from olivia.core.records import WorkedSolution
 from olivia.llm.client import LLMClient, get_client
@@ -102,7 +103,8 @@ def _llm_worksheet(topic: str, n: int, difficulty: str, client: LLMClient) -> li
     for entry in payload["problems"]:
         if not isinstance(entry, dict) or not str(entry.get("problem", "")).strip():
             continue
-        raw_steps = entry.get("steps") if isinstance(entry.get("steps"), list) else []
+        steps_val = entry.get("steps")
+        raw_steps: list[Any] = steps_val if isinstance(steps_val, list) else []
         steps = [
             SolutionStep(
                 n=i + 1,

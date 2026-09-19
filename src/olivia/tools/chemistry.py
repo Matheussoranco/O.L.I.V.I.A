@@ -277,11 +277,12 @@ def balance_equation(equation: str) -> dict:
         bad = species[parsed.index(None)]
         return {"ok": False, "error": f"could not parse species '{bad}'"}
 
-    elements = sorted({el for counts in parsed for el in counts})
+    valid_parsed: list[dict[str, int]] = [c for c in parsed if c is not None]
+    elements = sorted({el for counts in valid_parsed for el in counts})
     rows: list[list[Fraction]] = []
     for element in elements:
         row: list[Fraction] = []
-        for j, counts in enumerate(parsed):
+        for j, counts in enumerate(valid_parsed):
             sign = 1 if j < len(reactants) else -1
             row.append(Fraction(sign * counts.get(element, 0)))
         rows.append(row)

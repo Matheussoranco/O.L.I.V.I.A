@@ -217,11 +217,11 @@ def _record_outcome(state: OliviaState, mode: str, duration_s: float) -> None:
         get_meta_learner().record(str(mode), f"cycle:{mode}", success, duration_s)
     except Exception as exc:
         logger.debug("meta record failed: %s", exc)
-    if mode == "research" and state.get("report"):
+    report = state.get("report")
+    if mode == "research" and report is not None:
         try:
             from olivia.memory import Notebook
 
-            report = state["report"]
             Notebook().add(
                 "discovery",
                 f"{report.question}\n\n{report.conclusion}",

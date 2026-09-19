@@ -20,7 +20,7 @@ from __future__ import annotations
 
 import re
 from fractions import Fraction
-from typing import Any
+from typing import Any, cast
 
 from olivia.core.records import WorkedSolution
 from olivia.eval.harness import (
@@ -70,7 +70,7 @@ def _math_equal(got: str, expected: str) -> bool:
         return got.replace(" ", "") == expected.replace(" ", "")
     cleaned = re.sub(r"\+\s*C\s*$", "", got).strip()
     try:
-        difference = sympy.simplify(sympy.sympify(cleaned) - sympy.sympify(expected))
+        difference = sympy.simplify(cast(Any, sympy.sympify(cleaned)) - sympy.sympify(expected))
         return bool(difference == 0)
     except Exception:
         return False

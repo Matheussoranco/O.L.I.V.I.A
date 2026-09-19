@@ -13,7 +13,7 @@ import logging
 import re
 import socket
 import xml.etree.ElementTree as ET
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 from olivia.core.records import Paper
@@ -63,7 +63,7 @@ def _safe_url(url: str) -> bool:
     )
 
 
-def _get(url: str, params: dict | None = None, allow_network: bool | None = None) -> object | None:
+def _get(url: str, params: dict | None = None, allow_network: bool | None = None) -> Any | None:
     """One guarded GET; returns the httpx.Response or None."""
     import httpx
 
@@ -81,7 +81,7 @@ def _get(url: str, params: dict | None = None, allow_network: bool | None = None
         return None
 
 
-def _request(url: str, params: dict, allow_network: bool | None) -> object | None:
+def _request(url: str, params: dict, allow_network: bool | None) -> Any | None:
     """Call the low-level fetcher compatibly with test/custom source adapters."""
     if allow_network is None:
         return _get(url, params)

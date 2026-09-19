@@ -7,21 +7,26 @@ import math
 from olivia.tools import units
 
 
+def _val(x: float | None) -> float:
+    assert x is not None
+    return x
+
+
 def test_metric_conversions_and_prefixes():
     assert units.convert(1, "km", "m") == 1000.0
     assert units.convert(2500, "g", "kg") == 2.5
-    assert math.isclose(units.convert(5, "mg", "g"), 0.005, rel_tol=1e-9)
-    assert math.isclose(units.convert(5, "ft", "cm"), 152.4, rel_tol=1e-9)
+    assert math.isclose(_val(units.convert(5, "mg", "g")), 0.005, rel_tol=1e-9)
+    assert math.isclose(_val(units.convert(5, "ft", "cm")), 152.4, rel_tol=1e-9)
 
 
 def test_compound_unit_conversion():
-    assert math.isclose(units.convert(60, "mph", "m/s"), 26.8224, rel_tol=1e-9)
-    assert math.isclose(units.convert(1, "km/h", "m/s"), 1000 / 3600, rel_tol=1e-9)
+    assert math.isclose(_val(units.convert(60, "mph", "m/s")), 26.8224, rel_tol=1e-9)
+    assert math.isclose(_val(units.convert(1, "km/h", "m/s")), 1000 / 3600, rel_tol=1e-9)
 
 
 def test_energy_conversion_across_named_units():
-    assert math.isclose(units.convert(1, "cal", "J"), 4.184, rel_tol=1e-12)
-    assert math.isclose(units.convert(1, "kWh", "J"), 3.6e6, rel_tol=1e-9)
+    assert math.isclose(_val(units.convert(1, "cal", "J")), 4.184, rel_tol=1e-12)
+    assert math.isclose(_val(units.convert(1, "kWh", "J")), 3.6e6, rel_tol=1e-9)
 
 
 def test_temperature_is_affine():
@@ -37,7 +42,9 @@ def test_incompatible_dimensions_return_none():
 
 
 def test_parse_unit_reduces_to_si_dimension():
-    factor, dim = units.parse_unit("N")
+    res = units.parse_unit("N")
+    assert res is not None
+    factor, dim = res
     assert factor == 1.0
     assert dim == (1, 1, -2, 0, 0, 0, 0)  # m·kg·s^-2
     assert units.parse_unit("furlong") is None

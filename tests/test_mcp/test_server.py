@@ -10,7 +10,7 @@ from olivia.mcp.server import PROTOCOL_VERSION, TOOLS, _handle, serve
 
 
 def _call(name: str, arguments: dict | None = None, request_id: int = 1) -> dict:
-    return _handle(
+    res = _handle(
         {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -18,6 +18,8 @@ def _call(name: str, arguments: dict | None = None, request_id: int = 1) -> dict
             "params": {"name": name, "arguments": arguments or {}},
         }
     )
+    assert res is not None
+    return res
 
 
 def _text(response: dict) -> str:
@@ -31,24 +33,28 @@ def _text(response: dict) -> str:
 
 def test_initialize_handshake():
     response = _handle({"jsonrpc": "2.0", "id": 1, "method": "initialize"})
+    assert response is not None
     assert response["result"]["protocolVersion"] == PROTOCOL_VERSION
     assert response["result"]["serverInfo"]["name"] == "olivia"
 
 
 def test_tools_list_matches_registry():
     response = _handle({"jsonrpc": "2.0", "id": 2, "method": "tools/list"})
+    assert response is not None
     tools = response["result"]["tools"]
     assert {t["name"] for t in tools} == set(TOOLS)
     assert all(t["description"] and t["inputSchema"]["type"] == "object" for t in tools)
 
 
 def test_ping_and_notifications():
-    assert _handle({"jsonrpc": "2.0", "id": 3, "method": "ping"})["result"] == {}
+    res = _handle({"jsonrpc": "2.0", "id": 3, "method": "ping"})
+    assert res is not None and res["result"] == {}
     assert _handle({"jsonrpc": "2.0", "method": "notifications/initialized"}) is None
 
 
 def test_unknown_method_and_unknown_tool():
     response = _handle({"jsonrpc": "2.0", "id": 4, "method": "no/such"})
+    assert response is not None
     assert response["error"]["code"] == -32601
     # Unknown notification (no id) stays silent per JSON-RPC.
     assert _handle({"jsonrpc": "2.0", "method": "no/such"}) is None

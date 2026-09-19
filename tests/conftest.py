@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any, cast
+
 import pytest
 
 from olivia.llm.client import LLMClient, LLMResponse
@@ -10,7 +12,7 @@ try:
     import langchain
 
     if not hasattr(langchain, "debug"):
-        langchain.debug = False
+        cast(Any, langchain).debug = False
 except ImportError:
     pass
 
@@ -28,19 +30,21 @@ class FakeClient(LLMClient):
     def available(self) -> bool:
         return True
 
-    def complete(self, messages, system="", max_tokens=None) -> LLMResponse:
+    def complete(
+        self, messages: Any, system: str = "", max_tokens: int | None = None
+    ) -> LLMResponse:
         self.calls.append(list(messages))
         index = min(len(self.calls) - 1, len(self._responses) - 1)
         return LLMResponse(text=self._responses[index], model="fake")
 
 
 @pytest.fixture()
-def fake_client():
+def fake_client() -> type[FakeClient]:
     return FakeClient
 
 
 @pytest.fixture(autouse=True)
-def _isolate_home(tmp_path, monkeypatch):
+def _isolate_home(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> Any:
     """Point ~/.olivia at tmp_path, force offline, reset process singletons."""
     from olivia.config import settings
     from olivia.llm.client import get_client
@@ -48,20 +52,20 @@ def _isolate_home(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "home_dir", tmp_path / "olivia-home")
     # Paths that resolve get_client() internally must never reach a real API.
     monkeypatch.setattr(settings.llm, "provider", "none")
-    get_client.cache_clear()
+    cast(Any, get_client).cache_clear()
     import olivia.meta.learner as learner
 
     monkeypatch.setattr(learner, "_singleton", None)
     yield
-    get_client.cache_clear()
+    cast(Any, get_client).cache_clear()
 
 
 @pytest.fixture(autouse=True)
-def _no_network(monkeypatch):
+def _no_network(monkeypatch: pytest.MonkeyPatch) -> Any:
     """Any real HTTP attempt is a test bug — fail loudly."""
     import httpx
 
-    def _blocked(*args, **kwargs):
+    def _blocked(*args: Any, **kwargs: Any) -> Any:
         raise RuntimeError("network access attempted during tests")
 
     monkeypatch.setattr(httpx, "get", _blocked)

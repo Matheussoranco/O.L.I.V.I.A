@@ -198,7 +198,7 @@ def test_sm2_sequences_exercise_the_lapse_path():
 # ---------------------------------------------------------------------------
 
 
-def _fake_research_run(flag_everything: bool) -> list[CaseResult]:
+def _fake_research_run(flag_everything: bool) -> list[Metric]:
     from olivia.eval.research_eval import _decision_metrics
 
     cases = [

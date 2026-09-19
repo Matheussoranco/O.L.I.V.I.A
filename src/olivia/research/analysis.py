@@ -35,9 +35,10 @@ def _from_execution(plan: ExperimentPlan, output: dict) -> AnalysisResult:
     if not isinstance(payload, dict):
         payload = {}
 
-    statistics = (
-        {k: v for k, v in (payload.get("statistics") or {}).items() if isinstance(v, (int, float))}
-        if isinstance(payload.get("statistics"), dict)
+    raw_stats = payload.get("statistics")
+    statistics: dict[str, float] = (
+        {str(k): float(v) for k, v in raw_stats.items() if isinstance(v, (int, float))}
+        if isinstance(raw_stats, dict)
         else {}
     )
     effect_size = _as_float(payload.get("effect_size"))

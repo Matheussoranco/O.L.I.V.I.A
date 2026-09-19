@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from typing import Any
 
 from olivia.core.records import AnalysisResult, ExperimentPlan, Hypothesis, Paper, Variable
 from olivia.llm.client import NullClient
@@ -19,7 +20,7 @@ from olivia.research import (
 
 
 def _good_hypothesis(**overrides) -> Hypothesis:
-    fields = dict(
+    fields: dict[str, Any] = dict(
         statement="Spacing reviews increases retention.",
         predictions=["Spaced group scores higher at 30 days."],
         falsification_test="Randomise spacing; equal scores refute it.",

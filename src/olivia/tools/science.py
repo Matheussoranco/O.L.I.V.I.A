@@ -272,9 +272,13 @@ def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
             try:
                 import resource as _res
 
-                _res.setrlimit(_res.RLIMIT_AS, (_MAX_MEMORY_BYTES, _MAX_MEMORY_BYTES))
-                cpu = max(int(timeout) + 5, 35)
-                _res.setrlimit(_res.RLIMIT_CPU, (cpu, cpu))
+                setrlimit = getattr(_res, "setrlimit", None)
+                rlimit_as = getattr(_res, "RLIMIT_AS", None)
+                rlimit_cpu = getattr(_res, "RLIMIT_CPU", None)
+                if callable(setrlimit) and rlimit_as is not None and rlimit_cpu is not None:
+                    setrlimit(rlimit_as, (_MAX_MEMORY_BYTES, _MAX_MEMORY_BYTES))
+                    cpu = max(int(timeout) + 5, 35)
+                    setrlimit(rlimit_cpu, (cpu, cpu))
             except Exception:
                 pass
 
