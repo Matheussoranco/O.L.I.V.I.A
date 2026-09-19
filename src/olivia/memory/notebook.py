@@ -66,8 +66,10 @@ class Notebook:
 
     @staticmethod
     def _terms(entry: dict) -> set[str]:
-        text = entry.get("content", "").casefold() + " " + " ".join(
-            str(t).casefold() for t in entry.get("tags", [])
+        text = (
+            entry.get("content", "").casefold()
+            + " "
+            + " ".join(str(t).casefold() for t in entry.get("tags", []))
         )
         return {t for t in text.split() if t}
 

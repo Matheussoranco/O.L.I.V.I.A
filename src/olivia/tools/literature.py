@@ -243,6 +243,12 @@ def search_semanticscholar(
 # Fan-out search + dedupe
 # ---------------------------------------------------------------------------
 
+# Allowlist of literature backends. Only these source names are honored;
+# anything else in `sources` is silently dropped (defense against prompt-
+# injected source names pointing at attacker hosts). Network itself is gated
+# by settings.network_enabled / allow_network + _safe_url (no private nets).
+_SOURCE_ALLOWLIST = frozenset({"arxiv", "crossref", "semanticscholar"})
+
 _SOURCES = {
     "arxiv": search_arxiv,
     "crossref": search_crossref,
@@ -271,7 +277,7 @@ def literature_search(
     from concurrent.futures import ThreadPoolExecutor
 
     max_results = min(max(int(max_results), 1), 100)
-    chosen = [s for s in (sources or list(_SOURCES)) if s in _SOURCES]
+    chosen = [s for s in (sources or list(_SOURCES)) if s in _SOURCES and s in _SOURCE_ALLOWLIST]
     per_source = max(3, max_results // max(len(chosen), 1) + 2)
 
     with ThreadPoolExecutor(max_workers=len(chosen) or 1) as pool:

@@ -6,6 +6,14 @@ import pytest
 
 from olivia.llm.client import LLMClient, LLMResponse
 
+try:
+    import langchain
+
+    if not hasattr(langchain, "debug"):
+        langchain.debug = False
+except ImportError:
+    pass
+
 
 class FakeClient(LLMClient):
     """Deterministic LLM stand-in: replays canned responses, repeats the last."""

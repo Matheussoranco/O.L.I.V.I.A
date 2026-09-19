@@ -51,10 +51,32 @@ _SAFE_IMPORTS = {
 # Bloqueio explícito (defesa em profundidade além do allowlist acima): estes
 # nunca passam, mesmo que alguém amplie _SAFE_IMPORTS no futuro.
 _BLOCKED_MODULES = {
-    "os", "sys", "subprocess", "socket", "pathlib", "shutil", "tempfile",
-    "ctypes", "importlib", "inspect", "ast", "builtins", "__builtin__",
-    "io", "multiprocessing", "threading", "signal", "pty", "fcntl",
-    "urllib", "http", "ssl", "pickle", "marshal", "code", "codecs",
+    "os",
+    "sys",
+    "subprocess",
+    "socket",
+    "pathlib",
+    "shutil",
+    "tempfile",
+    "ctypes",
+    "importlib",
+    "inspect",
+    "ast",
+    "builtins",
+    "__builtin__",
+    "io",
+    "multiprocessing",
+    "threading",
+    "signal",
+    "pty",
+    "fcntl",
+    "urllib",
+    "http",
+    "ssl",
+    "pickle",
+    "marshal",
+    "code",
+    "codecs",
 }
 _BLOCKED_CALLS = {
     "breakpoint",
@@ -249,6 +271,7 @@ def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
             # Só Linux/POSIX: contenção best-effort, não boundary OS.
             try:
                 import resource as _res
+
                 _res.setrlimit(_res.RLIMIT_AS, (_MAX_MEMORY_BYTES, _MAX_MEMORY_BYTES))
                 cpu = max(int(timeout) + 5, 35)
                 _res.setrlimit(_res.RLIMIT_CPU, (cpu, cpu))
