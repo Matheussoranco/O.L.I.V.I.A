@@ -1,7 +1,8 @@
 import uuid
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
 from datetime import datetime
+from typing import Any
+
 
 @dataclass
 class Message:
@@ -9,25 +10,28 @@ class Message:
     content: str
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     message_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
+
 
 @dataclass
 class Session:
     session_id: str
     profile_id: str
-    messages: List[Message] = field(default_factory=list)
-    metadata: Dict[str, Any] = field(default_factory=dict)
+    messages: list[Message] = field(default_factory=list)
+    metadata: dict[str, Any] = field(default_factory=dict)
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
+
 
 class StateManager:
     """
-    Handles persistent state for O.L.I.V.I.A. 
+    Handles persistent state for O.L.I.V.I.A.
     Inspired by Hermes' state_dbfile and state_sessions.
     """
+
     def __init__(self, storage_path: str = "C:/Users/mathe/AppData/Local/olivia/state.db"):
         self.storage_path = storage_path
         # In a full implementation, this would initialize a SQLite connection
-        self.sessions: Dict[str, Session] = {}
+        self.sessions: dict[str, Session] = {}
 
     def create_session(self, profile_id: str = "default") -> Session:
         session_id = str(uuid.uuid4())
@@ -35,10 +39,10 @@ class StateManager:
         self.sessions[session_id] = session
         return session
 
-    def get_session(self, session_id: str) -> Optional[Session]:
+    def get_session(self, session_id: str) -> Session | None:
         return self.sessions.get(session_id)
 
-    def add_message(self, session_id: str, role: str, content: str, metadata: Dict = None):
+    def add_message(self, session_id: str, role: str, content: str, metadata: dict | None = None):
         if session_id in self.sessions:
             msg = Message(role=role, content=content, metadata=metadata or {})
             self.sessions[session_id].messages.append(msg)
