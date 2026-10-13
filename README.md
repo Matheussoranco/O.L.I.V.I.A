@@ -139,7 +139,7 @@ already loaded.
 ## Tests
 
 ```bash
-python -m pytest -q     # 202 tests, fully offline by default
+python -m pytest -q     # 222 tests, fully offline by default
 ```
 
 ## Status

@@ -13,3 +13,7 @@ build/
 plugins/ars-codex/skills/
 *.db
 .olivia/
+
+# Local upstream clones kept for reference (not part of this repo)
+hermes-agent/
+scientific-agent-skills/
