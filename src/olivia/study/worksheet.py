@@ -12,13 +12,12 @@ from __future__ import annotations
 import logging
 import random
 import re
-from typing import Any
 
 from olivia.core.records import WorkedSolution
-from olivia.llm.client import LLMClient, get_client
+from olivia.llm.client import LLMClient, NullClient, get_client
 from olivia.llm.prompts import SOLVER_SYSTEM
 from olivia.llm.structured import ask_json
-from olivia.study.solver import SolutionStep, solution_to_markdown, solve_problem
+from olivia.study.solver import solution_to_markdown, solve_problem
 
 logger = logging.getLogger(__name__)
 
@@ -84,47 +83,27 @@ def _offline_worksheet(
     rng = random.Random(seed)
     solutions: list[WorkedSolution] = []
     for _ in range(n):
-        problem = generator(rng, difficulty)
-        solutions.append(solve_problem(problem, subject="math", client=None))
-    return solutions
+        try:
+            problem = generator(rng, difficulty)
+        except ImportError:
+            logger.warning("worksheet: topic %r needs an optional dependency", topic)
+            return []
+        solutions.append(solve_problem(problem, subject="math", client=NullClient()))
+    return [solution for solution in solutions if solution.method != "none"]
 
 
 def _llm_worksheet(topic: str, n: int, difficulty: str, client: LLMClient) -> list[WorkedSolution]:
     prompt = (
         f"Create a {difficulty} practice worksheet of {n} problems on: {topic}\n\n"
-        'Respond as JSON: {"problems": [{"problem": str, '
-        '"steps": [{"description": str, "result": str}], "answer": str}]}. '
-        "Each problem must be self-contained with a complete worked solution."
+        'Respond as JSON: {"problems": [str]}. Each problem must be self-contained '
+        "and solvable without the original source material."
     )
-    payload = ask_json(client, prompt, system=SOLVER_SYSTEM, max_tokens=3500)
+    payload = ask_json(client, prompt, system=SOLVER_SYSTEM, max_tokens=1500)
     if not isinstance(payload, dict) or not isinstance(payload.get("problems"), list):
         return []
-    solutions: list[WorkedSolution] = []
-    for entry in payload["problems"]:
-        if not isinstance(entry, dict) or not str(entry.get("problem", "")).strip():
-            continue
-        steps_val = entry.get("steps")
-        raw_steps: list[Any] = steps_val if isinstance(steps_val, list) else []
-        steps = [
-            SolutionStep(
-                n=i + 1,
-                description=str(s.get("description", "")).strip(),
-                result=str(s.get("result", "")).strip(),
-            )
-            for i, s in enumerate(raw_steps)
-            if isinstance(s, dict) and str(s.get("description", "")).strip()
-        ]
-        solutions.append(
-            WorkedSolution(
-                problem=str(entry["problem"]).strip(),
-                subject="general",
-                steps=steps,
-                final_answer=str(entry.get("answer", "")).strip(),
-                method="llm",
-                confidence=0.7,
-            )
-        )
-    return solutions[:n]
+    problems = [str(item).strip() for item in payload["problems"] if str(item).strip()]
+    solutions = [solve_problem(problem, client=NullClient()) for problem in problems[:n]]
+    return [solution for solution in solutions if solution.method != "none"]
 
 
 def generate_worksheet(
@@ -135,6 +114,7 @@ def generate_worksheet(
     seed: int | None = None,
 ) -> list[WorkedSolution]:
     """Produce up to ``n`` practice problems on ``topic``, each fully solved."""
+    n = min(max(int(n), 1), 100)
     client = client or get_client()
     if client.available:
         solutions = _llm_worksheet(topic, n, difficulty, client)

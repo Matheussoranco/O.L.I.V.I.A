@@ -58,6 +58,12 @@ def test_balance_combustion_and_equals_separator():
     assert result["coefficients"] == [1, 5, 3, 4]
 
 
+def test_balance_accepts_equilibrium_arrows():
+    result = chemistry.balance_equation("N2 + H2 ⇋ NH3")
+    assert result["ok"]
+    assert result["balanced"] == "N2 + 3 H2 -> 2 NH3"
+
+
 def test_balance_reports_failure_cleanly():
     assert chemistry.balance_equation("H2 + O2")["ok"] is False  # no arrow
     assert chemistry.balance_equation("Na -> Cl")["ok"] is False  # unbalanceable

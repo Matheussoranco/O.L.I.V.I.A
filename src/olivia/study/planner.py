@@ -16,6 +16,23 @@ from olivia.llm.structured import ask_json
 logger = logging.getLogger(__name__)
 
 
+def _as_int(value: object, fallback: int) -> int:
+    if isinstance(value, bool):
+        return fallback
+    try:
+        return int(value) if isinstance(value, (int, float)) else int(str(value))
+    except (TypeError, ValueError, OverflowError):
+        return fallback
+
+
+def _str_list(value: object) -> list[str]:
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    if isinstance(value, list):
+        return [str(item) for item in value if str(item).strip()]
+    return []
+
+
 def _scaffold_milestones(topic: str, weeks: int) -> list[dict]:
     milestones: list[dict] = []
     for week in range(1, weeks + 1):
@@ -78,9 +95,9 @@ def make_study_plan(
         if isinstance(payload, dict) and isinstance(payload.get("milestones"), list):
             milestones = [
                 {
-                    "week": int(m.get("week", i)),
-                    "title": str(m.get("title", f"Week {i}")),
-                    "objectives": [str(o) for o in m.get("objectives", []) if str(o).strip()],
+                    "week": _as_int(m.get("week"), i),
+                    "title": str(m.get("title") or f"Week {i}"),
+                    "objectives": _str_list(m.get("objectives")),
                     "practice": str(m.get("practice", "")),
                 }
                 for i, m in enumerate(payload["milestones"], 1)
@@ -90,9 +107,9 @@ def make_study_plan(
                 return StudyPlan(
                     topic=topic,
                     goal=goal,
-                    prerequisites=[str(p) for p in payload.get("prerequisites", [])],
+                    prerequisites=_str_list(payload.get("prerequisites")),
                     milestones=milestones,
-                    resources=[str(r) for r in payload.get("resources", [])],
+                    resources=_str_list(payload.get("resources")),
                     hours_per_week=hours_per_week,
                     weeks=len(milestones),
                 )

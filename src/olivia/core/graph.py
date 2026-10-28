@@ -177,13 +177,15 @@ def run_cycle(
     client = client or get_client()
     state = make_initial_state(question, mode)
     started = time.perf_counter()
+    if mode not in ("ask", "research", "study"):
+        raise ValueError(f"unknown mode '{mode}' (use ask | research | study)")
 
     try:
         if mode == "ask":
             _merge(state, node_ask(state, client))
         elif mode == "study":
             _merge(state, node_study(state, client))
-        elif mode == "research":
+        else:
             _merge(state, node_literature(state, client))
             _merge(state, node_hypotheses(state, client))
             for _ in range(settings.research.max_revisions + 1):
@@ -196,10 +198,6 @@ def run_cycle(
                     break
                 _merge(state, node_revise(state, client))
             _merge(state, node_report(state, client))
-        else:
-            raise ValueError(f"unknown mode '{mode}' (use ask | research | study)")
-    except ValueError:
-        raise
     except Exception as exc:
         logger.exception("cycle failed")
         state.setdefault("errors", []).append(str(exc))

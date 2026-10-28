@@ -56,12 +56,16 @@ class ResearchLab:
                 result["error"] = drafted.error
                 return result
             draft = drafted.answer
+            result["draft"] = draft
             result["transcript"].append({"role": "researcher", "content": draft})
 
             criticised = critic.run(
                 f"Question: {question}\n\nDraft under review:\n{draft}\n\n"
                 "Attack the weakest links; propose the smallest fixes."
             )
+            if criticised.error and not criticised.answer:
+                result["error"] = criticised.error
+                return result
             result["transcript"].append({"role": "critic", "content": criticised.answer})
             result["critique"] = criticised.answer
             logger.info("ResearchLab round %d complete", round_number)
@@ -71,7 +75,9 @@ class ResearchLab:
             "Write the final synthesis: answer the question, incorporate the valid "
             "criticism, and mark remaining uncertainty explicitly."
         )
-        result["draft"] = draft
+        if written.error and not written.answer:
+            result["error"] = written.error
+            return result
         result["synthesis"] = written.answer
         result["transcript"].append({"role": "writer", "content": written.answer})
         return result

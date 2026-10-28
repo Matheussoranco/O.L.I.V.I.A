@@ -25,7 +25,7 @@ def _as_float(value: object) -> float | None:
     try:
         result = float(value)  # type: ignore[arg-type]
         return result if math.isfinite(result) else None
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
         return None
 
 
@@ -36,11 +36,12 @@ def _from_execution(plan: ExperimentPlan, output: dict) -> AnalysisResult:
         payload = {}
 
     raw_stats = payload.get("statistics")
-    statistics: dict[str, float] = (
-        {str(k): float(v) for k, v in raw_stats.items() if isinstance(v, (int, float))}
-        if isinstance(raw_stats, dict)
-        else {}
-    )
+    statistics: dict[str, float] = {}
+    if isinstance(raw_stats, dict):
+        for key, value in raw_stats.items():
+            number = _as_float(value)
+            if number is not None:
+                statistics[str(key)] = number
     effect_size = _as_float(payload.get("effect_size"))
     p_value = _as_float(payload.get("p_value"))
     ci_low = _as_float(payload.get("ci_low"))

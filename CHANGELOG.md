@@ -4,6 +4,54 @@ All notable changes to O.L.I.V.I.A. are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project aims to
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+
+- `MetaLearner` closes every SQLite connection, and expert routing only blends
+  historical win-rates for strategies that have observed outcomes.
+- Notebook search tokenises words, so punctuation no longer hides matches.
+- Invalid MCP tool-name types return a JSON-RPC error instead of raising.
+- `python_exec` returns the real traceback instead of an `AttributeError`.
+- `symbolic_math` supports implicit multiplication and infers the actual free
+  symbol; `MathExpert` recognises `d/dx` notation.
+- SM-2 intervals round half-up, matching the independent eval reference.
+- Research hypotheses and reports reject non-finite confidence values, and the
+  critic honours only an explicit boolean `needs_revision` verdict.
+- Study plans tolerate malformed LLM fields, tutor windows start on a user
+  turn, and research-lab agent failures abort with the underlying error.
+- Offline cloze cards and quizzes never blank a word that appears twice in the
+  same sentence (case-insensitive), and they accept a final sentence that has no
+  terminating punctuation. Malformed LLM quiz items (`options: null`, boolean or
+  out-of-range `answer_index`) are dropped so generation falls back to that
+  offline path instead of crashing.
+- LLM-generated worksheets now request problem statements only and solve them
+  deterministically; items no solver can handle are dropped instead of shipping
+  an unverified answer key. The LLM solver fallback likewise rejects a response
+  with no final answer.
+- Non-object tool arguments and non-finite numeric arguments are rejected before
+  dispatch, malformed URL ports and credentials are rejected without raising,
+  outbound fetches require a globally routable address, and unrepresentable
+  statistics no longer abort an analysis.
+- `safe_sympify` now evaluates against a curated SymPy namespace with AST
+  validation; `sympify(...)` and `S(...)` can no longer reach files or execute
+  arbitrary code.
+- Equation balancing accepts equilibrium arrows (`⇌`, `⇋`) in both the solver
+  and the chemistry tool.
+- Unit conversion rejects non-finite values and absurd exponents, and the solver
+  parses scientific notation such as `1e3 m`.
+- The solver and `MathExpert` honour `with respect to <variable>` instead of
+  always differentiating with respect to the first free symbol.
+- Card, quiz, and worksheet generators clamp `n` to a sane positive bound.
+- Hermes tool responses are JSON-encoded as a whole, so tool names cannot break
+  the response envelope.
+
+### Changed
+
+- Removed unused top-level packages and the duplicate MCP argument validator.
+- Source distributions now contain only the package, tests, and project metadata;
+  the vendored `skills/` tree is no longer bundled.
+
 ## [0.4.0] — 2026-09-03 — Security boundaries and ARS-Codex integration
 
 ### Added

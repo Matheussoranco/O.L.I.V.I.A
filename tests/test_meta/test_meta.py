@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import sqlite3
+
+import pytest
+
 from olivia.meta import MetaLearner, get_meta_learner
 
 
@@ -17,6 +21,15 @@ def test_win_rate_unseen_uses_default():
     learner = MetaLearner()
     assert learner.win_rate("ask", "never-used") == 0.5
     assert learner.win_rate("ask", "never-used", default=0.9) == 0.9
+    assert learner.observed_win_rate("ask", "never-used") is None
+
+
+def test_each_session_closes_its_connection(tmp_path):
+    learner = MetaLearner(db_path=tmp_path / "meta.db")
+    with learner._session() as conn:
+        conn.execute("SELECT 1")
+    with pytest.raises(sqlite3.ProgrammingError):
+        conn.execute("SELECT 1")
 
 
 def test_rank_strategies_orders_by_history():

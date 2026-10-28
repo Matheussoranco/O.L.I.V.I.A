@@ -94,6 +94,19 @@ def test_generate_hypotheses_clamps_confidence(fake_client):
     assert h.confidence == 1.0
 
 
+def test_generate_hypotheses_rejects_non_finite_confidence(fake_client):
+    payload = [
+        {
+            "statement": "S",
+            "predictions": ["p"],
+            "falsification_test": "t",
+            "confidence": "NaN",
+        }
+    ]
+    (h,) = generate_hypotheses("q", [], client=fake_client(json.dumps(payload)))
+    assert h.confidence == 0.5
+
+
 def test_revise_hypothesis_offline_makes_low_confidence_child():
     parent = _good_hypothesis(confidence=0.5)
     child = revise_hypothesis(parent, "sample too small", client=NullClient())
@@ -164,6 +177,16 @@ def test_run_analysis_nonsignificant_does_not_support():
     code = 'import json; print(json.dumps({"effect_size": 0.1, "p_value": 0.6}))'
     result = run_analysis(ExperimentPlan(code=code), client=NullClient())
     assert result.supports_hypothesis is False
+
+
+def test_run_analysis_ignores_unrepresentable_statistics():
+    code = (
+        "import json; print(json.dumps({'effect_size': 0.8, 'p_value': 0.01, "
+        "'statistics': {'huge': 10**400}}))"
+    )
+    result = run_analysis(ExperimentPlan(code=code), client=NullClient())
+    assert result.effect_size == 0.8
+    assert result.statistics == {}
 
 
 def test_run_analysis_broken_code_reports_failure():
@@ -244,6 +267,19 @@ def test_critique_llm_can_add_but_not_remove_findings(fake_client):
     assert "Randomise session times." in critique
 
 
+def test_critique_ignores_non_boolean_needs_revision(fake_client):
+    client = fake_client(json.dumps({"critique": "", "needs_revision": "false", "fixes": []}))
+    h = _good_hypothesis()
+    exp = ExperimentPlan(
+        hypothesis_id=h.id,
+        variables=[Variable(name="c", kind="controlled")],
+        sample_size=64,
+    )
+    analysis = AnalysisResult(experiment_id=exp.id, p_value=0.01, effect_size=0.5)
+    _, needs_revision = critique_research("q", [h], [exp], [analysis], client=client)
+    assert not needs_revision
+
+
 # ---------------------------------------------------------------------------
 # write_report / review_literature
 # ---------------------------------------------------------------------------
@@ -285,6 +321,17 @@ def test_write_report_unsupported_hypotheses_stay_open():
     assert "No hypothesis found support" in report.conclusion
     assert report.confidence == 0.0
     assert any(h.statement[:50] in q for q in report.open_questions)
+
+
+def test_write_report_rejects_non_finite_llm_confidence(fake_client):
+    h = _good_hypothesis(confidence=0.6)
+    exp = ExperimentPlan(hypothesis_id=h.id, design="simulation")
+    analysis = AnalysisResult(
+        experiment_id=exp.id, summary="ran", p_value=0.01, effect_size=0.7, supports_hypothesis=True
+    )
+    response = json.dumps({"conclusion": "Result.", "open_questions": [], "confidence": "NaN"})
+    report = write_report("q", [], [h], [exp], [analysis], client=fake_client(response))
+    assert report.confidence == 0.6
 
 
 def test_review_literature_offline_is_honest_about_no_retrieval():

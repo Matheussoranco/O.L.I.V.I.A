@@ -46,6 +46,39 @@ def test_math_expert_symbolic_or_honest():
         assert "no LLM backend" in result.answer
 
 
+def test_math_expert_handles_implicit_multiplication_and_d_dx():
+    solved = MathExpert().answer("solve 2x + 3 = 7", client=NullClient())
+    derived = MathExpert().answer("d/dx of e^x", client=NullClient())
+    if _HAS_SYMPY:
+        assert solved.confidence == 0.9 and "2" in solved.answer
+        assert derived.confidence == 0.9 and "exp(x)" in derived.answer
+    else:
+        assert solved.confidence == 0.0 and derived.confidence == 0.0
+
+
+def test_math_expert_honours_with_respect_to():
+    expert = MathExpert()
+    if not _HAS_SYMPY:
+        assert (
+            expert.answer("derivative of x^2 with respect to x", client=NullClient()).confidence
+            == 0.0
+        )
+        return
+    squared = expert.answer("derivative of x^2 with respect to x", client=NullClient())
+    mixed = expert.answer("derivative of x*y with respect to y", client=NullClient())
+    assert squared.confidence == 0.9 and "2*x" in squared.answer
+    assert mixed.confidence == 0.9 and "diff: **x**" in mixed.answer
+
+
+def test_math_expert_marks_the_constant_of_integration():
+    integral = MathExpert().answer("integrate x", client=NullClient())
+    if _HAS_SYMPY:
+        assert integral.confidence == 0.9
+        assert "+ C" in integral.answer
+    else:
+        assert integral.confidence == 0.0
+
+
 def test_stats_expert_computes_sample_size_symbolically():
     result = StatsExpert().answer(_STATS_QUESTION, client=NullClient())
     assert result.confidence == 0.9

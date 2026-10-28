@@ -32,10 +32,18 @@ _KEYWORDS = [
 _EXPR_RE = re.compile(r"[0-9a-z)\s]\s*[-+*/^]\s*[0-9a-z(]|\*\*|sqrt|sin\(|cos\(|exp\(|log\(")
 
 _SOLVE_RE = re.compile(r"\bsolve\b\s*:?\s*(.+?)\s*=\s*(.+?)(?:\s+for\b.*)?[.?]?$", re.IGNORECASE)
+_WITH_RESPECT_RE = re.compile(r"\bwith\s+respect\s+to\s+([A-Za-z]\w*)\b", re.IGNORECASE)
 
 _PATTERNS: list[tuple[re.Pattern[str], str]] = [
     (_SOLVE_RE, "solve"),
-    (re.compile(r"\b(?:differentiate|derivative of)\b\s*:?\s*(.+?)[.?]?$", re.IGNORECASE), "diff"),
+    (
+        re.compile(
+            r"\b(?:differentiate|derivative\s+of|d/dx)\b\s*:?\s*(?:of\s+)?(.+?)"
+            r"(?:\s+with\s+respect\s+to\s+[A-Za-z]\w*)?[.?]?$",
+            re.IGNORECASE,
+        ),
+        "diff",
+    ),
     (re.compile(r"\bintegra(?:te|l of)\b\s*:?\s*(.+?)[.?]?$", re.IGNORECASE), "integrate"),
     (re.compile(r"\bsimplify\b\s*:?\s*(.+?)[.?]?$", re.IGNORECASE), "simplify"),
     (re.compile(r"\bfactor\b\s*:?\s*(.+?)[.?]?$", re.IGNORECASE), "factor"),
@@ -65,8 +73,15 @@ class MathExpert(Expert):
                 expression = f"({match.group(1).strip()}) - ({match.group(2).strip()})"
             else:
                 expression = match.group(1).strip()
-            result = symbolic_math(expression, operation)
+            variable = "x"
+            if operation == "diff":
+                respect = _WITH_RESPECT_RE.search(question)
+                if respect:
+                    variable = respect.group(1)
+            result = symbolic_math(expression, operation, variable=variable)
             if not result.startswith("error:"):
+                if operation == "integrate" and "+ C" not in result:
+                    result = f"{result} + C"
                 return operation, result
         return None
 

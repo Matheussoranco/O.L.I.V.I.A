@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 import logging
+import math
 from contextlib import suppress
 from statistics import fmean
 
@@ -26,14 +27,21 @@ from olivia.llm.structured import ask_json
 logger = logging.getLogger(__name__)
 
 
-def _supported_ids(analyses: list[AnalysisResult], experiments: list[ExperimentPlan]) -> set[str]:
-    """Hypothesis ids whose experiments produced supporting analyses."""
+def _verdicts_by_hypothesis(
+    analyses: list[AnalysisResult], experiments: list[ExperimentPlan]
+) -> dict[str, list[bool | None]]:
+    """Map hypothesis ids to the verdicts of every analysis that tested them."""
     by_experiment = {e.id: e.hypothesis_id for e in experiments}
     grouped: dict[str, list[bool | None]] = {}
     for analysis in analyses:
         hypothesis_id = by_experiment.get(analysis.experiment_id)
         if hypothesis_id:
             grouped.setdefault(hypothesis_id, []).append(analysis.supports_hypothesis)
+    return grouped
+
+
+def _supported_ids(grouped: dict[str, list[bool | None]]) -> set[str]:
+    """Hypothesis ids with at least one supporting and no refuting analyses."""
     return {
         hypothesis_id
         for hypothesis_id, verdicts in grouped.items()
@@ -125,15 +133,8 @@ def write_report(
 ) -> DiscoveryReport:
     """Assemble the end-to-end product of one research cycle."""
     client = client or get_client("strong")
-    supported = _supported_ids(analyses, experiments)
-    analysed_by_hypothesis: dict[str, list[bool | None]] = {}
-    by_experiment = {e.id: e.hypothesis_id for e in experiments}
-    for analysis in analyses:
-        hypothesis_id = by_experiment.get(analysis.experiment_id)
-        if hypothesis_id:
-            analysed_by_hypothesis.setdefault(hypothesis_id, []).append(
-                analysis.supports_hypothesis
-            )
+    analysed_by_hypothesis = _verdicts_by_hypothesis(analyses, experiments)
+    supported = _supported_ids(analysed_by_hypothesis)
     rendered_hypotheses = [
         dataclasses.replace(
             hypothesis,
@@ -173,7 +174,9 @@ def write_report(
             if isinstance(payload.get("open_questions"), list):
                 open_questions = [str(q) for q in payload["open_questions"] if str(q).strip()]
             with suppress(TypeError, ValueError):
-                confidence = min(max(float(payload.get("confidence", confidence)), 0.0), 1.0)
+                candidate = float(payload.get("confidence", confidence))
+                if math.isfinite(candidate):
+                    confidence = min(max(candidate, 0.0), 1.0)
 
     return DiscoveryReport(
         question=question,

@@ -8,6 +8,7 @@ the CLI / MCP server / HermesAgent explicitly wires everything together.
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any
@@ -82,11 +83,12 @@ class ToolRegistry:
             return f"error: unknown tool '{name}'"
         if tool.risk >= 5 and not allow_risky:
             return f"error: tool '{name}' requires explicit allow_risky=True"
-        validation_error = _validate_arguments(tool.parameters, arguments or {})
+        supplied = {} if arguments is None else arguments
+        validation_error = validate_arguments(tool.parameters, supplied)
         if validation_error:
             return f"error: {validation_error}"
         try:
-            return tool.fn(**(arguments or {}))
+            return tool.fn(**supplied)
         except TypeError as exc:
             return f"error: bad arguments for '{name}': {exc}"
         except Exception as exc:
@@ -97,8 +99,10 @@ class ToolRegistry:
 default_registry = ToolRegistry()
 
 
-def _validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> str | None:
-    """Validate the bounded JSON-schema subset used by local tools."""
+def validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> str | None:
+    """Validate the bounded JSON-schema subset used by local tools and MCP."""
+    if not isinstance(arguments, dict):
+        return "arguments must be a JSON object"
     properties = schema.get("properties", {})
     missing = [key for key in schema.get("required", []) if key not in arguments]
     if missing:
@@ -106,8 +110,8 @@ def _validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> st
     unknown = [key for key in arguments if key not in properties]
     if unknown:
         return f"unknown argument(s): {', '.join(unknown)}"
-    for name, value in arguments.items():
-        rule = properties[name]
+
+    def check(name: str, value: Any, rule: dict[str, Any]) -> str | None:
         kind = rule.get("type")
         valid = {
             "string": isinstance(value, str),
@@ -119,6 +123,8 @@ def _validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> st
         }.get(kind, True)
         if not valid:
             return f"argument '{name}' must be {kind}"
+        if isinstance(value, float) and not math.isfinite(value):
+            return f"argument '{name}' must be finite"
         if "enum" in rule and value not in rule["enum"]:
             return f"argument '{name}' must be one of {rule['enum']}"
         if isinstance(value, (int, float)) and not isinstance(value, bool):
@@ -128,8 +134,13 @@ def _validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> st
                 return f"argument '{name}' exceeds the maximum"
         if isinstance(value, list) and isinstance(rule.get("items"), dict):
             for index, item in enumerate(value):
-                item_rule = rule["items"]
-                item_kind = item_rule.get("type")
-                if item_kind == "string" and not isinstance(item, str):
-                    return f"argument '{name}[{index}]' must be string"
+                error = check(f"{name}[{index}]", item, rule["items"])
+                if error:
+                    return error
+        return None
+
+    for name, value in arguments.items():
+        error = check(name, value, properties[name])
+        if error:
+            return error
     return None

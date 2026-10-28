@@ -25,9 +25,9 @@ is stated here rather than hidden:
   must get harder to schedule.
 * **Rounding.** The published recurrence is real-valued; schedulers need whole
   days. This reference rounds each interval half-**up**, the conventional
-  reading of "round". Python's built-in ``round`` is half-to-**even**, so an
-  interval landing exactly on ``.5`` is a real divergence between the two
-  conventions, and the eval reports it instead of papering over it.
+  reading of "round". Python's built-in ``round`` is half-to-**even**, so both
+  the reference and ``olivia.study.srs`` state the half-up rule explicitly and
+  the eval compares their exact agreement at every step.
 """
 
 from __future__ import annotations

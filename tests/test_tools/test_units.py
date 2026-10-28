@@ -35,6 +35,11 @@ def test_temperature_is_affine():
     assert units.convert(0, "celsius", "K") == 273.15
 
 
+def test_non_finite_values_and_absurd_exponents_are_rejected():
+    assert units.convert(float("nan"), "m", "km") is None
+    assert units.convert(1, "m^999999999", "m") is None
+
+
 def test_incompatible_dimensions_return_none():
     assert units.convert(1, "m", "s") is None
     assert units.convert(1, "kg", "J") is None

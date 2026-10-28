@@ -258,7 +258,9 @@ def _null_vector(rows: list[list[Fraction]], ncols: int) -> list[Fraction] | Non
 
 def balance_equation(equation: str) -> dict:
     """Balance a chemical equation ('H2 + O2 -> H2O') by conservation of atoms."""
-    normalised = equation.replace("→", "->").replace("⟶", "->").replace("⇌", "->")
+    normalised = (
+        equation.replace("→", "->").replace("⟶", "->").replace("⇌", "->").replace("⇋", "->")
+    )
     for separator in ("->", "="):
         if separator in normalised:
             left, right = normalised.split(separator, 1)

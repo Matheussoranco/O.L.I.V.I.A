@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 
 import pytest
 
@@ -54,6 +55,12 @@ def test_chemistry_balance_route():
     assert sol.final_answer == "2 H2 + O2 -> 2 H2O"
 
 
+def test_chemistry_balance_route_accepts_equilibrium_arrows():
+    sol = solve_problem("balance N2 + H2 ⇌ NH3", client=NullClient())
+    assert sol.method == "chemistry"
+    assert sol.final_answer == "N2 + 3 H2 -> 2 NH3"
+
+
 def test_physics_constant_route():
     sol = solve_problem("what is the speed of light", client=NullClient())
     assert sol.method == "physics"
@@ -64,6 +71,12 @@ def test_units_conversion_route():
     sol = solve_problem("convert 60 mph to m/s", client=NullClient())
     assert sol.method == "units"
     assert "26.8224" in sol.final_answer
+
+
+def test_units_conversion_route_accepts_scientific_notation():
+    sol = solve_problem("convert 1e3 m to km", client=NullClient())
+    assert sol.method == "units"
+    assert sol.final_answer == "1 km"
 
 
 def test_unsolvable_offline_is_honest():
@@ -78,6 +91,20 @@ def test_forced_subject_skips_other_solvers():
     # A chemistry problem forced to 'math' finds no maths and, offline, abstains.
     sol = solve_problem("molar mass of H2O", subject="math", client=NullClient())
     assert sol.method == "none"
+
+
+def test_llm_fallback_without_a_final_answer_abstains(fake_client):
+    response = json.dumps({"steps": [{"description": "Think", "result": "done"}]})
+    sol = solve_problem("Explain entropy in one sentence.", client=fake_client(response))
+    assert sol.method == "none" and sol.confidence == 0.0
+
+
+@_needs_sympy
+def test_derivative_honours_with_respect_to():
+    squared = solve_problem("derivative of x^2 with respect to x", client=NullClient())
+    mixed = solve_problem("derivative of x*y with respect to y", client=NullClient())
+    assert squared.method == "symbolic" and squared.final_answer == "2*x"
+    assert mixed.method == "symbolic" and mixed.final_answer == "x"
 
 
 @_needs_sympy

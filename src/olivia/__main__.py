@@ -125,7 +125,13 @@ def study_cards(
 
     from olivia.study import Deck, generate_flashcards
 
-    content = Path(content_file).read_text(encoding="utf-8") if content_file else ""
+    content = ""
+    if content_file:
+        try:
+            content = Path(content_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            console.print(f"[red]Cannot read {content_file}: {exc}[/red]")
+            raise typer.Exit(2) from exc
     cards = generate_flashcards(topic, content=content, n=n)
     if not cards:
         console.print(
@@ -149,7 +155,13 @@ def study_quiz(
 
     from olivia.study import generate_quiz, grade_quiz
 
-    content = Path(content_file).read_text(encoding="utf-8") if content_file else ""
+    content = ""
+    if content_file:
+        try:
+            content = Path(content_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            console.print(f"[red]Cannot read {content_file}: {exc}[/red]")
+            raise typer.Exit(2) from exc
     questions = generate_quiz(topic, content=content, n=n)
     if not questions:
         console.print("[yellow]No quiz generated (need an LLM backend or --content-file).[/yellow]")
@@ -397,7 +409,7 @@ def notebook(
     query: str = typer.Argument("", help="Search query, or the text to add."),
     kind: str = typer.Option("", "--kind", "-k", help="Filter/label by entry kind."),
     tags: str = typer.Option("", "--tags", help="Comma-separated tags (for 'add')."),
-    limit: int = typer.Option(20, "--limit", "-n", help="Max entries to show."),
+    limit: int = typer.Option(20, "--limit", "-n", min=1, help="Max entries to show."),
 ) -> None:
     """Read and append to the research notebook (long-term memory).
 

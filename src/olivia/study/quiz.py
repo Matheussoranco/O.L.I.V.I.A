@@ -17,7 +17,7 @@ from olivia.llm.structured import ask_json
 
 logger = logging.getLogger(__name__)
 
-_SENTENCE_RE = re.compile(r"[^.!?]+[.!?]")
+_SENTENCE_RE = re.compile(r"[^.!?]+[.!?]|[^.!?]+$")
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{4,}")
 _DIFFICULTIES = ("easy", "medium", "hard")
 _STOPWORDS = {
@@ -43,9 +43,16 @@ _STOPWORDS = {
 def _coerce_question(item: object) -> QuizQuestion | None:
     if not isinstance(item, dict) or not str(item.get("prompt", "")).strip():
         return None
-    options = [str(o).strip() for o in item.get("options", []) if str(o).strip()]
+    raw_options = item.get("options", [])
+    if not isinstance(raw_options, list):
+        return None
+    options = [str(o).strip() for o in raw_options if str(o).strip()]
     answer_index = item.get("answer_index")
-    if options and (not isinstance(answer_index, int) or not 0 <= answer_index < len(options)):
+    if options and (
+        not isinstance(answer_index, int)
+        or isinstance(answer_index, bool)
+        or not 0 <= answer_index < len(options)
+    ):
         return None
     difficulty = str(item.get("difficulty", "medium")).lower()
     return QuizQuestion(
@@ -65,6 +72,7 @@ def generate_quiz(
     n: int = 5,
 ) -> list[QuizQuestion]:
     """Produce up to ``n`` quiz questions about ``topic``."""
+    n = min(max(int(n), 1), 100)
     client = client or get_client()
 
     if client.available:
@@ -83,7 +91,6 @@ def generate_quiz(
             if questions:
                 return questions[:n]
 
-    n = min(max(int(n), 1), 100)
     # Offline: cloze questions built from the learner's own material. The
     # answer is deliberately removed from the prompt, so the item tests
     # retrieval rather than merely quoting the source sentence.
@@ -93,9 +100,14 @@ def generate_quiz(
         if not 30 <= len(sentence) <= 300:
             continue
         words = [word for word in _WORD_RE.findall(sentence) if word.casefold() not in _STOPWORDS]
-        if not words:
+        candidates = [
+            word
+            for word in words
+            if len(re.findall(rf"\b{re.escape(word)}\b", sentence, re.IGNORECASE)) == 1
+        ]
+        if not candidates:
             continue
-        target = max(words, key=len)
+        target = max(candidates, key=len)
         masked = re.sub(rf"\b{re.escape(target)}\b", "____", sentence, count=1)
         questions.append(
             QuizQuestion(prompt=f"Complete the missing term: “{masked}”", answer_text=target)
@@ -117,13 +129,15 @@ def grade_quiz(questions: list[QuizQuestion], answers: list[str]) -> dict:
         correct: bool | None
         if question.options:
             expected = question.options[question.answer_index or 0]
-            matches_text = given.casefold() == expected.casefold()
-            matches_index = given.isdigit() and int(given) == question.answer_index
-            correct = False
-            if matches_text or matches_index:
-                correct = True
-            elif len(given) == 1 and given.isalpha():
-                correct = ord(given.lower()) - ord("a") == question.answer_index
+            correct = (
+                given.casefold() == expected.casefold()
+                or (given.isdigit() and int(given) == question.answer_index)
+                or (
+                    len(given) == 1
+                    and given.isalpha()
+                    and ord(given.lower()) - ord("a") == question.answer_index
+                )
+            )
         else:
             expected = question.answer_text
             # Free-form answers that don't match exactly are ungraded, not wrong.

@@ -9,6 +9,7 @@ template hypothesis keeps the cycle runnable end-to-end.
 from __future__ import annotations
 
 import logging
+import math
 
 from olivia.core.records import Hypothesis, Paper, new_id
 from olivia.llm.client import LLMClient, get_client
@@ -48,7 +49,9 @@ def _coerce(payload: dict, parent_id: str | None = None) -> Hypothesis | None:
         predictions = [str(predictions)]
     try:
         confidence = float(payload.get("confidence", 0.5))
-    except (TypeError, ValueError):
+    except (TypeError, ValueError, OverflowError):
+        confidence = 0.5
+    if not math.isfinite(confidence):
         confidence = 0.5
     return Hypothesis(
         statement=statement,

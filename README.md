@@ -134,12 +134,13 @@ the local marketplace at
 
 The global Codex installation is also available after installing the skill
 from GitHub; restart or refresh the Codex session if its skill inventory was
-already loaded.
+already loaded. `olivia academic` reads the vendored directory, so it requires
+a source checkout; the wheel ships only the `olivia` package.
 
 ## Tests
 
 ```bash
-python -m pytest -q     # 222 tests, fully offline by default
+python -m pytest -q     # 256 tests, fully offline by default
 ```
 
 ## Status

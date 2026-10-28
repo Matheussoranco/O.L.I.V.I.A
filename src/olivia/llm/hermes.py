@@ -187,7 +187,7 @@ def format_tool_response(name: str, result: Any) -> str:
             result = str(result)
     if len(result) > 8000:
         result = result[:8000] + "\n...[truncated]"
-    payload = f'{{"name": "{name}", "content": {json.dumps(result)}}}'
+    payload = json.dumps({"name": name, "content": result}, ensure_ascii=False)
     return f"<tool_response>\n{payload}\n</tool_response>"
 
 

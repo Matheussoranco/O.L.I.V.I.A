@@ -50,6 +50,12 @@ def test_sm2_first_three_perfect_reviews():
     assert card.interval_days == round(6.0 * 2.6)  # ease grew to 2.6 after two q=5 reviews
 
 
+def test_sm2_interval_rounds_half_up_not_half_to_even():
+    card = Flashcard(front="f", back="b", repetitions=3, interval_days=5.0, ease=2.5)
+    reviewed = review_card(card, 5, today=_TODAY)
+    assert reviewed.interval_days == 13
+
+
 def test_sm2_lapse_resets_schedule_and_updates_ease():
     # Canonical SM-2 (Wikipedia / SuperMemo reference pseudocode): the
     # EF'=EF+(0.1-(5-q)*(0.08+(5-q)*0.02)) update is unconditional, applied
@@ -167,6 +173,25 @@ def test_flashcards_offline_without_content_returns_nothing():
     assert generate_flashcards("srs", client=NullClient()) == []
 
 
+def test_generators_clamp_n_to_a_positive_bound():
+    assert len(generate_flashcards("srs", content=_CONTENT, client=NullClient(), n=0)) == 1
+    assert len(generate_quiz("srs", content=_CONTENT, client=NullClient(), n=-5)) == 1
+
+
+def test_offline_cloze_ignores_case_insensitive_duplicate_words():
+    content = "Retention retention aa bb cc dd."
+    assert generate_flashcards("srs", content=content, client=NullClient()) == []
+    assert generate_quiz("srs", content=content, client=NullClient()) == []
+
+
+def test_offline_cloze_uses_a_final_sentence_without_punctuation():
+    content = "Spaced repetition schedules reviews at increasing intervals"
+    cards = generate_flashcards("srs", content=content, client=NullClient(), n=1)
+    questions = generate_quiz("srs", content=content, client=NullClient(), n=1)
+    assert len(cards) == 1 and "____" in cards[0].front
+    assert len(questions) == 1 and "____" in questions[0].prompt
+
+
 def test_flashcards_from_llm_json(fake_client):
     payload = [
         {"front": "What is SM-2?", "back": "A spaced-repetition algorithm"},
@@ -192,9 +217,18 @@ def test_quiz_llm_mcq_validation(fake_client):
     payload = [
         {"prompt": "Pick.", "options": ["a", "b", "c", "d"], "answer_index": 2},
         {"prompt": "Bad index.", "options": ["a", "b"], "answer_index": 5},
+        {"prompt": "Bool index.", "options": ["a", "b"], "answer_index": True},
     ]
     questions = generate_quiz("t", client=fake_client(json.dumps(payload)))
-    assert len(questions) == 1  # out-of-range answer_index is rejected
+    assert len(questions) == 1  # invalid answer_index values are rejected
+
+
+def test_quiz_llm_malformed_options_fall_back_to_content(fake_client):
+    payload = [{"prompt": "Pick.", "options": None, "answer_index": 0}]
+    questions = generate_quiz("srs", content=_CONTENT, client=fake_client(json.dumps(payload)), n=1)
+    assert len(questions) == 1
+    assert questions[0].options == []
+    assert questions[0].answer_text
 
 
 def test_grade_quiz_accepts_index_letter_and_text():
@@ -243,6 +277,20 @@ def test_study_plan_from_llm_json(fake_client):
     assert plan.prerequisites == ["algebra"]
 
 
+def test_study_plan_tolerates_malformed_llm_fields(fake_client):
+    payload = {
+        "prerequisites": "algebra",
+        "milestones": [{"week": "one", "title": "", "objectives": "o1", "practice": "p1"}],
+        "resources": 3,
+    }
+    plan = make_study_plan("stats", weeks=3, client=fake_client(json.dumps(payload)))
+    assert plan.milestones[0]["week"] == 1
+    assert plan.milestones[0]["title"] == "Week 1"
+    assert plan.milestones[0]["objectives"] == ["o1"]
+    assert plan.prerequisites == ["algebra"]
+    assert plan.resources == []
+
+
 # ---------------------------------------------------------------------------
 # Tutor
 # ---------------------------------------------------------------------------
@@ -263,3 +311,11 @@ def test_tutor_with_llm_keeps_history(fake_client):
     assert session.respond("it stops") == "Good — and without one?"
     assert len(session.messages) == 4
     assert len(client.calls[1]) == 3  # second call saw the running history
+
+
+def test_tutor_history_window_never_starts_with_an_assistant_turn(fake_client):
+    client = fake_client("first reply", "second reply")
+    session = TutorSession("recursion", client=client, max_history=2)
+    session.respond("one")
+    session.respond("two")
+    assert [message["role"] for message in client.calls[1]] == ["user"]

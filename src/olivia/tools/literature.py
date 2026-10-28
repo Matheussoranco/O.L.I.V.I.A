@@ -40,27 +40,23 @@ def _network_enabled(allow_network: bool | None) -> bool:
 
 def _safe_url(url: str) -> bool:
     """Reject non-web, credential-bearing, and private-network destinations."""
-    parsed = urlparse(url)
-    if parsed.scheme not in {"http", "https"} or not parsed.hostname or parsed.username:
+    try:
+        parsed = urlparse(url)
+        port = parsed.port or 443
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    if parsed.username or parsed.password:
         return False
     try:
         addresses = {
             item[4][0]
-            for item in socket.getaddrinfo(
-                parsed.hostname, parsed.port or 443, type=socket.SOCK_STREAM
-            )
+            for item in socket.getaddrinfo(parsed.hostname, port, type=socket.SOCK_STREAM)
         }
-    except OSError:
+    except (OSError, UnicodeError, ValueError):
         return False
-    return all(
-        not (ip := ipaddress.ip_address(address)).is_private
-        and not ip.is_loopback
-        and not ip.is_link_local
-        and not ip.is_multicast
-        and not ip.is_reserved
-        and not ip.is_unspecified
-        for address in addresses
-    )
+    return all(ipaddress.ip_address(address).is_global for address in addresses)
 
 
 def _get(url: str, params: dict | None = None, allow_network: bool | None = None) -> Any | None:

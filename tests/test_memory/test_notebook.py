@@ -36,6 +36,12 @@ def test_search_scores_keywords():
     assert hits[0]["content"] == "light light light everywhere"  # highest term count first
 
 
+def test_search_matches_words_next_to_punctuation():
+    notebook = Notebook()
+    notebook.add("note", "recheck the 2019 replication.")
+    assert len(notebook.search("replication")) == 1
+
+
 def test_search_requires_all_wanted_tags():
     notebook = Notebook()
     notebook.add("note", "tagged both", tags=["physics", "Optics"])
@@ -65,4 +71,13 @@ def test_corrupt_notebook_starts_empty(tmp_path):
     notebook = Notebook(path=path)
     assert notebook.entries() == []
     notebook.add("note", "fresh start")  # and it can write over the corruption
+    assert len(Notebook(path=path).entries()) == 1
+
+
+def test_notebook_with_wrong_json_root_starts_empty(tmp_path):
+    path = tmp_path / "object.json"
+    path.write_text('{"not": "a list"}', encoding="utf-8")
+    notebook = Notebook(path=path)
+    assert notebook.entries() == []
+    notebook.add("note", "fresh start")
     assert len(Notebook(path=path).entries()) == 1

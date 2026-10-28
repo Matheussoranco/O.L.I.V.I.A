@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 
 import pytest
 
@@ -33,6 +34,18 @@ def test_non_math_topic_degrades_to_empty_offline():
     assert generate_worksheet("the French Revolution", n=3, client=NullClient()) == []
 
 
+def test_offline_worksheet_drops_items_without_a_solution(monkeypatch):
+    from olivia.core.records import WorkedSolution
+    from olivia.study import worksheet
+
+    monkeypatch.setattr(
+        worksheet,
+        "solve_problem",
+        lambda *args, **kwargs: WorkedSolution(problem="", method="none"),
+    )
+    assert worksheet.generate_worksheet("linear", n=2, seed=1, client=NullClient()) == []
+
+
 @_needs_sympy
 def test_worksheet_markdown_has_problems_and_answer_key():
     sheet = generate_worksheet("derivatives", n=2, seed=3, client=NullClient())
@@ -40,3 +53,11 @@ def test_worksheet_markdown_has_problems_and_answer_key():
     assert "# Worksheet: derivatives" in md
     assert "## Answer key" in md
     assert md.count("**Answer:**") == 2
+
+
+@_needs_sympy
+def test_llm_problems_are_solved_symbolically(fake_client):
+    payload = {"problems": ["solve 2x + 3 = 7", "solve x**2 - 4 = 0"]}
+    sheet = generate_worksheet("linear equations", n=2, client=fake_client(json.dumps(payload)))
+    assert [solution.method for solution in sheet] == ["symbolic", "symbolic"]
+    assert all(solution.final_answer for solution in sheet)

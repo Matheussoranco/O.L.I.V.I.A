@@ -11,6 +11,7 @@ network, no LLM, no third-party dependency.
 
 from __future__ import annotations
 
+import math
 import re
 
 Dimension = tuple[int, ...]
@@ -179,6 +180,8 @@ def parse_unit(unit_str: str) -> tuple[float, Dimension] | None:
         cursor = match.end()
         op, name, exp = match.groups()
         exponent = int(exp) if exp else 1
+        if abs(exponent) > 12:
+            return None
         if op == "/":
             exponent = -exponent
         resolved = _resolve(name)
@@ -186,6 +189,8 @@ def parse_unit(unit_str: str) -> tuple[float, Dimension] | None:
             return None
         unit_factor, unit_dim = resolved
         factor *= unit_factor**exponent
+        if not math.isfinite(factor):
+            return None
         for i in range(7):
             dim[i] += unit_dim[i] * exponent
     if cursor != len(text):
@@ -221,6 +226,8 @@ def _from_kelvin(value: float, unit: str) -> float | None:
 
 def convert(value: float, from_unit: str, to_unit: str) -> float | None:
     """Convert ``value`` from one unit to another; ``None`` if incompatible."""
+    if not math.isfinite(value):
+        return None
     if _is_temperature(from_unit) and _is_temperature(to_unit):
         kelvin = _to_kelvin(value, from_unit)
         return _from_kelvin(kelvin, to_unit) if kelvin is not None else None

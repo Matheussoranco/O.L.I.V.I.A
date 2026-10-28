@@ -63,6 +63,19 @@ def test_unknown_method_and_unknown_tool():
     assert response["error"]["code"] == -32602
 
 
+def test_non_string_tool_name_is_an_invalid_params_error():
+    response = _handle(
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {"name": ["olivia_ask"], "arguments": {}},
+        }
+    )
+    assert response is not None
+    assert response["error"]["code"] == -32602
+
+
 def test_tool_exception_returns_is_error_result():
     response = _call("notebook_add", {"kind": "note"})  # missing required 'content'
     assert response["error"]["code"] == -32602

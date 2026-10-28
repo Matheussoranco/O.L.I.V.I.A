@@ -44,6 +44,8 @@ class TutorSession:
             reply = _OFFLINE_NOTICE
         else:
             window = self.messages[-self.max_history :]
+            if window and window[0]["role"] != "user":
+                window = window[1:]
             response = self.client.complete(window, system=self._system)
             reply = response.text.strip() or (
                 f"(tutor unavailable: {response.error or 'empty response'})"

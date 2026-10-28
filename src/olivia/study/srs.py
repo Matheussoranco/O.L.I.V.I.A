@@ -10,6 +10,7 @@ from __future__ import annotations
 import dataclasses
 import json
 import logging
+import math
 import re
 from datetime import date, timedelta
 from pathlib import Path
@@ -46,7 +47,7 @@ def review_card(card: Flashcard, quality: int, today: date | None = None) -> Fla
         elif repetitions == 2:
             interval = 6.0
         else:
-            interval = float(round(card.interval_days * card.ease))
+            interval = float(math.floor(card.interval_days * card.ease + 0.5))
 
     return dataclasses.replace(
         card,

@@ -61,6 +61,7 @@ def design_experiment(
             '{"design": "randomised controlled | A/B | simulation | observational", '
             '"variables": [{"name": str, "kind": "independent|dependent|controlled|confound", '
             '"description": str}], "procedure": [str], "expected_effect_size": number or null, '
+            '"expected_effect_direction": "positive|negative|any", '
             '"analysis_plan": str, "materials": [str], "risks": [str], '
             '"code": "OPTIONAL runnable pure-Python simulation of the experiment that prints '
             'exactly one final JSON object like {\\"effect_size\\": ..., \\"p_value\\": ..., '
@@ -82,7 +83,7 @@ def design_experiment(
             if direction in {"positive", "negative", "any"}:
                 plan.expected_effect_direction = direction  # type: ignore[assignment]
             effect = payload.get("expected_effect_size")
-            if isinstance(effect, (int, float)) and effect > 0:
+            if isinstance(effect, (int, float)) and not isinstance(effect, bool) and effect > 0:
                 plan.sample_size = required_sample_size(float(effect))
                 plan.power = 0.8
             return plan

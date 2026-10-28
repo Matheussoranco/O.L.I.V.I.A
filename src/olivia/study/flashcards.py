@@ -16,24 +16,28 @@ from olivia.llm.structured import ask_json
 
 logger = logging.getLogger(__name__)
 
-_SENTENCE_RE = re.compile(r"[^.!?]+[.!?]")
+_SENTENCE_RE = re.compile(r"[^.!?]+[.!?]|[^.!?]+$")
 _WORD_RE = re.compile(r"[A-Za-zÀ-ÿ]{4,}")
 
 
+def _occurs_once(word: str, sentence: str) -> bool:
+    return len(re.findall(rf"\b{re.escape(word)}\b", sentence, re.IGNORECASE)) == 1
+
+
 def _cloze_cards(topic: str, content: str, n: int) -> list[Flashcard]:
-    """Blank the longest word of each usable sentence — deterministic clozes."""
+    """Blank the longest unique word of each usable sentence — deterministic clozes."""
     cards: list[Flashcard] = []
     for match in _SENTENCE_RE.finditer(content):
         sentence = " ".join(match.group().split())
         if not 30 <= len(sentence) <= 300:
             continue
-        words = _WORD_RE.findall(sentence)
-        if not words:
+        candidates = [word for word in _WORD_RE.findall(sentence) if _occurs_once(word, sentence)]
+        if not candidates:
             continue
-        target = max(words, key=len)
+        target = max(candidates, key=len)
         cards.append(
             Flashcard(
-                front=sentence.replace(target, "____", 1),
+                front=re.sub(rf"\b{re.escape(target)}\b", "____", sentence, count=1),
                 back=target,
                 topic=topic,
             )
@@ -50,6 +54,7 @@ def generate_flashcards(
     n: int = 10,
 ) -> list[Flashcard]:
     """Produce up to ``n`` flashcards about ``topic`` (grounded in ``content``)."""
+    n = min(max(int(n), 1), 100)
     client = client or get_client()
 
     if client.available:

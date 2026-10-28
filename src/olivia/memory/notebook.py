@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from olivia.core.records import new_id
 from olivia.core.storage import atomic_write_json, quarantine_corrupt_file
 
 logger = logging.getLogger(__name__)
+
+_WORD_RE = re.compile(r"\w+")
 
 
 class Notebook:
@@ -34,11 +37,12 @@ class Notebook:
         self._indexed_upto: int = 0
         if self.path.exists():
             try:
-                self._entries = json.loads(self.path.read_text(encoding="utf-8"))
-                if not isinstance(self._entries, list) or not all(
-                    isinstance(entry, dict) for entry in self._entries
+                loaded = json.loads(self.path.read_text(encoding="utf-8"))
+                if not isinstance(loaded, list) or not all(
+                    isinstance(entry, dict) for entry in loaded
                 ):
                     raise ValueError("notebook root must be a list of objects")
+                self._entries = loaded
             except Exception as exc:
                 self._load_failed = True
                 logger.warning("Could not load notebook %s: %s", self.path, exc)
@@ -71,7 +75,7 @@ class Notebook:
             + " "
             + " ".join(str(t).casefold() for t in entry.get("tags", []))
         )
-        return {t for t in text.split() if t}
+        return set(_WORD_RE.findall(text))
 
     def _index_entry(self, idx: int, entry: dict) -> None:
         for term in self._terms(entry):
@@ -96,7 +100,7 @@ class Notebook:
     ) -> list[dict]:
         """Keyword-scored search; empty query ranks by recency alone."""
         wanted_tags = {t.casefold() for t in (tags or [])}
-        terms = [t for t in query.casefold().split() if t]
+        terms = _WORD_RE.findall(query.casefold())
         self._ensure_index()
 
         if terms:

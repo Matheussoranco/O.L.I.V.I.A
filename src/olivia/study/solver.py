@@ -10,6 +10,7 @@ backend it says so honestly (confidence 0), never fabricating steps.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from tokenize import TokenError
 
@@ -50,12 +51,16 @@ _SOLVE_RE = re.compile(
     r"\bsolve\b[^:]*?:?\s*(.+?)\s*=\s*(.+?)(?:\s+for\s+\w+)?\s*[.?]?\s*$", re.IGNORECASE
 )
 _DERIV_RE = re.compile(
-    r"\b(?:differentiate|derivative\s+of|d/dx)\b\s*:?\s*(?:of\s+)?(.+?)\s*[.?]?\s*$",
+    r"\b(?:differentiate|derivative\s+of|d/dx)\b\s*:?\s*(?:of\s+)?(.+?)"
+    r"(?:\s+with\s+respect\s+to\s+[A-Za-z]\w*)?\s*[.?]?\s*$",
     re.IGNORECASE,
 )
 _INTEGRATE_RE = re.compile(
-    r"\bintegra(?:te|l of)\b\s*:?\s*(.+?)\s*(?:\bdx\b)?\s*[.?]?\s*$", re.IGNORECASE
+    r"\bintegra(?:te|l of)\b\s*:?\s*(.+?)\s*(?:d[A-Za-z]\w*)?"
+    r"(?:\s+with\s+respect\s+to\s+[A-Za-z]\w*)?\s*[.?]?\s*$",
+    re.IGNORECASE,
 )
+_WITH_RESPECT_RE = re.compile(r"\bwith\s+respect\s+to\s+([A-Za-z]\w*)\b", re.IGNORECASE)
 _SIMPLIFY_RE = re.compile(r"\bsimplify\b\s*:?\s*(.+?)\s*[.?]?\s*$", re.IGNORECASE)
 _FACTOR_RE = re.compile(r"\bfactor\b\s*:?\s*(.+?)\s*[.?]?\s*$", re.IGNORECASE)
 _EXPAND_RE = re.compile(r"\bexpand\b\s*:?\s*(.+?)\s*[.?]?\s*$", re.IGNORECASE)
@@ -69,9 +74,10 @@ _MOLAR_RE = re.compile(
     r"molar mass|molecular (?:weight|mass)|formula weight|molar weight", re.IGNORECASE
 )
 _FORMULA_TOKEN_RE = re.compile(r"[A-Za-z0-9()\[\]{}·.]+")
-_EQUATION_RE = re.compile(r"([A-Za-z0-9()\[\]{}·.\s+]+(?:->|=|→|⟶)[A-Za-z0-9()\[\]{}·.\s+]+)")
+_EQUATION_RE = re.compile(r"([A-Za-z0-9()\[\]{}·.\s+]+(?:->|=|→|⟶|⇌|⇋)[A-Za-z0-9()\[\]{}·.\s+]+)")
 _CONVERT_RE = re.compile(
-    r"(?:convert\s+)?(-?\d+\.?\d*)\s*([A-Za-zµμΩ°/^*\d.·]+?)\s+(?:to|into|in)\s+"
+    r"(?:convert\s+)?([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*"
+    r"([A-Za-zµμΩ°/^*\d.·]+?)\s+(?:to|into|in)\s+"
     r"([A-Za-zµμΩ°/^*\d.·]+)",
     re.IGNORECASE,
 )
@@ -156,6 +162,9 @@ def _solve_math(problem: str) -> WorkedSolution | None:
             try:
                 expr = _sympify(match.group(1).strip())
                 var = _pick_symbol(expr)
+                respect = _WITH_RESPECT_RE.search(text)
+                if respect and sympy.Symbol(respect.group(1)) in expr.free_symbols:
+                    var = sympy.Symbol(respect.group(1))
                 result = sympy.diff(expr, var) if op == "diff" else sympy.integrate(expr, var)
             except _parse_errors() as exc:
                 logger.exception("%s: cannot parse expression %r", verb, match.group(1).strip())
@@ -355,6 +364,8 @@ def _solve_units(problem: str) -> WorkedSolution | None:
     if not match:
         return None
     value = float(match.group(1))
+    if not math.isfinite(value):
+        return None
     from_unit, to_unit = match.group(2).strip(" ."), match.group(3).strip(" .")
     result = convert_units(value, from_unit, to_unit)
     if not result["ok"]:
@@ -393,11 +404,14 @@ def _solve_llm(problem: str, subject: str, client: LLMClient) -> WorkedSolution 
             _new_step(steps, str(item["description"]).strip(), str(item.get("result", "")).strip())
     if not steps:
         return None
+    answer = str(payload.get("answer", "")).strip()
+    if not answer:
+        return None
     return WorkedSolution(
         problem=problem,
         subject=subject,
         steps=steps,
-        final_answer=str(payload.get("answer", "")).strip(),
+        final_answer=answer,
         method="llm",
         confidence=0.7,
     )
@@ -503,8 +517,8 @@ def solve_problem(
         steps=[
             SolutionStep(
                 n=1,
-                description="No symbolic method matched this problem and no LLM "
-                "backend is configured, so it cannot be solved offline.",
+                description="No symbolic method matched this problem and no language-model "
+                "answer was available, so it cannot be solved offline.",
             )
         ],
     )

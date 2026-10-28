@@ -17,6 +17,7 @@ from dataclasses import asdict
 from typing import Any
 
 from olivia import __version__
+from olivia.tools.registry import validate_arguments
 
 logging.basicConfig(stream=sys.stderr, level=logging.WARNING)
 logger = logging.getLogger(__name__)
@@ -123,9 +124,6 @@ def _literature_search(query: str, max_results: int = 10, allow_network: bool = 
 
 
 def _python_exec(code: str, timeout: float = 30.0, allow_risky: bool = False) -> Any:
-    # Gate risk=5: execução de código via MCP exige confirmação explícita do
-    # chamador (allow_risky=true), igual ao registry (Tool risk=5) e ao CLI
-    # `olivia tools run --allow-risky`. Sem isso, bloqueia sem executar.
     if not allow_risky:
         return {
             "ok": False,
@@ -380,12 +378,12 @@ def _handle(request: dict[str, Any]) -> dict[str, Any] | None:
     elif method == "tools/call":
         name = params.get("name", "")
         arguments = params.get("arguments", {})
+        if not isinstance(name, str) or not isinstance(arguments, dict):
+            return _error(request_id, -32602, "tool name and arguments are invalid")
         entry = TOOLS.get(name)
         if entry is None:
             return _error(request_id, -32602, f"unknown tool '{name}'")
-        if not isinstance(name, str) or not isinstance(arguments, dict):
-            return _error(request_id, -32602, "tool name and arguments are invalid")
-        validation_error = _validate_arguments(entry[1], arguments)
+        validation_error = validate_arguments(entry[1], arguments)
         if validation_error:
             return _error(request_id, -32602, validation_error)
         try:
@@ -413,51 +411,6 @@ def _handle(request: dict[str, Any]) -> dict[str, Any] | None:
     if request_id is None:
         return None
     return {"jsonrpc": "2.0", "id": request_id, "result": result}
-
-
-def _validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> str | None:
-    """Validate the small JSON-schema subset used by the local tool registry."""
-    properties = schema.get("properties", {})
-    required = schema.get("required", [])
-    missing = [name for name in required if name not in arguments]
-    if missing:
-        return f"missing required argument(s): {', '.join(missing)}"
-    unknown = [name for name in arguments if name not in properties]
-    if unknown:
-        return f"unknown argument(s): {', '.join(unknown)}"
-
-    def check(name: str, value: Any, rule: dict[str, Any]) -> str | None:
-        kind = rule.get("type")
-        types_map: dict[str, bool] = {
-            "string": isinstance(value, str),
-            "boolean": isinstance(value, bool),
-            "integer": isinstance(value, int) and not isinstance(value, bool),
-            "number": isinstance(value, (int, float)) and not isinstance(value, bool),
-            "array": isinstance(value, list),
-            "object": isinstance(value, dict),
-        }
-        valid = types_map.get(str(kind), True) if kind is not None else True
-        if not valid:
-            return f"argument '{name}' must be {kind}"
-        if "enum" in rule and value not in rule["enum"]:
-            return f"argument '{name}' must be one of {rule['enum']}"
-        if isinstance(value, (int, float)) and not isinstance(value, bool):
-            if "minimum" in rule and value < rule["minimum"]:
-                return f"argument '{name}' is below the minimum"
-            if "maximum" in rule and value > rule["maximum"]:
-                return f"argument '{name}' exceeds the maximum"
-        if isinstance(value, list) and isinstance(rule.get("items"), dict):
-            for index, item in enumerate(value):
-                error = check(f"{name}[{index}]", item, rule["items"])
-                if error:
-                    return error
-        return None
-
-    for name, value in arguments.items():
-        error = check(name, value, properties[name])
-        if error:
-            return error
-    return None
 
 
 def _error(request_id: Any, code: int, message: str) -> dict[str, Any]:

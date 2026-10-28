@@ -33,6 +33,18 @@ def test_run_cycle_unknown_mode_raises():
         run_cycle("q", mode="dream", client=NullClient())
 
 
+def test_run_cycle_captures_node_value_errors(monkeypatch):
+    from olivia.core import graph
+
+    def _fail(state, client=None):
+        raise ValueError("node boom")
+
+    monkeypatch.setattr(graph, "node_ask", _fail)
+    state = run_cycle("q", mode="ask", client=NullClient())
+    assert state["errors"] == ["node boom"]
+    assert state["phase"] == "init"
+
+
 def test_run_cycle_research_offline_full_loop():
     state = run_cycle("Does spacing improve retention?", mode="research", client=NullClient())
 

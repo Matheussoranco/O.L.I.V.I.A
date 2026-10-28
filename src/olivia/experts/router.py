@@ -45,11 +45,11 @@ def get_experts() -> list[Expert]:
 
 
 def _win_rate(expert_name: str) -> float | None:
-    """Historical win-rate for the 'ask' task, or None when unavailable."""
+    """Historical win-rate for the 'ask' task, or None when unseen."""
     try:
         from olivia.meta.learner import get_meta_learner
 
-        return get_meta_learner().win_rate("ask", expert_name)
+        return get_meta_learner().observed_win_rate("ask", expert_name)
     except Exception as exc:
         logger.debug("win_rate lookup failed: %s", exc)
         return None

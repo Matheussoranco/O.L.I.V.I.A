@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
 from olivia.agents import AgentPool, ResearchLab, SubAgent
 from olivia.llm.client import NullClient
-from olivia.llm.hermes import HermesAgent, parse_tool_calls, strip_think
+from olivia.llm.hermes import HermesAgent, format_tool_response, parse_tool_calls, strip_think
 from olivia.tools.registry import Tool, ToolRegistry
 
 
@@ -48,6 +50,12 @@ def test_strip_think_separates_reasoning_from_answer():
     visible, thoughts = strip_think("<think>private chain</think>The answer is 4.")
     assert visible == "The answer is 4."
     assert thoughts == "private chain"
+
+
+def test_format_tool_response_escapes_tool_names():
+    payload = format_tool_response('bad"name', "ok")
+    body = payload.removeprefix("<tool_response>\n").removesuffix("\n</tool_response>")
+    assert json.loads(body) == {"name": 'bad"name', "content": "ok"}
 
 
 # ---------------------------------------------------------------------------

@@ -67,6 +67,26 @@ def test_literature_search_dedupes_and_ranks(monkeypatch):
     assert results[0].doi == "10.1/x"
 
 
+def test_safe_url_rejects_malformed_ports_and_credentials():
+    assert literature._safe_url("http://example.org:not-a-port/") is False
+    assert literature._safe_url("http://:secret@example.org/") is False
+
+
+def test_safe_url_rejects_non_global_addresses(monkeypatch):
+    def _addresses(*_args, **_kwargs):
+        return [(2, 1, 6, "", ("100.64.0.1", 443))]
+
+    monkeypatch.setattr(literature.socket, "getaddrinfo", _addresses)
+    assert literature._safe_url("http://example.org") is False
+
+    monkeypatch.setattr(
+        literature.socket,
+        "getaddrinfo",
+        lambda *_args, **_kwargs: [(2, 1, 6, "", ("93.184.216.34", 443))],
+    )
+    assert literature._safe_url("http://example.org") is True
+
+
 def test_fetch_url_strips_html(monkeypatch):
     html = "<html><script>bad()</script><body><p>Hello <b>world</b></p></body></html>"
     monkeypatch.setattr(literature, "_get", lambda url, params=None: _FakeResponse(html))

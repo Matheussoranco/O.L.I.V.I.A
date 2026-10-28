@@ -33,10 +33,9 @@ logger = logging.getLogger(__name__)
 _MAX_CODE_CHARS = 50_000
 _MAX_OUTPUT_CHARS = 20_000
 _MAX_TIMEOUT = 30.0
-# Limite de memória do subprocesso (Linux via resource.setrlimit). Não é
-# boundary OS: `python_exec` é um sandbox incompleto — contenção best-effort
-# contra loops/alocações acidentais, NÃO contra adversário determinado.
-# Carga hostil pertence a container/job sandbox real (Docker/gVisor).
+# Best-effort memory ceiling for the subprocess (Linux via resource.setrlimit).
+# This is not an OS boundary: it contains accidental loops and allocations, not
+# a determined adversary. Hostile workloads belong in a real container sandbox.
 _MAX_MEMORY_BYTES = int(os.environ.get("OLIVIA_PYEXEC_MAX_BYTES", str(256 * 1024 * 1024)))
 _SAFE_IMPORTS = {
     "collections",
@@ -48,8 +47,8 @@ _SAFE_IMPORTS = {
     "random",
     "statistics",
 }
-# Bloqueio explícito (defesa em profundidade além do allowlist acima): estes
-# nunca passam, mesmo que alguém amplie _SAFE_IMPORTS no futuro.
+# Explicit denylist, in addition to the allowlist above: these never load even
+# if _SAFE_IMPORTS is widened later.
 _BLOCKED_MODULES = {
     "os",
     "sys",
@@ -211,19 +210,155 @@ def _restricted_wrapper(code: str) -> str:
         try:
             exec(compile({code!r}, "<olivia-restricted>", "exec"), _globals, _globals)
         except BaseException:
-            _traceback.print_exc(file=_sys.__stderr__.stream)
+            _traceback.print_exc(file=_sys.__stderr__)
             _sys.exit(1)
         """
     )
 
 
+_SAFE_SYMPY_NAMES = frozenset(
+    {
+        "E",
+        "I",
+        "N",
+        "Abs",
+        "Add",
+        "And",
+        "Derivative",
+        "EmptySet",
+        "Eq",
+        "Equivalent",
+        "FiniteSet",
+        "Float",
+        "Function",
+        "Ge",
+        "Gt",
+        "ImmutableMatrix",
+        "Implies",
+        "Integer",
+        "Integral",
+        "Intersection",
+        "Interval",
+        "Lambda",
+        "Le",
+        "Limit",
+        "Lt",
+        "Matrix",
+        "MatrixSymbol",
+        "Max",
+        "Min",
+        "Mul",
+        "Ne",
+        "Not",
+        "Or",
+        "Piecewise",
+        "Pow",
+        "Product",
+        "Rational",
+        "Sum",
+        "Symbol",
+        "Tuple",
+        "Union",
+        "Xor",
+        "apart",
+        "cancel",
+        "ceiling",
+        "conjugate",
+        "det",
+        "diag",
+        "diff",
+        "dsolve",
+        "exp",
+        "expand",
+        "expand_trig",
+        "eye",
+        "factor",
+        "factorint",
+        "false",
+        "floor",
+        "frac",
+        "gcd",
+        "im",
+        "integrate",
+        "lcm",
+        "limit",
+        "linsolve",
+        "ln",
+        "log",
+        "nan",
+        "nonlinsolve",
+        "nsimplify",
+        "nsolve",
+        "ones",
+        "oo",
+        "pi",
+        "product",
+        "re",
+        "root",
+        "series",
+        "sign",
+        "simplify",
+        "solve",
+        "solveset",
+        "sqrt",
+        "summation",
+        "symbols",
+        "together",
+        "trace",
+        "transpose",
+        "trigsimp",
+        "true",
+        "var",
+        "zeros",
+        "zoo",
+    }
+)
+
+
+def _safe_sympy_globals() -> dict[str, Any]:
+    import sympy
+    import sympy.functions
+
+    globals_dict: dict[str, Any] = {
+        "abs": abs,
+        "min": min,
+        "max": max,
+        "__builtins__": {},
+    }
+    for name in _SAFE_SYMPY_NAMES:
+        if hasattr(sympy, name):
+            globals_dict[name] = getattr(sympy, name)
+    for name, value in vars(sympy.functions).items():
+        if not name.startswith("_") and callable(value):
+            globals_dict.setdefault(name, value)
+    globals_dict["e"] = sympy.E
+    return globals_dict
+
+
+def _check_expression(code: str, globals_dict: dict[str, Any]) -> ast.Expression:
+    tree = ast.parse(code, mode="eval")
+    allowed_names = set(globals_dict) - {"__builtins__"}
+    allowed_calls = {name for name in allowed_names if callable(globals_dict[name])}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Attribute):
+            raise ValueError("attributes are not allowed in symbolic expressions")
+        if isinstance(node, ast.Call) and (
+            not isinstance(node.func, ast.Name) or node.func.id not in allowed_calls
+        ):
+            raise ValueError("only known mathematical functions may be called")
+        if isinstance(node, ast.Name) and node.id not in allowed_names:
+            raise ValueError(f"unknown name '{node.id}' in symbolic expression")
+    return tree
+
+
 def safe_sympify(expression: str, implicit_multiplication: bool = False):
     """Parse a mathematical expression without Python builtins or imports."""
-    import sympy
+    from tokenize import TokenError
+
     from sympy.parsing.sympy_parser import (
         implicit_multiplication_application,
-        parse_expr,
         standard_transformations,
+        stringify_expr,
     )
 
     if not isinstance(expression, str) or not expression.strip() or len(expression) > 10_000:
@@ -242,33 +377,31 @@ def safe_sympify(expression: str, implicit_multiplication: bool = False):
     transformations = standard_transformations
     if implicit_multiplication:
         transformations = (*transformations, implicit_multiplication_application)
-    globals_dict = {name: value for name, value in vars(sympy).items() if not name.startswith("_")}
-    globals_dict["e"] = sympy.E
-    globals_dict["__builtins__"] = {}
-    return parse_expr(
-        expression.replace("^", "**"),
-        transformations=transformations,
-        global_dict=globals_dict,
-    )
+    globals_dict = _safe_sympy_globals()
+    try:
+        code = stringify_expr(expression.replace("^", "**"), {}, globals_dict, transformations)
+        tree = _check_expression(code, globals_dict)
+    except (SyntaxError, TokenError) as exc:
+        raise ValueError("invalid mathematical expression") from exc
+    return eval(compile(tree, "<olivia-expression>", "eval"), globals_dict)
 
 
 def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
     """Run restricted pure-Python code; return ``{ok, stdout, stderr}``.
 
     This is a constrained simulation runner, not a complete OS security
-    boundary (PT: NÃO é boundary OS — não use contra código hostil).
-    Hostile workloads still belong in a real container or job
+    boundary. Hostile workloads still belong in a real container or job
     sandbox. Filesystem/process/network imports and credential-bearing
-    environment variables are intentionally unavailable here. No Linux,
-    aplica-se ainda limite de memória (RLIMIT_AS) + CPU best-effort além
-    do timeout; no Windows vale só timeout + allowlist.
+    environment variables are intentionally unavailable here. On Linux the
+    subprocess also gets best-effort memory (RLIMIT_AS) and CPU limits; on
+    Windows only the timeout and the allowlist apply.
     """
     try:
         _validate_code(code)
         timeout = min(max(float(timeout), 0.1), _MAX_TIMEOUT)
 
         def _preexec_limit() -> None:
-            # Só Linux/POSIX: contenção best-effort, não boundary OS.
+            # Linux/POSIX only: best-effort containment, not an OS boundary.
             try:
                 import resource as _res
 
@@ -323,8 +456,10 @@ def symbolic_math(expression: str, operation: str = "simplify", variable: str = 
     try:
         if not isinstance(variable, str) or not variable.isidentifier() or variable.startswith("_"):
             return "error: invalid variable name"
+        expr = safe_sympify(expression, implicit_multiplication=True)
         symbol = sympy.Symbol(variable)
-        expr = safe_sympify(expression)
+        if symbol not in expr.free_symbols and expr.free_symbols:
+            symbol = sorted(expr.free_symbols, key=lambda s: s.name)[0]
         if operation == "solve":
             return str(sympy.solve(expr, symbol))
         if operation == "diff":
@@ -398,8 +533,10 @@ def welch_ttest(a: list[float], b: list[float]) -> dict[str, float]:
 
 def required_sample_size(effect_size: float, alpha: float = 0.05, power: float = 0.8) -> int:
     """Per-group n for a two-sided two-sample test (normal approximation)."""
-    if effect_size <= 0:
+    if not math.isfinite(effect_size) or effect_size <= 0:
         return 0
+    if not 0 < alpha < 1 or not 0 < power < 1:
+        raise ValueError("alpha and power must be between 0 and 1")
     nd = statistics.NormalDist()
     z_alpha = nd.inv_cdf(1 - alpha / 2)
     z_power = nd.inv_cdf(power)

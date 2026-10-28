@@ -9,6 +9,8 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -41,13 +43,17 @@ class MetaLearner:
 
         self.db_path = db_path or settings.data_dir() / "meta.db"
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        # `with conn` commits on clean exit and rolls back on error; no
-        # explicit close() needed — leaving the block closes the connection.
-        with self._connect() as conn:
+        with self._session() as conn:
             conn.executescript(_SCHEMA)
 
-    def _connect(self) -> sqlite3.Connection:
-        return sqlite3.connect(self.db_path, timeout=10.0)
+    @contextmanager
+    def _session(self) -> Iterator[sqlite3.Connection]:
+        conn = sqlite3.connect(self.db_path, timeout=10.0)
+        try:
+            with conn:
+                yield conn
+        finally:
+            conn.close()
 
     def record(
         self,
@@ -58,7 +64,7 @@ class MetaLearner:
         meta: dict | None = None,
     ) -> None:
         """Persist a single outcome into the ledger."""
-        with self._connect() as conn:
+        with self._session() as conn:
             conn.execute(
                 "INSERT INTO outcomes (ts, task_kind, strategy, success, duration_s, meta_json)"
                 " VALUES (?, ?, ?, ?, ?, ?)",
@@ -71,15 +77,10 @@ class MetaLearner:
                     json.dumps(meta or {}, default=str),
                 ),
             )
-        # `with` commits on success / rolls back on error and closes the
-        # connection — no explicit close() here.
 
-    #: Pessimistic prior for never-seen strategies when explicitly requested.
-    UNSEEN_PRIOR: float = 0.3
-
-    def win_rate(self, task_kind: str, strategy: str, default: float = 0.5) -> float:
-        """Laplace-smoothed ``(wins + 1) / (n + 2)``; ``default`` when unseen."""
-        with self._connect() as conn:
+    def observed_win_rate(self, task_kind: str, strategy: str) -> float | None:
+        """Laplace-smoothed ``(wins + 1) / (n + 2)``; ``None`` when unseen."""
+        with self._session() as conn:
             row = conn.execute(
                 "SELECT COUNT(*), COALESCE(SUM(success), 0) FROM outcomes"
                 " WHERE task_kind = ? AND strategy = ?",
@@ -87,8 +88,13 @@ class MetaLearner:
             ).fetchone()
         n, wins = row
         if n == 0:
-            return default
+            return None
         return (wins + 1.0) / (n + 2.0)
+
+    def win_rate(self, task_kind: str, strategy: str, default: float = 0.5) -> float:
+        """Laplace-smoothed ``(wins + 1) / (n + 2)``; ``default`` when unseen."""
+        observed = self.observed_win_rate(task_kind, strategy)
+        return default if observed is None else observed
 
     def rank_strategies(
         self,
@@ -102,7 +108,7 @@ class MetaLearner:
 
     def stats(self) -> dict:
         """Aggregate summary per (task_kind, strategy)."""
-        with self._connect() as conn:
+        with self._session() as conn:
             rows = conn.execute(
                 "SELECT task_kind, strategy, COUNT(*), COALESCE(SUM(success), 0)"
                 " FROM outcomes GROUP BY task_kind, strategy"
