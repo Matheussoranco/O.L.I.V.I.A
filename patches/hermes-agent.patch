@@ -1,0 +1,27 @@
+From 7b2c8c693976be50f55b153f2ef8ec1ad2ed3a79 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Matheus=20Pullig=20Soran=C3=A7o=20de=20Carvalho?=
+ <matheussoranco@gmail.com>
+Date: Thu, 12 Nov 2026 19:24:11 -0300
+Subject: [PATCH] Preserve local Hermes test workflow adjustment
+
+---
+ .github/workflows/js-tests.yml | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/.github/workflows/js-tests.yml b/.github/workflows/js-tests.yml
+index 252b135f27..8ebce8016e 100644
+--- a/.github/workflows/js-tests.yml
++++ b/.github/workflows/js-tests.yml
+@@ -4,6 +4,9 @@ name: JS Tests
+ on:
+   workflow_call:
+ 
++permissions:
++  contents: read
++
+ jobs:
+   check:
+     name: JS & TS checks
+-- 
+2.45.1.windows.1
+
