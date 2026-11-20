@@ -117,3 +117,22 @@ def test_solution_to_markdown_renders_steps_and_answer():
 
 def test_solve_returns_worked_solution_type():
     assert isinstance(solve_problem("molar mass of O2", client=NullClient()), WorkedSolution)
+
+
+@_needs_sympy
+@pytest.mark.parametrize(
+    ("problem", "answer"),
+    [
+        ("solve 2x + y = 10 and x - y = 2", "x = 4, y = 2"),
+        ("solve x + y = 2 and 2x + 2y = 4", "x = 2 - y"),
+        ("solve x^2 = 1 and y = 2", "x = -1, y = 2; x = 1, y = 2"),
+        ("2x + 3 = 7", "x = 2"),
+        ("What is the derivative of x^2 with respect to x?", "2*x"),
+        ("If f(x) = 3x^2 + 2x, what is f'(x)?", "6*x + 2"),
+        ("Evaluate the limit of sin(x)/x as x approaches 0", "1"),
+    ],
+)
+def test_extended_symbolic_notation(problem, answer):
+    solution = solve_problem(problem, client=NullClient())
+    assert solution.method == "symbolic"
+    assert solution.final_answer == answer
