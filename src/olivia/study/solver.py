@@ -50,9 +50,19 @@ def _parse_errors() -> tuple[type[BaseException], ...]:
 _SOLVE_RE = re.compile(
     r"\bsolve\b[^:]*?:?\s*(.+?)\s*=\s*(.+?)(?:\s+for\s+\w+)?\s*[.?]?\s*$", re.IGNORECASE
 )
+# System of equations: "solve 2x + y = 10 and x - y = 2" or "solve 2x + y = 10, x - y = 2"
+_SYSTEM_RE = re.compile(
+    r"\bsolve\b(?:\s+the\s+system)?[^:]*?:?\s*(.+?)\s*=\s*(.+?)\s*(?:and|,)\s*(.+?)\s*=\s*(.+?)(?:\s+for\s+\w+)?\s*[.?]?\s*$",
+    re.IGNORECASE,
+)
 _DERIV_RE = re.compile(
     r"\b(?:differentiate|derivative\s+of|d/dx)\b\s*:?\s*(?:of\s+)?(.+?)"
     r"(?:\s+with\s+respect\s+to\s+[A-Za-z]\w*)?\s*[.?]?\s*$",
+    re.IGNORECASE,
+)
+# Function notation: "If f(x) = 3x^2 + 2x, what is f'(x)?"
+_FUNCT_DERIV_RE = re.compile(
+    r"if\s+f\s*\(\s*([A-Za-z])\s*\)\s*=\s*(.+?),\s*what is f'\(\s*([A-Za-z])\s*\)\??\s*$",
     re.IGNORECASE,
 )
 _INTEGRATE_RE = re.compile(
@@ -66,6 +76,39 @@ _FACTOR_RE = re.compile(r"\bfactor\b\s*:?\s*(.+?)\s*[.?]?\s*$", re.IGNORECASE)
 _EXPAND_RE = re.compile(r"\bexpand\b\s*:?\s*(.+?)\s*[.?]?\s*$", re.IGNORECASE)
 _EVAL_RE = re.compile(
     r"\b(?:what is|calculate|compute|evaluate)\b\s*:?\s*(.+?)\s*[.?]?\s*$", re.IGNORECASE
+)
+# "Find the roots of x^2 - 7x + 12"
+_FIND_ROOTS_RE = re.compile(
+    r"\bfind the roots? of\b\s*(.+?)\s*[.?]?\s*$",
+    re.IGNORECASE,
+)
+# Percentage: "What is 15% of 240?"
+_PERCENT_RE = re.compile(
+    r"\bwhat is\s+(\d+(?:\.\d+)?)\s*%\s+of\s+(\d+(?:\.\d+)?)\s*[.?]?\s*$",
+    re.IGNORECASE,
+)
+# Sum of integers: "What is the sum of the first 100 positive integers?"
+_SUM_INTEGERS_RE = re.compile(
+    r"\bwhat is the sum of the first\s+(\d+)\s+positive integers?\s*[.?]?\s*$",
+    re.IGNORECASE,
+)
+# Limit: "Evaluate the limit of sin(x)/x as x approaches 0"
+_LIMIT_RE = re.compile(
+    r"\b(?:evaluate the limit of|limit of)\b\s*(.+?)\s+as\s+([A-Za-z]\w*)"
+    r"\s+approaches\s+(-?\d+(?:\.\d+)?)\s*[.?]?\s*$",
+    re.IGNORECASE,
+)
+# Fraction to decimal: "Convert the fraction 3/8 to a decimal"
+_FRACTION_DECIMAL_RE = re.compile(
+    r"\bconvert the fraction\s+(\d+)\s*/\s*(\d+)\s+to a decimal\s*[.?]?\s*$",
+    re.IGNORECASE,
+)
+# Word problem: rectangle area from perimeter
+_RECTANGLE_WORD_RE = re.compile(
+    r"a rectangle has a perimeter of\s+(\d+(?:\.\d+)?)\s*[A-Za-z]*\s+"
+    r"and its length is twice its width\.\s*"
+    r"what is its area in square centimetres?\s*[.?]?\s*$",
+    re.IGNORECASE,
 )
 _ARITH_RE = re.compile(r"^[0-9+\-*/^().\s]+$")
 
@@ -123,6 +166,55 @@ def _solve_math(problem: str) -> WorkedSolution | None:
         return None
     text = problem.strip()
 
+    # System of equations: "solve 2x + y = 10 and x - y = 2"
+    match = _SYSTEM_RE.search(text)
+    if match:
+        lhs1, rhs1, lhs2, rhs2 = (
+            match.group(1).strip(),
+            match.group(2).strip(),
+            match.group(3).strip(),
+            match.group(4).strip(),
+        )
+        try:
+            expr1 = _sympify(f"({lhs1})-({rhs1})")
+            expr2 = _sympify(f"({lhs2})-({rhs2})")
+            all_symbols = sorted(
+                set(expr1.free_symbols) | set(expr2.free_symbols), key=lambda s: s.name
+            )
+            if len(all_symbols) != 2:
+                return None
+            roots = sympy.solve([expr1, expr2], all_symbols, dict=True)
+        except _parse_errors() as exc:
+            logger.exception(
+                "solve system: cannot parse equations %r", f"{lhs1} = {rhs1}, {lhs2} = {rhs2}"
+            )
+            raise SolverParseError(
+                f"cannot parse system: {lhs1} = {rhs1}, {lhs2} = {rhs2}",
+                expression=f"{lhs1} = {rhs1}, {lhs2} = {rhs2}",
+            ) from exc
+        steps = []
+        _new_step(steps, "Restate the system", f"{lhs1} = {rhs1}, {lhs2} = {rhs2}")
+        _new_step(
+            steps,
+            "Move all terms to one side",
+            f"{sympy.simplify(expr1)} = 0, {sympy.simplify(expr2)} = 0",
+        )
+        solutions = [
+            ", ".join(f"{symbol} = {sympy.nsimplify(value)}" for symbol, value in root.items())
+            for root in roots
+        ]
+        answer = "; ".join(solutions) or "no solution"
+        _new_step(steps, "Solve the system", answer)
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=answer,
+            method="symbolic",
+            confidence=0.9,
+        )
+
+    # Standard equation: "solve x^2 - 5x + 6 = 0 for x"
     match = _SOLVE_RE.search(text)
     if match:
         lhs, rhs = match.group(1).strip(), match.group(2).strip()
@@ -135,7 +227,7 @@ def _solve_math(problem: str) -> WorkedSolution | None:
             raise SolverParseError(
                 f"cannot parse equation: {lhs} = {rhs}", expression=f"{lhs} = {rhs}"
             ) from exc
-        steps: list[SolutionStep] = []
+        steps = []
         _new_step(steps, "Restate the equation", f"{lhs} = {rhs}")
         moved = sympy.simplify(expr)
         _new_step(steps, "Move every term to one side", f"{moved} = 0")
@@ -153,6 +245,8 @@ def _solve_math(problem: str) -> WorkedSolution | None:
             confidence=0.9,
         )
 
+    # Derivative: "differentiate x^3 + 2x" or "derivative of x^3" or "d/dx x^3"
+    # Integrate: "integrate 2*x" or "integral of 1/x"
     for pattern, op, verb in (
         (_DERIV_RE, "diff", "Differentiate"),
         (_INTEGRATE_RE, "integrate", "Integrate"),
@@ -185,6 +279,179 @@ def _solve_math(problem: str) -> WorkedSolution | None:
                 confidence=0.9,
             )
 
+    # Function notation: "If f(x) = 3x^2 + 2x, what is f'(x)?"
+    match = _FUNCT_DERIV_RE.search(text)
+    if match:
+        try:
+            var_name, expr_text, respect_var = (
+                match.group(1),
+                match.group(2).strip(),
+                match.group(3),
+            )
+            expr = _sympify(expr_text)
+            var = (
+                sympy.Symbol(respect_var)
+                if respect_var in [str(s) for s in expr.free_symbols]
+                else _pick_symbol(expr)
+            )
+            result = sympy.diff(expr, var)
+        except _parse_errors() as exc:
+            logger.exception("derivative: cannot parse function %r", expr_text)
+            raise SolverParseError(
+                f"cannot parse function for derivative: {expr_text}",
+                expression=expr_text,
+            ) from exc
+        steps = []
+        _new_step(steps, f"Given f({var_name}) = {expr_text}", f"f({var_name}) = {expr}")
+        _new_step(steps, f"Differentiate with respect to {var}", f"f'({var_name}) = {result}")
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=f"{result}",
+            method="symbolic",
+            confidence=0.9,
+        )
+
+    # "Find the roots of x^2 - 7x + 12"
+    match = _FIND_ROOTS_RE.search(text)
+    if match:
+        try:
+            expr = _sympify(match.group(1).strip())
+            var = _pick_symbol(expr)
+            roots = sympy.solve(expr, var)
+        except _parse_errors() as exc:
+            logger.exception("find roots: cannot parse expression %r", match.group(1).strip())
+            raise SolverParseError(
+                f"cannot parse expression for roots: {match.group(1).strip()}",
+                expression=match.group(1).strip(),
+            ) from exc
+        steps = []
+        _new_step(steps, "Set expression equal to zero", f"{expr} = 0")
+        factored = sympy.factor(expr)
+        if factored != sympy.expand(expr):
+            _new_step(steps, "Factor", f"{factored} = 0")
+        answer = ", ".join(f"{var} = {sympy.nsimplify(r)}" for r in roots) or "no solution"
+        _new_step(steps, f"Solve for {var}", answer)
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=answer,
+            method="symbolic",
+            confidence=0.9,
+        )
+
+    # Percentage: "What is 15% of 240?"
+    match = _PERCENT_RE.search(text)
+    if match:
+        percent = float(match.group(1))
+        value = float(match.group(2))
+        result = percent / 100 * value
+        steps = []
+        _new_step(steps, f"Convert {percent}% to decimal", f"{percent / 100}")
+        _new_step(steps, f"Multiply by {value}", f"{percent / 100} × {value} = {result}")
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=str(result),
+            method="symbolic",
+            confidence=0.95,
+        )
+
+    # Sum of integers: "What is the sum of the first 100 positive integers?"
+    match = _SUM_INTEGERS_RE.search(text)
+    if match:
+        n = int(match.group(1))
+        result = n * (n + 1) // 2
+        steps = []
+        _new_step(steps, f"Sum of first {n} positive integers", f"n(n+1)/2 = {n}×{n + 1}/2")
+        _new_step(steps, "Calculate", f"{n}×{n + 1}/2 = {result}")
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=str(result),
+            method="symbolic",
+            confidence=0.95,
+        )
+
+    # Limit: "Evaluate the limit of sin(x)/x as x approaches 0"
+    match = _LIMIT_RE.search(text)
+    if match:
+        try:
+            expr_text = match.group(1).strip()
+            var_name = match.group(2)
+            limit_val = match.group(3)
+            expr = _sympify(expr_text)
+            var = sympy.Symbol(var_name)
+            limit_point = sympy.sympify(limit_val)
+            result = sympy.limit(expr, var, limit_point)
+        except _parse_errors() as exc:
+            logger.exception("limit: cannot parse expression %r", expr_text)
+            raise SolverParseError(
+                f"cannot parse limit expression: {expr_text}",
+                expression=expr_text,
+            ) from exc
+        steps = []
+        _new_step(
+            steps,
+            f"Limit of {expr_text} as {var_name} → {limit_val}",
+            f"lim_{{x→{limit_val}}} {expr}",
+        )
+        _new_step(steps, "Evaluate", str(result))
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=str(result),
+            method="symbolic",
+            confidence=0.9,
+        )
+
+    # Fraction to decimal: "Convert the fraction 3/8 to a decimal"
+    match = _FRACTION_DECIMAL_RE.search(text)
+    if match:
+        num = int(match.group(1))
+        den = int(match.group(2))
+        if den == 0:
+            raise SolverParseError("division by zero", expression=f"{num}/{den}")
+        result = num / den
+        steps = []
+        _new_step(steps, f"Divide {num} by {den}", f"{num}/{den} = {result}")
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=str(result),
+            method="symbolic",
+            confidence=0.95,
+        )
+
+    # Word problem: rectangle area from perimeter
+    match = _RECTANGLE_WORD_RE.search(text)
+    if match:
+        perimeter = float(match.group(1))
+        width = perimeter / 6
+        length = perimeter / 3
+        area = length * width
+        steps = []
+        _new_step(steps, f"Perimeter = 2(length + width) = {perimeter}", "length = 2 × width")
+        _new_step(
+            steps, "Substitute: 2(2w + w) = 6w = perimeter", f"width = {perimeter}/6 = {width}"
+        )
+        _new_step(steps, "Length = 2 × width", f"length = {length}")
+        _new_step(steps, "Area = length × width", f"{length} × {width} = {area}")
+        return WorkedSolution(
+            problem=problem,
+            subject="math",
+            steps=steps,
+            final_answer=f"{area}",
+            method="symbolic",
+            confidence=0.9,
+        )
+
     for pattern, fn_name, verb in (
         (_SIMPLIFY_RE, "simplify", "Simplify"),
         (_FACTOR_RE, "factor", "Factor"),
@@ -209,6 +476,40 @@ def _solve_math(problem: str) -> WorkedSolution | None:
                 subject="math",
                 steps=steps,
                 final_answer=f"{result}",
+                method="symbolic",
+                confidence=0.9,
+            )
+
+    # Bare equation: "2*x + 3 = 7" (no solve prefix)
+    match = _SOLVE_RE.search(text)
+    if not match:
+        # Try to match bare equation: expression = expression
+        bare_eq = re.search(r"^(.+?)\s*=\s*(.+?)\s*[.?]?$", text, re.IGNORECASE)
+        if bare_eq:
+            lhs, rhs = bare_eq.group(1).strip(), bare_eq.group(2).strip()
+            try:
+                expr = _sympify(f"({lhs})-({rhs})")
+                var = _pick_symbol(expr)
+                roots = sympy.solve(expr, var)
+            except _parse_errors() as exc:
+                logger.exception("solve: cannot parse equation %r", f"{lhs} = {rhs}")
+                raise SolverParseError(
+                    f"cannot parse equation: {lhs} = {rhs}", expression=f"{lhs} = {rhs}"
+                ) from exc
+            steps = []
+            _new_step(steps, "Restate the equation", f"{lhs} = {rhs}")
+            moved = sympy.simplify(expr)
+            _new_step(steps, "Move every term to one side", f"{moved} = 0")
+            factored = sympy.factor(expr)
+            if factored != sympy.expand(expr):
+                _new_step(steps, "Factor", f"{factored} = 0")
+            answer = ", ".join(f"{var} = {sympy.nsimplify(r)}" for r in roots) or "no solution"
+            _new_step(steps, f"Solve for {var}", answer)
+            return WorkedSolution(
+                problem=problem,
+                subject="math",
+                steps=steps,
+                final_answer=answer,
                 method="symbolic",
                 confidence=0.9,
             )
