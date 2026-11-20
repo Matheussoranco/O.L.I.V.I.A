@@ -23,3 +23,21 @@ def test_non_finite_numbers_are_rejected():
     assert validate_arguments(schema, {"x": float("nan")}) == "argument 'x' must be finite"
     assert validate_arguments(schema, {"x": float("inf")}) == "argument 'x' must be finite"
     assert validate_arguments(schema, {"x": 1.5}) is None
+
+
+def test_registry_list_and_names_are_consistent():
+    registry = ToolRegistry()
+    registry.register(Tool(name="beta", description="", fn=lambda: "b"))
+    registry.register(Tool(name="alpha", description="", fn=lambda: "a"))
+    assert registry.names() == ["alpha", "beta"]
+    assert {tool.name for tool in registry.list()} == {"alpha", "beta"}
+
+
+def test_validate_arguments_handles_missing_or_non_string_type():
+    schema = {
+        "properties": {
+            "untyped": {},
+            "union_type": {"type": ["string", "null"]},
+        }
+    }
+    assert validate_arguments(schema, {"untyped": 42, "union_type": "ok"}) is None

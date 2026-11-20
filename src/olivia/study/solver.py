@@ -192,7 +192,7 @@ def _solve_math(problem: str) -> WorkedSolution | None:
                 f"cannot parse system: {lhs1} = {rhs1}, {lhs2} = {rhs2}",
                 expression=f"{lhs1} = {rhs1}, {lhs2} = {rhs2}",
             ) from exc
-        steps = []
+        steps: list[SolutionStep] = []
         _new_step(steps, "Restate the system", f"{lhs1} = {rhs1}, {lhs2} = {rhs2}")
         _new_step(
             steps,

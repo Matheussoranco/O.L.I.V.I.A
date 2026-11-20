@@ -7,6 +7,7 @@ the CLI / MCP server / HermesAgent explicitly wires everything together.
 
 from __future__ import annotations
 
+import builtins
 import logging
 import math
 from collections.abc import Callable
@@ -64,10 +65,10 @@ class ToolRegistry:
     def get(self, name: str) -> Tool | None:
         return self._tools.get(name)
 
-    def list(self) -> list[Tool]:
+    def list(self) -> builtins.list[Tool]:
         return list(self._tools.values())
 
-    def names(self) -> list[str]:
+    def names(self) -> builtins.list[str]:
         return sorted(self._tools)
 
     def execute(
@@ -113,14 +114,17 @@ def validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> str
 
     def check(name: str, value: Any, rule: dict[str, Any]) -> str | None:
         kind = rule.get("type")
-        valid = {
-            "string": isinstance(value, str),
-            "boolean": isinstance(value, bool),
-            "integer": isinstance(value, int) and not isinstance(value, bool),
-            "number": isinstance(value, (int, float)) and not isinstance(value, bool),
-            "array": isinstance(value, list),
-            "object": isinstance(value, dict),
-        }.get(kind, True)
+        if isinstance(kind, str):
+            valid = {
+                "string": isinstance(value, str),
+                "boolean": isinstance(value, bool),
+                "integer": isinstance(value, int) and not isinstance(value, bool),
+                "number": isinstance(value, (int, float)) and not isinstance(value, bool),
+                "array": isinstance(value, list),
+                "object": isinstance(value, dict),
+            }.get(kind, True)
+        else:
+            valid = True
         if not valid:
             return f"argument '{name}' must be {kind}"
         if isinstance(value, float) and not math.isfinite(value):

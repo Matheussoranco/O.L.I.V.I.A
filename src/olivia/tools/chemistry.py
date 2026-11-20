@@ -11,6 +11,7 @@ from __future__ import annotations
 import math
 import re
 from fractions import Fraction
+from typing import Any
 
 # symbol → (atomic number, standard atomic weight in g/mol).  Bracketed IUPAC
 # values (no stable isotope) use a representative mass number.
@@ -195,19 +196,26 @@ def parse_formula(formula: str) -> dict[str, int] | None:
     return total or None
 
 
-def molar_mass(formula: str) -> dict:
+def molar_mass(formula: str) -> dict[str, Any]:
     """Molar mass (g/mol) with a per-element breakdown; ``ok`` False on parse error."""
     counts = parse_formula(formula)
     if not counts:
         return {"ok": False, "error": f"could not parse formula '{formula}'"}
     total = 0.0
-    breakdown = []
+    raw_entries: list[tuple[str, int, float]] = []
     for element, count in counts.items():
         mass = ELEMENTS[element][1] * count
         total += mass
-        breakdown.append({"element": element, "count": count, "mass": round(mass, 4)})
-    for item in breakdown:
-        item["percent"] = round(100 * item["mass"] / total, 2) if total else 0.0
+        raw_entries.append((element, count, round(mass, 4)))
+    breakdown: list[dict[str, Any]] = [
+        {
+            "element": element,
+            "count": count,
+            "mass": rounded_mass,
+            "percent": round(100 * rounded_mass / total, 2) if total else 0.0,
+        }
+        for element, count, rounded_mass in raw_entries
+    ]
     return {
         "ok": True,
         "formula": formula,
@@ -294,17 +302,17 @@ def balance_equation(equation: str) -> dict:
         return {"ok": False, "error": "equation is not uniquely balanceable"}
 
     denom_lcm = 1
-    for value in vector:
-        denom_lcm = _lcm(denom_lcm, value.denominator)
-    integers = [int(value * denom_lcm) for value in vector]
+    for frac in vector:
+        denom_lcm = _lcm(denom_lcm, frac.denominator)
+    integers = [int(frac * denom_lcm) for frac in vector]
     divisor = 0
-    for value in integers:
-        divisor = math.gcd(divisor, abs(value))
+    for coeff in integers:
+        divisor = math.gcd(divisor, abs(coeff))
     if divisor:
-        integers = [value // divisor for value in integers]
-    if all(value <= 0 for value in integers):
-        integers = [-value for value in integers]
-    if any(value <= 0 for value in integers):
+        integers = [coeff // divisor for coeff in integers]
+    if all(coeff <= 0 for coeff in integers):
+        integers = [-coeff for coeff in integers]
+    if any(coeff <= 0 for coeff in integers):
         return {"ok": False, "error": "no positive integer solution (check the equation)"}
 
     coefficients = dict(zip(species, integers, strict=False))

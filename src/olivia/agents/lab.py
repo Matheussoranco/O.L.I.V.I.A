@@ -9,6 +9,7 @@ feed the synthesis back to the researcher for revision.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from olivia.agents.subagent import SubAgent
 from olivia.llm.client import LLMClient, get_client
@@ -22,14 +23,15 @@ class ResearchLab:
     def __init__(self, client: LLMClient | None = None) -> None:
         self.client = client or get_client()
 
-    def investigate(self, question: str, rounds: int = 1) -> dict:
+    def investigate(self, question: str, rounds: int = 1) -> dict[str, Any]:
         """Run the seminar; returns draft/critique/synthesis plus a transcript."""
-        result = {
+        transcript: list[dict[str, str]] = []
+        result: dict[str, Any] = {
             "question": question,
             "draft": "",
             "critique": "",
             "synthesis": "",
-            "transcript": [],
+            "transcript": transcript,
             "error": "",
         }
         if not self.client.available:
@@ -57,7 +59,7 @@ class ResearchLab:
                 return result
             draft = drafted.answer
             result["draft"] = draft
-            result["transcript"].append({"role": "researcher", "content": draft})
+            transcript.append({"role": "researcher", "content": draft})
 
             criticised = critic.run(
                 f"Question: {question}\n\nDraft under review:\n{draft}\n\n"
@@ -66,7 +68,7 @@ class ResearchLab:
             if criticised.error and not criticised.answer:
                 result["error"] = criticised.error
                 return result
-            result["transcript"].append({"role": "critic", "content": criticised.answer})
+            transcript.append({"role": "critic", "content": criticised.answer})
             result["critique"] = criticised.answer
             logger.info("ResearchLab round %d complete", round_number)
 
@@ -79,5 +81,5 @@ class ResearchLab:
             result["error"] = written.error
             return result
         result["synthesis"] = written.answer
-        result["transcript"].append({"role": "writer", "content": written.answer})
+        transcript.append({"role": "writer", "content": written.answer})
         return result

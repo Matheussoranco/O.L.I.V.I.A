@@ -378,15 +378,15 @@ def tools(
         console.print(f"[red]'{act}' needs a tool name.[/red]")
         raise typer.Exit(2)
 
-    tool = registry.get(name)
-    if tool is None:
+    selected_tool = registry.get(name)
+    if selected_tool is None:
         console.print(f"[red]No such tool: {name}[/red]")
         raise typer.Exit(2)
 
     if act == "show":
-        console.print(f"[bold]{tool.name}[/bold]")
-        console.print(tool.description or "")
-        console.print(_json.dumps(tool.parameters, indent=2))
+        console.print(f"[bold]{selected_tool.name}[/bold]")
+        console.print(selected_tool.description or "")
+        console.print(_json.dumps(selected_tool.parameters, indent=2))
         return
 
     if act == "run":
@@ -500,13 +500,17 @@ def agents(
         if not role:
             console.print("[red]'show' needs a role name.[/red]")
             raise typer.Exit(2)
-        spec = ROLES.get(role)
-        if spec is None:
+        role_spec = ROLES.get(role)
+        if role_spec is None:
             console.print(f"[red]No such role: {role}[/red] — try: {', '.join(ROLES)}")
             raise typer.Exit(2)
-        tool_desc = "all" if spec.tool_names is None else (", ".join(spec.tool_names) or "none")
-        console.print(f"[bold]{spec.name}[/bold]  tools={tool_desc}  max_turns={spec.max_turns}")
-        console.print(spec.system_prompt)
+        tool_desc = (
+            "all" if role_spec.tool_names is None else (", ".join(role_spec.tool_names) or "none")
+        )
+        console.print(
+            f"[bold]{role_spec.name}[/bold]  tools={tool_desc}  max_turns={role_spec.max_turns}"
+        )
+        console.print(role_spec.system_prompt)
         return
 
     console.print(f"[red]Unknown action: {action}[/red] — try 'list' or 'show'.")
@@ -617,13 +621,13 @@ def config(
             return f"<set: {len(obj)} chars>"
         return obj
 
-    data = _redact(data)
+    redacted = _redact(data)
 
     if act == "get":
         if not key:
             console.print("[red]'get' needs a dotted key, e.g. llm.model[/red]")
             raise typer.Exit(2)
-        node: object = data
+        node: object = redacted
         for part in key.split("."):
             if not isinstance(node, dict) or part not in node:
                 console.print(f"[red]No such setting: {key}[/red]")
@@ -633,7 +637,7 @@ def config(
         return
 
     if act == "show":
-        console.print(_json.dumps(data, indent=2, default=str))
+        console.print(_json.dumps(redacted, indent=2, default=str))
         return
 
     console.print(f"[red]Unknown action: {action}[/red] — try 'show', 'get', or 'paths'.")
