@@ -187,7 +187,7 @@ def _solve_math(problem: str) -> WorkedSolution | None:
                     f"cannot parse expression for {verb.lower()}: {match.group(1).strip()}",
                     expression=match.group(1).strip(),
                 ) from exc
-            steps = []
+            steps: list[SolutionStep] = []
             symbol = "+ C" if op == "integrate" else ""
             _new_step(steps, f"{verb} with respect to {var}", f"{expr}")
             _new_step(steps, "Apply the rules", f"{result} {symbol}".strip())
