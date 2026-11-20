@@ -33,11 +33,32 @@ def test_registry_list_and_names_are_consistent():
     assert {tool.name for tool in registry.list()} == {"alpha", "beta"}
 
 
-def test_validate_arguments_handles_missing_or_non_string_type():
+def test_validate_arguments_handles_union_and_unsupported_types():
     schema = {
         "properties": {
             "untyped": {},
-            "union_type": {"type": ["string", "null"]},
+            "nullable_str": {"type": ["string", "null"]},
         }
     }
-    assert validate_arguments(schema, {"untyped": 42, "union_type": "ok"}) is None
+    # Positive cases: untyped accepts values; union accepts declared members only.
+    assert validate_arguments(schema, {"untyped": 42, "nullable_str": "ok"}) is None
+    assert validate_arguments(schema, {"nullable_str": None}) is None
+    # Negative cases: union rejects undeclared types (e.g. int, bool).
+    assert (
+        validate_arguments(schema, {"nullable_str": 42})
+        == "argument 'nullable_str' must be one of types ['string', 'null']"
+    )
+    assert (
+        validate_arguments(schema, {"nullable_str": True})
+        == "argument 'nullable_str' must be one of types ['string', 'null']"
+    )
+    # Unsupported or malformed union / non-string type declarations fail closed.
+    assert "unsupported schema type" in (
+        validate_arguments({"properties": {"x": {"type": []}}}, {"x": "a"}) or ""
+    )
+    assert "unsupported schema type" in (
+        validate_arguments({"properties": {"x": {"type": ["string", "custom"]}}}, {"x": "a"}) or ""
+    )
+    assert "unsupported schema type" in (
+        validate_arguments({"properties": {"x": {"type": 123}}}, {"x": "a"}) or ""
+    )

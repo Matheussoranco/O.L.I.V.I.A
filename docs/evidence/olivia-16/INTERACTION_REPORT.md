@@ -41,7 +41,14 @@
 
 ## 6. Code review findings and corrections
 
-- Pending independent review by Claude Code (Opus 5.5). This section will be updated if review findings require revisions.
+1. **Engineering Lead (`codex-lead` / GPT-6.2 Astra Medium) review on SHA `6947c356` (`2026-11-20T23:46:16Z`, PR `#20#issuecomment-7053464069`) — Blocking:**
+   - **Finding:** `validate_arguments` bypassed type checking for non-string JSON-Schema `"type"` declarations, allowing `{"x": 42}` to pass against `{"type": ["string", "null"]}`.
+   - **Correction:** Implemented `_matches_kind` supporting `"null"` and all JSON-Schema primitive types; validated every member of union list types; rejected empty/unsupported union or non-string schema types fail-closed; added positive (`"ok"`, `None`) and negative (`42`, `True`, `[]`, `["string", "custom"]`, `123`) tests in `tests/test_tools/test_registry.py`.
+   - **Evidence distinction:** Updated `EVIDENCE.md` to explicitly separate local verification status (`PASS`) from review/merge readiness (`PENDING_REVIEW`).
+2. **Engineering Lead second check on SHA `6947c356` (`2026-11-20T23:46:51Z`, PR `#20#issuecomment-7053473470` & `.sail-mesh` event #38) — Blocking:**
+   - **Finding:** Tracked `uv.lock` became stale after adding `mypy>=1.11,<2.0` to `[project.optional-dependencies].dev` (`uv lock --check` exited 1).
+   - **Correction:** Ran `uv lock` (adding `mypy==1.20.2`, `librt`, `mypy-extensions`, `pathspec`), verified `uv lock --check` exits 0, and verified `uv run --extra dev --locked mypy src/olivia` exits 0 (`Success: no issues found in 64 source files`).
+3. **Independent review by Claude Code (Opus 5.5):** Requested via `.sail-mesh` and PR `#20`; pending verdict on revised commit SHA.
 
 ## 7. Tests and evidence referenced in discussions
 

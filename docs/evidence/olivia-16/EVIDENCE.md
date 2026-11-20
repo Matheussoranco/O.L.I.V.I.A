@@ -2,22 +2,25 @@
 
 - **Pack ID:** `evd-olivia-16-t8-20261120`
 - **Template version:** 1.0
-- **Generated at (UTC):** `2026-11-20T23:37:00Z`
-- **Overall status:** `PASS`
+- **Generated at (UTC):** `2026-11-20T23:55:00Z`
+- **Verification status (local tests/lint/type/lock):** `PASS`
+- **Review & merge readiness:** `PENDING_REVIEW` (awaiting Claude Code independent review and Engineering Lead final re-assessment on revised SHA)
 - **Task mode:** `github`
-- **Task reference:** `Matheussoranco/O.L.I.V.I.A#16` (Parent: `#8`, Spec: `BS-008`)
+- **Task reference:** `Matheussoranco/O.L.I.V.I.A#16` (Parent: `#8`, Spec: `BS-008`, PR: `#20`)
 - **Repository:** `Matheussoranco/O.L.I.V.I.A`
 - **Branch:** `fix/16-mypy-real-errors`
 - **Base revision:** `3295f40`
-- **Current revision:** `pending-commit` (updated in GitHub issue `#16` comment upon commit)
+- **Current revision:** revised post-review commit (recorded in PR `#20` and Issue `#16` comments)
 - **Working-tree state:** clean after commit
 - **Producer:** `Gemini 4 Neon (High) — Senior Software & Product Engineer`
 
 ## 1. Executive result
 
-Resolved all 13 real `mypy` type errors across 6 source modules in `src/olivia`, added targeted `[tool.mypy]` configuration in `pyproject.toml` (ignoring missing stubs only for optional/untyped third-party libraries while preserving strict import checking on `olivia.*` and core dependencies), added `mypy>=1.11,<2.0` to the `dev` extra, and wired `mypy src/olivia` into the CI `lint` workflow.
+Resolved all 13 real `mypy` type errors across 6 source modules in `src/olivia`, added targeted `[tool.mypy]` configuration in `pyproject.toml`, added `mypy>=1.11,<2.0` to the `dev` extra, updated `uv.lock`, and wired `mypy src/olivia` into the CI `lint` workflow.
 
-All acceptance criteria and `BS-008` are proven (`PASS`): `mypy src/olivia` reports `Success: no issues found in 64 source files` (exit 0), `ruff check` and `ruff format --check` pass cleanly, `pytest tests/` passes (`265 passed, 2 skipped`), and `olivia eval --check` holds all gates. Limitation: `bdd-scenarios` beta skill is not installed in this environment (`NOT_RUN`), and `mypy` was executed using the project `.venv` Python interpreter because system Python 3.13 carries unrelated site-packages.
+Following Engineering Lead review findings on `6947c356` (`#20#issuecomment-7053464069` and `#20#issuecomment-7053473470`), hardened `validate_arguments` in `src/olivia/tools/registry.py` so JSON-Schema union types (e.g. `["string", "null"]`) strictly validate all declared members and reject undeclared or unsupported schema types fail-closed, added positive and negative union tests, refreshed `uv.lock`, and verified `uv lock --check` and `uv run --extra dev --locked mypy src/olivia`.
+
+**Verification status:** `PASS` locally (`uv lock --check`, locked `mypy src/olivia`, `ruff check`, `ruff format --check`, `pytest`, `olivia eval --check`). **Review & merge readiness:** `PENDING_REVIEW` — independent cross-agent review by Claude Code (Opus 5.5) and re-assessment by GPT-6.2 Astra Medium are required before integration. Limitation: `bdd-scenarios` beta skill is not installed (`NOT_RUN`).
 
 ## 2. Scope-to-proof map
 

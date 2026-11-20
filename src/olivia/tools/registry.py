@@ -112,21 +112,35 @@ def validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> str
     if unknown:
         return f"unknown argument(s): {', '.join(unknown)}"
 
+    def _matches_kind(value: Any, kind: str) -> bool | None:
+        return {
+            "null": value is None,
+            "string": isinstance(value, str),
+            "boolean": isinstance(value, bool),
+            "integer": isinstance(value, int) and not isinstance(value, bool),
+            "number": isinstance(value, (int, float)) and not isinstance(value, bool),
+            "array": isinstance(value, list),
+            "object": isinstance(value, dict),
+        }.get(kind)
+
     def check(name: str, value: Any, rule: dict[str, Any]) -> str | None:
         kind = rule.get("type")
-        if isinstance(kind, str):
-            valid = {
-                "string": isinstance(value, str),
-                "boolean": isinstance(value, bool),
-                "integer": isinstance(value, int) and not isinstance(value, bool),
-                "number": isinstance(value, (int, float)) and not isinstance(value, bool),
-                "array": isinstance(value, list),
-                "object": isinstance(value, dict),
-            }.get(kind, True)
+        if kind is None:
+            pass
+        elif isinstance(kind, str):
+            matched = _matches_kind(value, kind)
+            if matched is False:
+                return f"argument '{name}' must be {kind}"
+        elif isinstance(kind, list):
+            if not kind or not all(
+                isinstance(member, str) and _matches_kind(None, member) is not None
+                for member in kind
+            ):
+                return f"argument '{name}' has unsupported schema type {kind!r}"
+            if not any(_matches_kind(value, member) for member in kind):
+                return f"argument '{name}' must be one of types {kind}"
         else:
-            valid = True
-        if not valid:
-            return f"argument '{name}' must be {kind}"
+            return f"argument '{name}' has unsupported schema type {kind!r}"
         if isinstance(value, float) and not math.isfinite(value):
             return f"argument '{name}' must be finite"
         if "enum" in rule and value not in rule["enum"]:
