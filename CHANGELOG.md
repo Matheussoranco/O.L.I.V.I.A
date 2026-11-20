@@ -6,7 +6,28 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Equation parser for `olivia solve` (T4, #12): systems of any size separated
+  by `,` `;` `and` or new lines, with or without `solve`/`the system`/`solve for
+  x and y:`; caret and Unicode notation (`x²`, `−`, `×`, `÷`, `√`, `π`, `==`);
+  indexed unknowns (`x1` → `x_1`); a trailing `for t` chooses the unknown.
+  Square linear systems show Gaussian elimination with back-substitution,
+  quadratics their discriminant, and every answer is checked by substitution.
+
 ### Fixed
+
+- `olivia solve` no longer answers prose as algebra: `the value 2x = 4` was
+  "solved" as `x = 2*exp(-2)/(a*h*l*t*u*v)` (implicit multiplication of the
+  letters, with `e` read as Euler's number) at confidence 0.9; it now abstains.
+- `x + 1 = x + 1` reported "no solution"; identities and contradictions are now
+  told apart.
+- `solve 3j = 6` reported "no solution" (Python lexed `3j` as the complex
+  number 3i) and `solve 0x + y = 1 and x + 0y = 2` failed (`0x` lexed as a hex
+  prefix); a digit glued to a name is now always a product.
+- Equations with a literal exponent above 64 (`x^1000000 = 1`,
+  `2^999999999 = x`) stalled the solver for over a minute; they are now refused
+  before sympy is called.
 
 - `MetaLearner` closes every SQLite connection, and expert routing only blends
   historical win-rates for strategies that have observed outcomes.

@@ -19,6 +19,7 @@ from olivia.core.records import SolutionStep, WorkedSolution
 from olivia.llm.client import LLMClient, get_client
 from olivia.llm.prompts import SOLVER_SYSTEM
 from olivia.llm.structured import ask_json
+from olivia.study.equations import solve_equations
 
 logger = logging.getLogger(__name__)
 
@@ -47,14 +48,6 @@ def _parse_errors() -> tuple[type[BaseException], ...]:
 
 
 # ── Maths intent patterns ───────────────────────────────────────────────────
-_SOLVE_RE = re.compile(
-    r"\bsolve\b[^:]*?:?\s*(.+?)\s*=\s*(.+?)(?:\s+for\s+\w+)?\s*[.?]?\s*$", re.IGNORECASE
-)
-# System of equations: "solve 2x + y = 10 and x - y = 2" or "solve 2x + y = 10, x - y = 2"
-_SYSTEM_RE = re.compile(
-    r"\bsolve\b(?:\s+the\s+system)?[^:]*?:?\s*(.+?)\s*=\s*(.+?)\s*(?:and|,)\s*(.+?)\s*=\s*(.+?)(?:\s+for\s+\w+)?\s*[.?]?\s*$",
-    re.IGNORECASE,
-)
 _DERIV_RE = re.compile(
     r"\b(?:differentiate|derivative\s+of|d/dx)\b\s*:?\s*(?:of\s+)?(.+?)"
     r"(?:\s+with\s+respect\s+to\s+[A-Za-z]\w*)?\s*[.?]?\s*$",
@@ -166,84 +159,12 @@ def _solve_math(problem: str) -> WorkedSolution | None:
         return None
     text = problem.strip()
 
-    # System of equations: "solve 2x + y = 10 and x - y = 2"
-    match = _SYSTEM_RE.search(text)
-    if match:
-        lhs1, rhs1, lhs2, rhs2 = (
-            match.group(1).strip(),
-            match.group(2).strip(),
-            match.group(3).strip(),
-            match.group(4).strip(),
-        )
-        try:
-            expr1 = _sympify(f"({lhs1})-({rhs1})")
-            expr2 = _sympify(f"({lhs2})-({rhs2})")
-            all_symbols = sorted(
-                set(expr1.free_symbols) | set(expr2.free_symbols), key=lambda s: s.name
-            )
-            if len(all_symbols) != 2:
-                return None
-            roots = sympy.solve([expr1, expr2], all_symbols, dict=True)
-        except _parse_errors() as exc:
-            logger.exception(
-                "solve system: cannot parse equations %r", f"{lhs1} = {rhs1}, {lhs2} = {rhs2}"
-            )
-            raise SolverParseError(
-                f"cannot parse system: {lhs1} = {rhs1}, {lhs2} = {rhs2}",
-                expression=f"{lhs1} = {rhs1}, {lhs2} = {rhs2}",
-            ) from exc
-        steps = []
-        _new_step(steps, "Restate the system", f"{lhs1} = {rhs1}, {lhs2} = {rhs2}")
-        _new_step(
-            steps,
-            "Move all terms to one side",
-            f"{sympy.simplify(expr1)} = 0, {sympy.simplify(expr2)} = 0",
-        )
-        solutions = [
-            ", ".join(f"{symbol} = {sympy.nsimplify(value)}" for symbol, value in root.items())
-            for root in roots
-        ]
-        answer = "; ".join(solutions) or "no solution"
-        _new_step(steps, "Solve the system", answer)
-        return WorkedSolution(
-            problem=problem,
-            subject="math",
-            steps=steps,
-            final_answer=answer,
-            method="symbolic",
-            confidence=0.9,
-        )
-
-    # Standard equation: "solve x^2 - 5x + 6 = 0 for x"
-    match = _SOLVE_RE.search(text)
-    if match:
-        lhs, rhs = match.group(1).strip(), match.group(2).strip()
-        try:
-            expr = _sympify(f"({lhs})-({rhs})")
-            var = _pick_symbol(expr)
-            roots = sympy.solve(expr, var)
-        except _parse_errors() as exc:
-            logger.exception("solve: cannot parse equation %r", f"{lhs} = {rhs}")
-            raise SolverParseError(
-                f"cannot parse equation: {lhs} = {rhs}", expression=f"{lhs} = {rhs}"
-            ) from exc
-        steps = []
-        _new_step(steps, "Restate the equation", f"{lhs} = {rhs}")
-        moved = sympy.simplify(expr)
-        _new_step(steps, "Move every term to one side", f"{moved} = 0")
-        factored = sympy.factor(expr)
-        if factored != sympy.expand(expr):
-            _new_step(steps, "Factor", f"{factored} = 0")
-        answer = ", ".join(f"{var} = {sympy.nsimplify(r)}" for r in roots) or "no solution"
-        _new_step(steps, f"Solve for {var}", answer)
-        return WorkedSolution(
-            problem=problem,
-            subject="math",
-            steps=steps,
-            final_answer=answer,
-            method="symbolic",
-            confidence=0.9,
-        )
+    # Equations and systems, in any notation: "solve 2x + y = 10, x - y = 2",
+    # "the system ... and ...", "x² − 5x + 6 = 0", "2*x + 3 = 7".  Prose is left
+    # to the branches below ("If f(x) = ..., what is f'(x)?").
+    solution = solve_equations(problem)
+    if solution is not None:
+        return solution
 
     # Derivative: "differentiate x^3 + 2x" or "derivative of x^3" or "d/dx x^3"
     # Integrate: "integrate 2*x" or "integral of 1/x"
@@ -476,40 +397,6 @@ def _solve_math(problem: str) -> WorkedSolution | None:
                 subject="math",
                 steps=steps,
                 final_answer=f"{result}",
-                method="symbolic",
-                confidence=0.9,
-            )
-
-    # Bare equation: "2*x + 3 = 7" (no solve prefix)
-    match = _SOLVE_RE.search(text)
-    if not match:
-        # Try to match bare equation: expression = expression
-        bare_eq = re.search(r"^(.+?)\s*=\s*(.+?)\s*[.?]?$", text, re.IGNORECASE)
-        if bare_eq:
-            lhs, rhs = bare_eq.group(1).strip(), bare_eq.group(2).strip()
-            try:
-                expr = _sympify(f"({lhs})-({rhs})")
-                var = _pick_symbol(expr)
-                roots = sympy.solve(expr, var)
-            except _parse_errors() as exc:
-                logger.exception("solve: cannot parse equation %r", f"{lhs} = {rhs}")
-                raise SolverParseError(
-                    f"cannot parse equation: {lhs} = {rhs}", expression=f"{lhs} = {rhs}"
-                ) from exc
-            steps = []
-            _new_step(steps, "Restate the equation", f"{lhs} = {rhs}")
-            moved = sympy.simplify(expr)
-            _new_step(steps, "Move every term to one side", f"{moved} = 0")
-            factored = sympy.factor(expr)
-            if factored != sympy.expand(expr):
-                _new_step(steps, "Factor", f"{factored} = 0")
-            answer = ", ".join(f"{var} = {sympy.nsimplify(r)}" for r in roots) or "no solution"
-            _new_step(steps, f"Solve for {var}", answer)
-            return WorkedSolution(
-                problem=problem,
-                subject="math",
-                steps=steps,
-                final_answer=answer,
                 method="symbolic",
                 confidence=0.9,
             )
