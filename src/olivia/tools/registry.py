@@ -64,10 +64,10 @@ class ToolRegistry:
     def get(self, name: str) -> Tool | None:
         return self._tools.get(name)
 
-    def list(self) -> list[Tool]:
+    def get_all(self) -> list[Tool]:
         return list(self._tools.values())
 
-    def names(self) -> list[str]:
+    def get_names(self) -> list[str]:
         return sorted(self._tools)
 
     def execute(
@@ -112,7 +112,9 @@ def validate_arguments(schema: dict[str, Any], arguments: dict[str, Any]) -> str
         return f"unknown argument(s): {', '.join(unknown)}"
 
     def check(name: str, value: Any, rule: dict[str, Any]) -> str | None:
-        kind = rule.get("type")
+        kind: str | None = rule.get("type")
+        if kind is None:
+            return None
         valid = {
             "string": isinstance(value, str),
             "boolean": isinstance(value, bool),

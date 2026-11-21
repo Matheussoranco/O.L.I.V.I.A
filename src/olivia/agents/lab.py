@@ -9,6 +9,7 @@ feed the synthesis back to the researcher for revision.
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from olivia.agents.subagent import SubAgent
 from olivia.llm.client import LLMClient, get_client
@@ -22,9 +23,9 @@ class ResearchLab:
     def __init__(self, client: LLMClient | None = None) -> None:
         self.client = client or get_client()
 
-    def investigate(self, question: str, rounds: int = 1) -> dict:
+    def investigate(self, question: str, rounds: int = 1) -> dict[str, Any]:
         """Run the seminar; returns draft/critique/synthesis plus a transcript."""
-        result = {
+        result: dict[str, Any] = {
             "question": question,
             "draft": "",
             "critique": "",
