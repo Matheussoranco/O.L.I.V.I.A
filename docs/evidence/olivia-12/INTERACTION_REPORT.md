@@ -34,6 +34,13 @@ Machine-readable copy: `events.jsonl`. All times are UTC.
 | 23:56:57 | mesh ev 47 | **Claude → Lead ACK**, with an attribution correction and the work plan. |
 | 23:56:57 | mesh ev 48 | **Claude → Gemini ACK**: annotation done and the merge result. |
 | 23:58:36 | mesh ev 49 | Gemini → Claude: review request for revised PR #20 @ `6f25028`. |
+| 00:04:19 | mesh ev 54–55 | PR #22 opened @ `36e0eb3`; review requested from Gemini; lead notified. |
+| 00:07:35 | mesh ev 56 | Gemini ACK: will review #22 after its META-CI PR. |
+| 00:10:41 | GitHub #20, mesh ev 57–58 | Claude **APPROVES #20 @ `6f25028`**: both lead findings verified fixed, merge with #22 re-verified. |
+| 00:12:06 | GitHub #21, mesh ev 59–60 | Claude **requests changes on #21 (Hermes/T10)**: ruff pin v0.1.5 against the required 0.15.2, reproduced as 5 false UP038 blocks. |
+| 00:19:10 | GitHub #22, mesh ev 65–66 | **Gemini: CHANGES REQUESTED on #22 @ `36e0eb3`**, 2 blocking DoS findings (B1, B2) and 2 non-blocking (NB1, NB2). |
+| 00:19–00:35 | local | Claude reproduces all four (`review-repro.py`), writes failing tests first, fixes, mutation-verifies the timeout test, and re-runs every gate. |
+| 00:35:35 | git | `f3a329c` review fixes (commit time from git). |
 
 ## 3. Decisions and disagreements
 
@@ -41,8 +48,15 @@ Machine-readable copy: `events.jsonl`. All times are UTC.
   did it in my branch, because my deletion is what moves mypy's first error to
   a different line. The decision was backed by a reproduced counterfactual,
   not by argument.
-- **Design: new module vs regex patch.** Recorded in `EVIDENCE.md` §4. No
-  other agent was consulted. This is for the reviewer to challenge.
+- **Design: new module vs regex patch.** Recorded in `EVIDENCE.md` §4. The
+  reviewer (Gemini) explicitly endorsed it.
+- **Review round 1 (Gemini → Claude).** All four findings were accepted after
+  independent reproduction; none was disputed. Two parts of the review record
+  were **corrected with evidence, not argued**: (a) `solve_problem` did not
+  crash, it abstained, and the escape was in `solve_equations`; (b) the five
+  "baseline" behaviours in review §1 are correct on `main`. Review §1 also
+  names functions this PR doesn't contain. Details are in `EVIDENCE.md` §7.
+  The reviewer's verdict stands; the code was wrong.
 
 ## 4. Communication failures and anomalies
 
@@ -67,11 +81,15 @@ Machine-readable copy: `events.jsonl`. All times are UTC.
 - Claim → first commit: 24 min 47 s. Claim → verified evidence: about 40 min.
 - Inter-agent messages: received 3 that concern #12 (Gemini note, lead handoff,
   Gemini review request); sent 2 (events 47 and 48).
-- Review rounds: 0 so far. The review is pending.
+- Review rounds: 1. Gemini requested changes on `36e0eb3` (2 blocking,
+  2 non-blocking). All 4 were fixed in `f3a329c`, 16 min 25 s from
+  the review comment to the fix commit. Re-review is pending.
+- Reviews given by this agent in the same window: #20 APPROVE, #21 REQUEST
+  CHANGES, Jensen #5 APPROVE.
 
 ## 6. Outcome and open items
 
 - Implementation verified at `37c184b`, with the gates listed in `EVIDENCE.md` §2.
-- **Open:** independent review (Gemini), lead integration, merge order with #20
-  (either order works once the conflict is resolved to #12's side), and
-  reporting the ruff pin mismatch on #18.
+- **Open:** Gemini's re-review of `f3a329c`, then lead integration and merge
+  order with #20 (either order works if `solver.py` is resolved to #22's side).
+  The ruff pin mismatch was reported on #21.

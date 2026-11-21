@@ -6,12 +6,13 @@
 | Trace id | `olivia-12-t4` |
 | Author | Claude Code, Opus 5.5 (session `b4efa619`) |
 | Base | `origin/main` @ `3295f408fedeca09724175ca37b2df8d1f3374d9` |
-| Revision verified | `37c184b84688160cc8156153e73f6bef8b6c8e09` (branch `feat/12-equation-parser-systems`) |
-| Independent reviewer | **Pending**: Gemini 4 Neon (requested). Engineering Lead (Codex) does the integration assessment. |
-| Status | Implementation complete, gates pass. **Not reviewed yet.** A passing test run is not review approval. |
+| Revision verified | Round 1: `37c184b84688160cc8156153e73f6bef8b6c8e09`, logs in `logs/`. **Round 2: `f3a329cbf3a02b2d12bc3c873ce4909990f2decc`**, logs in `logs/round2/` (see §7). |
+| Independent reviewer | Gemini 4 Neon: **CHANGES REQUESTED at `36e0eb3`**, with 2 blocking and 2 non-blocking findings. All four are addressed in `f3a329c` (§7). **Re-review pending.** The Engineering Lead (Codex) does the integration assessment. |
+| Status | Review findings fixed and re-verified. **Not approved yet.** A passing test run is not review approval. |
 
-Logs in `logs/` were produced by the commands shown at their top, on the revision
-above. Local absolute paths were redacted to `<worktree>` / `~`.
+Logs were produced by the commands shown at their top, on the revision named
+in each file. Local absolute paths were redacted to `<worktree>` / `~`. §1–§6
+describe round 1; §7 records the review round and what changed.
 
 ## 1. Scope → proof
 
@@ -115,10 +116,13 @@ couldn't see them because none of them is in the held-out suite.
    disagree, a warning is logged and the steps are left out. Every answer is
    substituted back into every equation. If the check fails, confidence drops
    from 0.9 to 0.6.
-6. **Resource bounds go before sympy.** Literal exponents above 64 are rejected
-   at the token level, because `2^999999999` stalls inside sympify itself.
-   Computed powers (`x^(8*8*8)`) are rejected after parsing. At most 8
-   equations are accepted.
+6. **Resource bounds go before sympy.** *Round 1 used a token lookahead, which
+   review showed could be bypassed; see §7. The text below describes round 2.*
+   `_check_growth` asks sympy's own tokenizer for the code it would evaluate,
+   then walks that AST and bounds every numeric subtree. A power of an unknown
+   may be at most 64, a number at most 1000 digits, and a combinatorial
+   function argument at most 1000. Nothing is evaluated during the check.
+   At most 8 equations are accepted.
 
 ## 5. Negative evidence
 
@@ -149,3 +153,62 @@ couldn't see them because none of them is in the held-out suite.
   `.pre-commit-config.yaml`. Commits were made with `PRE_COMMIT_ALLOW_NO_CONFIG=1`
   after running the CI-pinned ruff checks by hand (row 1). No hook was skipped,
   because none is configured on this branch.
+
+## 7. Review round 1 → revision `f3a329c`
+
+**Reviewer:** Gemini 4 Neon. **Reviewed SHA:** `36e0eb3`. **Verdict:** CHANGES REQUESTED.
+Record: PR #22 comment of 2026-11-21T00:19:10Z and mesh events 65–66. Gemini
+endorsed the design choice (new module rather than a regex patch). Every
+finding was **reproduced by the author before it was fixed**
+(`review-repro.py`, one subprocess per case with a 15 s hard timeout).
+
+| # | Severity | Finding | Reproduced on `36e0eb3` | Fix in `f3a329c` | Proof (`logs/round2/07-review-repro.txt`) |
+|---|---|---|---|---|---|
+| B1 | blocking | `2^(((999999999))) = x`: parentheses exhaust the 3-token exponent lookahead | **TIMEOUT >15 s** | The token heuristic is replaced by a structural AST bound (§4.6) | refused, `SolverParseError`, ~1 s including interpreter start |
+| B2 | blocking | power towers `2^3^20`, `2^2^2^2^2`: small literals, right-associative explosion | `2^3^20` **TIMEOUT**; `2^2^2^2^2` lets a **`ValueError` escape `solve_equations`** | Same guard. A narrow catch also turns Python's int→str limit into `SolverParseError` | both refused, `SolverParseError` |
+| NB1 | non-blocking | `solve x + y = 5 for x and y` silently drops `y` | yes | One equation with several requested unknowns goes through the system path | `x = 5 - y`, with the step "y is a free parameter" |
+| NB2 | non-blocking | `solve x + 1 = x + 1 for y` → identity, while `2x = 4 for y` raises | yes | Requested unknowns are checked against the *written* equations, before cancellation | `SolverParseError: unknown y does not appear` |
+
+**Corrections to the review record.** These don't affect the verdict, but the
+audit trail should be accurate.
+
+- The review says B2 makes `solve_problem` crash. On `36e0eb3`, `solve_problem`
+  caught the escaping `ValueError` in its catch-all and **abstained**
+  (`method=none`). The contract break was in `solve_equations` only. It was
+  still a real defect, and it is fixed.
+- Review §1 lists five "confidently-wrong baseline behaviors on main"
+  (`3x + 2 = 2x + 7`, `2(x+1)=10`, `sqrt(x)=3`, …). Run on `origin/main`,
+  these return `x = 5`, `x = 4` and `x = 9`, all correct. Review §1 also names
+  `split_equations`, `ParsedProblem` and `SolveResult`, which don't exist in
+  this PR, and calls the annotation `list[str]` when it is
+  `list[SolutionStep]`. The confidently-wrong cases this PR actually fixes are
+  the ones in §3.
+
+**New regression cases (18), collected as 10 tests.**
+
+- 9 explosive inputs, run in **one child process with a 90 s hard timeout**,
+  so a regression fails fast instead of hanging CI. *Mutation-verified:* with
+  `_check_growth` disabled, the test fails with `hung after:` in about 100 s.
+  With the guard enabled, it passes in about 6 s.
+- 6 bounded-power positives (`2^10`, `2^(3^2)`, `2^x`, `factorial(5)`,
+  `x^(1/2)`, `10^(-3)`).
+- 1 bare-text case: an explosive power with no instruction returns `None`.
+- NB1 and NB2.
+
+The 9 explosive inputs share one child process and count as one test, so the
+equation suite collects **112** tests (102 + 10).
+
+**Round-2 gates on `f3a329c`** (`logs/round2/`):
+
+- ruff: clean
+- mypy (touched modules): clean
+- **bandit: 0 high, 0 medium.** The sympy namespace comes from
+  `sympy.__all__`, not `exec`, so T9 (#17) gets no new finding.
+- pytest: **375 passed, 2 skipped**
+- `eval --check`: all gates hold
+- probe table: identical to round 1 on all 17 inputs
+
+**Remaining risk.** The guard bounds what the equation path would evaluate.
+The *arithmetic* path (`what is 2^999999999`, no `=`) still goes straight to
+`safe_sympify`. That was already true on `main` and is outside #12. The obvious
+follow-up is to reuse `_check_growth` there.

@@ -27,9 +27,13 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `solve 3j = 6` reported "no solution" (Python lexed `3j` as the complex
   number 3i) and `solve 0x + y = 1 and x + 0y = 2` failed (`0x` lexed as a hex
   prefix); a digit glued to a name is now always a product.
-- Equations with a literal exponent above 64 (`x^1000000 = 1`,
-  `2^999999999 = x`) stalled the solver for 40 s to over 60 s in measured
-  runs; they are now refused before sympy is called.
+- Equations that denote enormous numbers stalled the solver (`x^1000000 = 1`
+  and `2^999999999 = x` took 40 s to over 60 s in measured runs). They are now
+  refused before sympy evaluates anything. The bound is computed on the
+  expression's structure, so parentheses (`2^(((999999999)))`) and power
+  towers (`2^3^20`, `2^2^2^2^2`) cannot get round it. Limits: a power of an
+  unknown up to 64, numbers up to 1000 digits, and `factorial`/`fibonacci`/…
+  arguments up to 1000.
 
 - `MetaLearner` closes every SQLite connection, and expert routing only blends
   historical win-rates for strategies that have observed outcomes.
