@@ -20,13 +20,13 @@ import re
 import stat
 import sys
 import tempfile
+from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterator, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 INPUT_SCHEMA_PATH = REPO_ROOT / "shared/contracts/activity/adjudication_activity_input.schema.json"
@@ -45,20 +45,35 @@ SOURCE_FAMILIES = (
     "mandatory_checkpoint_response",
 )
 STAGES = (
-    "pipeline_stage_1", "pipeline_stage_2", "pipeline_stage_2_5",
-    "pipeline_stage_3", "pipeline_stage_3_prime", "pipeline_stage_4",
-    "pipeline_stage_4_prime", "pipeline_stage_4_5", "pipeline_stage_5",
+    "pipeline_stage_1",
+    "pipeline_stage_2",
+    "pipeline_stage_2_5",
+    "pipeline_stage_3",
+    "pipeline_stage_3_prime",
+    "pipeline_stage_4",
+    "pipeline_stage_4_prime",
+    "pipeline_stage_4_5",
+    "pipeline_stage_5",
     "pipeline_stage_6",
 )
 RAW_TO_STAGE = {
-    "1": STAGES[0], "2": STAGES[1], "2.5": STAGES[2], "3": STAGES[3],
-    "3p": STAGES[4], "4": STAGES[5], "4p": STAGES[6], "4.5": STAGES[7],
-    "5": STAGES[8], "6": STAGES[9],
+    "1": STAGES[0],
+    "2": STAGES[1],
+    "2.5": STAGES[2],
+    "3": STAGES[3],
+    "3p": STAGES[4],
+    "4": STAGES[5],
+    "4p": STAGES[6],
+    "4.5": STAGES[7],
+    "5": STAGES[8],
+    "6": STAGES[9],
 }
 STAGE_TO_RAW = {value: key for key, value in RAW_TO_STAGE.items()}
 STATUS_VALUES = {"pending", "in_progress", "completed", "skipped", "blocked"}
 REASON_UNAVAILABLE = {
-    "source_not_provided", "source_unreadable", "source_invalid",
+    "source_not_provided",
+    "source_unreadable",
+    "source_invalid",
     "capture_not_supported",
 }
 ROLE_ORDER = {
@@ -69,7 +84,8 @@ ROLE_ORDER = {
     "mandatory_checkpoint_response": ("mandatory_checkpoint_response_log",),
 }
 OVERTURN_TYPES = {
-    "author_triage_not_on_point", "compliance_block_override",
+    "author_triage_not_on_point",
+    "compliance_block_override",
     "re_review_verdict_changed",
 }
 MAX_INPUT = 1 << 20
@@ -102,9 +118,16 @@ class ActivityError(Exception):
 
 
 EXIT_BY_CODE = {
-    "USAGE": 2, "PATH": 3, "INPUT": 3, "SOURCE": 3, "STORE": 4,
-    "CONFLICT": 5, "CAP": 5, "DELETE_CONFIRMATION": 6,
-    "LOCK": 7, "WRITE": 7,
+    "USAGE": 2,
+    "PATH": 3,
+    "INPUT": 3,
+    "SOURCE": 3,
+    "STORE": 4,
+    "CONFLICT": 5,
+    "CAP": 5,
+    "DELETE_CONFIRMATION": 6,
+    "LOCK": 7,
+    "WRITE": 7,
 }
 
 
@@ -126,8 +149,10 @@ def strict_json(raw: bytes, *, code: str) -> Any:
         raise ActivityError(code, "UTF-8 BOM is forbidden")
     try:
         value = json.loads(
-            raw.decode("utf-8"), object_pairs_hook=_pairs,
-            parse_float=_reject_number, parse_constant=_reject_number,
+            raw.decode("utf-8"),
+            object_pairs_hook=_pairs,
+            parse_float=_reject_number,
+            parse_constant=_reject_number,
         )
     except (UnicodeDecodeError, json.JSONDecodeError, ValueError) as exc:
         raise ActivityError(code, f"invalid strict JSON: {exc.__class__.__name__}") from None
@@ -162,7 +187,10 @@ def _canonical_domain(value: Any, *, code: str, depth: int = 0) -> None:
 def canonical_bytes(value: Any, *, code: str = "INPUT") -> bytes:
     _canonical_domain(value, code=code)
     return json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
         allow_nan=False,
     ).encode("utf-8")
 
@@ -195,7 +223,9 @@ def _validator(path: Path, *, revision_registry: bool = False) -> Draft202012Val
         ):
             candidate = _load_schema(candidate_path)
             if "$id" in candidate:
-                registry = registry.with_resource(candidate["$id"], Resource.from_contents(candidate))
+                registry = registry.with_resource(
+                    candidate["$id"], Resource.from_contents(candidate)
+                )
     return Draft202012Validator(schema, registry=registry, format_checker=FormatChecker())
 
 
@@ -208,7 +238,9 @@ def _schema_validate(value: Any, path: Path, *, code: str, revision_registry: bo
         raise ActivityError(code, f"schema validation failed at {list(errors[0].absolute_path)!r}")
 
 
-def _read_limited_identity(path: Path, limit: int, *, code: str) -> tuple[bytes, tuple[int, int, int]]:
+def _read_limited_identity(
+    path: Path, limit: int, *, code: str
+) -> tuple[bytes, tuple[int, int, int]]:
     try:
         fd = os.open(path, os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0))
         try:
@@ -248,7 +280,9 @@ def _path_identity(path: Path) -> tuple[int, int, int]:
     try:
         info = path.lstat()
     except OSError as exc:
-        raise ActivityError("WRITE", f"target identity check failed: {exc.__class__.__name__}") from None
+        raise ActivityError(
+            "WRITE", f"target identity check failed: {exc.__class__.__name__}"
+        ) from None
     return info.st_dev, info.st_ino, info.st_size
 
 
@@ -305,7 +339,9 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
         raise ActivityError("PATH", "invalid relative artifact path")
     pure = PurePosixPath(relative)
     if (
-        pure.is_absolute() or "\\" in relative or relative.endswith("/")
+        pure.is_absolute()
+        or "\\" in relative
+        or relative.endswith("/")
         or re.match(r"^[A-Za-z]:/", relative)
         or any(part in {"", ".", ".."} for part in pure.parts)
         or any(ord(char) < 32 or ord(char) == 127 for char in relative)
@@ -320,7 +356,8 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
             directory_fd = os.open(part, directory_flags, dir_fd=directory_fd)
             opened.append(directory_fd)
         fd = os.open(
-            pure.parts[-1], os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
+            pure.parts[-1],
+            os.O_RDONLY | getattr(os, "O_NOFOLLOW", 0),
             dir_fd=directory_fd,
         )
         opened.append(fd)
@@ -349,7 +386,9 @@ def _read_artifact_relative(root: Path, relative: str, limit: int) -> bytes:
     except OSError as exc:
         if exc.errno == errno.ELOOP:
             raise ActivityError("PATH", "symlink artifact path is forbidden") from None
-        raise ActivityError("PATH", f"artifact traversal failed: {exc.__class__.__name__}") from None
+        raise ActivityError(
+            "PATH", f"artifact traversal failed: {exc.__class__.__name__}"
+        ) from None
     finally:
         for opened_fd in reversed(opened):
             os.close(opened_fd)
@@ -389,7 +428,9 @@ def _write_all(fd: int, raw: bytes) -> None:
         view = view[written:]
 
 
-def _atomic_replace(path: Path, raw: bytes, *, expected_identity: tuple[int, int, int] | None = None) -> None:
+def _atomic_replace(
+    path: Path, raw: bytes, *, expected_identity: tuple[int, int, int] | None = None
+) -> None:
     path.parent.mkdir(parents=False, exist_ok=True)
     temporary: str | None = None
     try:
@@ -469,12 +510,16 @@ def _state_replay(state: dict[str, Any]) -> tuple[str, str, str, str]:
     status = stages[raw_stage].get("status")
     if status not in STATUS_VALUES:
         raise ActivityError("INPUT", "current stage status is outside the closed vocabulary")
-    if pipeline_state == "completed" and not (raw_stage == "6" and status in {"completed", "skipped"}):
+    if pipeline_state == "completed" and not (
+        raw_stage == "6" and status in {"completed", "skipped"}
+    ):
         raise ActivityError("INPUT", "completed state must replay Stage 6 completed or skipped")
     return state["run_id"], pipeline_state, stage, status
 
 
-def _terminal_receipt(state: dict[str, Any], state_raw: bytes, relative_path: str) -> dict[str, Any]:
+def _terminal_receipt(
+    state: dict[str, Any], state_raw: bytes, relative_path: str
+) -> dict[str, Any]:
     run_id, pipeline_state, stage, status = _state_replay(state)
     return {
         "artifact_id": "pipeline-state-terminal-receipt",
@@ -513,18 +558,29 @@ def _validate_source_rows(rows: Any, *, pending: bool = False) -> None:
             raise ActivityError("SOURCE", "unknown capture state")
         for artifact in artifacts:
             expected = {
-                "artifact_id", "artifact_role", "artifact_group_id",
-                "artifact_group_stage", "relative_path",
+                "artifact_id",
+                "artifact_role",
+                "artifact_group_id",
+                "artifact_group_stage",
+                "relative_path",
             }
             if not pending:
                 expected.add("sha256")
             if not isinstance(artifact, dict) or set(artifact) != expected:
                 raise ActivityError("SOURCE", "artifact binding has unknown or missing fields")
-            if not isinstance(artifact.get("artifact_id"), str) or not ID_RE.fullmatch(artifact["artifact_id"]):
-                raise ActivityError("SOURCE", "artifact id is outside the closed identifier grammar")
+            if not isinstance(artifact.get("artifact_id"), str) or not ID_RE.fullmatch(
+                artifact["artifact_id"]
+            ):
+                raise ActivityError(
+                    "SOURCE", "artifact id is outside the closed identifier grammar"
+                )
             if artifact.get("artifact_role") not in ROLE_ORDER[family]:
-                raise ActivityError("SOURCE", "artifact role is outside the source-family vocabulary")
-            if not isinstance(artifact.get("artifact_group_id"), str) or not GROUP_RE.fullmatch(artifact["artifact_group_id"]):
+                raise ActivityError(
+                    "SOURCE", "artifact role is outside the source-family vocabulary"
+                )
+            if not isinstance(artifact.get("artifact_group_id"), str) or not GROUP_RE.fullmatch(
+                artifact["artifact_group_id"]
+            ):
                 raise ActivityError("SOURCE", "artifact group id is invalid")
             group_stage = artifact.get("artifact_group_stage")
             if family == SOURCE_FAMILIES[0]:
@@ -535,7 +591,10 @@ def _validate_source_rows(rows: Any, *, pending: bool = False) -> None:
             relative_path = artifact.get("relative_path")
             if not isinstance(relative_path, str):
                 raise ActivityError("SOURCE", "artifact relative path must be a string")
-            if not pending and (not isinstance(artifact.get("sha256"), str) or not HEX_RE.fullmatch(artifact["sha256"])):
+            if not pending and (
+                not isinstance(artifact.get("sha256"), str)
+                or not HEX_RE.fullmatch(artifact["sha256"])
+            ):
                 raise ActivityError("SOURCE", "artifact hash is invalid")
 
 
@@ -547,7 +606,11 @@ def _group_artifacts(row: dict[str, Any]) -> list[list[dict[str, Any]]]:
     cursor = 0
     while cursor < len(artifacts):
         group_id = artifacts[cursor].get("artifact_group_id")
-        if not isinstance(group_id, str) or not GROUP_RE.fullmatch(group_id) or group_id in seen_ids:
+        if (
+            not isinstance(group_id, str)
+            or not GROUP_RE.fullmatch(group_id)
+            or group_id in seen_ids
+        ):
             raise ActivityError("SOURCE", "invalid or repeated artifact group id")
         seen_ids.add(group_id)
         group: list[dict[str, Any]] = []
@@ -561,12 +624,17 @@ def _group_artifacts(row: dict[str, Any]) -> list[list[dict[str, Any]]]:
     if family == "revision_author_adjudication":
         if len(groups) not in {1, 2}:
             raise ActivityError("SOURCE", "author family requires one or two groups")
-        expected_stages = ["pipeline_stage_3", "pipeline_stage_3_prime"] if len(groups) == 2 else None
+        expected_stages = (
+            ["pipeline_stage_3", "pipeline_stage_3_prime"] if len(groups) == 2 else None
+        )
         for index, group in enumerate(groups):
             if tuple(item.get("artifact_role") for item in group) != expected_roles:
                 raise ActivityError("SOURCE", "author group role order is invalid")
             stages = {item.get("artifact_group_stage") for item in group}
-            if len(stages) != 1 or next(iter(stages)) not in {"pipeline_stage_3", "pipeline_stage_3_prime"}:
+            if len(stages) != 1 or next(iter(stages)) not in {
+                "pipeline_stage_3",
+                "pipeline_stage_3_prime",
+            }:
                 raise ActivityError("SOURCE", "author group stage is invalid")
             if expected_stages and next(iter(stages)) != expected_stages[index]:
                 raise ActivityError("SOURCE", "author group stage order is invalid")
@@ -580,14 +648,19 @@ def _group_artifacts(row: dict[str, Any]) -> list[list[dict[str, Any]]]:
             if any(item.get("artifact_group_stage") is not None for item in group):
                 raise ActivityError("SOURCE", "non-author artifact stage must be null")
     else:
-        if len(groups) != 1 or tuple(item.get("artifact_role") for item in groups[0]) != expected_roles:
+        if (
+            len(groups) != 1
+            or tuple(item.get("artifact_role") for item in groups[0]) != expected_roles
+        ):
             raise ActivityError("SOURCE", "captured family has invalid exact group roles")
         if any(item.get("artifact_group_stage") is not None for item in groups[0]):
             raise ActivityError("SOURCE", "non-author artifact stage must be null")
     return groups
 
 
-def seal_terminal_inventory(state_path: str | Path, artifact_root: str | Path, pending_bindings: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def seal_terminal_inventory(
+    state_path: str | Path, artifact_root: str | Path, pending_bindings: list[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """Post-terminal best-effort helper: hash explicit pending rows and seal them.
 
     ``pending_bindings`` is authority supplied by the state tracker's sole
@@ -614,18 +687,23 @@ def seal_terminal_inventory(state_path: str | Path, artifact_root: str | Path, p
         candidate = copy.deepcopy(state)
         existing = candidate.get("adjudication_activity_sources")
         if existing is not None and existing != sealed_rows:
-            raise ActivityError("CONFLICT", "terminal source inventory is already sealed differently")
+            raise ActivityError(
+                "CONFLICT", "terminal source inventory is already sealed differently"
+            )
         if existing == sealed_rows:
             return sealed_rows
         candidate["adjudication_activity_sources"] = sealed_rows
         _atomic_replace(
-            state_file, canonical_bytes(candidate) + b"\n",
+            state_file,
+            canonical_bytes(candidate) + b"\n",
             expected_identity=state_identity,
         )
     return sealed_rows
 
 
-def author_source_record(adjudication: dict[str, Any], event: dict[str, Any], digest: str) -> dict[str, Any]:
+def author_source_record(
+    adjudication: dict[str, Any], event: dict[str, Any], digest: str
+) -> dict[str, Any]:
     return {
         "item_id": adjudication["item_id"],
         "author_event_id": adjudication["author_event_id"],
@@ -636,8 +714,12 @@ def author_source_record(adjudication: dict[str, Any], event: dict[str, Any], di
 
 
 def compliance_source_record(
-    group_id: str, stage: str, blockers: list[str], report_hash: str,
-    receipt_hash: str, receipt: dict[str, Any],
+    group_id: str,
+    stage: str,
+    blockers: list[str],
+    report_hash: str,
+    receipt_hash: str,
+    receipt: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "artifact_group_id": group_id,
@@ -651,8 +733,12 @@ def compliance_source_record(
 
 
 def re_review_source_record(
-    round_id: str, dissent_id: str, item_id: str, reapplication_id: str,
-    adjustment: dict[str, Any], traceability_hash: str,
+    round_id: str,
+    dissent_id: str,
+    item_id: str,
+    reapplication_id: str,
+    adjustment: dict[str, Any],
+    traceability_hash: str,
 ) -> dict[str, Any]:
     return {
         "round_id": round_id,
@@ -667,40 +753,74 @@ def re_review_source_record(
 
 
 def explicit_source_record(record: dict[str, Any]) -> dict[str, Any]:
-    return {key: record[key] for key in (
-        "request_id", "actor_role", "source", "action", "stage", "finding_id",
-        "interaction_id", "interaction_sha256",
-    )}
+    return {
+        key: record[key]
+        for key in (
+            "request_id",
+            "actor_role",
+            "source",
+            "action",
+            "stage",
+            "finding_id",
+            "interaction_id",
+            "interaction_sha256",
+        )
+    }
 
 
 def mandatory_source_record(record: dict[str, Any]) -> dict[str, Any]:
-    return {key: record[key] for key in (
-        "response_id", "checkpoint_id", "checkpoint_type", "actor_role", "source",
-        "stage", "disposition", "interaction_id", "interaction_sha256",
-    )}
+    return {
+        key: record[key]
+        for key in (
+            "response_id",
+            "checkpoint_id",
+            "checkpoint_type",
+            "actor_role",
+            "source",
+            "stage",
+            "disposition",
+            "interaction_id",
+            "interaction_sha256",
+        )
+    }
 
 
 def _event(
-    run_id: str, family: str, event_type: str, stage: str, disposition: str,
-    interaction: str | None, source_record: dict[str, Any],
+    run_id: str,
+    family: str,
+    event_type: str,
+    stage: str,
+    disposition: str,
+    interaction: str | None,
+    source_record: dict[str, Any],
 ) -> dict[str, Any]:
     source_hash = _digest(
         b"ars.adjudication-activity.source-event/1.0\0",
         {"source_family": family, "source_record": source_record},
     )
     payload = {
-        "run_id": run_id, "source_family": family, "event_type": event_type,
-        "stage": stage, "disposition": disposition,
-        "interaction_sha256": interaction, "source_event_sha256": source_hash,
+        "run_id": run_id,
+        "source_family": family,
+        "event_type": event_type,
+        "stage": stage,
+        "disposition": disposition,
+        "interaction_sha256": interaction,
+        "source_event_sha256": source_hash,
     }
     return {
-        "event_id": "ACTIVITY-EVENT-" + _digest(b"ars.adjudication-activity.event-id/1.0\0", payload),
-        "event_type": event_type, "stage": stage, "disposition": disposition,
-        "interaction_sha256": interaction, "source_event_sha256": source_hash,
+        "event_id": "ACTIVITY-EVENT-"
+        + _digest(b"ars.adjudication-activity.event-id/1.0\0", payload),
+        "event_type": event_type,
+        "stage": stage,
+        "disposition": disposition,
+        "interaction_sha256": interaction,
+        "source_event_sha256": source_hash,
     }
 
 
-def _load_artifact(root: Path, binding: dict[str, Any], total: list[int]) -> tuple[dict[str, Any], bytes]:
+def _load_artifact(
+    root: Path, binding: dict[str, Any], total: list[int]
+) -> tuple[dict[str, Any], bytes]:
     raw = _read_artifact_relative(root, binding["relative_path"], MAX_ARTIFACT)
     total[0] += len(raw)
     if total[0] > MAX_ARTIFACT_TOTAL:
@@ -713,12 +833,29 @@ def _load_artifact(root: Path, binding: dict[str, Any], total: list[int]) -> tup
     return value, raw
 
 
-def _author_events(run_id: str, stage: str, group: list[dict[str, Any]], root: Path, total: list[int]) -> list[dict[str, Any]]:
+def _author_events(
+    run_id: str, stage: str, group: list[dict[str, Any]], root: Path, total: list[int]
+) -> list[dict[str, Any]]:
     input_value, _ = _load_artifact(root, group[0], total)
     output_value, _ = _load_artifact(root, group[1], total)
-    _schema_validate(input_value, REVISION_CONTRACTS / "author_adjudication_input.schema.json", code="SOURCE", revision_registry=True)
-    _schema_validate(output_value, REVISION_CONTRACTS / "author_adjudication.schema.json", code="SOURCE", revision_registry=True)
-    projection_keys = ("author_events", "author_adjudications", "display_order", "collateral_authorizations")
+    _schema_validate(
+        input_value,
+        REVISION_CONTRACTS / "author_adjudication_input.schema.json",
+        code="SOURCE",
+        revision_registry=True,
+    )
+    _schema_validate(
+        output_value,
+        REVISION_CONTRACTS / "author_adjudication.schema.json",
+        code="SOURCE",
+        revision_registry=True,
+    )
+    projection_keys = (
+        "author_events",
+        "author_adjudications",
+        "display_order",
+        "collateral_authorizations",
+    )
     if any(input_value[key] != output_value[key] for key in projection_keys):
         raise ActivityError("SOURCE", "author input/output projection mismatch")
     event_by_id: dict[str, dict[str, Any]] = {}
@@ -737,13 +874,21 @@ def _author_events(run_id: str, stage: str, group: list[dict[str, Any]], root: P
             continue
         digest = interaction_sha256(run_id, event_id)
         event_type, disposition = (
-            ("author_triage_wont_address", "wont_address") if triage == "wont_address"
+            ("author_triage_wont_address", "wont_address")
+            if triage == "wont_address"
             else ("author_triage_not_on_point", "not_on_point")
         )
-        derived.append(_event(
-            run_id, SOURCE_FAMILIES[0], event_type, stage, disposition, digest,
-            author_source_record(adjudication, event_by_id[event_id], digest),
-        ))
+        derived.append(
+            _event(
+                run_id,
+                SOURCE_FAMILIES[0],
+                event_type,
+                stage,
+                disposition,
+                digest,
+                author_source_record(adjudication, event_by_id[event_id], digest),
+            )
+        )
     return derived
 
 
@@ -764,17 +909,32 @@ def _blocking_contributors(report: dict[str, Any]) -> list[str]:
         result.update(failed)
     raise_part = report.get("raise")
     if isinstance(raise_part, dict) and raise_part.get("block_decision") == "block":
-        result.update(name for name, status_value in raise_part["principles"].items() if status_value == "fail")
+        result.update(
+            name
+            for name, status_value in raise_part["principles"].items()
+            if status_value == "fail"
+        )
     return sorted(result)
 
 
-def _compliance_events(run_id: str, groups: list[list[dict[str, Any]]], root: Path, total: list[int]) -> list[dict[str, Any]]:
+def _compliance_events(
+    run_id: str, groups: list[list[dict[str, Any]]], root: Path, total: list[int]
+) -> list[dict[str, Any]]:
     derived: list[dict[str, Any]] = []
     expected_ordinal = {"pipeline_stage_2_5": 1, "pipeline_stage_4_5": 1}
     receipt_ids: set[str] = set()
     receipt_keys = {
-        "schema_version", "receipt_id", "run_id", "actor_role", "source", "action",
-        "stage", "scope", "report_sha256", "override_ordinal", "interaction_id",
+        "schema_version",
+        "receipt_id",
+        "run_id",
+        "actor_role",
+        "source",
+        "action",
+        "stage",
+        "scope",
+        "report_sha256",
+        "override_ordinal",
+        "interaction_id",
         "interaction_sha256",
     }
     for group in groups:
@@ -792,12 +952,17 @@ def _compliance_events(run_id: str, groups: list[list[dict[str, Any]]], root: Pa
         scope = receipt.get("scope")
         ordinal = receipt.get("override_ordinal")
         if (
-            not isinstance(receipt_id, str) or not ID_RE.fullmatch(receipt_id)
-            or not isinstance(interaction_id, str) or not ID_RE.fullmatch(interaction_id)
-            or not isinstance(scope, list) or not scope
+            not isinstance(receipt_id, str)
+            or not ID_RE.fullmatch(receipt_id)
+            or not isinstance(interaction_id, str)
+            or not ID_RE.fullmatch(interaction_id)
+            or not isinstance(scope, list)
+            or not scope
             or any(not isinstance(item, str) or not ID_RE.fullmatch(item) for item in scope)
             or len(scope) != len(set(scope))
-            or not isinstance(ordinal, int) or isinstance(ordinal, bool) or ordinal < 1
+            or not isinstance(ordinal, int)
+            or isinstance(ordinal, bool)
+            or ordinal < 1
             or not isinstance(receipt.get("report_sha256"), str)
             or not HEX_RE.fullmatch(receipt["report_sha256"])
             or not isinstance(receipt.get("interaction_sha256"), str)
@@ -805,7 +970,9 @@ def _compliance_events(run_id: str, groups: list[list[dict[str, Any]]], root: Pa
         ):
             raise ActivityError("SOURCE", "compliance action receipt field types are invalid")
         blockers = _blocking_contributors(report)
-        report_stage = {"2.5": "pipeline_stage_2_5", "4.5": "pipeline_stage_4_5"}.get(report.get("stage"))
+        report_stage = {"2.5": "pipeline_stage_2_5", "4.5": "pipeline_stage_4_5"}.get(
+            report.get("stage")
+        )
         override = report["user_override"]
         valid = (
             report.get("overall_decision") == "block"
@@ -836,7 +1003,11 @@ def _compliance_events(run_id: str, groups: list[list[dict[str, Any]]], root: Pa
         rationale = override.get("rationale")
         if ordinal == 2 and (not isinstance(rationale, str) or not rationale):
             valid = False
-        if isinstance(ordinal, int) and ordinal >= 3 and (not isinstance(rationale, str) or len(rationale) < 100):
+        if (
+            isinstance(ordinal, int)
+            and ordinal >= 3
+            and (not isinstance(rationale, str) or len(rationale) < 100)
+        ):
             valid = False
         if receipt_id in receipt_ids:
             valid = False
@@ -848,17 +1019,30 @@ def _compliance_events(run_id: str, groups: list[list[dict[str, Any]]], root: Pa
         if not valid:
             raise ActivityError("SOURCE", "qualifying compliance override replay failed")
         source = compliance_source_record(
-            group[0]["artifact_group_id"], stage, blockers, group[0]["sha256"],
-            group[1]["sha256"], receipt,
+            group[0]["artifact_group_id"],
+            stage,
+            blockers,
+            group[0]["sha256"],
+            group[1]["sha256"],
+            receipt,
         )
-        derived.append(_event(
-            run_id, SOURCE_FAMILIES[1], "compliance_block_override", stage,
-            "block_overridden", expected_digest, source,
-        ))
+        derived.append(
+            _event(
+                run_id,
+                SOURCE_FAMILIES[1],
+                "compliance_block_override",
+                stage,
+                "block_overridden",
+                expected_digest,
+                source,
+            )
+        )
     return derived
 
 
-def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total: list[int]) -> list[dict[str, Any]]:
+def _rereview_events(
+    run_id: str, group: list[dict[str, Any]], root: Path, total: list[int]
+) -> list[dict[str, Any]]:
     names = ("input_manifest", "precommitment", "verdict_record", "traceability")
     values: dict[str, dict[str, Any]] = {}
     for name, binding in zip(names, group):
@@ -868,11 +1052,20 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
     round_ids = {values[name].get("round_id") for name in names}
     if len(round_ids) != 1:
         raise ActivityError("SOURCE", "re-review round ids do not agree")
-    if values["precommitment"].get("input_manifest_hash") != hashlib.sha256(canonical_bytes(values["input_manifest"])).hexdigest():
+    if (
+        values["precommitment"].get("input_manifest_hash")
+        != hashlib.sha256(canonical_bytes(values["input_manifest"])).hexdigest()
+    ):
         raise ActivityError("SOURCE", "re-review input/precommitment hash chain mismatch")
-    if values["verdict_record"].get("precommitment_hash") != hashlib.sha256(canonical_bytes(values["precommitment"])).hexdigest():
+    if (
+        values["verdict_record"].get("precommitment_hash")
+        != hashlib.sha256(canonical_bytes(values["precommitment"])).hexdigest()
+    ):
         raise ActivityError("SOURCE", "re-review precommitment/verdict hash chain mismatch")
-    if values["traceability"].get("verdict_record_hash") != hashlib.sha256(canonical_bytes(values["verdict_record"])).hexdigest():
+    if (
+        values["traceability"].get("verdict_record_hash")
+        != hashlib.sha256(canonical_bytes(values["verdict_record"])).hexdigest()
+    ):
         raise ActivityError("SOURCE", "re-review verdict/traceability hash chain mismatch")
     verdict = values["verdict_record"]
     trace = values["traceability"]
@@ -887,7 +1080,8 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
             raise ActivityError("SOURCE", "duplicate dissent adjudication id")
         adjudications_by_id[item["dissent_id"]] = item
     qualifying_dissents = {
-        dissent_id: item for dissent_id, item in adjudications_by_id.items()
+        dissent_id: item
+        for dissent_id, item in adjudications_by_id.items()
         if item["adjudicator"] == "user" and item["outcome"] == "original_upheld"
     }
     reapp_by_id: dict[str, dict[str, Any]] = {}
@@ -900,7 +1094,11 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
         previous = item.get("supersedes_reapplication_id")
         if previous is not None:
             previous_item = reapp_by_id.get(previous)
-            if previous_item is None or previous_item["item_id"] != item["item_id"] or previous in superseded_by:
+            if (
+                previous_item is None
+                or previous_item["item_id"] != item["item_id"]
+                or previous in superseded_by
+            ):
                 raise ActivityError("SOURCE", "invalid reapplication supersession")
             superseded_by[previous] = item["reapplication_id"]
     for item in trace["reapplications"]:
@@ -913,7 +1111,9 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
             seen.add(cursor_id)
             previous = cursor.get("supersedes_reapplication_id")
             cursor = reapp_by_id.get(previous) if previous is not None else None
-    current_reapps = [item for item in trace["reapplications"] if item["reapplication_id"] not in superseded_by]
+    current_reapps = [
+        item for item in trace["reapplications"] if item["reapplication_id"] not in superseded_by
+    ]
     for reapp in trace["reapplications"]:
         for answer_ref in reapp["answer_refs"]:
             if answer_ref.startswith("adjudication:"):
@@ -924,20 +1124,27 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
                     or adjudication["outcome"] != "original_upheld"
                     or dissent_item.get(dissent_id) != reapp["item_id"]
                 ):
-                    raise ActivityError("SOURCE", "reapplication adjudication ref is unresolved or cross-item")
+                    raise ActivityError(
+                        "SOURCE", "reapplication adjudication ref is unresolved or cross-item"
+                    )
     for dissent_id, adjudication in adjudications_by_id.items():
         if adjudication["outcome"] == "original_upheld":
             holders = [
-                reapp for reapp in current_reapps
+                reapp
+                for reapp in current_reapps
                 if f"adjudication:{dissent_id}" in reapp["answer_refs"]
             ]
             if len(holders) != 1:
-                raise ActivityError("SOURCE", "original-upheld dissent requires exactly one current reapplication")
+                raise ActivityError(
+                    "SOURCE", "original-upheld dissent requires exactly one current reapplication"
+                )
             if (
                 holders[0]["reapplied_verdict"] == "CANNOT_VERIFY"
                 or holders[0]["reapplied_verdict"] == holders[0]["pre_reapplication_verdict"]
             ):
-                raise ActivityError("SOURCE", "original-upheld current reapplication must prove a verdict change")
+                raise ActivityError(
+                    "SOURCE", "original-upheld current reapplication must prove a verdict change"
+                )
     adjustments_by_item: dict[str, list[dict[str, Any]]] = {}
     global_adjustment_ids: set[str] = set()
     for adjustment in trace["adjustments"]:
@@ -954,8 +1161,13 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
     for adjustment in trace["adjustments"]:
         source_ref = adjustment.get("source_ref")
         if source_ref is not None:
-            if source_ref.startswith("reapplication:") and source_ref.split(":", 1)[1] not in reapp_by_id:
-                raise ActivityError("SOURCE", "adjustment source_ref names an unknown reapplication")
+            if (
+                source_ref.startswith("reapplication:")
+                and source_ref.split(":", 1)[1] not in reapp_by_id
+            ):
+                raise ActivityError(
+                    "SOURCE", "adjustment source_ref names an unknown reapplication"
+                )
             adjustments_by_source.setdefault(source_ref, []).append(adjustment)
     for reapp in trace["reapplications"]:
         derived = adjustments_by_source.get(f"reapplication:{reapp['reapplication_id']}", [])
@@ -965,10 +1177,14 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
         )
         if not changing:
             if derived:
-                raise ActivityError("SOURCE", "non-changing/CANNOT reapplication has a derived adjustment")
+                raise ActivityError(
+                    "SOURCE", "non-changing/CANNOT reapplication has a derived adjustment"
+                )
             continue
         if len(derived) != 1:
-            raise ActivityError("SOURCE", "verdict-changing reapplication requires exactly one derived adjustment")
+            raise ActivityError(
+                "SOURCE", "verdict-changing reapplication requires exactly one derived adjustment"
+            )
         adjustment = derived[0]
         if (
             adjustment["item_id"] != reapp["item_id"]
@@ -986,14 +1202,20 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
         item_id = dissent_item.get(dissent_id)
         if item_id is None:
             raise ActivityError("SOURCE", "adjudicated dissent does not resolve to verdict dissent")
-        reapps = [item for item in current_reapps if item["item_id"] == item_id and f"adjudication:{dissent_id}" in item["answer_refs"]]
+        reapps = [
+            item
+            for item in current_reapps
+            if item["item_id"] == item_id and f"adjudication:{dissent_id}" in item["answer_refs"]
+        ]
         if len(reapps) != 1:
             raise ActivityError("SOURCE", "dissent must resolve to one current reapplication")
         if (
             reapps[0]["reapplied_verdict"] == "CANNOT_VERIFY"
             or reapps[0]["reapplied_verdict"] == reapps[0]["pre_reapplication_verdict"]
         ):
-            raise ActivityError("SOURCE", "original-upheld current reapplication must prove a verdict change")
+            raise ActivityError(
+                "SOURCE", "original-upheld current reapplication must prove a verdict change"
+            )
         records = adjustments_by_item.get(item_id, [])
         by_id = {item["adjustment_id"]: item for item in records}
         if len(by_id) != len(records):
@@ -1017,9 +1239,15 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
                 raise ActivityError("SOURCE", "adjustment chain verdict join mismatch")
             chain.append(next_item)
         if len(chain) != len(records):
-            raise ActivityError("SOURCE", "adjustment chain contains a cycle or disconnected record")
+            raise ActivityError(
+                "SOURCE", "adjustment chain contains a cycle or disconnected record"
+            )
         row = row_by_item.get(item_id)
-        if not row or row.get("adjustment_id") != chain[-1]["adjustment_id"] or row.get("final_verdict") != chain[-1]["to_verdict"]:
+        if (
+            not row
+            or row.get("adjustment_id") != chain[-1]["adjustment_id"]
+            or row.get("final_verdict") != chain[-1]["to_verdict"]
+        ):
             raise ActivityError("SOURCE", "final row does not bind adjustment chain tail")
         reapp = reapps[0]
         for adjustment in chain:
@@ -1029,27 +1257,49 @@ def _rereview_events(run_id: str, group: list[dict[str, Any]], root: Path, total
                 and adjustment["from_verdict"] != adjustment["to_verdict"]
             ):
                 if adjustment["adjustment_id"] in counted_adjustments:
-                    raise ActivityError("SOURCE", "one adjustment cannot produce multiple activity events")
+                    raise ActivityError(
+                        "SOURCE", "one adjustment cannot produce multiple activity events"
+                    )
                 counted_adjustments.add(adjustment["adjustment_id"])
                 numeric = int(adjustment["adjustment_id"].split("-", 1)[1])
                 candidates.append((numeric, adjustment, dissent_id, reapp["reapplication_id"]))
     trace_hash = group[3]["sha256"]
     return [
         _event(
-            run_id, SOURCE_FAMILIES[2], "re_review_verdict_changed",
-            "pipeline_stage_3_prime", "verdict_changed", None,
+            run_id,
+            SOURCE_FAMILIES[2],
+            "re_review_verdict_changed",
+            "pipeline_stage_3_prime",
+            "verdict_changed",
+            None,
             re_review_source_record(
-                values["input_manifest"]["round_id"], dissent_id,
-                adjustment["item_id"], reapplication_id, adjustment, trace_hash,
+                values["input_manifest"]["round_id"],
+                dissent_id,
+                adjustment["item_id"],
+                reapplication_id,
+                adjustment,
+                trace_hash,
             ),
         )
-        for _, adjustment, dissent_id, reapplication_id in sorted(candidates, key=lambda item: item[0])
+        for _, adjustment, dissent_id, reapplication_id in sorted(
+            candidates, key=lambda item: item[0]
+        )
     ]
 
 
-def _validate_action_log(value: dict[str, Any], *, run_id: str, mandatory: bool) -> list[dict[str, Any]]:
-    version = "adjudication-mandatory-checkpoint-log/1.0" if mandatory else "adjudication-explicit-user-request-log/1.0"
-    if set(value) != {"schema_version", "run_id", "records"} or value.get("schema_version") != version or value.get("run_id") != run_id:
+def _validate_action_log(
+    value: dict[str, Any], *, run_id: str, mandatory: bool
+) -> list[dict[str, Any]]:
+    version = (
+        "adjudication-mandatory-checkpoint-log/1.0"
+        if mandatory
+        else "adjudication-explicit-user-request-log/1.0"
+    )
+    if (
+        set(value) != {"schema_version", "run_id", "records"}
+        or value.get("schema_version") != version
+        or value.get("run_id") != run_id
+    ):
         raise ActivityError("SOURCE", "action log root is invalid")
     records = value.get("records")
     if not isinstance(records, list) or len(records) > MAX_EVENTS_RUN:
@@ -1059,7 +1309,8 @@ def _validate_action_log(value: dict[str, Any], *, run_id: str, mandatory: bool)
         common = {"actor_role", "source", "stage", "interaction_id", "interaction_sha256"}
         expected = common | (
             {"response_id", "checkpoint_id", "checkpoint_type", "disposition"}
-            if mandatory else {"request_id", "action", "finding_id"}
+            if mandatory
+            else {"request_id", "action", "finding_id"}
         )
         if not isinstance(record, dict) or set(record) != expected:
             raise ActivityError("SOURCE", "action log record closed shape is invalid")
@@ -1068,28 +1319,45 @@ def _validate_action_log(value: dict[str, Any], *, run_id: str, mandatory: bool)
             raise ActivityError("SOURCE", "action log record id is invalid or repeated")
         ids.add(record_id)
         identifier_fields = (
-            ("checkpoint_id", "interaction_id")
-            if mandatory else ("finding_id", "interaction_id")
+            ("checkpoint_id", "interaction_id") if mandatory else ("finding_id", "interaction_id")
         )
         if any(
             not isinstance(record.get(field), str) or not ID_RE.fullmatch(record[field])
             for field in identifier_fields
         ):
             raise ActivityError("SOURCE", "action log identifier is outside the closed grammar")
-        if record.get("actor_role") != "user" or record.get("source") != "explicit_session_user_action" or record.get("stage") not in STAGES:
+        if (
+            record.get("actor_role") != "user"
+            or record.get("source") != "explicit_session_user_action"
+            or record.get("stage") not in STAGES
+        ):
             raise ActivityError("SOURCE", "action log authority/stage is invalid")
         interaction_id = record.get("interaction_id")
-        if not isinstance(interaction_id, str) or not ID_RE.fullmatch(interaction_id) or record.get("interaction_sha256") != interaction_sha256(run_id, interaction_id):
+        if (
+            not isinstance(interaction_id, str)
+            or not ID_RE.fullmatch(interaction_id)
+            or record.get("interaction_sha256") != interaction_sha256(run_id, interaction_id)
+        ):
             raise ActivityError("SOURCE", "action log interaction digest is invalid")
         if mandatory:
-            if record.get("checkpoint_type") != "MANDATORY" or record.get("disposition") not in {"proceed", "skip", "pause", "adjust", "view_progress", "redo", "abort"}:
+            if record.get("checkpoint_type") != "MANDATORY" or record.get("disposition") not in {
+                "proceed",
+                "skip",
+                "pause",
+                "adjust",
+                "view_progress",
+                "redo",
+                "abort",
+            }:
                 raise ActivityError("SOURCE", "mandatory checkpoint record is invalid")
         elif record.get("action") not in {"justify_finding", "redo_finding"}:
             raise ActivityError("SOURCE", "explicit request action is invalid")
     return records
 
 
-def _log_events(run_id: str, family: str, group: list[dict[str, Any]], root: Path, total: list[int]) -> tuple[list[dict[str, Any]], int]:
+def _log_events(
+    run_id: str, family: str, group: list[dict[str, Any]], root: Path, total: list[int]
+) -> tuple[list[dict[str, Any]], int]:
     value, _ = _load_artifact(root, group[0], total)
     mandatory = family == SOURCE_FAMILIES[4]
     records = _validate_action_log(value, run_id=run_id, mandatory=mandatory)
@@ -1100,24 +1368,40 @@ def _log_events(run_id: str, family: str, group: list[dict[str, Any]], root: Pat
             if source_disposition == "proceed":
                 continue
             disposition = "skip_refused" if source_disposition == "skip" else source_disposition
-            result.append(_event(
-                run_id, family, "mandatory_checkpoint_non_proceed", record["stage"],
-                disposition, record["interaction_sha256"], mandatory_source_record(record),
-            ))
+            result.append(
+                _event(
+                    run_id,
+                    family,
+                    "mandatory_checkpoint_non_proceed",
+                    record["stage"],
+                    disposition,
+                    record["interaction_sha256"],
+                    mandatory_source_record(record),
+                )
+            )
         else:
             event_type, disposition = (
                 ("finding_justification_requested", "justification_requested")
                 if record["action"] == "justify_finding"
                 else ("finding_redo_requested", "redo_requested")
             )
-            result.append(_event(
-                run_id, family, event_type, record["stage"], disposition,
-                record["interaction_sha256"], explicit_source_record(record),
-            ))
+            result.append(
+                _event(
+                    run_id,
+                    family,
+                    event_type,
+                    record["stage"],
+                    disposition,
+                    record["interaction_sha256"],
+                    explicit_source_record(record),
+                )
+            )
     return result, len(records)
 
 
-def _validate_manifest_authority(manifest: dict[str, Any], root: Path) -> tuple[dict[str, Any], bytes]:
+def _validate_manifest_authority(
+    manifest: dict[str, Any], root: Path
+) -> tuple[dict[str, Any], bytes]:
     _schema_validate(manifest, INPUT_SCHEMA_PATH, code="INPUT")
     terminal = manifest["terminal_receipt"]
     state_raw = _read_artifact_relative(root, terminal["relative_path"], MAX_STORE)
@@ -1129,12 +1413,18 @@ def _validate_manifest_authority(manifest: dict[str, Any], root: Path) -> tuple[
         "artifact_id": "pipeline-state-terminal-receipt",
         "relative_path": terminal["relative_path"],
         "sha256": hashlib.sha256(state_raw).hexdigest(),
-        "run_id": run_id, "pipeline_state": pipeline_state,
-        "current_stage": stage, "current_stage_status": status,
+        "run_id": run_id,
+        "pipeline_state": pipeline_state,
+        "current_stage": stage,
+        "current_stage_status": status,
     }
     if terminal != exact:
         raise ActivityError("INPUT", "terminal receipt projection does not exactly replay")
-    if manifest["run_id"] != run_id or manifest["terminal_state"] != pipeline_state or manifest["terminal_stage"] != stage:
+    if (
+        manifest["run_id"] != run_id
+        or manifest["terminal_state"] != pipeline_state
+        or manifest["terminal_stage"] != stage
+    ):
         raise ActivityError("INPUT", "input root does not match terminal state authority")
     inventory = state.get("adjudication_activity_sources")
     if inventory != manifest["sources"]:
@@ -1147,7 +1437,9 @@ def _validate_manifest_authority(manifest: dict[str, Any], root: Path) -> tuple[
                 raw_stage = STAGE_TO_RAW[group[0]["artifact_group_stage"]]
                 stage_row = state.get("stages", {}).get(raw_stage)
                 if not isinstance(stage_row, dict) or stage_row.get("status") != "completed":
-                    raise ActivityError("INPUT", "author source stage is not completed in terminal state")
+                    raise ActivityError(
+                        "INPUT", "author source stage is not completed in terminal state"
+                    )
     return state, state_raw
 
 
@@ -1165,7 +1457,9 @@ def _extract_run(manifest: dict[str, Any], root: Path, sequence: int) -> dict[st
             family = row["source_family"]
             if family == SOURCE_FAMILIES[0]:
                 for group in groups:
-                    events.extend(_author_events(run_id, group[0]["artifact_group_stage"], group, root, total))
+                    events.extend(
+                        _author_events(run_id, group[0]["artifact_group_stage"], group, root, total)
+                    )
             elif family == SOURCE_FAMILIES[1]:
                 events = _compliance_events(run_id, groups, root, total)
             elif family == SOURCE_FAMILIES[2]:
@@ -1176,13 +1470,15 @@ def _extract_run(manifest: dict[str, Any], root: Path, sequence: int) -> dict[st
                 if action_log_record_count > MAX_EVENTS_RUN:
                     raise ActivityError("CAP", "combined action-log records exceed per-run cap")
         all_events.append(events)
-        source_rows.append({
-            "source_family": row["source_family"],
-            "capture_state": row["capture_state"],
-            "reason_code": row["reason_code"],
-            "artifact_sha256s": [item["sha256"] for item in row["artifacts"]],
-            "events": events,
-        })
+        source_rows.append(
+            {
+                "source_family": row["source_family"],
+                "capture_state": row["capture_state"],
+                "reason_code": row["reason_code"],
+                "artifact_sha256s": [item["sha256"] for item in row["artifacts"]],
+                "events": events,
+            }
+        )
     winner: dict[str, int] = {}
     for family_index, events in enumerate(all_events):
         for event in events:
@@ -1191,8 +1487,10 @@ def _extract_run(manifest: dict[str, Any], root: Path, sequence: int) -> dict[st
                 winner[digest] = family_index
     for family_index, source in enumerate(source_rows):
         source["events"] = [
-            event for event in source["events"]
-            if event["interaction_sha256"] is None or winner[event["interaction_sha256"]] == family_index
+            event
+            for event in source["events"]
+            if event["interaction_sha256"] is None
+            or winner[event["interaction_sha256"]] == family_index
         ]
     event_count = sum(len(row["events"]) for row in source_rows)
     if event_count > MAX_EVENTS_RUN:
@@ -1215,8 +1513,11 @@ def _extract_run(manifest: dict[str, Any], root: Path, sequence: int) -> dict[st
 
 def _empty_store(store_id: str) -> dict[str, Any]:
     return {
-        "schema_version": STORE_VERSION, "store_id": store_id,
-        "revision": 0, "next_sequence": 1, "runs": [],
+        "schema_version": STORE_VERSION,
+        "store_id": store_id,
+        "revision": 0,
+        "next_sequence": 1,
+        "runs": [],
         "data_minimization": copy.deepcopy(DATA_MINIMIZATION),
     }
 
@@ -1230,12 +1531,19 @@ def _validate_store(value: Any) -> dict[str, Any]:
         raise ActivityError("CAP", "retained runs exceed hard cap")
     sequences: list[int] = []
     identities: dict[str, set[Any]] = {
-        "run": set(), "input": set(), "record": set(), "event": set(),
+        "run": set(),
+        "input": set(),
+        "record": set(),
+        "event": set(),
     }
     total_events = 0
     for run in runs:
         sequences.append(run["append_sequence"])
-        checks = (("run", run["run_id"]), ("input", run["input_receipt_sha256"]), ("record", run["record_sha256"]))
+        checks = (
+            ("run", run["run_id"]),
+            ("input", run["input_receipt_sha256"]),
+            ("record", run["record_sha256"]),
+        )
         for kind, identity in checks:
             if identity in identities[kind]:
                 raise ActivityError("STORE", f"duplicate {kind} identity")
@@ -1246,13 +1554,22 @@ def _validate_store(value: Any) -> dict[str, Any]:
         if [row["source_family"] for row in run["sources"]] != list(SOURCE_FAMILIES):
             raise ActivityError("STORE", "stored source family order mismatch")
         captured_counts = (
-            {2, 4}, set(range(1, 33)), {4}, {1}, {1},
+            {2, 4},
+            set(range(1, 33)),
+            {4},
+            {1},
+            {1},
         )
         cross_family: dict[str, int] = {}
         for family_index, row in enumerate(run["sources"]):
             artifact_count = len(row["artifact_sha256s"])
-            if row["capture_state"] == "captured" and artifact_count not in captured_counts[family_index]:
-                raise ActivityError("STORE", "captured source artifact count violates family contract")
+            if (
+                row["capture_state"] == "captured"
+                and artifact_count not in captured_counts[family_index]
+            ):
+                raise ActivityError(
+                    "STORE", "captured source artifact count violates family contract"
+                )
             if row["capture_state"] != "captured" and artifact_count != 0:
                 raise ActivityError("STORE", "non-captured source retains artifact hashes")
             for event in row["events"]:
@@ -1260,18 +1577,26 @@ def _validate_store(value: Any) -> dict[str, Any]:
                     raise ActivityError("STORE", "duplicate event id")
                 identities["event"].add(event["event_id"])
                 digest = event["interaction_sha256"]
-                if digest is not None and digest in cross_family and cross_family[digest] != family_index:
+                if (
+                    digest is not None
+                    and digest in cross_family
+                    and cross_family[digest] != family_index
+                ):
                     raise ActivityError("STORE", "cross-family causal duplicate remains in store")
                 if digest is not None:
                     cross_family[digest] = family_index
                 payload = {
-                    "run_id": run["run_id"], "source_family": row["source_family"],
-                    "event_type": event["event_type"], "stage": event["stage"],
+                    "run_id": run["run_id"],
+                    "source_family": row["source_family"],
+                    "event_type": event["event_type"],
+                    "stage": event["stage"],
                     "disposition": event["disposition"],
                     "interaction_sha256": digest,
                     "source_event_sha256": event["source_event_sha256"],
                 }
-                expected_id = "ACTIVITY-EVENT-" + _digest(b"ars.adjudication-activity.event-id/1.0\0", payload)
+                expected_id = "ACTIVITY-EVENT-" + _digest(
+                    b"ars.adjudication-activity.event-id/1.0\0", payload
+                )
                 if event["event_id"] != expected_id:
                     raise ActivityError("STORE", "event id digest mismatch")
                 total_events += 1
@@ -1328,8 +1653,10 @@ def _cmd_build(args: argparse.Namespace) -> str:
     _validate_source_rows(inventory)
     relative = _relative_binding(root, state_path)
     manifest = {
-        "schema_version": INPUT_VERSION, "store_id": args.store_id,
-        "run_id": run_id, "terminal_state": pipeline_state,
+        "schema_version": INPUT_VERSION,
+        "store_id": args.store_id,
+        "run_id": run_id,
+        "terminal_state": pipeline_state,
         "terminal_stage": stage,
         "terminal_receipt": _terminal_receipt(state, state_raw, relative),
         "sources": copy.deepcopy(inventory),
@@ -1372,7 +1699,9 @@ def _cmd_append(args: argparse.Namespace) -> str:
                     )
                 raise ActivityError("CONFLICT", "run id is retained with a different input receipt")
             if retained["input_receipt_sha256"] == receipt:
-                raise ActivityError("CONFLICT", "input receipt is retained under a different run id")
+                raise ActivityError(
+                    "CONFLICT", "input receipt is retained under a different run id"
+                )
         if len(store["runs"]) >= MAX_RUNS:
             raise ActivityError("CAP", "retained run cap reached")
         # Source and terminal replay occurs only for a genuinely new identity.
@@ -1397,9 +1726,14 @@ def _render(store: dict[str, Any], window: int) -> str:
     count = sum(len(source["events"]) for run in selected for source in run["sources"])
     overturn = sum(
         event["event_type"] in OVERTURN_TYPES
-        for run in selected for source in run["sources"] for event in source["events"]
+        for run in selected
+        for source in run["sources"]
+        for event in source["events"]
     )
-    unavailable_runs = sum(any(source["capture_state"] == "unavailable" for source in run["sources"]) for run in selected)
+    unavailable_runs = sum(
+        any(source["capture_state"] == "unavailable" for source in run["sources"])
+        for run in selected
+    )
     lines: list[str] = []
     if len(selected) < 2:
         lines.append(
@@ -1420,7 +1754,11 @@ def _render(store: dict[str, Any], window: int) -> str:
         )
     for run in selected:
         run_count = sum(len(source["events"]) for source in run["sources"])
-        run_overturn = sum(event["event_type"] in OVERTURN_TYPES for source in run["sources"] for event in source["events"])
+        run_overturn = sum(
+            event["event_type"] in OVERTURN_TYPES
+            for source in run["sources"]
+            for event in source["events"]
+        )
         unavailable = sum(source["capture_state"] == "unavailable" for source in run["sources"])
         lines.append(
             f"sequence={run['append_sequence']}; run_id={_json_id(run['run_id'])}; terminal_state={run['terminal_state']}; "
@@ -1479,7 +1817,11 @@ def _cmd_delete_runs(args: argparse.Namespace) -> str:
                 raise ActivityError("DELETE_CONFIRMATION", "invalid sequence range") from None
             if first < 1 or first > last:
                 raise ActivityError("DELETE_CONFIRMATION", "invalid sequence range")
-            selected = {run["append_sequence"] for run in store["runs"] if first <= run["append_sequence"] <= last}
+            selected = {
+                run["append_sequence"]
+                for run in store["runs"]
+                if first <= run["append_sequence"] <= last
+            }
             if not selected:
                 raise ActivityError("DELETE_CONFIRMATION", "sequence range selects no retained run")
             survivors = [run for run in store["runs"] if run["append_sequence"] not in selected]
@@ -1516,7 +1858,9 @@ def _cmd_delete_store(args: argparse.Namespace) -> str:
             finally:
                 os.close(directory_fd)
         except OSError as exc:
-            raise ActivityError("WRITE", f"store deletion failed: {exc.__class__.__name__}") from None
+            raise ActivityError(
+                "WRITE", f"store deletion failed: {exc.__class__.__name__}"
+            ) from None
     return "[ARS-ADJUDICATION-ACTIVITY] deleted_store=true"
 
 

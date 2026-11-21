@@ -82,14 +82,14 @@ def test_no_dead_code_after_exit(raw):
         stripped = line.strip()
         if stripped in ("exit 0", "exit 1"):
             # find the next non-blank, non-comment line
-            for nxt in lines[i + 1:]:
+            for nxt in lines[i + 1 :]:
                 s = nxt.strip()
                 if not s or s.startswith("#"):
                     continue
                 # allow shell block terminators / new steps, forbid echo
-                assert not s.startswith("echo "), (
-                    f"dead echo after '{stripped}' at line {i+1}: {nxt!r}"
-                )
+                assert not s.startswith(
+                    "echo "
+                ), f"dead echo after '{stripped}' at line {i+1}: {nxt!r}"
                 break
 
 

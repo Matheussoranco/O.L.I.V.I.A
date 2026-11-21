@@ -5,19 +5,22 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 import pytest
-
 import run_review_criteria_constructive_value as runner
 import score_review_criteria_constructive_value as scorer
 
 
 def _fake_codex(
-    tmp_path: Path, *, status: str = "Logged in using ChatGPT",
-    status_to_stderr: bool = False, forbidden_event: bool = False,
-    invalid_output: bool = False, feature_names: tuple[str, ...] | None = None,
+    tmp_path: Path,
+    *,
+    status: str = "Logged in using ChatGPT",
+    status_to_stderr: bool = False,
+    forbidden_event: bool = False,
+    invalid_output: bool = False,
+    feature_names: tuple[str, ...] | None = None,
 ) -> tuple[Path, Path]:
     if feature_names is None:
         feature_names = runner.DISABLED_FEATURES
@@ -153,10 +156,16 @@ def test_frozen_assets_and_exact_balanced_plan_validate() -> None:
     assert result["calls"] == 24
     plan = json.loads(runner.CALL_PLAN_PATH.read_text())
     assert [row["arm"] for row in plan["calls"][:4]] == [
-        "baseline", "treatment", "treatment", "baseline"
+        "baseline",
+        "treatment",
+        "treatment",
+        "baseline",
     ]
     assert [row["arm"] for row in plan["calls"][4:8]] == [
-        "treatment", "baseline", "baseline", "treatment"
+        "treatment",
+        "baseline",
+        "baseline",
+        "treatment",
     ]
 
 
@@ -216,9 +225,7 @@ def test_provider_response_schema_projection_keeps_local_validation_only_local()
         "required": ["title"],
         "properties": {"title": {"type": "string", "minLength": 1}},
     }
-    projected_property = runner._project_provider_response_schema(
-        property_named_like_annotation
-    )
+    projected_property = runner._project_provider_response_schema(property_named_like_annotation)
     assert projected_property["properties"]["title"] == {"type": "string"}
 
 
@@ -292,9 +299,7 @@ def test_detection_requires_exact_chatgpt_subscription_status(tmp_path) -> None:
 
 def test_detection_fails_closed_on_unknown_disable_feature(tmp_path) -> None:
     missing = runner.DISABLED_FEATURES[0]
-    feature_names = tuple(
-        name for name in runner.DISABLED_FEATURES if name != missing
-    )
+    feature_names = tuple(name for name in runner.DISABLED_FEATURES if name != missing)
     fake_bin, _ = _fake_codex(tmp_path, feature_names=feature_names)
     detected = runner.detect("gpt-5.6", _env(tmp_path, fake_bin))
     assert detected["available"] is False
@@ -325,9 +330,7 @@ def test_fake_subscription_dispatch_is_contained_complete_and_idempotent(
     provider_schema = runner._project_provider_response_schema(
         json.loads(runner.OUTPUT_SCHEMA_PATH.read_text())
     )
-    provider_schema_sha256 = hashlib.sha256(
-        runner._json_bytes(provider_schema)
-    ).hexdigest()
+    provider_schema_sha256 = hashlib.sha256(runner._json_bytes(provider_schema)).hexdigest()
     for row in rows:
         assert row["home_files"] == ["auth.json"]
         assert "OPENAI_API_KEY" not in row["env"]
@@ -358,9 +361,7 @@ def test_fake_subscription_dispatch_is_contained_complete_and_idempotent(
 def test_dispatch_fails_closed_on_tool_event_or_semantic_output(
     monkeypatch, tmp_path, forbidden: bool, invalid: bool, match: str
 ) -> None:
-    fake_bin, capture = _fake_codex(
-        tmp_path, forbidden_event=forbidden, invalid_output=invalid
-    )
+    fake_bin, capture = _fake_codex(tmp_path, forbidden_event=forbidden, invalid_output=invalid)
     environ = _env(tmp_path, fake_bin)
     monkeypatch.setattr(runner, "_verify_frozen_commit", lambda _commit, _assets: None)
     run_dir = tmp_path / "run"

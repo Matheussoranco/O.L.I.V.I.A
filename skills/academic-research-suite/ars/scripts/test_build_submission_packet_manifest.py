@@ -11,13 +11,12 @@ import shutil
 import socket
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
-
-import pytest
-from jsonschema import Draft202012Validator, FormatChecker
+from typing import Any
 
 import build_submission_packet_manifest as packet_runtime
+import pytest
 from build_submission_packet_manifest import (
     ContractError,
     build_submission_packet_manifest,
@@ -26,8 +25,8 @@ from build_submission_packet_manifest import (
     validate_submission_packet_inventory,
     validate_submission_packet_manifest,
 )
+from jsonschema import Draft202012Validator, FormatChecker
 from resolve_human_subjects_authority import digest, resolve
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "submission_packet_manifest"
@@ -139,10 +138,7 @@ def _entry(
         row
         for row in manifest["entries"]
         if row["requirement_ref"]["requirement_id"] == requirement_id
-        and (
-            evidence_id is None
-            or row["evidence_ref"]["evidence_id"] == evidence_id
-        )
+        and (evidence_id is None or row["evidence_ref"]["evidence_id"] == evidence_id)
     ]
     assert len(matches) == 1, (requirement_id, evidence_id, matches)
     return matches[0]
@@ -166,9 +162,7 @@ def _repin_overlay(context: dict[str, Any], overlay: dict[str, Any]) -> None:
     unsigned.pop("overlay_digest", None)
     overlay["overlay_digest"] = digest(unsigned)
     selected = next(
-        row
-        for row in context["selected_overlays"]
-        if row["overlay_id"] == overlay["overlay_id"]
+        row for row in context["selected_overlays"] if row["overlay_id"] == overlay["overlay_id"]
     )
     selected["overlay_digest"] = overlay["overlay_digest"]
     display = next(
@@ -185,17 +179,14 @@ def _repin_profile(context: dict[str, Any], profile: dict[str, Any]) -> None:
     unsigned.pop("profile_digest", None)
     profile["profile_digest"] = digest(unsigned)
     selected = next(
-        row
-        for row in context["selected_profiles"]
-        if row["profile_id"] == profile["profile_id"]
+        row for row in context["selected_profiles"] if row["profile_id"] == profile["profile_id"]
     )
     selected["profile_digest"] = profile["profile_digest"]
     display = next(
         row
         for axis in context["display_precedence"]
         for row in axis["ordered_authorities"]
-        if row["authority_kind"] == "profile"
-        and row["authority_id"] == profile["profile_id"]
+        if row["authority_kind"] == "profile" and row["authority_id"] == profile["profile_id"]
     )
     display["authority_digest"] = profile["profile_digest"]
 
@@ -210,16 +201,14 @@ def _reason_codes(manifest: dict[str, Any]) -> set[str]:
     return {row["code"] for row in manifest["unresolved_reasons"]}
 
 
-def _synthetic_overlay_authority() -> tuple[
-    dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
-]:
+def _synthetic_overlay_authority() -> (
+    tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]
+):
     """Add test-only certificate and exactly profiled waiver rows."""
     context = _context()
     registry = _registry()
     us_profile = next(
-        row
-        for row in registry["profiles"]
-        if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
+        row for row in registry["profiles"] if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
     )
     template = next(
         row
@@ -334,9 +323,7 @@ def _synthetic_overlay_authority() -> tuple[
             "overlay_digest": overlay["overlay_digest"],
         }
     )
-    review = next(
-        row for row in context["display_precedence"] if row["axis"] == "review_ethics"
-    )
+    review = next(row for row in context["display_precedence"] if row["axis"] == "review_ethics")
     review["ordered_authorities"].append(
         {
             "authority_kind": "institutional_overlay",
@@ -462,18 +449,10 @@ def test_inventory_paths_must_be_normalized_relative_posix(
     "mutate",
     [
         lambda value: value.__setitem__("inventory_id", "valid.id\n"),
-        lambda value: value["artifacts"][0]["declared_structure"].__setitem__(
-            "version_id", "v1\n"
-        ),
-        lambda value: value["artifacts"][0].__setitem__(
-            "declared_sha256", "0" * 64 + "\n"
-        ),
-        lambda value: value["artifacts"][0].__setitem__(
-            "relative_path", "consent-materials.txt\n"
-        ),
-        lambda value: value["artifacts"][0].__setitem__(
-            "media_type", "text/plain\n"
-        ),
+        lambda value: value["artifacts"][0]["declared_structure"].__setitem__("version_id", "v1\n"),
+        lambda value: value["artifacts"][0].__setitem__("declared_sha256", "0" * 64 + "\n"),
+        lambda value: value["artifacts"][0].__setitem__("relative_path", "consent-materials.txt\n"),
+        lambda value: value["artifacts"][0].__setitem__("media_type", "text/plain\n"),
         lambda value: value["artifacts"][0]["declared_structure"].__setitem__(
             "document_date", "2026-W01-1"
         ),
@@ -507,9 +486,7 @@ def test_lone_surrogate_path_fails_schema_public_validation_and_context_free_bui
 def test_reserved_format_control_fails_schema_and_runtime_on_both_contracts() -> None:
     reserved_format_control = "\U00013439"
     inventory = _inventory()
-    inventory["artifacts"][0]["relative_path"] = (
-        f"reserved-{reserved_format_control}.txt"
-    )
+    inventory["artifacts"][0]["relative_path"] = f"reserved-{reserved_format_control}.txt"
     assert list(_validator(INVENTORY_SCHEMA).iter_errors(inventory))
     with pytest.raises(ContractError, match="format"):
         validate_submission_packet_inventory(inventory)
@@ -517,9 +494,7 @@ def test_reserved_format_control_fails_schema_and_runtime_on_both_contracts() ->
         build_submission_packet_manifest(inventory, PACKET_ROOT)
 
     manifest = _build()
-    manifest["packet_observations"][0]["relative_path"] = (
-        f"reserved-{reserved_format_control}.txt"
-    )
+    manifest["packet_observations"][0]["relative_path"] = f"reserved-{reserved_format_control}.txt"
     _repin_manifest(manifest)
     assert list(_validator(MANIFEST_SCHEMA).iter_errors(manifest))
     with pytest.raises(ContractError, match="format"):
@@ -577,12 +552,9 @@ def test_unbound_declared_conflict_stays_visible_without_changing_readiness(
     assert observation["status"] == "CONFLICTING"
     assert observation["reason_codes"] == expected_reasons
     assert not any(
-        artifact["artifact_id"] in row["matched_artifact_ids"]
-        for row in manifest["entries"]
+        artifact["artifact_id"] in row["matched_artifact_ids"] for row in manifest["entries"]
     )
-    assert manifest["administrative_status"]["submission_readiness"] == (
-        "no_listed_gaps_located"
-    )
+    assert manifest["administrative_status"]["submission_readiness"] == ("no_listed_gaps_located")
 
 
 def test_packet_root_symlink_is_rejected(tmp_path: Path) -> None:
@@ -605,9 +577,7 @@ def test_packet_root_with_symlinked_ancestor_is_rejected(tmp_path: Path) -> None
 
 
 @pytest.mark.parametrize("link_parent", [False, True])
-def test_packet_member_or_parent_symlink_is_rejected(
-    tmp_path: Path, link_parent: bool
-) -> None:
+def test_packet_member_or_parent_symlink_is_rejected(tmp_path: Path, link_parent: bool) -> None:
     inventory = _inventory()
     packet = _packet_copy(tmp_path)
     if link_parent:
@@ -615,9 +585,7 @@ def test_packet_member_or_parent_symlink_is_rejected(
         real.mkdir()
         shutil.copy2(packet / "consent-materials.txt", real / "consent-materials.txt")
         (packet / "linked").symlink_to(real, target_is_directory=True)
-        _artifact(inventory, "fixture.us-consent")["relative_path"] = (
-            "linked/consent-materials.txt"
-        )
+        _artifact(inventory, "fixture.us-consent")["relative_path"] = "linked/consent-materials.txt"
     else:
         original = packet / "consent-materials.txt"
         real = packet / "consent-real.txt"
@@ -716,15 +684,14 @@ def test_member_parent_swap_after_open_stays_on_anchored_directory(
 
     monkeypatch.setattr(packet_runtime, "_open_directory_at", swap_after_open)
     observations = observe_submission_packet(inventory, packet)
-    row = next(
-        item for item in observations if item["artifact_id"] == artifact["artifact_id"]
-    )
+    row = next(item for item in observations if item["artifact_id"] == artifact["artifact_id"])
     assert swapped is True
     assert member_parent.is_symlink()
     assert row["observed_sha256"] == hashlib.sha256(expected).hexdigest()
-    assert row["observed_sha256"] != hashlib.sha256(
-        (outside_parent / original_path.name).read_bytes()
-    ).hexdigest()
+    assert (
+        row["observed_sha256"]
+        != hashlib.sha256((outside_parent / original_path.name).read_bytes()).hexdigest()
+    )
 
 
 def test_descriptor_safe_open_has_no_unsafe_platform_fallback(
@@ -794,9 +761,7 @@ def test_total_observer_limit_is_enforced_without_large_fixture(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     inventory = _inventory()
-    declared_total = sum(
-        artifact["declared_size_bytes"] for artifact in inventory["artifacts"]
-    )
+    declared_total = sum(artifact["declared_size_bytes"] for artifact in inventory["artifacts"])
     monkeypatch.setattr(packet_runtime, "MAX_TOTAL_BYTES", declared_total - 1)
     with pytest.raises(ContractError, match="total limit"):
         observe_submission_packet(inventory, PACKET_ROOT)
@@ -858,10 +823,18 @@ def test_no_authority_triplet_returns_explicit_unresolved_manifest() -> None:
     assert "V1_ENVELOPE_FACT_MISSING" in _reason_codes(manifest)
 
 
-@pytest.mark.parametrize("provided", [(True, False, False), (False, True, False), (False, False, True), (True, True, False), (True, False, True), (False, True, True)])
-def test_partial_authority_triplet_fails_closed(
-    provided: tuple[bool, bool, bool]
-) -> None:
+@pytest.mark.parametrize(
+    "provided",
+    [
+        (True, False, False),
+        (False, True, False),
+        (False, False, True),
+        (True, True, False),
+        (True, False, True),
+        (False, True, True),
+    ],
+)
+def test_partial_authority_triplet_fails_closed(provided: tuple[bool, bool, bool]) -> None:
     context, registry, resolved = _authority()
     values = (context, registry, resolved)
     args = [value if use else None for value, use in zip(values, provided)]
@@ -879,9 +852,7 @@ def test_schema_shaped_resolved_tamper_is_rejected_with_or_without_resigning() -
     context, registry, resolved = _authority()
     for resign in (False, True):
         tampered = copy.deepcopy(resolved)
-        tampered["requirement_results"][0]["consumer_scopes"].append(
-            "submission_packet"
-        )
+        tampered["requirement_results"][0]["consumer_scopes"].append("submission_packet")
         if resign:
             tampered.pop("resolved_digest")
             tampered["resolved_digest"] = digest(tampered)
@@ -912,9 +883,7 @@ def test_replayed_closed_authority_gate_stays_unresolved_without_default_profile
 
 @pytest.mark.parametrize("fact_id", tuple(ENVELOPE_EXPECTED))
 @pytest.mark.parametrize("case", ["missing", "unknown", "outside"])
-def test_each_v1_envelope_fact_is_load_bearing(
-    fact_id: str, case: str
-) -> None:
+def test_each_v1_envelope_fact_is_load_bearing(fact_id: str, case: str) -> None:
     context = _context()
     rows = context["declared_facts"]
     row = next(item for item in rows if item["fact_id"] == fact_id)
@@ -988,14 +957,10 @@ def test_us_packet_rows_respect_actor_scope_and_evidence_holder_boundaries() -> 
     assert determination["status"] == "ACCEPTANCE_UNVERIFIED"
     assert determination["readiness_effect"] == "none"
     assert determination["matched_artifact_ids"] == []
-    requirement_ids = {
-        row["requirement_ref"]["requirement_id"] for row in manifest["entries"]
-    }
+    requirement_ids = {row["requirement_ref"]["requirement_id"] for row in manifest["entries"]}
     assert "us.45cfr46.107.irb-composition" not in requirement_ids
     assert not any(item.startswith("eu.gdpr") for item in requirement_ids)
-    assert manifest["administrative_status"]["submission_readiness"] == (
-        "no_listed_gaps_located"
-    )
+    assert manifest["administrative_status"]["submission_readiness"] == ("no_listed_gaps_located")
 
 
 def test_exact_obligated_actor_match_is_required_before_packet_ownership() -> None:
@@ -1034,12 +999,10 @@ def test_same_packet_inventory_produces_distinct_exact_us_and_tw_manifests() -> 
     assert tw_row["matched_artifact_ids"] == ["fixture.tw-consent"]
     assert us["manifest_digest"] != tw["manifest_digest"]
     assert not any(
-        row["requirement_ref"]["requirement_id"].startswith("tw.")
-        for row in us["entries"]
+        row["requirement_ref"]["requirement_id"].startswith("tw.") for row in us["entries"]
     )
     assert not any(
-        row["requirement_ref"]["requirement_id"].startswith("us.")
-        for row in tw["entries"]
+        row["requirement_ref"]["requirement_id"].startswith("us.") for row in tw["entries"]
     )
 
 
@@ -1057,9 +1020,7 @@ def test_same_packet_conditional_fact_true_false_unknown_is_not_inferred() -> No
     }
     _repin_overlay(context, overlay)
     special = next(
-        row
-        for row in context["declared_facts"]
-        if row["fact_id"] == "data.special_category"
+        row for row in context["declared_facts"] if row["fact_id"] == "data.special_category"
     )
 
     special["state"], special["value"] = "declared", False
@@ -1067,20 +1028,20 @@ def test_same_packet_conditional_fact_true_false_unknown_is_not_inferred() -> No
         _inventory(), PACKET_ROOT, context, registry, resolve(context, registry)
     )
     assert any(
-        row["requirement_ref"]["requirement_id"]
-        == "synthetic.packet.base-consent"
+        row["requirement_ref"]["requirement_id"] == "synthetic.packet.base-consent"
         for row in false_manifest["excluded_requirements"]
     )
 
     special["value"] = True
-    true_manifest = _build(
-        _inventory(), PACKET_ROOT, context, registry, resolve(context, registry)
+    true_manifest = _build(_inventory(), PACKET_ROOT, context, registry, resolve(context, registry))
+    assert (
+        _entry(
+            true_manifest,
+            "synthetic.packet.base-consent",
+            "synthetic.base-consent",
+        )["status"]
+        == "NOT_LOCATED"
     )
-    assert _entry(
-        true_manifest,
-        "synthetic.packet.base-consent",
-        "synthetic.base-consent",
-    )["status"] == "NOT_LOCATED"
 
     special["state"], special["value"] = "unknown", None
     unknown_manifest = _build(
@@ -1089,13 +1050,16 @@ def test_same_packet_conditional_fact_true_false_unknown_is_not_inferred() -> No
     assert unknown_manifest["entries"] == []
     assert unknown_manifest["excluded_requirements"] == []
     assert "AUTHORITY_RESOLUTION_NOT_PERMITTED" in _reason_codes(unknown_manifest)
-    assert len(
-        {
-            false_manifest["manifest_digest"],
-            true_manifest["manifest_digest"],
-            unknown_manifest["manifest_digest"],
-        }
-    ) == 3
+    assert (
+        len(
+            {
+                false_manifest["manifest_digest"],
+                true_manifest["manifest_digest"],
+                unknown_manifest["manifest_digest"],
+            }
+        )
+        == 3
+    )
 
 
 def test_parallel_collision_entries_survive_display_precedence_changes() -> None:
@@ -1132,15 +1096,12 @@ def test_parallel_collision_entries_survive_display_precedence_changes() -> None
     assert live["requirement_ref"]["requirement_pointer"].startswith("/profiles/")
     assert parallel["requirement_ref"]["authority_kind"] == "institutional_overlay"
     assert parallel["requirement_ref"]["requirement_pointer"].startswith("/overlays/")
-    assert live["requirement_ref"]["authority_digest"] != parallel[
-        "requirement_ref"
-    ]["authority_digest"]
-
-    review = next(
-        row
-        for row in context["display_precedence"]
-        if row["axis"] == "review_ethics"
+    assert (
+        live["requirement_ref"]["authority_digest"]
+        != parallel["requirement_ref"]["authority_digest"]
     )
+
+    review = next(row for row in context["display_precedence"] if row["axis"] == "review_ethics")
     review["ordered_authorities"].reverse()
     second_resolved = resolve(context, registry)
     assert second_resolved["trace_order"] != first_resolved["trace_order"]
@@ -1193,13 +1154,9 @@ def test_manifest_entry_bound_accepts_4096_and_rejects_4097(
         "artifacts": [],
     }
     resolved = {
-        "requirement_results": [
-            _bounded_requirement_result("synthetic.requirement", "true")
-        ]
+        "requirement_results": [_bounded_requirement_result("synthetic.requirement", "true")]
     }
-    entries, excluded = packet_runtime._evidence_entries(
-        inventory, {}, {}, resolved, []
-    )
+    entries, excluded = packet_runtime._evidence_entries(inventory, {}, {}, resolved, [])
     assert len(entries) == packet_runtime.MAX_MANIFEST_ENTRIES
     assert excluded == []
 
@@ -1218,7 +1175,7 @@ def test_manifest_entry_bound_accepts_4096_and_rejects_4097(
 def test_manifest_canonical_byte_bound_is_inclusive(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    assert packet_runtime.MAX_MANIFEST_BYTES == 8 * 1024 * 1024
+    assert 8 * 1024 * 1024 == packet_runtime.MAX_MANIFEST_BYTES
     inventory = _inventory()
     context, registry, resolved = _authority()
     baseline = _build(inventory, PACKET_ROOT, context, registry, resolved)
@@ -1292,9 +1249,7 @@ def test_consumer_scope_bound_accepts_512_and_rejects_513(
 
     result["consumer_scopes"].append("synthetic.scope.overflow")
     with pytest.raises(ContractError, match="consumer scopes exceed 512"):
-        packet_runtime._evidence_entries(
-            inventory, {}, {}, {"requirement_results": [result]}, []
-        )
+        packet_runtime._evidence_entries(inventory, {}, {}, {"requirement_results": [result]}, [])
 
 
 def test_evidence_expansion_indexes_inventory_bindings_once(
@@ -1383,9 +1338,7 @@ def test_profiled_route_result_is_cached_per_requirement(
         calls += 1
         return False
 
-    monkeypatch.setattr(
-        packet_runtime, "_located_profiled_route_claim", counted_route
-    )
+    monkeypatch.setattr(packet_runtime, "_located_profiled_route_claim", counted_route)
     result = _bounded_requirement_result("synthetic.requirement", "true")
     entries, _excluded = packet_runtime._evidence_entries(
         inventory, {}, {}, {"requirement_results": [result]}, []
@@ -1409,15 +1362,9 @@ def test_excluded_requirement_bound_accepts_4096_and_rejects_4097() -> None:
     )
     assert len(excluded) == packet_runtime.MAX_EXCLUDED_REQUIREMENTS
 
-    results.append(
-        _bounded_requirement_result("synthetic.requirement.overflow", "false")
-    )
-    with pytest.raises(
-        ContractError, match="4096 excluded submission-packet requirements"
-    ):
-        packet_runtime._evidence_entries(
-            inventory, {}, {}, {"requirement_results": results}, []
-        )
+    results.append(_bounded_requirement_result("synthetic.requirement.overflow", "false"))
+    with pytest.raises(ContractError, match="4096 excluded submission-packet requirements"):
+        packet_runtime._evidence_entries(inventory, {}, {}, {"requirement_results": results}, [])
 
 
 def test_absent_binding_is_not_located_but_external_evidence_is_not_a_false_gap() -> None:
@@ -1529,9 +1476,9 @@ def test_certificate_dates_do_not_invent_freshness_requirements(
 ) -> None:
     context, registry, resolved, _overlay = _synthetic_overlay_authority()
     inventory = _waiver_inventory()
-    certificate = _artifact(inventory, "fixture.training-certificate")[
-        "declared_structure"
-    ]["certificate"]
+    certificate = _artifact(inventory, "fixture.training-certificate")["declared_structure"][
+        "certificate"
+    ]
     assert certificate is not None
     certificate["issued_on"] = issued_on
     certificate["expires_on"] = expires_on
@@ -1547,9 +1494,9 @@ def test_certificate_dates_do_not_invent_freshness_requirements(
 def test_schema_valid_reversed_certificate_interval_is_a_manifest_conflict() -> None:
     context, registry, resolved, _overlay = _synthetic_overlay_authority()
     inventory = _waiver_inventory()
-    certificate = _artifact(inventory, "fixture.training-certificate")[
-        "declared_structure"
-    ]["certificate"]
+    certificate = _artifact(inventory, "fixture.training-certificate")["declared_structure"][
+        "certificate"
+    ]
     assert certificate is not None
     certificate["issued_on"] = "2026-01-02"
     certificate["expires_on"] = "2026-01-01"
@@ -1569,9 +1516,9 @@ def test_schema_valid_reversed_certificate_interval_is_a_manifest_conflict() -> 
 def test_certificate_internal_holder_conflict_uses_only_synthetic_overlay() -> None:
     context, registry, resolved, _overlay = _synthetic_overlay_authority()
     inventory = _waiver_inventory()
-    certificate = _artifact(inventory, "fixture.training-certificate")[
-        "declared_structure"
-    ]["certificate"]
+    certificate = _artifact(inventory, "fixture.training-certificate")["declared_structure"][
+        "certificate"
+    ]
     assert certificate is not None
     certificate["holder_role_id"] = "principal_investigator"
     manifest = _build(inventory, PACKET_ROOT, context, registry, resolved)
@@ -1706,16 +1653,12 @@ def test_unprofiled_or_external_route_state_cannot_suppress_missing_base() -> No
             "state": state,
             "requirement_ids": [],
             "decision_maker_role": (
-                "institutional_review_office"
-                if state == "external_authority_required"
-                else None
+                "institutional_review_office" if state == "external_authority_required" else None
             ),
         }
         _repin_overlay(context, overlay)
         resolved = resolve(context, registry)
-        manifest = _build(
-            _waiver_inventory(), PACKET_ROOT, context, registry, resolved
-        )
+        manifest = _build(_waiver_inventory(), PACKET_ROOT, context, registry, resolved)
         row = _entry(
             manifest,
             "synthetic.packet.base-consent",
@@ -1740,9 +1683,7 @@ def test_route_scope_or_actor_mismatch_cannot_suppress_missing_base(
         route["obligated_actor"] = "institutional_review_office"
     _repin_overlay(context, overlay)
     resolved = resolve(context, registry)
-    manifest = _build(
-        _waiver_inventory(), PACKET_ROOT, context, registry, resolved
-    )
+    manifest = _build(_waiver_inventory(), PACKET_ROOT, context, registry, resolved)
     base = _entry(
         manifest,
         "synthetic.packet.base-consent",
@@ -1800,9 +1741,10 @@ def test_authorization_status_is_exact_copy_through_only(
         "provenance": "caller_supplied_no_derivation",
     }
     manifest = _build(inventory)
-    assert manifest["administrative_status"]["authorization_status"] == inventory[
-        "authorization_status_input"
-    ]
+    assert (
+        manifest["administrative_status"]["authorization_status"]
+        == inventory["authorization_status_input"]
+    )
 
 
 def test_documented_packet_structure_never_promotes_authorization() -> None:
@@ -1814,12 +1756,8 @@ def test_documented_packet_structure_never_promotes_authorization() -> None:
     }
     manifest = _build(inventory)
     assert any(row["status"] == "DOCUMENTED" for row in manifest["entries"])
-    assert manifest["administrative_status"]["submission_readiness"] == (
-        "no_listed_gaps_located"
-    )
-    assert manifest["administrative_status"]["authorization_status"]["value"] == (
-        "not_provided"
-    )
+    assert manifest["administrative_status"]["submission_readiness"] == ("no_listed_gaps_located")
+    assert manifest["administrative_status"]["authorization_status"]["value"] == ("not_provided")
 
 
 def test_readiness_changes_do_not_change_authorization_input() -> None:
@@ -1843,11 +1781,11 @@ def test_readiness_changes_do_not_change_authorization_input() -> None:
         gaps["administrative_status"]["submission_readiness"],
         unresolved["administrative_status"]["submission_readiness"],
     } == {"no_listed_gaps_located", "gaps_located", "unresolved"}
-    assert complete["administrative_status"]["authorization_status"] == gaps[
-        "administrative_status"
-    ]["authorization_status"] == unresolved["administrative_status"][
-        "authorization_status"
-    ]
+    assert (
+        complete["administrative_status"]["authorization_status"]
+        == gaps["administrative_status"]["authorization_status"]
+        == unresolved["administrative_status"]["authorization_status"]
+    )
 
 
 def test_fixed_administrative_and_acceptance_boundaries_are_exact() -> None:
@@ -1902,12 +1840,8 @@ def test_681_handoff_is_json_round_trip_pointer_only_without_parallel_verdict() 
     assert transported == manifest
     _validator(MANIFEST_SCHEMA).validate(transported)
     assert all(
-        row["requirement_ref"]["requirement_pointer"].startswith(
-            ("/profiles/", "/overlays/")
-        )
-        and row["evidence_ref"]["evidence_pointer"].startswith(
-            ("/profiles/", "/overlays/")
-        )
+        row["requirement_ref"]["requirement_pointer"].startswith(("/profiles/", "/overlays/"))
+        and row["evidence_ref"]["evidence_pointer"].startswith(("/profiles/", "/overlays/"))
         for row in transported["entries"]
     )
     assert "verdict" not in _all_keys(transported)
@@ -1915,13 +1849,9 @@ def test_681_handoff_is_json_round_trip_pointer_only_without_parallel_verdict() 
 
 def test_live_structured_expectations_and_descriptions_do_not_affect_status() -> None:
     context, registry, _resolved = _authority()
-    baseline = _build(
-        _inventory(), PACKET_ROOT, context, registry, resolve(context, registry)
-    )
+    baseline = _build(_inventory(), PACKET_ROOT, context, registry, resolve(context, registry))
     profile = next(
-        row
-        for row in registry["profiles"]
-        if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
+        row for row in registry["profiles"] if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
     )
     requirement = next(
         row
@@ -1938,9 +1868,7 @@ def test_live_structured_expectations_and_descriptions_do_not_affect_status() ->
     for evidence in requirement["evidence_expected"]:
         evidence["description"] = "This prose must never influence #667."
     _repin_profile(context, profile)
-    changed = _build(
-        _inventory(), PACKET_ROOT, context, registry, resolve(context, registry)
-    )
+    changed = _build(_inventory(), PACKET_ROOT, context, registry, resolve(context, registry))
     for evidence_id in ("consent.participant-materials", "consent.irb-determination"):
         before = _entry(baseline, requirement["requirement_id"], evidence_id)
         after = _entry(changed, requirement["requirement_id"], evidence_id)
@@ -2001,12 +1929,8 @@ def test_manifest_self_digest_is_exact() -> None:
         lambda value: value["entries"][0]["requirement_ref"].__setitem__(
             "requirement_pointer", "/profiles/999/requirements/0"
         ),
-        lambda value: value["entries"][0]["evidence_ref"].__setitem__(
-            "evidence_digest", "0" * 64
-        ),
-        lambda value: value["packet_observations"][0].__setitem__(
-            "observed_sha256", "0" * 64
-        ),
+        lambda value: value["entries"][0]["evidence_ref"].__setitem__("evidence_digest", "0" * 64),
+        lambda value: value["packet_observations"][0].__setitem__("observed_sha256", "0" * 64),
         lambda value: value["administrative_status"].__setitem__(
             "submission_readiness", "gaps_located"
         ),
@@ -2067,9 +1991,7 @@ def test_resigned_replay_validated_manifest_requires_overlay_state() -> None:
 
 def test_resigned_resolved_authority_with_partly_closed_gate_fails_shape() -> None:
     manifest = _build()
-    manifest["authority_binding"]["downstream_gate"][
-        "all_applicability_resolved"
-    ] = False
+    manifest["authority_binding"]["downstream_gate"]["all_applicability_resolved"] = False
     _repin_manifest(manifest)
     assert list(_validator(MANIFEST_SCHEMA).iter_errors(manifest))
     with pytest.raises(ContractError, match="fully open"):
@@ -2081,9 +2003,7 @@ def test_resigned_unresolved_authority_with_open_profile_gate_fails_shape() -> N
     registry = _registry()
     resolved = resolve(context, registry)
     manifest = _build(_inventory(), PACKET_ROOT, context, registry, resolved)
-    manifest["authority_binding"]["downstream_gate"][
-        "profile_dependent_result_allowed"
-    ] = True
+    manifest["authority_binding"]["downstream_gate"]["profile_dependent_result_allowed"] = True
     _repin_manifest(manifest)
     assert list(_validator(MANIFEST_SCHEMA).iter_errors(manifest))
     with pytest.raises(ContractError, match="must be false"):
@@ -2101,12 +2021,8 @@ def test_resigned_closed_gate_with_entries_fails_shape_and_direct_render() -> No
 
 def test_resigned_closed_gate_with_packet_observation_fails_shape() -> None:
     unresolved = build_submission_packet_manifest(_inventory(), PACKET_ROOT)
-    unresolved["packet_observations"] = [
-        copy.deepcopy(_build()["packet_observations"][0])
-    ]
-    unresolved["packet_pointer"]["observation_digest"] = digest(
-        unresolved["packet_observations"]
-    )
+    unresolved["packet_observations"] = [copy.deepcopy(_build()["packet_observations"][0])]
+    unresolved["packet_pointer"]["observation_digest"] = digest(unresolved["packet_observations"])
     _repin_manifest(unresolved)
     assert list(_validator(MANIFEST_SCHEMA).iter_errors(unresolved))
     with pytest.raises(ContractError, match="closed authority or capability gate"):
@@ -2119,9 +2035,7 @@ def test_resigned_located_observation_cannot_claim_attachment_absence() -> None:
     assert observation["state"] == "located"
     observation["status"] = "CONFLICTING"
     observation["reason_codes"] = ["DECLARED_ATTACHMENT_NOT_LOCATED"]
-    manifest["packet_pointer"]["observation_digest"] = digest(
-        manifest["packet_observations"]
-    )
+    manifest["packet_pointer"]["observation_digest"] = digest(manifest["packet_observations"])
     _repin_manifest(manifest)
     assert list(_validator(MANIFEST_SCHEMA).iter_errors(manifest))
     with pytest.raises(ContractError, match="located conflict"):
@@ -2146,8 +2060,7 @@ def test_resigned_overlay_not_provided_without_reason_fails_shape() -> None:
         ),
         lambda value: value["authority_binding"]["registry_pointer"].__setitem__(
             "registry_version",
-            value["authority_binding"]["registry_pointer"]["registry_version"]
-            + "\n",
+            value["authority_binding"]["registry_pointer"]["registry_version"] + "\n",
         ),
         lambda value: value["entries"][0]["evidence_ref"].__setitem__(
             "evidence_digest",
@@ -2163,8 +2076,7 @@ def test_resigned_overlay_not_provided_without_reason_fails_shape() -> None:
         ),
         lambda value: value["entries"][0]["requirement_ref"].__setitem__(
             "authority_anchor_pointer",
-            value["entries"][0]["requirement_ref"]["authority_anchor_pointer"]
-            + "\n",
+            value["entries"][0]["requirement_ref"]["authority_anchor_pointer"] + "\n",
         ),
         lambda value: value["entries"][0]["evidence_ref"].__setitem__(
             "evidence_pointer",
@@ -2301,9 +2213,7 @@ def test_authorization_copy_through_is_digest_load_bearing_but_row_statuses_are_
 def test_renderer_is_deterministic_and_never_includes_packet_prose() -> None:
     manifest = _build()
     first = render_submission_packet_manifest(manifest)
-    second = render_submission_packet_manifest(
-        json.loads(json.dumps(manifest, sort_keys=True))
-    )
+    second = render_submission_packet_manifest(json.loads(json.dumps(manifest, sort_keys=True)))
     assert first == second
     assert "Review pathway: institutional determination required" in first
     assert "Submission readiness: no_listed_gaps_located" in first
@@ -2318,15 +2228,11 @@ def test_renderer_is_deterministic_and_never_includes_packet_prose() -> None:
 def test_resolved_empty_renderer_does_not_invent_unresolved_entry_status() -> None:
     context, registry, _resolved = _authority()
     profile = next(
-        row
-        for row in registry["profiles"]
-        if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
+        row for row in registry["profiles"] if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
     )
     for requirement in profile["requirements"]:
         requirement["consumer_scopes"] = [
-            scope
-            for scope in requirement["consumer_scopes"]
-            if scope != "submission_packet"
+            scope for scope in requirement["consumer_scopes"] if scope != "submission_packet"
         ]
     _repin_profile(context, profile)
     resolved = resolve(context, registry)
@@ -2334,9 +2240,7 @@ def test_resolved_empty_renderer_does_not_invent_unresolved_entry_status() -> No
     assert manifest["entries"] == []
     assert manifest["excluded_requirements"] == []
     assert manifest["unresolved_reasons"] == []
-    assert manifest["administrative_status"]["submission_readiness"] == (
-        "no_listed_gaps_located"
-    )
+    assert manifest["administrative_status"]["submission_readiness"] == ("no_listed_gaps_located")
     rendered = render_submission_packet_manifest(manifest)
     assert "| none | none | none | none | none | none | none |" in rendered
     assert packet_runtime._md("APPLICABILITY_UNRESOLVED") not in rendered
@@ -2367,9 +2271,7 @@ def test_renderer_preserves_false_applicability_accounting() -> None:
     }
     _repin_overlay(context, overlay)
     special = next(
-        row
-        for row in context["declared_facts"]
-        if row["fact_id"] == "data.special_category"
+        row for row in context["declared_facts"] if row["fact_id"] == "data.special_category"
     )
     special["state"], special["value"] = "declared", False
     resolved = resolve(context, registry)
@@ -2377,8 +2279,7 @@ def test_renderer_preserves_false_applicability_accounting() -> None:
     excluded = next(
         row
         for row in manifest["excluded_requirements"]
-        if row["requirement_ref"]["requirement_id"]
-        == "synthetic.packet.base-consent"
+        if row["requirement_ref"]["requirement_id"] == "synthetic.packet.base-consent"
     )
     rendered = render_submission_packet_manifest(manifest)
     assert "## Excluded Requirements" in rendered
@@ -2396,10 +2297,7 @@ def test_renderer_neutralizes_markdown_active_inventory_path(
     inventory = _inventory()
     artifact = _artifact(inventory, "fixture.us-consent")
     original = packet / artifact["relative_path"]
-    malicious = (
-        "<img src=x>-![x](javascript:alert(1))-`code`-pipe|cell-"
-        "line\u2028# heading.txt"
-    )
+    malicious = "<img src=x>-![x](javascript:alert(1))-`code`-pipe|cell-" "line\u2028# heading.txt"
     original.rename(packet / malicious)
     artifact["relative_path"] = malicious
     manifest = _build(inventory, packet)
@@ -2411,10 +2309,13 @@ def test_renderer_neutralizes_markdown_active_inventory_path(
     observation_lines = rendered.split("## Packet Observations", 1)[1].split(
         "## Mechanical Evidence Entries", 1
     )[0]
-    assert sum(
-        line.startswith(f"| {packet_runtime._md(artifact['artifact_id'])} |")
-        for line in observation_lines.splitlines()
-    ) == 1
+    assert (
+        sum(
+            line.startswith(f"| {packet_runtime._md(artifact['artifact_id'])} |")
+            for line in observation_lines.splitlines()
+        )
+        == 1
+    )
 
     markdown_it = pytest.importorskip("markdown_it")
     tokens = markdown_it.MarkdownIt().parse(rendered)
@@ -2620,9 +2521,7 @@ def test_cli_rejects_escaped_lone_surrogate_with_rc2_and_no_traceback(
     paths = _cli_inputs(tmp_path)
     inventory = _inventory()
     inventory["artifacts"][0]["relative_path"] = "surrogate-\ud800.txt"
-    paths["inventory"].write_text(
-        json.dumps(inventory, ensure_ascii=True), encoding="utf-8"
-    )
+    paths["inventory"].write_text(json.dumps(inventory, ensure_ascii=True), encoding="utf-8")
     completed = subprocess.run(
         [
             sys.executable,

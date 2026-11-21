@@ -14,6 +14,7 @@ Usage:
       --input <vault_dir> --passport <out.yaml> --rejection-log <out.yaml>
 """
 from __future__ import annotations
+
 import argparse
 import re
 import sys
@@ -31,11 +32,11 @@ if str(_REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT))
 
 from scripts.adapters._common import (  # noqa: E402
-    write_passport,
-    write_rejection_log,
-    parse_semicolon_names,
     ensure_unique_citekey,
     now_iso,
+    parse_semicolon_names,
+    write_passport,
+    write_rejection_log,
 )
 
 ADAPTER_NAME = "obsidian.py"
@@ -48,10 +49,20 @@ SKIP_DIR_NAMES = {"_templates", ".obsidian"}
 # metadata, so the default is unknown/unknown; an explicit `venue_type` frontmatter
 # field (a deliberate user declaration) is honored as `user_declared` IFF it is a
 # valid enum member. Never inferred from free-form text (R-L3-2-D).
-VALID_VENUE_TYPES = frozenset({
-    "journal-article", "conference-paper", "book", "chapter", "dissertation",
-    "preprint", "report", "dataset", "other", "unknown",
-})
+VALID_VENUE_TYPES = frozenset(
+    {
+        "journal-article",
+        "conference-paper",
+        "book",
+        "chapter",
+        "dissertation",
+        "preprint",
+        "report",
+        "dataset",
+        "other",
+        "unknown",
+    }
+)
 
 
 def declare_venue_type(fm: Any) -> tuple[str, str]:
@@ -65,6 +76,7 @@ def declare_venue_type(fm: Any) -> tuple[str, str]:
     if isinstance(declared, str) and declared in VALID_VENUE_TYPES and declared != "unknown":
         return declared, "user_declared"
     return "unknown", "unknown"
+
 
 RE_FRONTMATTER = re.compile(r"^---\n(.*?)\n---\n(.*)$", re.DOTALL)
 RE_H1 = re.compile(r"^#\s+(.+)$", re.MULTILINE)

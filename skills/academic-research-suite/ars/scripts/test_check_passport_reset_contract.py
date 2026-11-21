@@ -16,8 +16,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from tests.test_helpers import run_script
 from scripts.check_passport_reset_contract import scan_duplicate_option_values
+from tests.test_helpers import run_script
 
 SCRIPT = Path(__file__).resolve().parent / "check_passport_reset_contract.py"
 
@@ -179,20 +179,20 @@ class TestPassportResetContractLint(unittest.TestCase):
             "reset_boundary:\n"
             "  - kind: boundary\n"
             "    hash: c5d3e9f8a1b2\n"
-            "    stage: \"3\"\n"
-            "    next: \"4\"\n"
+            '    stage: "3"\n'
+            '    next: "4"\n'
             "    generated_at: 2026-04-23T14:00:00Z\n"
             "    session_marker: sess-triple\n"
             "    version_label: v1.0\n"
             "    pending_decision:\n"
-            "      question: \"q\"\n"
+            '      question: "q"\n'
             "      options:\n"
             "        - value: revise\n"
-            "          next_stage: \"4\"\n"
+            '          next_stage: "4"\n'
             "        - value: revise\n"
-            "          next_stage: \"3\"\n"
+            '          next_stage: "3"\n'
             "        - value: revise\n"
-            "          next_stage: \"2\"\n"
+            '          next_stage: "2"\n'
             "```\n"
         )
         with TemporaryDirectory() as td:
@@ -223,18 +223,18 @@ class TestPassportResetContractLint(unittest.TestCase):
             "reset_boundary:\r\n"
             "  - kind: boundary\r\n"
             "    hash: d6f4a0c1b2e3\r\n"
-            "    stage: \"3\"\r\n"
-            "    next: \"4\"\r\n"
+            '    stage: "3"\r\n'
+            '    next: "4"\r\n'
             "    generated_at: 2026-04-23T14:00:00Z\r\n"
             "    session_marker: sess-crlf\r\n"
             "    version_label: v1.0\r\n"
             "    pending_decision:\r\n"
-            "      question: \"q\"\r\n"
+            '      question: "q"\r\n'
             "      options:\r\n"
             "        - value: dup\r\n"
-            "          next_stage: \"4\"\r\n"
+            '          next_stage: "4"\r\n'
             "        - value: dup\r\n"
-            "          next_stage: \"2\"\r\n"
+            '          next_stage: "2"\r\n'
             "```\r\n"
         )
         with TemporaryDirectory() as td:

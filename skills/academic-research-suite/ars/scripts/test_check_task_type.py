@@ -6,7 +6,8 @@ import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
-from tests.test_helpers import run_skill_linter, write_skill as _write_skill
+from tests.test_helpers import run_skill_linter
+from tests.test_helpers import write_skill as _write_skill
 
 SCRIPT = Path(__file__).resolve().parent / "check_task_type.py"
 
@@ -20,14 +21,17 @@ class TestTaskTypeLint(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_skill(
-                root, "example",
-                textwrap.dedent("""\
+                root,
+                "example",
+                textwrap.dedent(
+                    """\
                     name: example
                     description: "test"
                     metadata:
                       version: "1.0"
                       status: active
-                    """),
+                    """
+                ),
             )
             result = _run(root)
             self.assertEqual(result.returncode, 1)
@@ -37,15 +41,18 @@ class TestTaskTypeLint(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             _write_skill(
-                root, "example",
-                textwrap.dedent("""\
+                root,
+                "example",
+                textwrap.dedent(
+                    """\
                     name: example
                     description: "test"
                     metadata:
                       version: "1.0"
                       status: active
                       task_type: experimental
-                    """),
+                    """
+                ),
             )
             result = _run(root)
             self.assertEqual(result.returncode, 1)
@@ -56,15 +63,18 @@ class TestTaskTypeLint(unittest.TestCase):
             root = Path(tmp)
             for name, value in [("a", "open-ended"), ("b", "outcome-gradable")]:
                 _write_skill(
-                    root, name,
-                    textwrap.dedent(f"""\
+                    root,
+                    name,
+                    textwrap.dedent(
+                        f"""\
                         name: {name}
                         description: "test"
                         metadata:
                           version: "1.0"
                           status: active
                           task_type: {value}
-                        """),
+                        """
+                    ),
                 )
             result = _run(root)
             self.assertEqual(result.returncode, 0, msg=result.stderr)
@@ -75,7 +85,7 @@ class TestTaskTypeLint(unittest.TestCase):
             skill_dir = root / "broken"
             skill_dir.mkdir()
             (skill_dir / "SKILL.md").write_text(
-                "---\nname: broken\nmetadata:\n\tversion: \"1.0\"\n---\n",
+                '---\nname: broken\nmetadata:\n\tversion: "1.0"\n---\n',
                 encoding="utf-8",
             )
             result = _run(root)

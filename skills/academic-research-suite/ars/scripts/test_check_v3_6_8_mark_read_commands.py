@@ -13,7 +13,6 @@ from tempfile import TemporaryDirectory
 
 from tests.test_helpers import run_script
 
-
 LINT = Path(__file__).parent / "check_v3_6_8_mark_read_commands.py"
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -44,9 +43,7 @@ class TestMarkReadCommandsLint(unittest.TestCase):
             result = run_script(LINT, cwd=root)
 
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn(
-                "ars-mark-read.md", result.stdout + result.stderr
-            )
+            self.assertIn("ars-mark-read.md", result.stdout + result.stderr)
 
     def test_missing_unmark_read_command_fails(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -57,9 +54,7 @@ class TestMarkReadCommandsLint(unittest.TestCase):
             result = run_script(LINT, cwd=root)
 
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn(
-                "ars-unmark-read.md", result.stdout + result.stderr
-            )
+            self.assertIn("ars-unmark-read.md", result.stdout + result.stderr)
 
     def test_missing_validation_rule_token_fails(self) -> None:
         """Spec §3.6 firm rule 2 + Step 7 acceptance: the command body
@@ -77,9 +72,7 @@ class TestMarkReadCommandsLint(unittest.TestCase):
             result = run_script(LINT, cwd=root)
 
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn(
-                "literature_corpus", result.stdout + result.stderr
-            )
+            self.assertIn("literature_corpus", result.stdout + result.stderr)
 
     def test_missing_peer_file_token_fails(self) -> None:
         """Spec §3.6 firm rule 1 + §3.1 firm rule 3: the command MUST

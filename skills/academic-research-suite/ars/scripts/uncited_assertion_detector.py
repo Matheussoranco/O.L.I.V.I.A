@@ -39,7 +39,8 @@ expects.
 from __future__ import annotations
 
 import re
-from typing import Any, Iterable
+from collections.abc import Iterable
+from typing import Any
 
 from scripts._claim_audit_constants import (
     RE_BARE_NUMERIC_YEAR,
@@ -65,9 +66,7 @@ _RE_WORD = re.compile(r"[A-Za-z][A-Za-z-]*")
 _GUARD_LEFT_WINDOW = 24
 
 
-def _is_year_or_version_or_section(
-    sentence: str, match_text: str, match_start: int
-) -> bool:
+def _is_year_or_version_or_section(sentence: str, match_text: str, match_start: int) -> bool:
     """Guard pass: return True when a bare-number match is NOT a quantifier.
 
     Four disqualifying shapes:

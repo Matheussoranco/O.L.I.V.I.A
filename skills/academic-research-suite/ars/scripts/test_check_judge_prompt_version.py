@@ -30,10 +30,7 @@ def _agent_md(prompt_body: str, *, with_markers: bool = True) -> str:
 
 
 def _constants_src(pinned_hash: str) -> str:
-    return (
-        'JUDGE_PROMPT_VERSION = "step0-decomp-v1"\n'
-        f'JUDGE_PROMPT_SHA256 = "{pinned_hash}"\n'
-    )
+    return 'JUDGE_PROMPT_VERSION = "step0-decomp-v1"\n' f'JUDGE_PROMPT_SHA256 = "{pinned_hash}"\n'
 
 
 def _hash_of(prompt_body: str) -> str:

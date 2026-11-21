@@ -2,21 +2,19 @@
 """Mutation tests for the #611 reviewer sprint-prompt canonical source."""
 from __future__ import annotations
 
-from copy import deepcopy
 import shutil
 import subprocess
 import sys
+from copy import deepcopy
 from pathlib import Path
 
-import pytest
-
 import check_reviewer_sprint_prompt_sync as sync
+import pytest
 from check_reviewer_sprint_prompt_sync import (
     ROLE_CONFIG,
     _parse_fragments,
     canonical_digest,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECKER = REPO_ROOT / "scripts" / "check_reviewer_sprint_prompt_sync.py"
@@ -66,9 +64,7 @@ def test_clean_tree_passes(tree: Path) -> None:
 
 
 @pytest.mark.parametrize("rel", RAW_HTML_RULE_SURFACES)
-def test_dissent_raw_html_rule_is_present_on_every_surface(
-    tree: Path, rel: str
-) -> None:
+def test_dissent_raw_html_rule_is_present_on_every_surface(tree: Path, rel: str) -> None:
     text = (tree / rel).read_text(encoding="utf-8")
     assert "[DISSENT-RAW-HTML]" in text
     assert "trigger-binding exemption" in text
@@ -172,9 +168,7 @@ def test_canonical_digest_covers_bounded_role_config_and_slot_table(tree: Path) 
 
 
 @pytest.mark.parametrize("bad_slot", ("{{ROLE2}}", "{{role}}", "{{ROLE-NAME}}"))
-def test_malformed_canonical_placeholder_is_rejected(
-    tree: Path, bad_slot: str
-) -> None:
+def test_malformed_canonical_placeholder_is_rejected(tree: Path, bad_slot: str) -> None:
     _mutate(tree, CANONICAL, "{{PARAPHRASE_LENS}}", bad_slot)
     result = _run(tree)
     assert result.returncode == 1
@@ -193,7 +187,10 @@ def test_malformed_synthesizer_placeholder_is_rejected_after_mirror_sync(
     assert "unresolved or malformed double-brace placeholder" in result.stderr
 
 
-@pytest.mark.parametrize("heading", ("### Phase 1 — Paper-content-blind pre-commitment", "### Phase 2 — Paper-visible review"))
+@pytest.mark.parametrize(
+    "heading",
+    ("### Phase 1 — Paper-content-blind pre-commitment", "### Phase 2 — Paper-visible review"),
+)
 def test_dispatcher_visible_shadow_heading_is_rejected(tree: Path, heading: str) -> None:
     rel = REVIEWERS[0]
     _mutate(
@@ -289,17 +286,13 @@ def test_receipt_slot_table_label_is_locked(tree: Path) -> None:
     assert "canonical content lock" in result.stderr
 
 
-def test_canonical_digest_covers_splice_anchor(
-    tree: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_canonical_digest_covers_splice_anchor(tree: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     canonical_text = (tree / CANONICAL).read_text(encoding="utf-8")
     errors: list[str] = []
     fragments = _parse_fragments(canonical_text, errors)
     assert errors == []
     baseline = canonical_digest(canonical_text, fragments, ROLE_CONFIG)
-    monkeypatch.setattr(
-        sync, "RECEIPT_SPLICE_ANCHOR", "A reworded preflight anchor:\n"
-    )
+    monkeypatch.setattr(sync, "RECEIPT_SPLICE_ANCHOR", "A reworded preflight anchor:\n")
     assert canonical_digest(canonical_text, fragments, ROLE_CONFIG) != baseline
 
 
@@ -349,8 +342,7 @@ def test_extraction_fragment_edit_requires_repin(tree: Path) -> None:
     # Editing the canonical extraction fragment (with the agent mirror kept
     # in sync) still fails until the content lock is re-pinned.
     for rel in (CANONICAL, METHODOLOGY):
-        _mutate(tree, rel, "never calculate, never judge",
-                "never calculate, never decide")
+        _mutate(tree, rel, "never calculate, never judge", "never calculate, never decide")
     result = _run(tree)
     assert result.returncode == 1
     assert "canonical content lock" in result.stderr

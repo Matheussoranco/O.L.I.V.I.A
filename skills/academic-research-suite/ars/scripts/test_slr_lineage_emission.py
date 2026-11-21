@@ -118,9 +118,7 @@ class RendererIntegrationTest(unittest.TestCase):
         """Acceptance criterion #3 (positive): SLR pipeline passport
         carries `slr_lineage=True`, disclosure renderer fires without
         G2 TrackGateError and without the user supplying mode_param."""
-        result = referee.decide_disclosure_output(
-            self._inp(slr_lineage=True, mode_param=None)
-        )
+        result = referee.decide_disclosure_output(self._inp(slr_lineage=True, mode_param=None))
         self.assertEqual(result.row, 4)
         self.assertEqual(result.kind, "anchor_render")
         self.assertEqual(result.track, "prisma-trAIce")
@@ -131,9 +129,7 @@ class RendererIntegrationTest(unittest.TestCase):
         --policy-anchor=prisma-trAIce per G2 invariant — no behavior
         change for non-SLR paths."""
         with self.assertRaises(referee.TrackGateError):
-            referee.decide_disclosure_output(
-                self._inp(slr_lineage=False, mode_param=None)
-            )
+            referee.decide_disclosure_output(self._inp(slr_lineage=False, mode_param=None))
 
     def test_pre_111_passport_with_mode_param_dispatches_cold_start(self) -> None:
         """Pre-#111 passports lack the `slr_lineage` field (absence = False).

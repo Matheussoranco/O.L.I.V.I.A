@@ -12,7 +12,7 @@ Contract: policy_anchor_disclosure_protocol.md §3.1 (G2 invariant)
 """
 from __future__ import annotations
 
-from typing import Mapping
+from collections.abc import Mapping
 
 # Dual-path import: when this module is loaded via `from scripts.slr_lineage
 # import emit` from the repo root (the namespace-package style used by
@@ -37,8 +37,7 @@ def resolve_from_stages(stages: Mapping[str, Mapping]) -> bool:
     trigger SLR lineage — only the documented producer counts.
     """
     return any(
-        (stage.get("skill") == "deep-research")
-        and (stage.get("mode") in SLR_MODES)
+        (stage.get("skill") == "deep-research") and (stage.get("mode") in SLR_MODES)
         for stage in stages.values()
     )
 

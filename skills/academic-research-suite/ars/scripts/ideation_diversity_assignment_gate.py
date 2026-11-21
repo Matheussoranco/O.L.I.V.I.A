@@ -20,8 +20,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import sys
+from pathlib import Path
 from typing import Any, NoReturn
 
 import run_ideation_diversity_no_call as envelope
@@ -63,9 +63,7 @@ def _binding_paths(run_dir: Path) -> dict[str, Path]:
     }
 
 
-def _validate_against(
-    schema_path: Path, value: dict[str, Any], code: str, label: str
-) -> None:
+def _validate_against(schema_path: Path, value: dict[str, Any], code: str, label: str) -> None:
     try:
         envelope._validate_schema(schema_path, value, label)
     except envelope.EnvelopeError as exc:
@@ -133,9 +131,7 @@ def _check_roster(ledger: dict[str, Any]) -> None:
 
 
 def _check_coverage(ledger: dict[str, Any], bundle: dict[str, Any]) -> None:
-    inventory_ids = {
-        row["blind_session_id"] for row in bundle["inventory"]["packets"]
-    }
+    inventory_ids = {row["blind_session_id"] for row in bundle["inventory"]["packets"]}
     judges_by_packet: dict[str, set[str]] = {}
     for row in ledger["first_round_assignments"]:
         blind_id = row["blind_session_id"]
@@ -157,14 +153,11 @@ def _check_coverage(ledger: dict[str, Any], bundle: dict[str, Any]) -> None:
 
 def _check_exposure(ledger: dict[str, Any], bundle: dict[str, Any]) -> None:
     pair_by_blind = {
-        row["blind_session_id"]: row["pair_id"]
-        for row in bundle["private_map"]["mapping"]
+        row["blind_session_id"]: row["pair_id"] for row in bundle["private_map"]["mapping"]
     }
     packets_by_judge: dict[str, list[str]] = {}
     for row in ledger["first_round_assignments"]:
-        packets_by_judge.setdefault(row["judge_id"], []).append(
-            row["blind_session_id"]
-        )
+        packets_by_judge.setdefault(row["judge_id"], []).append(row["blind_session_id"])
     for judge_id in sorted(packets_by_judge):
         blinds = packets_by_judge[judge_id]
         pairs = {pair_by_blind[blind_id] for blind_id in blinds}
@@ -229,15 +222,11 @@ def _load_receipt(run_dir: Path) -> tuple[dict[str, Any], bytes]:
     receipt, receipt_raw = _load_json(
         receipt_path, "DELIVERY-RECEIPT", RECEIPT_SCHEMA, "gate receipt"
     )
-    _validate_against(
-        LEDGER_SCHEMA, receipt["ledger"], "DELIVERY-RECEIPT", "embedded ledger"
-    )
+    _validate_against(LEDGER_SCHEMA, receipt["ledger"], "DELIVERY-RECEIPT", "embedded ledger")
     return receipt, receipt_raw
 
 
-def _check_dest(
-    run_dir: Path, dest: Path, packet_name: str, *, resume: bool
-) -> Path:
+def _check_dest(run_dir: Path, dest: Path, packet_name: str, *, resume: bool) -> Path:
     resolved = dest.resolve()
     for boundary in (run_dir.resolve(), _gate_dir(run_dir).resolve()):
         if resolved.is_relative_to(boundary):
@@ -253,8 +242,7 @@ def _check_dest(
             if occupants and occupants != [packet_name]:
                 _fail(
                     "DELIVERY-DEST",
-                    "destination must be empty: a judge desk holds exactly "
-                    "one isolated packet",
+                    "destination must be empty: a judge desk holds exactly " "one isolated packet",
                 )
     elif resolved.exists():
         # A new delivery claims its desk by creating it: mkdir is the atomic
@@ -281,8 +269,7 @@ def deliver(args: argparse.Namespace) -> dict[str, Any]:
     _check_coverage(ledger, bundle)
     _check_exposure(ledger, bundle)
     packet_sha_by_blind = {
-        row["blind_session_id"]: row["packet_sha256"]
-        for row in bundle["inventory"]["packets"]
+        row["blind_session_id"]: row["packet_sha256"] for row in bundle["inventory"]["packets"]
     }
     assignment = {
         "judge_id": args.judge,
@@ -291,8 +278,7 @@ def deliver(args: argparse.Namespace) -> dict[str, Any]:
     if assignment not in ledger["first_round_assignments"]:
         _fail(
             "DELIVERY-UNASSIGNED",
-            f"{args.judge} has no verified first-round assignment for "
-            f"{args.blind_session_id}",
+            f"{args.judge} has no verified first-round assignment for " f"{args.blind_session_id}",
         )
     packet_name = f"{args.blind_session_id}.json"
     packet_path = args.run_dir / "blind" / "sessions" / packet_name
@@ -309,10 +295,7 @@ def deliver(args: argparse.Namespace) -> dict[str, Any]:
         )
 
     marker_path = (
-        _gate_dir(args.run_dir)
-        / DELIVERY_ROOT
-        / args.judge
-        / f"{args.blind_session_id}.json"
+        _gate_dir(args.run_dir) / DELIVERY_ROOT / args.judge / f"{args.blind_session_id}.json"
     )
     marker_value = {
         "schema_version": "ideation-diversity-first-round-delivery-marker/1.0",

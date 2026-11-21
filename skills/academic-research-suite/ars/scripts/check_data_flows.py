@@ -141,10 +141,7 @@ def _imported_modules(py_source: str) -> set[str]:
 def _is_network_module(module: str) -> bool:
     if module.split(".", 1)[0] in NETWORK_TOP_LEVEL:
         return True
-    return any(
-        module == net or module.startswith(net + ".")
-        for net in NETWORK_DOTTED
-    )
+    return any(module == net or module.startswith(net + ".") for net in NETWORK_DOTTED)
 
 
 def _python_network_scripts(root: Path) -> list[Path]:
@@ -206,8 +203,7 @@ def check_network_coverage(root: Path) -> list[str]:
     for path in _curl_shell_scripts(root):
         if path.relative_to(root).as_posix() not in doc_text:
             errors.append(
-                f"DF-2: {path.relative_to(root)} invokes curl but is not "
-                f"named in {DOC_RELPATH}"
+                f"DF-2: {path.relative_to(root)} invokes curl but is not " f"named in {DOC_RELPATH}"
             )
     return errors
 
@@ -221,8 +217,7 @@ def check_inbound_links(root: Path) -> list[str]:
         text = surface.read_text(encoding="utf-8")
         if not links_to(text, surface.parent, doc_abs):
             errors.append(
-                f"DF-3: {rel} no longer links to {DOC_RELPATH.name} "
-                f"(#758 acceptance criterion)"
+                f"DF-3: {rel} no longer links to {DOC_RELPATH.name} " f"(#758 acceptance criterion)"
             )
     return errors
 

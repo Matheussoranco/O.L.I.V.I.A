@@ -29,7 +29,6 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
 
-
 SCHEMA_VERSION = "evidence-row/1.0"
 SURFACE = "phase_e_claim_verification"
 ADVISORY_SCHEMA_VERSION = "evidence-row/1.1"
@@ -67,11 +66,11 @@ STATE_LABELS = {
 EMPTY_STATES = frozenset(
     {"not_checked", "source_missing", "access_failed", "retrieval_failed", "anchorless"}
 )
-SOURCE_BOUND_STATES = frozenset(
-    {"verified_exact_match", "agent_extracted", "unconfirmed_anchor"}
-)
+SOURCE_BOUND_STATES = frozenset({"verified_exact_match", "agent_extracted", "unconfirmed_anchor"})
 EXCERPT_TEXT_STATES = frozenset({"verified_exact_match", "agent_extracted"})
-FAILURE_STATES = frozenset({"not_checked", "source_missing", "access_failed", "retrieval_failed", "anchorless"})
+FAILURE_STATES = frozenset(
+    {"not_checked", "source_missing", "access_failed", "retrieval_failed", "anchorless"}
+)
 SELECTION_TIERS = frozenset({"HIGH-IMPACT", "RANDOM", "TOP-UP", "ALL"})
 VERDICTS = frozenset(
     {
@@ -103,9 +102,7 @@ ADVISORY_EMPTY_STATES = frozenset(
 ADVISORY_FAILURE_STATES = frozenset(
     {"not_checked", "source_missing", "access_failed", "retrieval_failed"}
 )
-DOCUMENT_LOCATOR_KINDS = frozenset(
-    {"document", "page", "section", "paragraph", "other"}
-)
+DOCUMENT_LOCATOR_KINDS = frozenset({"document", "page", "section", "paragraph", "other"})
 DOCUMENT_LOCATOR_PROVENANCE = "agent_supplied_not_independently_authenticated"
 MAX_JSON_NESTING = 100
 
@@ -138,7 +135,9 @@ def _input_fail(path: str, message: str) -> None:
     raise EvidenceRowInputError(f"{path}: {message}")
 
 
-def _closed(value: Any, path: str, required: set[str], allowed: set[str] | None = None) -> dict[str, Any]:
+def _closed(
+    value: Any, path: str, required: set[str], allowed: set[str] | None = None
+) -> dict[str, Any]:
     if not isinstance(value, dict):
         _fail(path, "must be an object")
     allowed = required if allowed is None else allowed
@@ -162,7 +161,9 @@ def _string(value: Any, path: str, *, minimum: int = 0, maximum: int | None = No
     return value
 
 
-def _nullable_string(value: Any, path: str, *, minimum: int = 0, maximum: int | None = None) -> str | None:
+def _nullable_string(
+    value: Any, path: str, *, minimum: int = 0, maximum: int | None = None
+) -> str | None:
     if value is None:
         return None
     return _string(value, path, minimum=minimum, maximum=maximum)
@@ -258,7 +259,11 @@ def strict_percent_decode(value: str) -> str:
     index = 0
     while index < len(value):
         if value[index] == "%":
-            if index + 2 >= len(value) or value[index + 1] not in _HEX or value[index + 2] not in _HEX:
+            if (
+                index + 2 >= len(value)
+                or value[index + 1] not in _HEX
+                or value[index + 2] not in _HEX
+            ):
                 _fail("value", f"malformed percent escape at character {index}")
             index += 3
         else:
@@ -281,7 +286,9 @@ def _bounded_external_text(value: str, path: str) -> str:
 
 def _canonical_json(value: Mapping[str, Any]) -> str:
     try:
-        return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False)
+        return json.dumps(
+            value, ensure_ascii=False, sort_keys=True, separators=(",", ":"), allow_nan=False
+        )
     except (TypeError, ValueError, UnicodeError) as exc:
         _fail("row", f"cannot be canonically serialized: {exc}")
 
@@ -320,7 +327,9 @@ def _cache_key(
 
 
 def _timestamp_now() -> str:
-    return dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return (
+        dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    )
 
 
 def _timestamp(value: Any, path: str) -> str:
@@ -367,9 +376,7 @@ def _text_excerpt(
         "excerpt_sha256": _hash_text(text, "excerpt.text"),
         "source_span_utf8": _span(source, text),
         "captured_at": (
-            _timestamp_now()
-            if captured_at is None
-            else _timestamp(captured_at, "captured_at")
+            _timestamp_now() if captured_at is None else _timestamp(captured_at, "captured_at")
         ),
     }
 
@@ -393,7 +400,9 @@ def _template(row: Mapping[str, Any]) -> dict[str, Any]:
     normalized_claim = {
         "claim_id": _string(claim["claim_id"], "claim.claim_id", minimum=1, maximum=200),
         "text": _string(claim["text"], "claim.text", minimum=1, maximum=2000),
-        "paper_locator": _string(claim["paper_locator"], "claim.paper_locator", minimum=1, maximum=500),
+        "paper_locator": _string(
+            claim["paper_locator"], "claim.paper_locator", minimum=1, maximum=500
+        ),
         "selection_tier": _enum(claim["selection_tier"], "claim.selection_tier", SELECTION_TIERS),
     }
 
@@ -412,8 +421,12 @@ def _template(row: Mapping[str, Any]) -> dict[str, Any]:
     ref_slug = _nullable_string(source["ref_slug"], "source.ref_slug", minimum=1, maximum=300)
     if ref_slug is not None and _REF_SLUG_RE.fullmatch(ref_slug) is None:
         _fail("source.ref_slug", "does not match the citation slug grammar")
-    display_label = _nullable_string(source["display_label"], "source.display_label", minimum=1, maximum=500)
-    artifact_sha = _sha(source.get("source_artifact_sha256"), "source.source_artifact_sha256", nullable=True)
+    display_label = _nullable_string(
+        source["display_label"], "source.display_label", minimum=1, maximum=500
+    )
+    artifact_sha = _sha(
+        source.get("source_artifact_sha256"), "source.source_artifact_sha256", nullable=True
+    )
 
     anchor = _closed(
         raw["anchor"],
@@ -425,7 +438,9 @@ def _template(row: Mapping[str, Any]) -> dict[str, Any]:
     encoded = _string(anchor["value_encoded"], "anchor.value_encoded", maximum=12000)
     decoded = strict_percent_decode(encoded)
     if "value_decoded" in anchor and anchor["value_decoded"] != decoded:
-        _fail("anchor.value_decoded", "must equal one strict percent decode of anchor.value_encoded")
+        _fail(
+            "anchor.value_decoded", "must equal one strict percent decode of anchor.value_encoded"
+        )
     if kind == "none":
         if encoded or decoded:
             _fail("anchor", "kind=none requires empty encoded and decoded values")
@@ -441,10 +456,21 @@ def _template(row: Mapping[str, Any]) -> dict[str, Any]:
     extra_handling = sorted(set(handling) - allowed_handling)
     if extra_handling:
         _fail("content_handling", f"unexpected key(s): {', '.join(extra_handling)}")
-    sharing_scope = _enum(handling.get("sharing_scope", "session_only"), "content_handling.sharing_scope", SHARING_SCOPES)
-    rights_basis = _enum(handling.get("rights_basis", "not_assessed"), "content_handling.rights_basis", RIGHTS_BASES)
-    if (sharing_scope == "user_confirmed_shareable") != (rights_basis == "user_declared_authorized"):
-        _fail("content_handling", "user_confirmed_shareable and user_declared_authorized must appear together")
+    sharing_scope = _enum(
+        handling.get("sharing_scope", "session_only"),
+        "content_handling.sharing_scope",
+        SHARING_SCOPES,
+    )
+    rights_basis = _enum(
+        handling.get("rights_basis", "not_assessed"), "content_handling.rights_basis", RIGHTS_BASES
+    )
+    if (sharing_scope == "user_confirmed_shareable") != (
+        rights_basis == "user_declared_authorized"
+    ):
+        _fail(
+            "content_handling",
+            "user_confirmed_shareable and user_declared_authorized must appear together",
+        )
 
     return {
         "schema_version": SCHEMA_VERSION,
@@ -522,10 +548,13 @@ def _advisory_template(row: Mapping[str, Any]) -> dict[str, Any]:
     expectation_pointer = _json_pointer(
         subject["expectation_pointer"], "coverage_subject.expectation_pointer"
     )
-    if re.fullmatch(
-        re.escape(requirement_pointer) + r"/structured_expectations/[0-9]+",
-        expectation_pointer,
-    ) is None:
+    if (
+        re.fullmatch(
+            re.escape(requirement_pointer) + r"/structured_expectations/[0-9]+",
+            expectation_pointer,
+        )
+        is None
+    ):
         _fail(
             "coverage_subject.expectation_pointer",
             "must point to one structured expectation under the requirement",
@@ -738,9 +767,7 @@ def build_advisory(
         excerpt["text"] is not None or (kind == "quote" and decoded)
     )
     output["row_sha256"] = _row_sha256(output)
-    replay_source = (
-        session_source_or_none if state in ADVISORY_SOURCE_BOUND_STATES else None
-    )
+    replay_source = session_source_or_none if state in ADVISORY_SOURCE_BOUND_STATES else None
     return _validate_v1_1(output, replay_source)
 
 
@@ -782,7 +809,10 @@ def build(
             _fail("failure_state", "anchorless requires anchor.kind=none")
         if failure_state != "anchorless" and kind == "none":
             _fail("failure_state", "anchor.kind=none can only produce anchorless")
-        if failure_state in {"source_missing", "access_failed", "retrieval_failed"} and session_source_or_none is not None:
+        if (
+            failure_state in {"source_missing", "access_failed", "retrieval_failed"}
+            and session_source_or_none is not None
+        ):
             _fail("session_source_or_none", f"must be null for {failure_state}")
         state = failure_state
         excerpt = _empty_excerpt(state)
@@ -793,7 +823,9 @@ def build(
         excerpt = _empty_excerpt(state)
     elif kind == "paragraph":
         if extracted_text is not None:
-            _fail("extracted_text", "paragraph anchors are an explicit not_checked empty state in V1")
+            _fail(
+                "extracted_text", "paragraph anchors are an explicit not_checked empty state in V1"
+            )
         state = "not_checked"
         excerpt = _empty_excerpt(state)
     elif session_source_or_none is None:
@@ -803,7 +835,10 @@ def build(
         excerpt = _empty_excerpt(state)
     else:
         if output["source"]["ref_slug"] is None:
-            _fail("source.ref_slug", "source-bound quote/page/section processing requires a citation slug")
+            _fail(
+                "source.ref_slug",
+                "source-bound quote/page/section processing requires a citation slug",
+            )
         output["source"]["source_content_sha256"] = source_sha
         output["source"]["source_content_utf8_bytes"] = len(source_bytes)
 
@@ -811,7 +846,11 @@ def build(
         if kind == "quote":
             if extracted_text is not None:
                 _fail("extracted_text", "quote evidence is fixed by the decoded writer anchor")
-            prospective_state = "verified_exact_match" if decoded in session_source_or_none else "unconfirmed_anchor"
+            prospective_state = (
+                "verified_exact_match"
+                if decoded in session_source_or_none
+                else "unconfirmed_anchor"
+            )
         elif kind in {"page", "section"}:
             if extracted_text is not None:
                 candidate_text = _bounded_external_text(extracted_text, "extracted_text")
@@ -914,15 +953,27 @@ def build(
     return validate(output, session_source_or_none if state in SOURCE_BOUND_STATES else None)
 
 
-def _validate_v1_0(row: Mapping[str, Any], session_source_or_none: str | None = None) -> dict[str, Any]:
+def _validate_v1_0(
+    row: Mapping[str, Any], session_source_or_none: str | None = None
+) -> dict[str, Any]:
     """Return a deep-copied validated row; optionally replay source binding."""
 
     if not isinstance(row, Mapping):
         _fail("row", "must be a mapping")
     value = copy.deepcopy(dict(row))
     root_keys = {
-        "schema_version", "surface", "row_id", "claim", "source", "anchor",
-        "verdict", "detail", "excerpt", "cache", "content_handling", "row_sha256",
+        "schema_version",
+        "surface",
+        "row_id",
+        "claim",
+        "source",
+        "anchor",
+        "verdict",
+        "detail",
+        "excerpt",
+        "cache",
+        "content_handling",
+        "row_sha256",
     }
     _closed(value, "row", root_keys)
     if value["schema_version"] != SCHEMA_VERSION:
@@ -933,21 +984,32 @@ def _validate_v1_0(row: Mapping[str, Any], session_source_or_none: str | None = 
     if _ROW_ID_RE.fullmatch(row_id) is None:
         _fail("row_id", "does not match the EVR identifier grammar")
 
-    claim = _closed(value["claim"], "claim", {"claim_id", "text", "paper_locator", "selection_tier"})
+    claim = _closed(
+        value["claim"], "claim", {"claim_id", "text", "paper_locator", "selection_tier"}
+    )
     _string(claim["claim_id"], "claim.claim_id", minimum=1, maximum=200)
     _string(claim["text"], "claim.text", minimum=1, maximum=2000)
     _string(claim["paper_locator"], "claim.paper_locator", minimum=1, maximum=500)
     _enum(claim["selection_tier"], "claim.selection_tier", SELECTION_TIERS)
 
     source = _closed(
-        value["source"], "source",
-        {"ref_slug", "display_label", "source_content_sha256", "source_content_utf8_bytes", "source_artifact_sha256"},
+        value["source"],
+        "source",
+        {
+            "ref_slug",
+            "display_label",
+            "source_content_sha256",
+            "source_content_utf8_bytes",
+            "source_artifact_sha256",
+        },
     )
     ref_slug = _nullable_string(source["ref_slug"], "source.ref_slug", minimum=1, maximum=300)
     if ref_slug is not None and _REF_SLUG_RE.fullmatch(ref_slug) is None:
         _fail("source.ref_slug", "does not match the citation slug grammar")
     _nullable_string(source["display_label"], "source.display_label", minimum=1, maximum=500)
-    content_sha = _sha(source["source_content_sha256"], "source.source_content_sha256", nullable=True)
+    content_sha = _sha(
+        source["source_content_sha256"], "source.source_content_sha256", nullable=True
+    )
     content_length = source["source_content_utf8_bytes"]
     if content_length is not None:
         content_length = _integer(content_length, "source.source_content_utf8_bytes")
@@ -958,7 +1020,9 @@ def _validate_v1_0(row: Mapping[str, Any], session_source_or_none: str | None = 
     encoded = _string(anchor["value_encoded"], "anchor.value_encoded", maximum=12000)
     decoded = _string(anchor["value_decoded"], "anchor.value_decoded", maximum=TEXT_CHAR_CAP)
     if strict_percent_decode(encoded) != decoded:
-        _fail("anchor.value_decoded", "must equal one strict percent decode of anchor.value_encoded")
+        _fail(
+            "anchor.value_decoded", "must equal one strict percent decode of anchor.value_encoded"
+        )
     if kind == "none":
         if encoded or decoded:
             _fail("anchor", "kind=none requires empty encoded and decoded values")
@@ -970,7 +1034,11 @@ def _validate_v1_0(row: Mapping[str, Any], session_source_or_none: str | None = 
     _enum(value["verdict"], "verdict", VERDICTS)
     _string(value["detail"], "detail", maximum=2000)
 
-    excerpt = _closed(value["excerpt"], "excerpt", {"state", "text", "excerpt_sha256", "source_span_utf8", "captured_at"})
+    excerpt = _closed(
+        value["excerpt"],
+        "excerpt",
+        {"state", "text", "excerpt_sha256", "source_span_utf8", "captured_at"},
+    )
     state = _enum(excerpt["state"], "excerpt.state", EXCERPT_STATES)
     text_value = excerpt["text"]
     if text_value is not None:
@@ -993,16 +1061,26 @@ def _validate_v1_0(row: Mapping[str, Any], session_source_or_none: str | None = 
     cache_status = _enum(cache["status"], "cache.status", CACHE_STATUSES)
     cache_key = _sha(cache["key_sha256"], "cache.key_sha256", nullable=True)
 
-    handling = _closed(value["content_handling"], "content_handling", {"contains_external_text", "sharing_scope", "rights_basis"})
+    handling = _closed(
+        value["content_handling"],
+        "content_handling",
+        {"contains_external_text", "sharing_scope", "rights_basis"},
+    )
     if not isinstance(handling["contains_external_text"], bool):
         _fail("content_handling.contains_external_text", "must be a boolean")
     sharing = _enum(handling["sharing_scope"], "content_handling.sharing_scope", SHARING_SCOPES)
     rights = _enum(handling["rights_basis"], "content_handling.rights_basis", RIGHTS_BASES)
     if (sharing == "user_confirmed_shareable") != (rights == "user_declared_authorized"):
-        _fail("content_handling", "user-confirmed sharing and user-declared authorization must appear together")
+        _fail(
+            "content_handling",
+            "user-confirmed sharing and user-declared authorization must appear together",
+        )
     expected_external = bool(text_value is not None or (kind == "quote" and decoded))
     if handling["contains_external_text"] != expected_external:
-        _fail("content_handling.contains_external_text", f"must equal derived value {expected_external}")
+        _fail(
+            "content_handling.contains_external_text",
+            f"must equal derived value {expected_external}",
+        )
 
     if state == "verified_exact_match" and kind != "quote":
         _fail("excerpt.state", "verified_exact_match requires anchor.kind=quote")
@@ -1016,7 +1094,13 @@ def _validate_v1_0(row: Mapping[str, Any], session_source_or_none: str | None = 
         _fail("excerpt.state", "anchor.kind=none requires anchorless")
     if state == "anchorless" and kind != "none":
         _fail("excerpt.state", "anchorless requires anchor.kind=none")
-    if kind in {"page", "section"} and state not in {"agent_extracted", "not_checked", "source_missing", "access_failed", "retrieval_failed"}:
+    if kind in {"page", "section"} and state not in {
+        "agent_extracted",
+        "not_checked",
+        "source_missing",
+        "access_failed",
+        "retrieval_failed",
+    }:
         _fail("excerpt.state", f"is not permitted with anchor.kind={kind}")
 
     if state in EXCERPT_TEXT_STATES:
@@ -1033,7 +1117,10 @@ def _validate_v1_0(row: Mapping[str, Any], session_source_or_none: str | None = 
             _fail("excerpt", f"state={state} requires explicit null text/hash/span/captured_at")
 
     if state == "verified_exact_match" and text_value != decoded:
-        _fail("excerpt.text", "verified_exact_match must equal the once-decoded quote anchor byte-for-byte")
+        _fail(
+            "excerpt.text",
+            "verified_exact_match must equal the once-decoded quote anchor byte-for-byte",
+        )
     if state == "unconfirmed_anchor":
         if ref_slug is None or content_sha is None or content_length is None:
             _fail("source", "unconfirmed_anchor requires ref_slug and source content binding")
@@ -1069,9 +1156,15 @@ def _validate_v1_0(row: Mapping[str, Any], session_source_or_none: str | None = 
                 assert isinstance(span, dict) and isinstance(text_value, str)
                 text_bytes = _utf8(text_value, "excerpt.text")
                 if source_bytes[span["start"] : span["end"]] != text_bytes:
-                    _fail("excerpt.source_span_utf8", "does not select excerpt.text from the supplied source")
+                    _fail(
+                        "excerpt.source_span_utf8",
+                        "does not select excerpt.text from the supplied source",
+                    )
             elif decoded in session_source_or_none:
-                _fail("excerpt.state", "unconfirmed_anchor is invalid because the decoded quote exactly matches the supplied source")
+                _fail(
+                    "excerpt.state",
+                    "unconfirmed_anchor is invalid because the decoded quote exactly matches the supplied source",
+                )
 
     digest = _sha(value["row_sha256"], "row_sha256")
     if digest != _row_sha256(value):
@@ -1125,23 +1218,27 @@ def _validate_v1_1(
     requirement_pointer = _json_pointer(
         subject["requirement_pointer"], "coverage_subject.requirement_pointer"
     )
-    if re.fullmatch(r"/(?:profiles|overlays)/[0-9]+/requirements/[0-9]+", requirement_pointer) is None:
+    if (
+        re.fullmatch(r"/(?:profiles|overlays)/[0-9]+/requirements/[0-9]+", requirement_pointer)
+        is None
+    ):
         _fail("coverage_subject.requirement_pointer", "must point to one exact requirement")
     authority_pointer = _json_pointer(
         subject["authority_anchor_pointer"], "coverage_subject.authority_anchor_pointer"
     )
     if authority_pointer != requirement_pointer + "/authority_anchor":
         _fail("coverage_subject.authority_anchor_pointer", "does not match requirement_pointer")
-    _authority_identifier(
-        subject["expectation_field_id"], "coverage_subject.expectation_field_id"
-    )
+    _authority_identifier(subject["expectation_field_id"], "coverage_subject.expectation_field_id")
     expectation_pointer = _json_pointer(
         subject["expectation_pointer"], "coverage_subject.expectation_pointer"
     )
-    if re.fullmatch(
-        re.escape(requirement_pointer) + r"/structured_expectations/[0-9]+",
-        expectation_pointer,
-    ) is None:
+    if (
+        re.fullmatch(
+            re.escape(requirement_pointer) + r"/structured_expectations/[0-9]+",
+            expectation_pointer,
+        )
+        is None
+    ):
         _fail("coverage_subject.expectation_pointer", "does not belong to requirement_pointer")
     _sha(subject["expectation_digest"], "coverage_subject.expectation_digest")
     locator = _closed(
@@ -1149,9 +1246,7 @@ def _validate_v1_1(
         "coverage_subject.document_locator",
         {"kind", "value", "provenance"},
     )
-    _enum(
-        locator["kind"], "coverage_subject.document_locator.kind", DOCUMENT_LOCATOR_KINDS
-    )
+    _enum(locator["kind"], "coverage_subject.document_locator.kind", DOCUMENT_LOCATOR_KINDS)
     _single_line(locator["value"], "coverage_subject.document_locator.value", maximum=500)
     if locator["provenance"] != DOCUMENT_LOCATOR_PROVENANCE:
         _fail(
@@ -1193,7 +1288,9 @@ def _validate_v1_1(
     encoded = _string(anchor["value_encoded"], "anchor.value_encoded", maximum=12000)
     decoded = _string(anchor["value_decoded"], "anchor.value_decoded", maximum=TEXT_CHAR_CAP)
     if strict_percent_decode(encoded) != decoded:
-        _fail("anchor.value_decoded", "must equal one strict percent decode of anchor.value_encoded")
+        _fail(
+            "anchor.value_decoded", "must equal one strict percent decode of anchor.value_encoded"
+        )
     if kind == "none":
         if encoded or decoded:
             _fail("anchor", "kind=none requires empty encoded and decoded values")
@@ -1233,13 +1330,9 @@ def _validate_v1_1(
     )
     if not isinstance(handling["contains_external_text"], bool):
         _fail("content_handling.contains_external_text", "must be a boolean")
-    sharing = _enum(
-        handling["sharing_scope"], "content_handling.sharing_scope", SHARING_SCOPES
-    )
+    sharing = _enum(handling["sharing_scope"], "content_handling.sharing_scope", SHARING_SCOPES)
     rights = _enum(handling["rights_basis"], "content_handling.rights_basis", RIGHTS_BASES)
-    if (sharing == "user_confirmed_shareable") != (
-        rights == "user_declared_authorized"
-    ):
+    if (sharing == "user_confirmed_shareable") != (rights == "user_declared_authorized"):
         _fail(
             "content_handling",
             "user-confirmed sharing and user-declared authorization must appear together",
@@ -1288,9 +1381,7 @@ def _validate_v1_1(
                 _fail("source", "content digest/length does not match the supplied session source")
             if state == "agent_extracted":
                 assert isinstance(span, dict) and isinstance(text_value, str)
-                if source_bytes[span["start"] : span["end"]] != _utf8(
-                    text_value, "excerpt.text"
-                ):
+                if source_bytes[span["start"] : span["end"]] != _utf8(text_value, "excerpt.text"):
                     _fail(
                         "excerpt.source_span_utf8",
                         "does not select excerpt.text from the supplied source",
@@ -1303,9 +1394,7 @@ def _validate_v1_1(
     return value
 
 
-def validate(
-    row: Mapping[str, Any], session_source_or_none: str | None = None
-) -> dict[str, Any]:
+def validate(row: Mapping[str, Any], session_source_or_none: str | None = None) -> dict[str, Any]:
     """Validate evidence-row/1.0 or evidence-row/1.1 without version coercion."""
 
     if not isinstance(row, Mapping):
@@ -1535,9 +1624,7 @@ def _rows_replayed_for_render(
         )
         if source_bound:
             source_key = (
-                current["source"]["artifact_id"]
-                if advisory
-                else current["source"]["ref_slug"]
+                current["source"]["artifact_id"] if advisory else current["source"]["ref_slug"]
             )
             if session_sources is None or source_key not in session_sources:
                 _fail(
@@ -1807,10 +1894,7 @@ def _reject_excessive_json_nesting(text: str, path: Path) -> None:
             if depth > MAX_JSON_NESTING:
                 _input_fail(
                     str(path),
-                    (
-                        "cannot read strict JSON: nesting depth exceeds "
-                        f"{MAX_JSON_NESTING}"
-                    ),
+                    ("cannot read strict JSON: nesting depth exceeds " f"{MAX_JSON_NESTING}"),
                 )
         elif character in "]}" and depth:
             depth -= 1
@@ -1823,7 +1907,9 @@ def _load_json(path: Path) -> Any:
         return json.loads(
             text,
             object_pairs_hook=_no_duplicate_object,
-            parse_constant=lambda token: _input_fail("JSON", f"non-finite number {token!r} is forbidden"),
+            parse_constant=lambda token: _input_fail(
+                "JSON", f"non-finite number {token!r} is forbidden"
+            ),
         )
     except EvidenceRowError:
         raise
@@ -1878,7 +1964,10 @@ def _rows_from_document(
         try:
             e_claims = document["phases"]["E_claims"]
         except (KeyError, TypeError):
-            _fail("input", "must be an evidence-row object, row array, or Integrity Report with phases.E_claims.evidence_rows")
+            _fail(
+                "input",
+                "must be an evidence-row object, row array, or Integrity Report with phases.E_claims.evidence_rows",
+            )
         if not isinstance(e_claims, dict):
             _fail("phases.E_claims", "must be an object")
         if "evidence_rows" not in e_claims:
@@ -1953,8 +2042,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         rows = _rows_from_document(
             _load_json(args.rows),
             allow_legacy_absence=(
-                args.command == "render"
-                and bool(getattr(args, "allow_legacy_absence", False))
+                args.command == "render" and bool(getattr(args, "allow_legacy_absence", False))
             ),
         )
         if rows is None:
@@ -1973,8 +2061,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             for index, row in enumerate(rows):
                 if not isinstance(row, Mapping):
                     _fail(f"rows[{index}]", "must be an object")
-                slug = row.get("source", {}).get("ref_slug") if isinstance(row.get("source"), dict) else None
-                state = row.get("excerpt", {}).get("state") if isinstance(row.get("excerpt"), dict) else None
+                slug = (
+                    row.get("source", {}).get("ref_slug")
+                    if isinstance(row.get("source"), dict)
+                    else None
+                )
+                state = (
+                    row.get("excerpt", {}).get("state")
+                    if isinstance(row.get("excerpt"), dict)
+                    else None
+                )
                 if state in SOURCE_BOUND_STATES and slug not in sources:
                     _fail(
                         f"rows[{index}].source.ref_slug",

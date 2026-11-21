@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "render_harness_retirement_issue.py"
 MANIFEST_PATH = REPO_ROOT / "scripts" / "ars_phase_scope_manifest.json"
@@ -33,9 +32,7 @@ def test_current_manifest_renders_complete_bucket_a_inventory(manifest: dict) ->
     assert "`academic-paper-reviewer` (×6):" in body
     assert "`timeline_extraction_agent`" in body
 
-    bucket_a_names = {
-        name for name, row in manifest["agents"].items() if row["bucket"] == "A"
-    }
+    bucket_a_names = {name for name, row in manifest["agents"].items() if row["bucket"] == "A"}
     assert len(bucket_a_names) == 23
     for name in bucket_a_names:
         assert body.count(f"`{name}`") == 1

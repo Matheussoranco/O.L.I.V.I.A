@@ -159,12 +159,7 @@ def test_l1_passes_when_reference_doc_exists(fixture_repo: Path) -> None:
 
 
 def test_l1_fails_when_reference_doc_missing(fixture_repo: Path) -> None:
-    (
-        fixture_repo
-        / "academic-pipeline"
-        / "references"
-        / "literature_corpus_consumers.md"
-    ).unlink()
+    (fixture_repo / "academic-pipeline" / "references" / "literature_corpus_consumers.md").unlink()
     result = run_lint(fixture_repo)
     assert result.returncode != 0
     assert "L1" in result.stdout or "L1" in result.stderr
@@ -176,12 +171,7 @@ def test_l2_passes_with_both_consumer_blocks_stub_marked(fixture_repo: Path) -> 
 
 
 def test_l2_fails_when_stub_marker_missing(fixture_repo: Path) -> None:
-    ref = (
-        fixture_repo
-        / "academic-pipeline"
-        / "references"
-        / "literature_corpus_consumers.md"
-    )
+    ref = fixture_repo / "academic-pipeline" / "references" / "literature_corpus_consumers.md"
     text = ref.read_text().replace("<!-- LINT_STUB: skip_cross_check -->", "")
     ref.write_text(text)
     result = run_lint(fixture_repo)
@@ -289,9 +279,7 @@ def test_l7_passes_with_all_nine_line_markers(fixture_repo: Path) -> None:
 
 def test_l7_fails_when_skipped_marker_missing(fixture_repo: Path) -> None:
     agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
-    text = agent.read_text().replace(
-        "Skipped (criteria cannot be applied):", "Removed:"
-    )
+    text = agent.read_text().replace("Skipped (criteria cannot be applied):", "Removed:")
     agent.write_text(text)
     result = run_lint(fixture_repo)
     assert result.returncode != 0
@@ -309,12 +297,8 @@ def test_l7_fails_when_citation_keys_marker_missing(fixture_repo: Path) -> None:
     text = agent.read_text()
     # Drop both citation_keys variants from inside the fenced template.
     # Keep the trailing truncation-rule prose mention.
-    new_text = text.replace(
-        "    citation_keys:\n      - chen2024ai\n", "", 1
-    )
-    new_text = new_text.replace(
-        "    citation_keys:\n      - foo2023bar\n", "", 1
-    )
+    new_text = text.replace("    citation_keys:\n      - chen2024ai\n", "", 1)
+    new_text = new_text.replace("    citation_keys:\n      - foo2023bar\n", "", 1)
     new_text = new_text.replace(
         "    citation_keys with reasons:\n      - baz2024: missing required tags\n",
         "",
@@ -358,9 +342,7 @@ def test_l7_fails_when_zero_hit_anchor_missing(fixture_repo: Path) -> None:
     """
     agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
     text = agent.read_text()
-    new_text = text.replace(
-        "- Zero-hit note (emit per F3 only when Included: 0):", "- Removed:"
-    )
+    new_text = text.replace("- Zero-hit note (emit per F3 only when Included: 0):", "- Removed:")
     assert new_text != text
     agent.write_text(new_text)
     result = run_lint(fixture_repo)
@@ -385,12 +367,8 @@ def test_l7_marker_check_is_scoped_to_fenced_template(fixture_repo: Path) -> Non
     agent = fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
     text = agent.read_text()
     # Drop citation_keys lines from inside the fenced template.
-    new_text = text.replace(
-        "    citation_keys:\n      - chen2024ai\n", "", 1
-    )
-    new_text = new_text.replace(
-        "    citation_keys:\n      - foo2023bar\n", "", 1
-    )
+    new_text = text.replace("    citation_keys:\n      - chen2024ai\n", "", 1)
+    new_text = new_text.replace("    citation_keys:\n      - foo2023bar\n", "", 1)
     new_text = new_text.replace(
         "    citation_keys with reasons:\n      - baz2024: missing required tags\n",
         "",
@@ -442,9 +420,7 @@ def test_l8_fails_pr_a_when_caveat_retired_prematurely(fixture_repo: Path) -> No
 def test_l8_passes_pr_b_with_caveat_retired_and_backpointer(fixture_repo: Path) -> None:
     """PR-B state: manifest = both consumers, caveat retired, backpointer present."""
     # Promote manifest to PR-B
-    manifest = json.loads(
-        (fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text()
-    )
+    manifest = json.loads((fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text())
     manifest["supported_consumers"].append(
         {
             "agent_path": "academic-paper/agents/literature_strategist_agent.md",
@@ -471,13 +447,9 @@ def test_l8_passes_pr_b_with_caveat_retired_and_backpointer(fixture_repo: Path) 
     # Create the second consumer agent file by cloning bibliography_agent.md content
     strat_dir = fixture_repo / "academic-paper" / "agents"
     strat_dir.mkdir(parents=True)
-    biblio_text = (
-        fixture_repo / "deep-research" / "agents" / "bibliography_agent.md"
-    ).read_text()
+    biblio_text = (fixture_repo / "deep-research" / "agents" / "bibliography_agent.md").read_text()
     (strat_dir / "literature_strategist_agent.md").write_text(
-        biblio_text.replace(
-            "name: bibliography_agent", "name: literature_strategist_agent"
-        )
+        biblio_text.replace("name: bibliography_agent", "name: literature_strategist_agent")
     )
 
     # Retire the caveat in handoff_schemas + add backpointer
@@ -523,9 +495,7 @@ def test_l8_fails_duplicate_basename_with_different_path(fixture_repo: Path) -> 
     Regression: insert a duplicate basename with a different path and assert
     L8 fails with a duplicate-basename message.
     """
-    manifest = json.loads(
-        (fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text()
-    )
+    manifest = json.loads((fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text())
     manifest["supported_consumers"].append(
         {
             "agent_path": "fake/agents/shadow_bibliography_agent.md",
@@ -577,9 +547,7 @@ def test_l8_fails_when_path_diverges_from_canonical(fixture_repo: Path) -> None:
 
 def test_l8_fails_invalid_third_state_extra_unknown(fixture_repo: Path) -> None:
     """Manifest with an unknown extra consumer must fail L8."""
-    manifest = json.loads(
-        (fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text()
-    )
+    manifest = json.loads((fixture_repo / "scripts" / "corpus_consumer_manifest.json").read_text())
     manifest["supported_consumers"].append(
         {
             "agent_path": "fake/agents/citation_compliance_agent.md",

@@ -7,10 +7,8 @@ import sys
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator
-
 import score_review_criteria_constructive_value as scorer
-
+from jsonschema import Draft202012Validator
 
 REPO = Path(__file__).resolve().parents[1]
 SCHEMA = (
@@ -235,9 +233,20 @@ def test_score_reports_separate_metrics_and_no_composite() -> None:
 @pytest.mark.parametrize(
     ("mutation", "match"),
     [
-        (lambda value: value["items"][0]["arms"][1]["target_context"].update({"resolved_digest": SHA_A}), "sealed item context"),
-        (lambda value: value["items"][0]["arms"][1]["budget"].update({"output_token_cap": 1999}), "frozen subject budget"),
-        (lambda value: value["items"][0]["arms"][1].update({"mechanism": "pre_684"}), "criteria_binding_v1"),
+        (
+            lambda value: value["items"][0]["arms"][1]["target_context"].update(
+                {"resolved_digest": SHA_A}
+            ),
+            "sealed item context",
+        ),
+        (
+            lambda value: value["items"][0]["arms"][1]["budget"].update({"output_token_cap": 1999}),
+            "frozen subject budget",
+        ),
+        (
+            lambda value: value["items"][0]["arms"][1].update({"mechanism": "pre_684"}),
+            "criteria_binding_v1",
+        ),
         (lambda value: value["items"][0]["arms"][0]["replicates"].pop(), "at least 2"),
         (lambda value: value["experts"].pop(), "at least 2"),
     ],
@@ -302,24 +311,32 @@ def test_cli_is_deterministic_and_writes_explicit_output(tmp_path: Path) -> None
         check=True,
     )
     assert output.read_bytes() == first
-    assert json.loads(first)["source_sha256"] == scorer.hashlib.sha256(source.read_bytes()).hexdigest()
+    assert (
+        json.loads(first)["source_sha256"] == scorer.hashlib.sha256(source.read_bytes()).hexdigest()
+    )
 
 
 def test_duplicate_json_key_and_symlink_are_rejected(tmp_path: Path) -> None:
     duplicate = tmp_path / "duplicate.json"
     duplicate.write_text('{"schema_version":"a","schema_version":"b"}')
-    assert subprocess.run(
-        [sys.executable, str(SCRIPT), "--adjudication", str(duplicate)],
-        capture_output=True,
-    ).returncode == 2
+    assert (
+        subprocess.run(
+            [sys.executable, str(SCRIPT), "--adjudication", str(duplicate)],
+            capture_output=True,
+        ).returncode
+        == 2
+    )
     source = tmp_path / "record.json"
     source.write_bytes(_raw(_record()))
     link = tmp_path / "link.json"
     link.symlink_to(source)
-    assert subprocess.run(
-        [sys.executable, str(SCRIPT), "--adjudication", str(link)],
-        capture_output=True,
-    ).returncode == 2
+    assert (
+        subprocess.run(
+            [sys.executable, str(SCRIPT), "--adjudication", str(link)],
+            capture_output=True,
+        ).returncode
+        == 2
+    )
 
 
 def test_parent_symlink_and_unbounded_id_are_rejected(tmp_path: Path) -> None:
@@ -329,10 +346,13 @@ def test_parent_symlink_and_unbounded_id_are_rejected(tmp_path: Path) -> None:
     source.write_bytes(_raw(_record()))
     linked_parent = tmp_path / "linked"
     linked_parent.symlink_to(real_parent, target_is_directory=True)
-    assert subprocess.run(
-        [sys.executable, str(SCRIPT), "--adjudication", str(linked_parent / "record.json")],
-        capture_output=True,
-    ).returncode == 2
+    assert (
+        subprocess.run(
+            [sys.executable, str(SCRIPT), "--adjudication", str(linked_parent / "record.json")],
+            capture_output=True,
+        ).returncode
+        == 2
+    )
 
     invalid = _record()
     invalid["items"][0]["item_id"] = "x" * 129

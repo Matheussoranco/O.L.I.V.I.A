@@ -32,12 +32,14 @@ EXIT_SYNTHESIS = 1
 EXIT_CONTRACT = 2
 EXIT_REVIEWER = 3
 
-ACTION_ENUM = frozenset({
-    "editorial_decision=accept",
-    "editorial_decision=minor_revision",
-    "editorial_decision=major_revision",
-    "editorial_decision=reject",
-})
+ACTION_ENUM = frozenset(
+    {
+        "editorial_decision=accept",
+        "editorial_decision=minor_revision",
+        "editorial_decision=major_revision",
+        "editorial_decision=reject",
+    }
+)
 SCORE_ORDER = {"pass": 0, "warn": 1, "block": 2}
 ROLE_SETS = check_sprint_contract.ROLE_SETS
 
@@ -91,12 +93,8 @@ class Synthesis:
 
 # --- Markdown helpers shared with check_phase_conformance.py -------------------
 
-_FENCE_OPEN_RE = re.compile(
-    r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<info>[^\n]*)$"
-)
-_FENCE_CLOSE_RE = re.compile(
-    r"^ {0,3}(?P<fence>`{3,}|~{3,})[ \t]*$"
-)
+_FENCE_OPEN_RE = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})(?P<info>[^\n]*)$")
+_FENCE_CLOSE_RE = re.compile(r"^ {0,3}(?P<fence>`{3,}|~{3,})[ \t]*$")
 _COMMONMARK_LINE_END_RE = re.compile(r"\r\n?|\n")
 _H2_RE = re.compile(r"^## (.+?)\s*$")
 _H3_RE = re.compile(r"^### (.+?)\s*$")
@@ -108,9 +106,7 @@ _BLOCK_CLASS_RE = re.compile(r"^block_class: (?P<value>fatal|repairable)\s*$")
 _TRIGGER_RE = re.compile(r'^trigger: "(?P<value>[^"\n]+)"\s*$')
 _ABSTAIN_RE = re.compile(r"^abstain_reason: (?P<value>\S.*)\s*$")
 _DECISION_RE = re.compile(r"^(?P<action>editorial_decision=[a-z_]+)\s*$")
-_RETIRED_DECISION_RE = re.compile(
-    r"^\s*editorial_decision=\S+\s*$", re.IGNORECASE
-)
+_RETIRED_DECISION_RE = re.compile(r"^\s*editorial_decision=\S+\s*$", re.IGNORECASE)
 _DA_SEVERITY_DECL_RE = re.compile(
     r"\*\*Severity(?:\*\*)?\s*:",
     re.IGNORECASE,
@@ -120,25 +116,31 @@ _DA_TYPED_ANCHOR_RE = re.compile(
     r"^(?:text|table|figure|equation|dataset|absence)\s*:",
     re.IGNORECASE,
 )
-_RAW_HTML_TABLE_RE = re.compile(
-    r"<\s*/?\s*(?:table|thead|tbody|tr|th|td)\b", re.IGNORECASE
-)
+_RAW_HTML_TABLE_RE = re.compile(r"<\s*/?\s*(?:table|thead|tbody|tr|th|td)\b", re.IGNORECASE)
 _HTML_COMMENT_RE = re.compile(r"<!--")
 _DA_FENCED_BLOCK_SENTINEL = "\0DA_FENCED_BLOCK\0"
 _DEFAULT_IGNORABLE_RANGES = (
-    (0x00AD, 0x00AD), (0x034F, 0x034F), (0x061C, 0x061C),
-    (0x115F, 0x1160), (0x17B4, 0x17B5), (0x180B, 0x180F),
-    (0x200B, 0x200F), (0x202A, 0x202E), (0x2060, 0x206F),
-    (0x3164, 0x3164), (0xFE00, 0xFE0F), (0xFEFF, 0xFEFF),
-    (0xFFA0, 0xFFA0), (0xFFF0, 0xFFF8), (0x1BCA0, 0x1BCA3),
+    (0x00AD, 0x00AD),
+    (0x034F, 0x034F),
+    (0x061C, 0x061C),
+    (0x115F, 0x1160),
+    (0x17B4, 0x17B5),
+    (0x180B, 0x180F),
+    (0x200B, 0x200F),
+    (0x202A, 0x202E),
+    (0x2060, 0x206F),
+    (0x3164, 0x3164),
+    (0xFE00, 0xFE0F),
+    (0xFEFF, 0xFEFF),
+    (0xFFA0, 0xFFA0),
+    (0xFFF0, 0xFFF8),
+    (0x1BCA0, 0x1BCA3),
     (0x1D173, 0x1D17A),
     (0xE0000, 0xE0FFF),
 )
 
 
-def strip_fences(
-    text: str, *, preserve_fenced_blocks: bool = False
-) -> list[str]:
+def strip_fences(text: str, *, preserve_fenced_blocks: bool = False) -> list[str]:
     """Remove CommonMark fenced blocks; optionally retain an opaque sentinel."""
     out: list[str] = []
     fence_char: str | None = None
@@ -164,9 +166,7 @@ def strip_fences(
     return out
 
 
-_INLINE_CODE_LINE_RE = re.compile(
-    r"^ {0,3}(?P<ticks>`+)(?P<body>[^`]+?)(?P=ticks)[ \t]*$"
-)
+_INLINE_CODE_LINE_RE = re.compile(r"^ {0,3}(?P<ticks>`+)(?P<body>[^`]+?)(?P=ticks)[ \t]*$")
 
 
 def audit_candidate_lines(text: str) -> list[str]:
@@ -212,13 +212,15 @@ def audit_candidate_lines(text: str) -> list[str]:
     for line in _COMMONMARK_LINE_END_RE.split(text):
         if fence_char is not None:
             match = _FENCE_CLOSE_RE.fullmatch(line)
-            if (match and match.group("fence")[0] == fence_char
-                    and len(match.group("fence")) >= fence_len):
+            if (
+                match
+                and match.group("fence")[0] == fence_char
+                and len(match.group("fence")) >= fence_len
+            ):
                 fence_char, fence_len, fence_indent = None, 0, 0
             else:
                 dedent = 0
-                while (dedent < fence_indent and dedent < len(line)
-                       and line[dedent] == " "):
+                while dedent < fence_indent and dedent < len(line) and line[dedent] == " ":
                     dedent += 1
                 out.append(line[dedent:])
             continue
@@ -233,8 +235,7 @@ def audit_candidate_lines(text: str) -> list[str]:
         out.append(line)
         if span := _INLINE_CODE_LINE_RE.fullmatch(line):
             body = span.group("body")
-            if (len(body) >= 2 and body[0] == " " and body[-1] == " "
-                    and body.strip(" ")):
+            if len(body) >= 2 and body[0] == " " and body[-1] == " " and body.strip(" "):
                 body = body[1:-1]
             out.append(body)
     return out
@@ -278,8 +279,7 @@ def exactly_one(
     expected = "exactly one" if required else "at most one"
     if (required and len(hits) != 1) or (not required and len(hits) > 1):
         raise ReportError(
-            f"[REPORT-PARSE: {path}: expected {expected} {field} line, "
-            f"found {len(hits)}]"
+            f"[REPORT-PARSE: {path}: expected {expected} {field} line, " f"found {len(hits)}]"
         )
     return hits[0] if hits else None
 
@@ -339,18 +339,16 @@ def _is_default_ignorable(char: str) -> bool:
 def _rendered_header_cell(cell: str) -> str:
     """Normalize common inline Markdown wrappers to their visible cell text."""
     rendered = re.sub(r"\\([^\w\s])", r"\1", cell)
-    rendered = re.sub(
-        r"!?\[([^\]]*)\](?:\([^)]+\)|\[[^\]]*\])", r"\1", rendered
-    )
+    rendered = re.sub(r"!?\[([^\]]*)\](?:\([^)]+\)|\[[^\]]*\])", r"\1", rendered)
     rendered = re.sub(r"\[([^\]]+)\]", r"\1", rendered)
     parser = _VisibleTextHTMLParser()
     parser.feed(rendered)
     rendered = "".join(parser.parts)
     rendered = unicodedata.normalize("NFKC", rendered)
     rendered = "".join(
-        char for char in rendered
-        if unicodedata.category(char) != "Cf"
-        and not _is_default_ignorable(char)
+        char
+        for char in rendered
+        if unicodedata.category(char) != "Cf" and not _is_default_ignorable(char)
     )
     rendered = re.sub(r"[*_~`]+", "", rendered)
     return re.sub(r"\s+", " ", rendered).strip().casefold()
@@ -394,10 +392,7 @@ def _absence_parts(text: str) -> tuple[str, str, str] | None:
     """Parse the two reserved absence separators without regex backtracking."""
     expected_separator = " — expected "
     checked_separator = "; checked "
-    if (
-        text.count(expected_separator) != 1
-        or text.count(checked_separator) != 1
-    ):
+    if text.count(expected_separator) != 1 or text.count(checked_separator) != 1:
         return None
     where, found_expected, remainder = text.partition(expected_separator)
     expected, found_checked, surfaces = remainder.partition(checked_separator)
@@ -412,29 +407,20 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
     value = anchor.strip()
     if value.startswith("["):
         if not value.endswith("]"):
-            raise ReportError(
-                f"[ANCHOR-INVALID: {context}: unpaired square wrapper]"
-            )
+            raise ReportError(f"[ANCHOR-INVALID: {context}: unpaired square wrapper]")
         square_inner = value[1:-1]
         if square_inner != square_inner.strip():
-            raise ReportError(
-                f"[ANCHOR-INVALID: {context}: padded square wrapper]"
-            )
+            raise ReportError(f"[ANCHOR-INVALID: {context}: padded square wrapper]")
         value = square_inner
     if value.startswith("`"):
         if not value.endswith("`"):
-            raise ReportError(
-                f"[ANCHOR-INVALID: {context}: unpaired backtick wrapper]"
-            )
+            raise ReportError(f"[ANCHOR-INVALID: {context}: unpaired backtick wrapper]")
         backtick_inner = value[1:-1]
         if backtick_inner != backtick_inner.strip():
-            raise ReportError(
-                f"[ANCHOR-INVALID: {context}: padded backtick wrapper]"
-            )
+            raise ReportError(f"[ANCHOR-INVALID: {context}: padded backtick wrapper]")
         value = backtick_inner
     match = re.match(
-        r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"
-        r"(?P<tail>\S.*)$",
+        r"^(?P<type>text|table|figure|equation|dataset|absence):\s*" r"(?P<tail>\S.*)$",
         value,
         re.IGNORECASE,
     )
@@ -443,15 +429,11 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
         raise ReportError(f"[{tag}: {context}: expected typed anchor]")
     tail = match.group("tail")
     if not _balanced_square_brackets(tail) or tail.count("`") % 2:
-        raise ReportError(
-            f"[ANCHOR-INVALID: {context}: locator delimiters must be balanced]"
-        )
+        raise ReportError(f"[ANCHOR-INVALID: {context}: locator delimiters must be balanced]")
     if match.group("type").casefold() == "text":
         quote_texts = _quoted_excerpts(tail)
-        if (
-            not quote_texts
-            or any(not text.strip() or len(text.split()) > 25
-                   for text in quote_texts)
+        if not quote_texts or any(
+            not text.strip() or len(text.split()) > 25 for text in quote_texts
         ):
             raise ReportError(
                 f"[ANCHOR-INVALID: {context}: text anchor needs balanced "
@@ -465,15 +447,13 @@ def validate_evidence_anchor(anchor: str, context: str) -> None:
             )
 
 
-def _require_single_da_table_heading(
-    review_lines: list[str], heading: str, path: str
-) -> int:
+def _require_single_da_table_heading(review_lines: list[str], heading: str, path: str) -> int:
     """Return the sole exact DA issue-table heading position."""
     parse_tag = f"DA-{heading}-PARSE"
     starts = [
-        i for i, line in enumerate(review_lines)
-        if _H4_RE.fullmatch(line)
-        and _H4_RE.fullmatch(line).group(1) == heading
+        i
+        for i, line in enumerate(review_lines)
+        if _H4_RE.fullmatch(line) and _H4_RE.fullmatch(line).group(1) == heading
     ]
     if len(starts) != 1:
         raise ReportError(
@@ -488,13 +468,12 @@ def _parse_da_table_block(
 ) -> tuple[list[list[str]], int, int]:
     """Return table data lines plus ``#`` and anchor column positions."""
     parse_tag = f"DA-{heading}-PARSE"
-    block = review_lines[start + 1:end]
+    block = review_lines[start + 1 : end]
     nonblank = [i for i, line in enumerate(block) if line.strip()]
     header_index = nonblank[0] if nonblank else None
     if header_index is None:
         raise ReportError(
-            f"[{parse_tag}: {path}: missing table header with # and "
-            "Evidence Anchor columns]"
+            f"[{parse_tag}: {path}: missing table header with # and " "Evidence Anchor columns]"
         )
     header = _markdown_cells(block[header_index])
     if "#" not in header or "Evidence Anchor" not in header:
@@ -508,24 +487,16 @@ def _parse_da_table_block(
             "and one Evidence Anchor column]"
         )
     separator_index = header_index + 1
-    separator = (
-        _markdown_cells(block[separator_index])
-        if separator_index < len(block) else []
-    )
-    if (
-        len(separator) != len(header)
-        or not all(re.fullmatch(r":?-{3,}:?", cell) for cell in separator)
+    separator = _markdown_cells(block[separator_index]) if separator_index < len(block) else []
+    if len(separator) != len(header) or not all(
+        re.fullmatch(r":?-{3,}:?", cell) for cell in separator
     ):
-        raise ReportError(
-            f"[{parse_tag}: {path}: missing or malformed Markdown table separator]"
-        )
+        raise ReportError(f"[{parse_tag}: {path}: missing or malformed Markdown table separator]")
     rows: list[list[str]] = []
-    table_tail = block[header_index + 2:]
+    table_tail = block[header_index + 2 :]
     for index, line in enumerate(table_tail):
         if not line.strip():
-            if any(
-                trailing.strip() for trailing in table_tail[index + 1:]
-            ):
+            if any(trailing.strip() for trailing in table_tail[index + 1 :]):
                 raise ReportError(
                     f"[{parse_tag}: {path}: the DA issue tables are terminal; "
                     "put Review Body prose before #### CRITICAL and emit no "
@@ -555,10 +526,10 @@ def _check_da_shadow_issue_surfaces(lines: list[str], path: str) -> None:
             in_canonical_da_band = False
             continue
         if h4_match := _H4_RE.fullmatch(candidate):
-            in_canonical_da_band = (
-                current_h2 == "Review Body"
-                and h4_match.group(1) in {"CRITICAL", "MAJOR"}
-            )
+            in_canonical_da_band = current_h2 == "Review Body" and h4_match.group(1) in {
+                "CRITICAL",
+                "MAJOR",
+            }
             continue
         if _RAW_HTML_TABLE_RE.search(candidate):
             raise ReportError(
@@ -570,9 +541,7 @@ def _check_da_shadow_issue_surfaces(lines: list[str], path: str) -> None:
         raw_cells = _possible_markdown_cells(candidate)
         cells = {_rendered_header_cell(cell) for cell in raw_cells}
         issue_payload = any(
-            _DA_ISSUE_ID_RE.fullmatch(cell)
-            or _DA_TYPED_ANCHOR_RE.search(cell)
-            for cell in cells
+            _DA_ISSUE_ID_RE.fullmatch(cell) or _DA_TYPED_ANCHOR_RE.search(cell) for cell in cells
         )
         if "#" in cells or "evidence anchor" in cells or issue_payload:
             raise ReportError(
@@ -581,9 +550,7 @@ def _check_da_shadow_issue_surfaces(lines: list[str], path: str) -> None:
             )
 
 
-def parse_da_tables(
-    text: str, path: str = "<report>"
-) -> tuple[dict[str, str], list[str]]:
+def parse_da_tables(text: str, path: str = "<report>") -> tuple[dict[str, str], list[str]]:
     """Parse both mandatory DA tables from the report's ``Review Body``.
 
     Returns ``(critical_id_to_anchor, major_anchors)``. Both exact H4 sections
@@ -593,31 +560,21 @@ def parse_da_tables(
     """
     raw_lines = _COMMONMARK_LINE_END_RE.split(text)
     if any(_HTML_COMMENT_RE.search(line) for line in raw_lines):
-        raise ReportError(
-            f"[DA-TABLE-PARSE: {path}: HTML comments are forbidden in DA reports]"
-        )
+        raise ReportError(f"[DA-TABLE-PARSE: {path}: HTML comments are forbidden in DA reports]")
     lines = strip_fences(text, preserve_fenced_blocks=True)
     sections, dupes = split_sections(lines)
     if "Review Body" in dupes or "Review Body" not in sections:
-        raise ReportError(
-            f"[DA-TABLE-PARSE: {path}: expected exactly one ## Review Body]"
-        )
+        raise ReportError(f"[DA-TABLE-PARSE: {path}: expected exactly one ## Review Body]")
     review_lines = sections["Review Body"]
     if any(_DA_SEVERITY_DECL_RE.search(line) for line in lines):
         raise ReportError(
             f"[DA-FINDING-GRAMMAR: {path}: standalone Severity declarations "
             "are forbidden; use the CRITICAL and MAJOR issue tables]"
         )
-    critical_start = _require_single_da_table_heading(
-        review_lines, "CRITICAL", path
-    )
-    major_start = _require_single_da_table_heading(
-        review_lines, "MAJOR", path
-    )
+    critical_start = _require_single_da_table_heading(review_lines, "CRITICAL", path)
+    major_start = _require_single_da_table_heading(review_lines, "MAJOR", path)
     if critical_start >= major_start:
-        raise ReportError(
-            f"[DA-TABLE-PARSE: {path}: #### CRITICAL must precede #### MAJOR]"
-        )
+        raise ReportError(f"[DA-TABLE-PARSE: {path}: #### CRITICAL must precede #### MAJOR]")
     _check_da_shadow_issue_surfaces(lines, path)
     critical_lines, critical_id_col, critical_anchor_col = _parse_da_table_block(
         review_lines, "CRITICAL", path, critical_start, major_start
@@ -635,9 +592,7 @@ def parse_da_tables(
                 f"'{finding_id}'; expected C1..Cn]"
             )
         if finding_id in rows:
-            raise ReportError(
-                f"[DA-CRITICAL-PARSE: {path}: duplicate CRITICAL ID {finding_id}]"
-            )
+            raise ReportError(f"[DA-CRITICAL-PARSE: {path}: duplicate CRITICAL ID {finding_id}]")
         anchor = cells[critical_anchor_col]
         validate_evidence_anchor(anchor, f"{path}:{finding_id}")
         rows[finding_id] = anchor
@@ -645,9 +600,7 @@ def parse_da_tables(
     major_anchors: list[str] = []
     for cells in major_lines:
         if not cells[major_id_col]:
-            raise ReportError(
-                f"[DA-MAJOR-PARSE: {path}: empty MAJOR # cell]"
-            )
+            raise ReportError(f"[DA-MAJOR-PARSE: {path}: empty MAJOR # cell]")
         anchor = cells[major_anchor_col]
         validate_evidence_anchor(anchor, f"{path}:DA MAJOR")
         major_anchors.append(anchor)
@@ -660,6 +613,7 @@ def parse_da_critical_table(text: str, path: str = "<report>") -> dict[str, str]
 
 
 # --- Contract and report parsing ----------------------------------------------
+
 
 def _read_text(path: Path | str) -> str:
     try:
@@ -676,14 +630,10 @@ def load_contract(path: Path | str):
     problems = check_sprint_contract.validate(contract)
     problems += check_sprint_contract.check_structural_invariants(contract)
     if problems:
-        raise ContractError(
-            f"[CONTRACT-INVALID: {path}: {'; '.join(problems)}]"
-        )
+        raise ContractError(f"[CONTRACT-INVALID: {path}: {'; '.join(problems)}]")
     mode = contract.get("mode")
     if mode not in ROLE_SETS:
-        raise ContractError(
-            f"[CONTRACT-INELIGIBLE: unsupported reviewer mode {mode}]"
-        )
+        raise ContractError(f"[CONTRACT-INELIGIBLE: unsupported reviewer mode {mode}]")
     expected = check_sprint_contract.EXPECTED_PANEL_SIZE[mode]
     if contract.get("panel_size") != expected:
         raise ContractError(
@@ -705,18 +655,13 @@ def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
     lines = strip_fences(text)
     sections, dupes = split_sections(lines)
     if "Dimension Scores" in dupes:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: duplicated ## Dimension Scores]"
-        )
+        raise ReportError(f"[REPORT-PARSE: {path}: duplicated ## Dimension Scores]")
     if "Dimension Scores" not in sections:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: missing ## Dimension Scores]"
-        )
+        raise ReportError(f"[REPORT-PARSE: {path}: missing ## Dimension Scores]")
     for retired in ("Failure Condition Checks", "Editorial Decision"):
         if retired in sections:
             raise ReportError(
-                f"[V1-GRAMMAR-RETIRED: {path}: ## {retired} is forbidden "
-                "under Schema 13.2]"
+                f"[V1-GRAMMAR-RETIRED: {path}: ## {retired} is forbidden " "under Schema 13.2]"
             )
     if any(_RETIRED_DECISION_RE.fullmatch(line) for line in lines):
         raise ReportError(
@@ -727,8 +672,7 @@ def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
     role_set = ROLE_SETS[contract["mode"]]
     if role not in role_set:
         raise ReportError(
-            f"[REPORT-ROLE: {path}: role={role} is not valid for "
-            f"{contract['mode']}]"
+            f"[REPORT-ROLE: {path}: role={role} is not valid for " f"{contract['mode']}]"
         )
 
     dims = {d["id"]: d for d in contract["acceptance_dimensions"]}
@@ -743,25 +687,18 @@ def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
         match = _DIM_H3_RE.fullmatch(title)
         if not match or match.group("dim") not in dims:
             raise ReportError(
-                f"[REPORT-PARSE: {path}: unknown Dimension Scores subsection "
-                f"'### {title}']"
+                f"[REPORT-PARSE: {path}: unknown Dimension Scores subsection " f"'### {title}']"
             )
         did = match.group("dim")
         if match.group("name") != dims[did]["name"]:
-            raise ReportError(
-                f"[REPORT-PARSE: {path}: {did} name mismatch]"
-            )
+            raise ReportError(f"[REPORT-PARSE: {path}: {did} name mismatch]")
         score = exactly_one(sublines, _SCORE_RE, f"score ({did})", path)
         block_class = exactly_one(
-            sublines, _BLOCK_CLASS_RE, f"block_class ({did})", path,
-            required=False
+            sublines, _BLOCK_CLASS_RE, f"block_class ({did})", path, required=False
         )
-        trigger = exactly_one(
-            sublines, _TRIGGER_RE, f"trigger ({did})", path, required=False
-        )
+        trigger = exactly_one(sublines, _TRIGGER_RE, f"trigger ({did})", path, required=False)
         abstain_reason = exactly_one(
-            sublines, _ABSTAIN_RE, f"abstain_reason ({did})", path,
-            required=False
+            sublines, _ABSTAIN_RE, f"abstain_reason ({did})", path, required=False
         )
         eligible = role in dims[did]["eligible_roles"]
         if eligible and score == "not_assessed" and not abstain_reason:
@@ -770,17 +707,13 @@ def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
                 f"abstain_reason for {did}]"
             )
         if not eligible and score != "not_assessed":
-            raise ReportError(
-                f"[OUT-OF-ROLE-SCORE: {path}: role {role} may not score {did}]"
-            )
+            raise ReportError(f"[OUT-OF-ROLE-SCORE: {path}: role {role} may not score {did}]")
         if not eligible and abstain_reason:
             raise ReportError(
                 f"[ABSTENTION-INVALID: {path}: structural abstention on {did} "
                 "must not carry abstain_reason]"
             )
-        mandatory_block = (
-            eligible and score == "block" and dims[did]["priority"] == "mandatory"
-        )
+        mandatory_block = eligible and score == "block" and dims[did]["priority"] == "mandatory"
         if mandatory_block != bool(block_class):
             raise ReportError(
                 f"[BLOCK-CLASS-INVALID: {path}: {did} block_class is required "
@@ -794,17 +727,12 @@ def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
             )
         if score != "not_assessed" and abstain_reason:
             raise ReportError(
-                f"[ABSTENTION-INVALID: {path}: {did} scored result may not "
-                "carry abstain_reason]"
+                f"[ABSTENTION-INVALID: {path}: {did} scored result may not " "carry abstain_reason]"
             )
-        scores[did] = DimensionScore(
-            score, block_class, trigger, abstain_reason
-        )
+        scores[did] = DimensionScore(score, block_class, trigger, abstain_reason)
     missing = [did for did in dims if did not in scores]
     if missing:
-        raise ReportError(
-            f"[REPORT-PARSE: {path}: missing Dimension Scores for {missing}]"
-        )
+        raise ReportError(f"[REPORT-PARSE: {path}: missing Dimension Scores for {missing}]")
     return ReviewerReport(path, role, scores, text)
 
 
@@ -812,25 +740,27 @@ def parse_report(path: str, text: str, contract: dict) -> ReviewerReport:
 
 _SCORE = r"'(?P<score>block|warn|pass)'"
 _EXPRESSION_PATTERNS = (
-    ("any_priority", re.compile(
-        r"^any (?:(?P<p1>[a-z]+) dimension|dimension with priority="
-        r"(?P<p2>[a-z]+)|(?P<p3>[a-z]+)-priority dimension) scores "
-        + _SCORE + r"$")),
-    ("count_priority", re.compile(
-        r"^two or more (?:(?P<p1>[a-z]+) dimensions|dimensions with priority="
-        r"(?P<p2>[a-z]+)) score " + _SCORE + r" or worse$")),
-    ("every_priority", re.compile(
-        r"^every (?P<p1>[a-z]+) dimension scores " + _SCORE + r"$")),
+    (
+        "any_priority",
+        re.compile(
+            r"^any (?:(?P<p1>[a-z]+) dimension|dimension with priority="
+            r"(?P<p2>[a-z]+)|(?P<p3>[a-z]+)-priority dimension) scores " + _SCORE + r"$"
+        ),
+    ),
+    (
+        "count_priority",
+        re.compile(
+            r"^two or more (?:(?P<p1>[a-z]+) dimensions|dimensions with priority="
+            r"(?P<p2>[a-z]+)) score " + _SCORE + r" or worse$"
+        ),
+    ),
+    ("every_priority", re.compile(r"^every (?P<p1>[a-z]+) dimension scores " + _SCORE + r"$")),
     ("dim_exact", re.compile(r"^(?P<dim>D\d+) scores " + _SCORE + r"$")),
-    ("fatal_priority", re.compile(
-        r"^any (?P<p1>[a-z]+) dimension has a fatal block$")),
+    ("fatal_priority", re.compile(r"^any (?P<p1>[a-z]+) dimension has a fatal block$")),
     ("fatal_dim", re.compile(r"^(?P<dim>D\d+) has a fatal block$")),
-    ("any_all", re.compile(
-        r"^any dimension scores " + _SCORE + r" or worse$")),
-    ("dim_threshold", re.compile(
-        r"^(?P<dim>D\d+) scores " + _SCORE + r" or worse$")),
-    ("every_all", re.compile(
-        r"^every dimension scores " + _SCORE + r"$")),
+    ("any_all", re.compile(r"^any dimension scores " + _SCORE + r" or worse$")),
+    ("dim_threshold", re.compile(r"^(?P<dim>D\d+) scores " + _SCORE + r" or worse$")),
+    ("every_all", re.compile(r"^every dimension scores " + _SCORE + r"$")),
 )
 
 
@@ -859,44 +789,41 @@ def parse_expression(
         elif kind in {"any_all", "every_all"}:
             dim_ids = tuple(dimensions)
         else:
-            priority = match.group("p1") or match.groupdict().get("p2") \
-                or match.groupdict().get("p3")
-            dim_ids = tuple(
-                did for did, dim in dimensions.items()
-                if dim["priority"] == priority
+            priority = (
+                match.group("p1") or match.groupdict().get("p2") or match.groupdict().get("p3")
             )
+            dim_ids = tuple(did for did, dim in dimensions.items() if dim["priority"] == priority)
             if not dim_ids:
                 raise ContractError(
                     f"[EXPRESSION-SEMANTIC: condition_id={condition_id}: "
                     f"priority '{priority}' matches no dimension]"
                 )
         fatal = kind in {"fatal_priority", "fatal_dim"}
-        if fatal and any(dimensions[did]["priority"] != "mandatory"
-                         for did in dim_ids):
+        if fatal and any(dimensions[did]["priority"] != "mandatory" for did in dim_ids):
             raise ContractError(
                 f"[CONTRACT-INVALID: condition_id={condition_id}: fatal atom "
                 "may target mandatory dimensions only]"
             )
         dimension_quantifier = (
-            "count2" if kind == "count_priority"
-            else "every" if kind in {"every_priority", "every_all"}
+            "count2"
+            if kind == "count_priority"
+            else "every"
+            if kind in {"every_priority", "every_all"}
             else "any"
         )
-        atoms.append(ExpressionAtom(
-            dimension_ids=dim_ids,
-            dimension_quantifier=dimension_quantifier,
-            score=None if fatal else match.groupdict().get("score"),
-            or_worse=kind in {
-                "count_priority", "any_all", "dim_threshold"
-            },
-            fatal=fatal,
-        ))
+        atoms.append(
+            ExpressionAtom(
+                dimension_ids=dim_ids,
+                dimension_quantifier=dimension_quantifier,
+                score=None if fatal else match.groupdict().get("score"),
+                or_worse=kind in {"count_priority", "any_all", "dim_threshold"},
+                fatal=fatal,
+            )
+        )
     return tuple(atoms)
 
 
-def quantifier_fires(
-    quantifier: str, indicators: list[bool], warnings: list[str]
-) -> bool:
+def quantifier_fires(quantifier: str, indicators: list[bool], warnings: list[str]) -> bool:
     n = len(indicators)
     if n == 0:
         raise ContractError("[DIMENSION-UNASSESSED]")
@@ -929,11 +856,13 @@ def evaluate_expression(
         dimension_results = []
         for did in atom.dimension_ids:
             values = assessed[did]
-            dimension_results.append(quantifier_fires(
-                cross_quantifier,
-                [_seat_indicator(value, atom) for value in values],
-                warnings,
-            ))
+            dimension_results.append(
+                quantifier_fires(
+                    cross_quantifier,
+                    [_seat_indicator(value, atom) for value in values],
+                    warnings,
+                )
+            )
         if atom.dimension_quantifier == "any":
             result = any(dimension_results)
         elif atom.dimension_quantifier == "every":
@@ -949,19 +878,18 @@ def accept_grade_action(conditions: list[dict]) -> str:
     for condition in conditions:
         if condition["action"] == "editorial_decision=accept":
             return condition["action"]
-    raise ContractError(
-        "[CONTRACT-INELIGIBLE: no accept-grade failure condition]"
-    )
+    raise ContractError("[CONTRACT-INELIGIBLE: no accept-grade failure condition]")
 
 
 def resolve_decision(conditions: list[dict], fired_ids: set[str]) -> str:
-    fired = [(index, condition) for index, condition in enumerate(conditions)
-             if condition["condition_id"] in fired_ids]
+    fired = [
+        (index, condition)
+        for index, condition in enumerate(conditions)
+        if condition["condition_id"] in fired_ids
+    ]
     if not fired:
         return accept_grade_action(conditions)
-    return max(
-        fired, key=lambda pair: (pair[1]["severity"], -pair[0])
-    )[1]["action"]
+    return max(fired, key=lambda pair: (pair[1]["severity"], -pair[0]))[1]["action"]
 
 
 def collect_assessed(
@@ -973,8 +901,7 @@ def collect_assessed(
         values = [
             report.scores[did]
             for report in reports
-            if report.role in dim["eligible_roles"]
-            and report.scores[did].score != "not_assessed"
+            if report.role in dim["eligible_roles"] and report.scores[did].score != "not_assessed"
         ]
         if not values:
             raise ContractError(f"[DIMENSION-UNASSESSED: {did}]")
@@ -982,17 +909,13 @@ def collect_assessed(
     return assessed
 
 
-def compute_dimension_verdicts(
-    assessed: dict[str, list[DimensionScore]]
-) -> dict[str, str]:
+def compute_dimension_verdicts(assessed: dict[str, list[DimensionScore]]) -> dict[str, str]:
     verdicts: dict[str, str] = {}
     for did, values in assessed.items():
-        if any(value.score == "block" and value.block_class == "fatal"
-               for value in values):
+        if any(value.score == "block" and value.block_class == "fatal" for value in values):
             verdicts[did] = "block(fatal)"
         else:
-            verdicts[did] = max(values, key=lambda value:
-                                SCORE_ORDER[value.score]).score
+            verdicts[did] = max(values, key=lambda value: SCORE_ORDER[value.score]).score
     return verdicts
 
 
@@ -1021,21 +944,12 @@ def recompute_panel(
 _LIST_BODY = r"(?P<body>[^\]]*)"
 _FIRED_LIST_RE = re.compile(r"^fired_conditions: \[" + _LIST_BODY + r"\]\s*$")
 _VERDICTS_RE = re.compile(r"^dimension_verdicts: \[" + _LIST_BODY + r"\]\s*$")
-_ADJUDICATIONS_RE = re.compile(
-    r"^da_critical_adjudications: \[" + _LIST_BODY + r"\]\s*$"
-)
-_RATIONALE_RE = re.compile(
-    r"^(?P<id>C[1-9]\d*) rejection rationale: (?P<text>\S.*)\s*$"
-)
-_MARKER_RE = re.compile(
-    r"^\[DA-CRITICAL-VS-ACCEPT: (?P<count>\d+) "
-    r"validated/unresolved\]\s*$"
-)
+_ADJUDICATIONS_RE = re.compile(r"^da_critical_adjudications: \[" + _LIST_BODY + r"\]\s*$")
+_RATIONALE_RE = re.compile(r"^(?P<id>C[1-9]\d*) rejection rationale: (?P<text>\S.*)\s*$")
+_MARKER_RE = re.compile(r"^\[DA-CRITICAL-VS-ACCEPT: (?P<count>\d+) " r"validated/unresolved\]\s*$")
 
 
-def _one_body(
-    lines: list[str], pattern: re.Pattern[str], label: str, path: str
-) -> str:
+def _one_body(lines: list[str], pattern: re.Pattern[str], label: str, path: str) -> str:
     """Exactly one DISTINCT body for an audit-line grammar.
 
     Re-statements of an audit line that parse to the SAME stripped body (a
@@ -1046,8 +960,7 @@ def _one_body(
     bodies remain a loud abort, so a decoy that disagrees with the
     operative line can never be silently absorbed (#637).
     """
-    bodies = [match.group("body").strip() for line in lines
-              if (match := pattern.fullmatch(line))]
+    bodies = [match.group("body").strip() for line in lines if (match := pattern.fullmatch(line))]
     distinct = list(dict.fromkeys(bodies))
     if len(distinct) != 1:
         raise SynthesisError(
@@ -1067,33 +980,24 @@ def parse_synthesis(path: str, text: str, contract: dict) -> Synthesis:
     # (see audit_candidate_lines for the declared boundary).
     lines = strip_fences(text)
     audit_lines = audit_candidate_lines(text)
-    fired = _comma_tokens(_one_body(
-        audit_lines, _FIRED_LIST_RE, "fired_conditions", path
-    ))
+    fired = _comma_tokens(_one_body(audit_lines, _FIRED_LIST_RE, "fired_conditions", path))
     condition_ids = {c["condition_id"] for c in contract["failure_conditions"]}
     if len(fired) != len(set(fired)) or set(fired) - condition_ids:
-        raise SynthesisError(
-            f"[SYNTHESIS-PARSE: {path}: invalid fired_conditions {fired}]"
-        )
+        raise SynthesisError(f"[SYNTHESIS-PARSE: {path}: invalid fired_conditions {fired}]")
 
-    verdict_tokens = _comma_tokens(_one_body(
-        audit_lines, _VERDICTS_RE, "dimension_verdicts", path
-    ))
+    verdict_tokens = _comma_tokens(_one_body(audit_lines, _VERDICTS_RE, "dimension_verdicts", path))
     verdicts: dict[str, str] = {}
     for token in verdict_tokens:
-        match = re.fullmatch(
-            r"(?P<dim>D\d+)=(?P<value>pass|warn|block|block\(fatal\))", token
-        )
+        match = re.fullmatch(r"(?P<dim>D\d+)=(?P<value>pass|warn|block|block\(fatal\))", token)
         if not match or match.group("dim") in verdicts:
             raise SynthesisError(
-                f"[SYNTHESIS-PARSE: {path}: invalid dimension verdict "
-                f"'{token}']"
+                f"[SYNTHESIS-PARSE: {path}: invalid dimension verdict " f"'{token}']"
             )
         verdicts[match.group("dim")] = match.group("value")
 
-    adjudication_tokens = _comma_tokens(_one_body(
-        audit_lines, _ADJUDICATIONS_RE, "da_critical_adjudications", path
-    ))
+    adjudication_tokens = _comma_tokens(
+        _one_body(audit_lines, _ADJUDICATIONS_RE, "da_critical_adjudications", path)
+    )
     adjudications: dict[str, str] = {}
     for token in adjudication_tokens:
         match = re.fullmatch(
@@ -1102,19 +1006,17 @@ def parse_synthesis(path: str, text: str, contract: dict) -> Synthesis:
         )
         if not match or match.group("id") in adjudications:
             raise SynthesisError(
-                f"[SYNTHESIS-PARSE: {path}: invalid DA adjudication "
-                f"'{token}']"
+                f"[SYNTHESIS-PARSE: {path}: invalid DA adjudication " f"'{token}']"
             )
         adjudications[match.group("id")] = match.group("value")
 
-    decisions = list(dict.fromkeys(
-        match.group("action") for line in audit_lines
-        if (match := _DECISION_RE.fullmatch(line))
-    ))
-    if len(decisions) != 1 or decisions[0] not in ACTION_ENUM:
-        raise SynthesisError(
-            f"[SYNTHESIS-PARSE: {path}: expected exactly one valid decision]"
+    decisions = list(
+        dict.fromkeys(
+            match.group("action") for line in audit_lines if (match := _DECISION_RE.fullmatch(line))
         )
+    )
+    if len(decisions) != 1 or decisions[0] not in ACTION_ENUM:
+        raise SynthesisError(f"[SYNTHESIS-PARSE: {path}: expected exactly one valid decision]")
     rationales: dict[str, str] = {}
     for line in lines:
         if match := _RATIONALE_RE.fullmatch(line):
@@ -1124,12 +1026,9 @@ def parse_synthesis(path: str, text: str, contract: dict) -> Synthesis:
                     f"for {match.group('id')}]"
                 )
             rationales[match.group("id")] = match.group("text")
-    markers = [int(match.group("count")) for line in lines
-               if (match := _MARKER_RE.fullmatch(line))]
+    markers = [int(match.group("count")) for line in lines if (match := _MARKER_RE.fullmatch(line))]
     if len(markers) > 1:
-        raise SynthesisError(
-            f"[SYNTHESIS-PARSE: {path}: duplicate DA consistency marker]"
-        )
+        raise SynthesisError(f"[SYNTHESIS-PARSE: {path}: duplicate DA consistency marker]")
     return Synthesis(
         fired=fired,
         decision=decisions[0],
@@ -1140,9 +1039,7 @@ def parse_synthesis(path: str, text: str, contract: dict) -> Synthesis:
     )
 
 
-def check_da_terminal_gate(
-    reports: list[ReviewerReport], synthesis: Synthesis
-) -> list[str]:
+def check_da_terminal_gate(reports: list[ReviewerReport], synthesis: Synthesis) -> list[str]:
     da = next((report for report in reports if report.role == "da"), None)
     da_ids = set(parse_da_tables(da.text, da.path)[0]) if da is not None else set()
     adjudicated_ids = set(synthesis.adjudications)
@@ -1154,23 +1051,16 @@ def check_da_terminal_gate(
         )
     for finding_id, value in synthesis.adjudications.items():
         if value == "REJECTED" and finding_id not in synthesis.rejection_rationales:
-            diagnostics.append(
-                f"[DA-CRITICAL-RATIONALE-MISSING: {finding_id}]"
-            )
-    active = sum(value in {"VALIDATED", "UNRESOLVED"}
-                 for value in synthesis.adjudications.values())
-    needs_marker = (
-        synthesis.decision == "editorial_decision=accept" and active > 0
-    )
+            diagnostics.append(f"[DA-CRITICAL-RATIONALE-MISSING: {finding_id}]")
+    active = sum(value in {"VALIDATED", "UNRESOLVED"} for value in synthesis.adjudications.values())
+    needs_marker = synthesis.decision == "editorial_decision=accept" and active > 0
     if needs_marker and synthesis.marker_count != active:
         diagnostics.append(
             f"[DA-CRITICAL-VS-ACCEPT-MARKER: expected={active}, "
             f"stated={synthesis.marker_count}]"
         )
     if not needs_marker and synthesis.marker_count is not None:
-        diagnostics.append(
-            "[DA-CRITICAL-VS-ACCEPT-MARKER: marker forbidden in this state]"
-        )
+        diagnostics.append("[DA-CRITICAL-VS-ACCEPT-MARKER: marker forbidden in this state]")
     return diagnostics
 
 
@@ -1181,13 +1071,14 @@ def layer2_check(
     synthesis: Synthesis,
     warnings: list[str],
 ) -> list[str]:
-    assessed, fired, decision = recompute_panel(
-        reports, contract, expressions, warnings
-    )
+    assessed, fired, decision = recompute_panel(reports, contract, expressions, warnings)
     verdicts = compute_dimension_verdicts(assessed)
     diagnostics: list[str] = []
-    if (fired != synthesis.fired or decision != synthesis.decision
-            or verdicts != synthesis.dimension_verdicts):
+    if (
+        fired != synthesis.fired
+        or decision != synthesis.decision
+        or verdicts != synthesis.dimension_verdicts
+    ):
         diagnostics.append(
             f"[PANEL-SYNTHESIS-MISMATCH: recomputed_verdicts={verdicts}, "
             f"declared_verdicts={synthesis.dimension_verdicts}, "
@@ -1200,11 +1091,11 @@ def layer2_check(
 
 # --- CLI -----------------------------------------------------------------------
 
+
 def _parse_args(argv):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--contract", required=True, type=Path)
-    parser.add_argument("--report", required=True, action="append",
-                        type=Path, dest="reports")
+    parser.add_argument("--report", required=True, action="append", type=Path, dest="reports")
     parser.add_argument(
         "--roles",
         help="Comma-separated dispatch roles, positionally matched to reports",
@@ -1238,10 +1129,7 @@ def main(argv=None):
                 f"reports, got={len(args.reports)}]"
             )
     elif len(args.reports) != panel_size:
-        infra.append(
-            f"[PANEL-CARDINALITY: got={len(args.reports)}, "
-            f"panel_size={panel_size}]"
-        )
+        infra.append(f"[PANEL-CARDINALITY: got={len(args.reports)}, " f"panel_size={panel_size}]")
 
     texts: dict[Path, str] = {}
     digests: set[str] = set()
@@ -1258,9 +1146,7 @@ def main(argv=None):
         seen_paths.add(resolved_path)
         digest = hashlib.sha256(texts[path].encode()).hexdigest()
         if digest in digests:
-            infra.append(
-                f"[PANEL-CARDINALITY: byte-identical report contents ({path})]"
-            )
+            infra.append(f"[PANEL-CARDINALITY: byte-identical report contents ({path})]")
         digests.add(digest)
 
     reports: list[ReviewerReport] = []
@@ -1280,8 +1166,7 @@ def main(argv=None):
                 infra.append(f"[PANEL-CARDINALITY: duplicate roles {roles}]")
         elif set(roles) != role_set or len(set(roles)) != len(roles):
             infra.append(
-                f"[PANEL-CARDINALITY: roles {sorted(roles)} != "
-                f"required {sorted(role_set)}]"
+                f"[PANEL-CARDINALITY: roles {sorted(roles)} != " f"required {sorted(role_set)}]"
             )
         if args.roles is not None:
             dispatched = [role.strip() for role in args.roles.split(",")]
@@ -1291,9 +1176,7 @@ def main(argv=None):
                     f"match reports={len(reports)}]"
                 )
             else:
-                for index, (expected, report) in enumerate(
-                    zip(dispatched, reports)
-                ):
+                for index, (expected, report) in enumerate(zip(dispatched, reports)):
                     if expected != report.role:
                         reviewer_diags.append(
                             f"[ROLE-BINDING: report[{index}] declares "
@@ -1302,12 +1185,10 @@ def main(argv=None):
 
     if not args.layer1_only and not infra and not reviewer_diags:
         try:
-            synthesis = parse_synthesis(
-                str(args.synthesis), _read_text(args.synthesis), contract
+            synthesis = parse_synthesis(str(args.synthesis), _read_text(args.synthesis), contract)
+            synthesis_diags.extend(
+                layer2_check(reports, contract, expressions, synthesis, warnings)
             )
-            synthesis_diags.extend(layer2_check(
-                reports, contract, expressions, synthesis, warnings
-            ))
         except ContractError as exc:
             infra.append(str(exc))
         except ReportError as exc:

@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import check_sprint_contract as checker
 from tests.test_helpers import run_script
 
@@ -50,35 +49,31 @@ def test_branch13_reviewer_without_role_scope_fails():
     contract = full()
     contract["acceptance_dimensions"][0].pop("eligible_roles")
     contract["acceptance_dimensions"][0].pop("owner_role")
-    assert any("eligible_roles" in error or "owner_role" in error
-               for error in checker.validate(contract))
+    assert any(
+        "eligible_roles" in error or "owner_role" in error for error in checker.validate(contract)
+    )
 
 
 def test_owner_must_be_eligible():
     contract = full()
     contract["acceptance_dimensions"][0]["owner_role"] = "eic"
-    assert any("owner_role" in error
-               for error in checker.check_structural_invariants(contract))
+    assert any("owner_role" in error for error in checker.check_structural_invariants(contract))
 
 
 def test_roles_must_be_mode_subset():
     contract = load(MF_PATH)
     contract["acceptance_dimensions"][0]["eligible_roles"].append("domain")
-    assert any("outside" in error
-               for error in checker.check_structural_invariants(contract))
+    assert any("outside" in error for error in checker.check_structural_invariants(contract))
 
 
 def test_every_mode_role_must_have_a_dimension():
     contract = full()
     for dim in contract["acceptance_dimensions"]:
-        dim["eligible_roles"] = [
-            role for role in dim["eligible_roles"] if role != "perspective"
-        ]
+        dim["eligible_roles"] = [role for role in dim["eligible_roles"] if role != "perspective"]
         if dim["owner_role"] == "perspective":
             dim["eligible_roles"] = ["eic"]
             dim["owner_role"] = "eic"
-    assert any("perspective" in error
-               for error in checker.check_structural_invariants(contract))
+    assert any("perspective" in error for error in checker.check_structural_invariants(contract))
 
 
 @pytest.mark.parametrize("path", [WRITER_PATH, EVALUATOR_PATH])
@@ -86,8 +81,7 @@ def test_writer_evaluator_reject_reviewer_fields(path):
     contract = load(path)
     contract["acceptance_dimensions"][0]["eligible_roles"] = ["eic"]
     contract["acceptance_dimensions"][0]["owner_role"] = "eic"
-    assert any("reviewer-only" in error
-               for error in checker.check_structural_invariants(contract))
+    assert any("reviewer-only" in error for error in checker.check_structural_invariants(contract))
 
 
 def test_scoring_plan_requires_five_canonical_fields():
@@ -99,9 +93,7 @@ def test_scoring_plan_requires_five_canonical_fields():
 
 def test_hybrid_action_rejected_by_branch4():
     contract = full()
-    contract["failure_conditions"][0]["action"] = (
-        "editorial_decision=reject_or_major_revision"
-    )
+    contract["failure_conditions"][0]["action"] = "editorial_decision=reject_or_major_revision"
     assert checker.validate(contract)
 
 
@@ -116,20 +108,21 @@ def test_hybrid_action_rejected_by_branch4():
 def test_fatal_atom_mandatory_scope_only(expression):
     contract = full()
     contract["failure_conditions"][0]["expression"] = expression
-    assert any("fatal atom" in error
-               for error in checker.check_structural_invariants(contract))
+    assert any("fatal atom" in error for error in checker.check_structural_invariants(contract))
 
 
 def test_mandatory_fatal_atoms_are_valid():
     contract = full()
-    assert not any("fatal atom" in error
-                   for error in checker.check_structural_invariants(contract))
+    assert not any("fatal atom" in error for error in checker.check_structural_invariants(contract))
 
 
 def test_sc12_single_judge_mandatory_warning():
     warnings = checker.warn_suspicious(full(), "v3.20.0")
-    assert {line.split("dimension ")[1].split()[0] for line in warnings
-            if "SC-12" in line} == {"D1", "D2", "D6"}
+    assert {line.split("dimension ")[1].split()[0] for line in warnings if "SC-12" in line} == {
+        "D1",
+        "D2",
+        "D6",
+    }
 
 
 def test_schema_rejects_duplicate_eligible_role():
@@ -150,7 +143,8 @@ def test_duplicate_dimension_and_condition_ids_fail_invariants():
 def test_f0_accept_grade_is_schema_required():
     contract = full()
     contract["failure_conditions"] = [
-        condition for condition in contract["failure_conditions"]
+        condition
+        for condition in contract["failure_conditions"]
         if condition["condition_id"] != "F0"
     ]
     assert checker.validate(contract)
@@ -184,10 +178,8 @@ def test_writer_evaluator_byte_unchanged_against_hardcoded_baseline():
     import hashlib
 
     expected = {
-        "shared/contracts/writer/full.json":
-            "9340ad80971f643ca772243a645d0a52b4ab059e27e04e0bce463e0760d1553b",
-        "shared/contracts/evaluator/full.json":
-            "ce3b3e19f1da68985ebeb2dd2d7904d7343724d0847fff4e08704d79f083158a",
+        "shared/contracts/writer/full.json": "9340ad80971f643ca772243a645d0a52b4ab059e27e04e0bce463e0760d1553b",
+        "shared/contracts/evaluator/full.json": "ce3b3e19f1da68985ebeb2dd2d7904d7343724d0847fff4e08704d79f083158a",
     }
     for rel, digest in expected.items():
         assert hashlib.sha256((REPO / rel).read_bytes()).hexdigest() == digest
@@ -235,7 +227,10 @@ def apply_schema_mutation(contract: dict, case: str) -> None:
     dim = contract["acceptance_dimensions"][0]
     condition = contract["failure_conditions"][0]
     if case.startswith("missing_") and case.removeprefix("missing_") in {
-        "contract_id", "mode", "stage", "baseline_version",
+        "contract_id",
+        "mode",
+        "stage",
+        "baseline_version",
     }:
         contract.pop(case.removeprefix("missing_"))
     elif case == "missing_dimensions":
@@ -274,9 +269,7 @@ def apply_schema_mutation(contract: dict, case: str) -> None:
         required = contract["measurement_procedure"]["scoring_plan_schema"]["required"]
         required[-1] = required[0]
     elif case == "typo_scoring_field":
-        contract["measurement_procedure"]["scoring_plan_schema"]["required"][-1] = (
-            "fatal_trigger"
-        )
+        contract["measurement_procedure"]["scoring_plan_schema"]["required"][-1] = "fatal_trigger"
     elif case == "zero_paraphrase_minimum":
         contract["measurement_procedure"]["paraphrase_minimum_dimensions"] = 0
     elif case == "empty_conditions":
@@ -358,9 +351,9 @@ def test_legacy_warning_boundaries(case, fragment, present):
             "contract_paraphrase"
         ]
     elif case == "sc7_conflict":
-        contract["failure_conditions"][1]["severity"] = (
-            contract["failure_conditions"][0]["severity"]
-        )
+        contract["failure_conditions"][1]["severity"] = contract["failure_conditions"][0][
+            "severity"
+        ]
     elif case == "sc9_impossible":
         contract["measurement_procedure"]["paraphrase_minimum_dimensions"] = 99
     elif case == "sc10_unreferenced":
@@ -382,9 +375,7 @@ def test_legacy_warning_boundaries(case, fragment, present):
     else:  # pragma: no cover - guards the test table itself
         raise AssertionError(case)
     warnings = checker.warn_suspicious(contract, current)
-    assert any(
-        warning.startswith(f"{fragment} WARNING") for warning in warnings
-    ) is present
+    assert any(warning.startswith(f"{fragment} WARNING") for warning in warnings) is present
 
 
 @pytest.mark.parametrize("case,expected", (("valid", 0), ("missing", 1), ("bad_json", 1)))
@@ -444,8 +435,7 @@ def test_generator_sc9_reads_mode_specific_source(path, source):
         target = target[key]
     target["minimum_dimensions" if len(source) == 2 else "paraphrase_minimum_dimensions"] = 99
     assert any(
-        warning.startswith("SC-9 WARNING")
-        for warning in checker.warn_suspicious(contract, None)
+        warning.startswith("SC-9 WARNING") for warning in checker.warn_suspicious(contract, None)
     )
 
 
@@ -453,6 +443,5 @@ def test_generator_sc9_reads_mode_specific_source(path, source):
 @pytest.mark.parametrize("warning", ("SC-5", "SC-11"))
 def test_generator_modes_do_not_receive_reviewer_only_warnings(path, warning):
     assert not any(
-        item.startswith(f"{warning} WARNING")
-        for item in checker.warn_suspicious(load(path), None)
+        item.startswith(f"{warning} WARNING") for item in checker.warn_suspicious(load(path), None)
     )

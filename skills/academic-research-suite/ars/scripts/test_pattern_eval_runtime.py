@@ -28,7 +28,6 @@ from __future__ import annotations
 import json
 import re
 from pathlib import Path
-from typing import Any
 
 import pytest
 import yaml
@@ -37,10 +36,23 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "v3_6_7_pattern_eval"
 
 PATTERN_IDS = (
-    "A1", "A2", "A3", "A4", "A5",
-    "B1", "B2", "B3", "B4", "B5",
-    "C1", "C2", "C3",
-    "D1", "D2", "D3", "D4",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "C1",
+    "C2",
+    "C3",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
 )
 
 PATTERN_TO_DIMENSION = {
@@ -73,8 +85,8 @@ PATTERN_TO_DIMENSION = {
 # Closes codex F-003: inventory was previously partial (omitted P-PB-dup-* / consume / crash).
 PHASE_TO_PASSPORT_MUTATION = {
     # Happy paths
-    "A7": "none",          # Path A success — entry already there
-    "B10": "appended",     # Path B success — fresh proposal merged
+    "A7": "none",  # Path A success — entry already there
+    "B10": "appended",  # Path B success — fresh proposal merged
     # Path A failure phases — passport unchanged (silent fall-through to B)
     "P-PA-precond": "none",
     "P-PA-schema": "none",
@@ -103,25 +115,23 @@ PHASE_TO_PASSPORT_MUTATION = {
     # double-append. For success-path completion these reach B10 → "appended"; for
     # short-circuit (B1a tuple-match supersession-false A3-A6 success) reach A7 →
     # "none" reading the pre-existing entry.
-    "P-PB-dup-early": "conditional",     # depends on A3-A6 outcome + supersession_required
-    "P-PB-dup-other": "conditional",     # continues B1a/B2 with remaining candidates
-    "P-PB-dup-late": "conditional",      # GO TO B10 reading pre-existing entry; no new append in current session
-    "P-PB-consume-fail": "appended",     # B9 atomic-rename succeeded → entry committed
-    "P-PB-crash": "conditional",         # depends on whether B9 atomic-rename fired
+    "P-PB-dup-early": "conditional",  # depends on A3-A6 outcome + supersession_required
+    "P-PB-dup-other": "conditional",  # continues B1a/B2 with remaining candidates
+    "P-PB-dup-late": "conditional",  # GO TO B10 reading pre-existing entry; no new append in current session
+    "P-PB-consume-fail": "appended",  # B9 atomic-rename succeeded → entry committed
+    "P-PB-crash": "conditional",  # depends on whether B9 atomic-rename fired
     # Round-cap escalation phase (§5.4 / B11) — append still happens (B10 ran
     # for round-N MATERIAL) but the orchestrator additionally emits the
     # escalation prompt and awaits user choice. Integration round_3 fixtures
     # use this phase explicitly per F-201 closure.
-    "B11": "appended",                   # round == target_rounds MATERIAL → escalation
+    "B11": "appended",  # round == target_rounds MATERIAL → escalation
 }
 
 # Total enumerated phases (must equal 24 §5.6 inventory rows + 2 happy-path
 # B10/A7 + 1 round-cap escalation B11 = 27).
 EXPECTED_PHASE_COUNT = 27
 
-RUN_ID_REGEX = re.compile(
-    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z-[0-9a-f]{4}$"
-)
+RUN_ID_REGEX = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z-[0-9a-f]{4}$")
 
 
 def _load_yaml(path: Path) -> dict:
@@ -177,9 +187,7 @@ def _unscoped_retained_key_pseudonym_clauses(text: str) -> list[str]:
 
     normalized = " ".join(text.split())
     clauses = [
-        clause.strip()
-        for clause in re.split(r"(?<=[.!?])\s+", normalized)
-        if clause.strip()
+        clause.strip() for clause in re.split(r"(?<=[.!?])\s+", normalized) if clause.strip()
     ]
     return [
         clause
@@ -193,9 +201,7 @@ def _unscoped_retained_key_pseudonym_clauses(text: str) -> list[str]:
     ]
 
 
-def _simulate_orchestrator_decision(
-    verdict: dict, expected_phase: str
-) -> dict:
+def _simulate_orchestrator_decision(verdict: dict, expected_phase: str) -> dict:
     """Apply §5.6 Path B verdict→ship/block decision to a synthesized verdict.
 
     Returns a dict with the orchestrator action that an actual run would
@@ -236,15 +242,15 @@ def _validate_finding_counts_match(verdict: dict) -> None:
     tally = {"P1": 0, "P2": 0, "P3": 0}
     for f in findings:
         tally[f["severity"]] += 1
-    assert counts["p1"] == tally["P1"], (
-        f"finding_counts.p1={counts['p1']} but findings carry {tally['P1']} P1 entries"
-    )
-    assert counts["p2"] == tally["P2"], (
-        f"finding_counts.p2={counts['p2']} but findings carry {tally['P2']} P2 entries"
-    )
-    assert counts["p3"] == tally["P3"], (
-        f"finding_counts.p3={counts['p3']} but findings carry {tally['P3']} P3 entries"
-    )
+    assert (
+        counts["p1"] == tally["P1"]
+    ), f"finding_counts.p1={counts['p1']} but findings carry {tally['P1']} P1 entries"
+    assert (
+        counts["p2"] == tally["P2"]
+    ), f"finding_counts.p2={counts['p2']} but findings carry {tally['P2']} P2 entries"
+    assert (
+        counts["p3"] == tally["P3"]
+    ), f"finding_counts.p3={counts['p3']} but findings carry {tally['P3']} P3 entries"
 
 
 def _validate_status_count_consistency(verdict: dict) -> None:
@@ -254,24 +260,24 @@ def _validate_status_count_consistency(verdict: dict) -> None:
     p2 = verdict["finding_counts"]["p2"]
     p3 = verdict["finding_counts"]["p3"]
     if status == "PASS":
-        assert p1 == 0 and p2 == 0 and p3 == 0, (
-            f"PASS verdict requires all-zero finding_counts; got p1={p1} p2={p2} p3={p3}"
-        )
+        assert (
+            p1 == 0 and p2 == 0 and p3 == 0
+        ), f"PASS verdict requires all-zero finding_counts; got p1={p1} p2={p2} p3={p3}"
     elif status == "MINOR":
-        assert p1 == 0 and p2 == 0 and p3 <= 3, (
-            f"MINOR verdict requires p1=0, p2=0, p3<=3; got p1={p1} p2={p2} p3={p3}"
-        )
+        assert (
+            p1 == 0 and p2 == 0 and p3 <= 3
+        ), f"MINOR verdict requires p1=0, p2=0, p3<=3; got p1={p1} p2={p2} p3={p3}"
     elif status == "MATERIAL":
-        assert p1 > 0 or p2 > 0 or p3 > 3, (
-            f"MATERIAL verdict requires p1>0 OR p2>0 OR p3>3; got p1={p1} p2={p2} p3={p3}"
-        )
+        assert (
+            p1 > 0 or p2 > 0 or p3 > 3
+        ), f"MATERIAL verdict requires p1>0 OR p2>0 OR p3>3; got p1={p1} p2={p2} p3={p3}"
     elif status == "AUDIT_FAILED":
-        assert p1 == 0 and p2 == 0 and p3 == 0, (
-            f"AUDIT_FAILED verdict requires all-zero finding_counts; got p1={p1} p2={p2} p3={p3}"
-        )
-        assert verdict.get("failure_reason"), (
-            "AUDIT_FAILED verdict requires non-empty failure_reason"
-        )
+        assert (
+            p1 == 0 and p2 == 0 and p3 == 0
+        ), f"AUDIT_FAILED verdict requires all-zero finding_counts; got p1={p1} p2={p2} p3={p3}"
+        assert verdict.get(
+            "failure_reason"
+        ), "AUDIT_FAILED verdict requires non-empty failure_reason"
 
 
 # ---------------------------------------------------------------------------
@@ -282,11 +288,7 @@ def _validate_status_count_consistency(verdict: dict) -> None:
 def _all_micro_fixtures() -> list[str]:
     if not FIXTURE_ROOT.exists():
         return []
-    return [
-        d.name
-        for d in sorted(FIXTURE_ROOT.iterdir())
-        if d.is_dir() and d.name in PATTERN_IDS
-    ]
+    return [d.name for d in sorted(FIXTURE_ROOT.iterdir()) if d.is_dir() and d.name in PATTERN_IDS]
 
 
 @pytest.mark.parametrize("pattern_id", _all_micro_fixtures())
@@ -307,19 +309,20 @@ def test_micro_bad_run_signal_matches_expectation(pattern_id):
         # convergence-policy assertion (per §7.4 criterion 1 special case).
         assert bad_verdict["verdict_status"] == "PASS"
         assert bad_verdict.get("findings", []) == []
-        assert "expected_d2_convergence_assertion" in expected_action, (
-            "D2 BAD case must carry expected_d2_convergence_assertion field"
-        )
-        assert expected_action["expected_d2_convergence_assertion"], (
-            "D2 expected_d2_convergence_assertion must be non-empty"
-        )
+        assert (
+            "expected_d2_convergence_assertion" in expected_action
+        ), "D2 BAD case must carry expected_d2_convergence_assertion field"
+        assert expected_action[
+            "expected_d2_convergence_assertion"
+        ], "D2 expected_d2_convergence_assertion must be non-empty"
     else:
         # All other patterns — BAD must carry MATERIAL or MINOR verdict with
         # at least one finding in the expected dimension.
         status = bad_verdict["verdict_status"]
-        assert status in {"MATERIAL", "MINOR"}, (
-            f"{pattern_id} BAD verdict must be MATERIAL or MINOR (got {status})"
-        )
+        assert status in {
+            "MATERIAL",
+            "MINOR",
+        }, f"{pattern_id} BAD verdict must be MATERIAL or MINOR (got {status})"
         findings = bad_verdict.get("findings", [])
         assert findings, f"{pattern_id} BAD verdict must carry at least one finding"
         expected_dim = PATTERN_TO_DIMENSION[pattern_id]
@@ -329,9 +332,7 @@ def test_micro_bad_run_signal_matches_expectation(pattern_id):
             f"got {actual_dims}"
         )
 
-    decision = _simulate_orchestrator_decision(
-        bad_verdict, expected_action.get("expected_phase")
-    )
+    decision = _simulate_orchestrator_decision(bad_verdict, expected_action.get("expected_phase"))
     expected_phase = expected_action.get("expected_phase")
     if expected_phase:
         assert decision["expected_phase"] == expected_phase
@@ -346,25 +347,26 @@ def test_micro_bad_run_signal_matches_expectation(pattern_id):
 
     # F-006 + F-801 closure: phase contract for micro BAD verdicts.
     expected_path = expected_action.get("expected_path")
-    assert expected_path in {"A", "B"}, (
-        f"{pattern_id} BAD expected_path must be 'A' or 'B' (got {expected_path!r})"
-    )
+    assert expected_path in {
+        "A",
+        "B",
+    }, f"{pattern_id} BAD expected_path must be 'A' or 'B' (got {expected_path!r})"
     if expected_phase:
         if expected_phase.startswith("P-PA-") or expected_phase == "A7":
-            assert expected_path == "A", (
-                f"{pattern_id} BAD expected_phase={expected_phase} requires expected_path=A"
-            )
+            assert (
+                expected_path == "A"
+            ), f"{pattern_id} BAD expected_phase={expected_phase} requires expected_path=A"
         elif expected_phase.startswith("P-PB-") or expected_phase in {"B10", "B11"}:
-            assert expected_path == "B", (
-                f"{pattern_id} BAD expected_phase={expected_phase} requires expected_path=B"
-            )
+            assert (
+                expected_path == "B"
+            ), f"{pattern_id} BAD expected_phase={expected_phase} requires expected_path=B"
         # F-801 closure: micro fixtures don't exercise round-cap, so B11 is rejected here.
         bad_status = bad_verdict["verdict_status"]
         if bad_status == "PASS":
             # D2 convergence-theatre special case — verdict is PASS but pattern flagged.
-            assert expected_phase in {"B10", "A7"}, (
-                f"{pattern_id} BAD PASS verdict (D2 special) requires phase ∈ {{B10, A7}}; got {expected_phase!r}"
-            )
+            assert (
+                expected_phase in {"B10", "A7"}
+            ), f"{pattern_id} BAD PASS verdict (D2 special) requires phase ∈ {{B10, A7}}; got {expected_phase!r}"
         elif bad_status in {"MINOR", "MATERIAL", "AUDIT_FAILED"}:
             assert expected_phase == "B10", (
                 f"{pattern_id} BAD {bad_status} verdict (micro fixture) requires phase=B10; got {expected_phase!r} "
@@ -386,9 +388,7 @@ def test_micro_good_run_passes(pattern_id):
     """§7.4 criterion 2: GOOD case produces PASS + empty findings."""
     fixture_dir = FIXTURE_ROOT / pattern_id
     manifest = _load_json(fixture_dir / "manifest.json")
-    good_verdict = _load_yaml(
-        fixture_dir / manifest["good_run"]["expected_audit_findings_path"]
-    )
+    good_verdict = _load_yaml(fixture_dir / manifest["good_run"]["expected_audit_findings_path"])
     expected_action = _load_yaml(
         fixture_dir / manifest["good_run"]["expected_orchestrator_action_path"]
     )
@@ -396,16 +396,14 @@ def test_micro_good_run_passes(pattern_id):
     _validate_status_count_consistency(good_verdict)
     _validate_finding_counts_match(good_verdict)
 
-    assert good_verdict["verdict_status"] == "PASS", (
-        f"{pattern_id} GOOD verdict must be PASS; got {good_verdict['verdict_status']}"
-    )
-    assert good_verdict.get("findings", []) == [], (
-        f"{pattern_id} GOOD verdict must have empty findings list"
-    )
+    assert (
+        good_verdict["verdict_status"] == "PASS"
+    ), f"{pattern_id} GOOD verdict must be PASS; got {good_verdict['verdict_status']}"
+    assert (
+        good_verdict.get("findings", []) == []
+    ), f"{pattern_id} GOOD verdict must have empty findings list"
 
-    decision = _simulate_orchestrator_decision(
-        good_verdict, expected_action.get("expected_phase")
-    )
+    decision = _simulate_orchestrator_decision(good_verdict, expected_action.get("expected_phase"))
     assert decision["ship_or_block"] == "ship"
 
     expected_phase = expected_action.get("expected_phase")
@@ -423,9 +421,10 @@ def test_micro_good_run_passes(pattern_id):
         f"got {block_msg!r}"
     )
     expected_path = expected_action.get("expected_path")
-    assert expected_path in {"A", "B"}, (
-        f"{pattern_id} GOOD expected_path must be 'A' or 'B' (got {expected_path!r})"
-    )
+    assert expected_path in {
+        "A",
+        "B",
+    }, f"{pattern_id} GOOD expected_path must be 'A' or 'B' (got {expected_path!r})"
     if expected_phase:
         assert expected_phase in {"B10", "A7"}, (
             f"{pattern_id} GOOD PASS verdict requires phase ∈ {{B10, A7}}; got {expected_phase!r} "
@@ -454,9 +453,7 @@ def test_micro_run_id_uniqueness_within_fixture(pattern_id):
     manifest = _load_json(fixture_dir / "manifest.json")
     bad = _load_yaml(fixture_dir / manifest["bad_run"]["expected_audit_findings_path"])
     good = _load_yaml(fixture_dir / manifest["good_run"]["expected_audit_findings_path"])
-    assert bad["run_id"] != good["run_id"], (
-        f"{pattern_id} BAD and GOOD must have distinct run_ids"
-    )
+    assert bad["run_id"] != good["run_id"], f"{pattern_id} BAD and GOOD must have distinct run_ids"
 
 
 def test_b1_good_fixture_does_not_pass_unnamed_deidentification_status():
@@ -464,17 +461,14 @@ def test_b1_good_fixture_does_not_pass_unnamed_deidentification_status():
 
     fixture_dir = FIXTURE_ROOT / "B1"
     manifest = _load_json(fixture_dir / "manifest.json")
-    deliverable = (
-        fixture_dir / manifest["good_run"]["deliverable_path"]
-    ).read_text(encoding="utf-8")
+    deliverable = (fixture_dir / manifest["good_run"]["deliverable_path"]).read_text(
+        encoding="utf-8"
+    )
     normalized = " ".join(deliverable.split())
 
     assert "Aggregate or de-identified results may be published." not in deliverable
     assert "identity IS known to the researcher" not in deliverable
-    assert (
-        "Anonymity — no identifier collected; cannot contact respondent"
-        not in deliverable
-    )
+    assert "Anonymity — no identifier collected; cannot contact respondent" not in deliverable
     assert "confidential within the named research-team boundary" in normalized
     assert "ARS drafting convention" in normalized
     assert "during the stated 12-month lifecycle" in normalized
@@ -487,9 +481,7 @@ def test_b1_bad_finding_does_not_reclassify_a_retained_identifier():
 
     fixture_dir = FIXTURE_ROOT / "B1"
     manifest = _load_json(fixture_dir / "manifest.json")
-    verdict = _load_yaml(
-        fixture_dir / manifest["bad_run"]["expected_audit_findings_path"]
-    )
+    verdict = _load_yaml(fixture_dir / manifest["bad_run"]["expected_audit_findings_path"])
     finding = verdict["findings"][0]
     finding_text = f"{finding['description']} {finding['suggested_fix']}"
 
@@ -520,8 +512,7 @@ def test_b1_retained_key_pseudonym_mutations_are_detected(claim: str):
     (
         "Under the named governing convention, any retained re-link key means "
         "pseudonymized data.",
-        "Within the applicable GDPR regime, data with a retained link key are "
-        "pseudonymized.",
+        "Within the applicable GDPR regime, data with a retained link key are " "pseudonymized.",
         "Keeping a key does not mean the data are pseudonymized across regimes.",
     ),
 )
@@ -588,13 +579,17 @@ def test_integration_escalation_artifacts_present():
 def test_integration_patterns_triggered_subset(integration_manifest):
     """§7.3: patterns_triggered matches the curated A3+C2+D4+C1 subset."""
     triggered = set(integration_manifest["patterns_triggered"])
-    assert triggered == {"A3", "C2", "D4", "C1"}, (
-        f"integration fixture must trigger A3+C2+D4+C1; got {triggered}"
-    )
+    assert triggered == {
+        "A3",
+        "C2",
+        "D4",
+        "C1",
+    }, f"integration fixture must trigger A3+C2+D4+C1; got {triggered}"
 
 
 # F-004 closure: drive the §7.3 round/escalation scenario end-to-end against
 # the fixture's expected verdicts and pipeline state.
+
 
 @pytest.mark.parametrize("round_n", [1, 2, 3])
 def test_integration_round_per_agent_verdicts_validate(round_n):
@@ -607,14 +602,18 @@ def test_integration_round_per_agent_verdicts_validate(round_n):
     for agent in ("synthesis_agent", "research_architect_agent", "report_compiler_agent"):
         verdict_file = base / agent / "expected_audit_findings.yaml"
         action_file = base / agent / "expected_orchestrator_action.yaml"
-        assert verdict_file.exists(), f"missing round {round_n}/{agent}/expected_audit_findings.yaml"
-        assert action_file.exists(), f"missing round {round_n}/{agent}/expected_orchestrator_action.yaml"
+        assert (
+            verdict_file.exists()
+        ), f"missing round {round_n}/{agent}/expected_audit_findings.yaml"
+        assert (
+            action_file.exists()
+        ), f"missing round {round_n}/{agent}/expected_orchestrator_action.yaml"
         verdict = _load_yaml(verdict_file)
         _validate_status_count_consistency(verdict)
         _validate_finding_counts_match(verdict)
-        assert verdict["round"] == round_n, (
-            f"round {round_n}/{agent} verdict.round={verdict['round']} mismatches directory"
-        )
+        assert (
+            verdict["round"] == round_n
+        ), f"round {round_n}/{agent} verdict.round={verdict['round']} mismatches directory"
         assert verdict["target_rounds"] == 3
         seen_verdicts.add(verdict["verdict_status"])
     integration = _load_json(_integration_dir() / "manifest.json")
@@ -653,18 +652,18 @@ def test_integration_escalation_passport_consistent():
 
     user_ids = set(user_response["acknowledged_finding_ids"])
     manifest_ids = set(manifest["escalation"]["expected_acknowledgement_finding_ids"])
-    assert user_ids == manifest_ids, (
-        f"user_response acks {user_ids} != manifest acks {manifest_ids}"
-    )
+    assert (
+        user_ids == manifest_ids
+    ), f"user_response acks {user_ids} != manifest acks {manifest_ids}"
 
     passport_ack_ids = set()
     for entry in passport["audit_artifact"]:
         ack = entry.get("acknowledgement")
         if ack:
             passport_ack_ids.update(ack["finding_ids"])
-    assert passport_ack_ids == user_ids, (
-        f"passport acks {passport_ack_ids} != user_response acks {user_ids}"
-    )
+    assert (
+        passport_ack_ids == user_ids
+    ), f"passport acks {passport_ack_ids} != user_response acks {user_ids}"
 
     assert user_response["user_choice"] == manifest["escalation"]["user_choice"]
     assert user_response["user_choice"] == "ship_with_known_residue"
@@ -723,7 +722,10 @@ def test_integration_finding_id_lineage_carry_forward():
     d4_round_ids = []
     for r in (1, 2, 3):
         for f in by_round_agent.get((r, "report_compiler_agent"), []):
-            if "word" in f.get("description", "").lower() or "cap" in f.get("description", "").lower():
+            if (
+                "word" in f.get("description", "").lower()
+                or "cap" in f.get("description", "").lower()
+            ):
                 d4_round_ids.append((r, f["id"]))
     d4_unique_ids = set(fid for _, fid in d4_round_ids)
     assert len(d4_unique_ids) == 1, (
@@ -733,6 +735,7 @@ def test_integration_finding_id_lineage_carry_forward():
 
 
 # F-201 closure: state runner driving the §7.3 5-step procedure.
+
 
 def _simulate_round(
     base: Path,
@@ -755,12 +758,14 @@ def _simulate_round(
         action = _load_yaml(round_dir / agent / "expected_orchestrator_action.yaml")
 
         # B10/B11 always appends to passport per §5.6 — the harness emulates this.
-        accumulated_passport.append({
-            "run_id": verdict["run_id"],
-            "agent": agent,
-            "verdict_status": verdict["verdict_status"],
-            "round": verdict["round"],
-        })
+        accumulated_passport.append(
+            {
+                "run_id": verdict["run_id"],
+                "agent": agent,
+                "verdict_status": verdict["verdict_status"],
+                "round": verdict["round"],
+            }
+        )
         for f in verdict.get("findings", []):
             overall_findings[f["severity"]] += 1
         if verdict["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}:
@@ -779,18 +784,19 @@ def _simulate_round(
         # declaring `expected_path: A` with `expected_phase: B11` is rejected.
         expected_phase = action.get("expected_phase")
         expected_path = action.get("expected_path")
-        assert expected_path in {"A", "B"}, (
-            f"round {round_n} {agent} expected_path must be 'A' or 'B'; got {expected_path!r}"
-        )
+        assert expected_path in {
+            "A",
+            "B",
+        }, f"round {round_n} {agent} expected_path must be 'A' or 'B'; got {expected_path!r}"
         if expected_phase:
             if expected_phase.startswith("P-PA-") or expected_phase == "A7":
-                assert expected_path == "A", (
-                    f"round {round_n} {agent} expected_phase={expected_phase} requires expected_path=A; got {expected_path!r}"
-                )
+                assert (
+                    expected_path == "A"
+                ), f"round {round_n} {agent} expected_phase={expected_phase} requires expected_path=A; got {expected_path!r}"
             elif expected_phase.startswith("P-PB-") or expected_phase in {"B10", "B11"}:
-                assert expected_path == "B", (
-                    f"round {round_n} {agent} expected_phase={expected_phase} requires expected_path=B; got {expected_path!r}"
-                )
+                assert (
+                    expected_path == "B"
+                ), f"round {round_n} {agent} expected_phase={expected_phase} requires expected_path=B; got {expected_path!r}"
             expected_mutation = PHASE_TO_PASSPORT_MUTATION.get(expected_phase)
             actual_mutation = action.get("expected_passport_mutation")
             if expected_mutation not in (None, "conditional"):
@@ -861,9 +867,9 @@ def _simulate_round(
             )
         elif verdict_status == "MINOR":
             # MINOR uses B10 (mandatory checkpoint with finding punchlist).
-            assert phase == "B10", (
-                f"round {round_n} {agent_name} MINOR verdict requires expected_phase=B10; got {phase!r}"
-            )
+            assert (
+                phase == "B10"
+            ), f"round {round_n} {agent_name} MINOR verdict requires expected_phase=B10; got {phase!r}"
 
     return {
         "round": round_n,
@@ -903,14 +909,20 @@ def test_integration_state_runner_drives_full_pipeline():
         prior round. A7 success on each → no new append, no mutation. Logs
         each re-verify so the test asserts at least one Path A leg ran."""
         prior_size = len(accumulated_passport)
-        for entry in [e for e in accumulated_passport if e["round"] == prior_round and not e.get("acknowledgement")]:
-            path_a_reverification_log.append({
-                "run_id": entry["run_id"],
-                "agent": entry["agent"],
-                "round_when_reverified": prior_round + 1,  # the round we are about to enter
-                "expected_phase": "A7",  # success path; PHASE_TO_PASSPORT_MUTATION["A7"] == "none"
-                "passport_mutation": PHASE_TO_PASSPORT_MUTATION["A7"],
-            })
+        for entry in [
+            e
+            for e in accumulated_passport
+            if e["round"] == prior_round and not e.get("acknowledgement")
+        ]:
+            path_a_reverification_log.append(
+                {
+                    "run_id": entry["run_id"],
+                    "agent": entry["agent"],
+                    "round_when_reverified": prior_round + 1,  # the round we are about to enter
+                    "expected_phase": "A7",  # success path; PHASE_TO_PASSPORT_MUTATION["A7"] == "none"
+                    "passport_mutation": PHASE_TO_PASSPORT_MUTATION["A7"],
+                }
+            )
         # A7 invariant: passport size MUST NOT change during Path A re-verify.
         assert len(accumulated_passport) == prior_size, (
             f"Path A re-verify of round {prior_round} entries must not append; "
@@ -937,7 +949,8 @@ def test_integration_state_runner_drives_full_pipeline():
         common_fields = {"run_id", "agent", "verdict_status"}
         actual_rows = [
             {k: v for k, v in e.items() if k in common_fields}
-            for e in accumulated_passport if e["round"] == round_n and not e.get("acknowledgement")
+            for e in accumulated_passport
+            if e["round"] == round_n and not e.get("acknowledgement")
         ]
         # Order-independent comparison by run_id key (orchestrator dispatch order is deployment-defined).
         expected_by_run_id = {
@@ -963,7 +976,8 @@ def test_integration_state_runner_drives_full_pipeline():
         if expected_overall:
             actual_has_blocking = any(
                 e["verdict_status"] in {"MATERIAL", "AUDIT_FAILED"}
-                for e in accumulated_passport if e["round"] == round_n
+                for e in accumulated_passport
+                if e["round"] == round_n
             )
             actual_overall = "MATERIAL" if actual_has_blocking else "PASS"
             # MINOR not exercised by this curated subset; harness simplifies to MATERIAL/PASS.
@@ -998,7 +1012,10 @@ def test_integration_state_runner_drives_full_pipeline():
         expected_options = expected_state.get("expected_user_options", [])
         if round_n == target_rounds and outcome["ship_or_block"] == "escalation_prompt":
             # §5.4 trio is a closed set — assert order-independent exact equality.
-            assert set(expected_options) == {"ship_with_known_residue", "another_round", "abort_stage"} and len(expected_options) == 3, (
+            assert (
+                set(expected_options) == {"ship_with_known_residue", "another_round", "abort_stage"}
+                and len(expected_options) == 3
+            ), (
                 f"round {round_n} escalation expected_user_options must be exactly the §5.4 trio "
                 f"{{ship_with_known_residue, another_round, abort_stage}}; got {expected_options}"
             )
@@ -1009,9 +1026,9 @@ def test_integration_state_runner_drives_full_pipeline():
                 f"round {round_n} block expected_user_options must be exactly 2 "
                 f"(one revise/re-audit + abort_stage); got {len(expected_options)}: {expected_options}"
             )
-            assert "abort_stage" in expected_options, (
-                f"round {round_n} block expected_user_options must include abort_stage; got {expected_options}"
-            )
+            assert (
+                "abort_stage" in expected_options
+            ), f"round {round_n} block expected_user_options must include abort_stage; got {expected_options}"
             revise_options = [o for o in expected_options if "re-audit" in o or "revise" in o]
             assert len(revise_options) == 1, (
                 f"round {round_n} block expected_user_options must include exactly one "
@@ -1020,9 +1037,9 @@ def test_integration_state_runner_drives_full_pipeline():
 
     # Step 4: at round-3 escalation, feed user_response.yaml.
     final_round = rounds_outcome[-1]
-    assert final_round["ship_or_block"] == "escalation_prompt", (
-        "round 3 with MATERIAL must emit escalation prompt per §5.4"
-    )
+    assert (
+        final_round["ship_or_block"] == "escalation_prompt"
+    ), "round 3 with MATERIAL must emit escalation prompt per §5.4"
     user_response = _load_yaml(base / "escalation" / "user_response.yaml")
     assert user_response["user_choice"] == "ship_with_known_residue"
     acked_ids = set(user_response["acknowledged_finding_ids"])
@@ -1035,25 +1052,27 @@ def test_integration_state_runner_drives_full_pipeline():
         agent_finding_ids = {f["id"] for f in round_3_verdict.get("findings", [])}
         agent_acked = acked_ids & agent_finding_ids
         if agent_acked:
-            accumulated_passport.append({
-                "run_id": round_3_verdict["run_id"],
-                "agent": agent,
-                "verdict_status": "MATERIAL",
-                "round": 3,
-                "acknowledgement": {
-                    "finding_ids": sorted(agent_acked),
-                    "acknowledged_at": user_response["acknowledged_at"],
-                    "acknowledged_by": user_response["acknowledged_by"],
-                },
-            })
+            accumulated_passport.append(
+                {
+                    "run_id": round_3_verdict["run_id"],
+                    "agent": agent,
+                    "verdict_status": "MATERIAL",
+                    "round": 3,
+                    "acknowledgement": {
+                        "finding_ids": sorted(agent_acked),
+                        "acknowledged_at": user_response["acknowledged_at"],
+                        "acknowledged_by": user_response["acknowledged_by"],
+                    },
+                }
+            )
 
     # Step 5: assert expected_passport_state.yaml matches actual.
     expected_passport = _load_yaml(base / "escalation" / "expected_passport_state.yaml")
     expected_run_id_seq = [e["run_id"] for e in expected_passport["audit_artifact"]]
     actual_run_id_seq = [e["run_id"] for e in accumulated_passport]
-    assert actual_run_id_seq == expected_run_id_seq, (
-        f"final passport run_id sequence mismatch:\nactual={actual_run_id_seq}\nexpected={expected_run_id_seq}"
-    )
+    assert (
+        actual_run_id_seq == expected_run_id_seq
+    ), f"final passport run_id sequence mismatch:\nactual={actual_run_id_seq}\nexpected={expected_run_id_seq}"
 
     expected_ack_pairs = [
         (e["run_id"], tuple(e["acknowledgement"]["finding_ids"]))
@@ -1065,9 +1084,9 @@ def test_integration_state_runner_drives_full_pipeline():
         for e in accumulated_passport
         if e.get("acknowledgement")
     ]
-    assert actual_ack_pairs == expected_ack_pairs, (
-        f"acknowledgement entries mismatch:\nactual={actual_ack_pairs}\nexpected={expected_ack_pairs}"
-    )
+    assert (
+        actual_ack_pairs == expected_ack_pairs
+    ), f"acknowledgement entries mismatch:\nactual={actual_ack_pairs}\nexpected={expected_ack_pairs}"
 
     # Step 5 full equality (F-401 closure): expected_passport_state full
     # passport row comparison including agent / verdict_status / round.
@@ -1114,9 +1133,9 @@ def test_integration_state_runner_drives_full_pipeline():
         f"only {len(path_a_reverification_log)} re-verify legs (expected ≥6 = 3 agents × rounds 2+3)"
     )
     a7_phases = [leg["expected_phase"] for leg in path_a_reverification_log]
-    assert all(p == "A7" for p in a7_phases), (
-        f"all Path A re-verify legs must succeed at A7; got {a7_phases}"
-    )
+    assert all(
+        p == "A7" for p in a7_phases
+    ), f"all Path A re-verify legs must succeed at A7; got {a7_phases}"
 
     # F-302 closure: closed_findings and acknowledged_residue must be disjoint.
     # A finding cannot simultaneously be closed (resolved) and acknowledged
@@ -1146,9 +1165,9 @@ def test_integration_state_runner_drives_full_pipeline():
 def test_inventory_coverage_17_of_17():
     """All 17 numbered pattern IDs have exactly one micro-fixture."""
     seen = set(_all_micro_fixtures())
-    assert seen == set(PATTERN_IDS), (
-        f"missing: {set(PATTERN_IDS) - seen}; extra: {seen - set(PATTERN_IDS)}"
-    )
+    assert seen == set(
+        PATTERN_IDS
+    ), f"missing: {set(PATTERN_IDS) - seen}; extra: {seen - set(PATTERN_IDS)}"
 
 
 def test_phase_inventory_complete():
@@ -1175,7 +1194,9 @@ def test_every_fixture_phase_in_inventory():
             bad_phases.append(
                 f"{verdict_file.relative_to(REPO_ROOT)}: unknown expected_phase={phase!r}"
             )
-    assert not bad_phases, "fixtures reference phases not in §5.6 inventory:\n" + "\n".join(bad_phases)
+    assert not bad_phases, "fixtures reference phases not in §5.6 inventory:\n" + "\n".join(
+        bad_phases
+    )
 
 
 # F-901 closure: synthetic per-phase injections per spec §7.3 line 2093 promise.
@@ -1183,9 +1204,7 @@ def test_every_fixture_phase_in_inventory():
 # + 1 escalation. Every "Passport mutation: none" row MUST be verified to NOT
 # append; "appended" rows MUST be verified to append exactly one entry.
 
-_NONE_MUTATION_PHASES = sorted(
-    p for p, m in PHASE_TO_PASSPORT_MUTATION.items() if m == "none"
-)
+_NONE_MUTATION_PHASES = sorted(p for p, m in PHASE_TO_PASSPORT_MUTATION.items() if m == "none")
 _APPEND_MUTATION_PHASES = sorted(
     p for p, m in PHASE_TO_PASSPORT_MUTATION.items() if m == "appended"
 )
@@ -1207,9 +1226,9 @@ def test_synthetic_inject_none_mutation_phase(phase):
     assert rule == "none"
     # If this phase reached, no append:
     # (no-op — synthetic_passport stays at initial_size)
-    assert len(synthetic_passport) == initial_size, (
-        f"phase {phase}: 'Passport mutation: none' but passport changed size"
-    )
+    assert (
+        len(synthetic_passport) == initial_size
+    ), f"phase {phase}: 'Passport mutation: none' but passport changed size"
 
 
 @pytest.mark.parametrize("phase", _APPEND_MUTATION_PHASES)
@@ -1222,16 +1241,18 @@ def test_synthetic_inject_append_mutation_phase(phase):
     assert rule == "appended"
     # Simulate the append per §5.6 (B10 / B11 happy-or-escalation paths +
     # P-PB-consume-fail where B9 atomic-rename succeeded before consume).
-    synthetic_passport.append({
-        "synthetic_phase": phase,
-        "run_id": "2026-04-30T20-00-00Z-fffe",
-        "agent": "synthesis_agent",
-        "verdict_status": "MATERIAL" if phase in {"B10", "B11"} else "PASS",
-        "round": 1,
-    })
-    assert len(synthetic_passport) == initial_size + 1, (
-        f"phase {phase}: 'Passport mutation: appended' but passport did not grow by 1"
+    synthetic_passport.append(
+        {
+            "synthetic_phase": phase,
+            "run_id": "2026-04-30T20-00-00Z-fffe",
+            "agent": "synthesis_agent",
+            "verdict_status": "MATERIAL" if phase in {"B10", "B11"} else "PASS",
+            "round": 1,
+        }
     )
+    assert (
+        len(synthetic_passport) == initial_size + 1
+    ), f"phase {phase}: 'Passport mutation: appended' but passport did not grow by 1"
 
 
 def test_synthetic_inject_conditional_phases_documented():
@@ -1247,6 +1268,7 @@ def test_synthetic_inject_conditional_phases_documented():
 
 
 # F-902 closure: integration A1.5 supersession-preflight axis.
+
 
 def test_synthetic_supersession_preflight_path_b_filters_higher_round():
     """§5.6 A1.5 superseding-proposal preflight: when an unmerged proposal in
@@ -1268,7 +1290,11 @@ def test_synthetic_supersession_preflight_path_b_filters_higher_round():
         {"verdict_round": 3, "tuple_match": True},
     ]
     # B2 supersession-mode filter: keep only candidates with round > persisted_round.
-    surviving = [c for c in candidate_proposals if c["verdict_round"] > persisted_round and not c.get("is_dup")]
+    surviving = [
+        c
+        for c in candidate_proposals
+        if c["verdict_round"] > persisted_round and not c.get("is_dup")
+    ]
     assert len(surviving) == 1
     assert surviving[0]["verdict_round"] == 3, (
         "B2 supersession filter must select the round-3 user-dispatched proposal, "

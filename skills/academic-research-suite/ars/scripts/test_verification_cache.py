@@ -47,9 +47,7 @@ def test_distinct_query_form_same_resolver_independent(cache):
     cache.put("smith2024", "crossref", "10.5555/abc", {"via": "doi"})
     cache.put("smith2024", "crossref", "smith attention 2024", {"via": "title"})
     assert cache.get("smith2024", "crossref", "10.5555/abc")["via"] == "doi"
-    assert cache.get(
-        "smith2024", "crossref", "smith attention 2024"
-    )["via"] == "title"
+    assert cache.get("smith2024", "crossref", "smith attention 2024")["via"] == "title"
 
 
 def test_put_overwrites_same_key(cache):
@@ -60,7 +58,7 @@ def test_put_overwrites_same_key(cache):
 
 def test_expired_entry_returns_none(tmp_path, monkeypatch):
     """An entry older than the TTL (90 days) is a miss."""
-    from verification_cache import VerificationCache, _TTL_DAYS
+    from verification_cache import _TTL_DAYS, VerificationCache
 
     db = tmp_path / "verification.db"
     monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(db))
@@ -69,13 +67,10 @@ def test_expired_entry_returns_none(tmp_path, monkeypatch):
 
     # Backdate the stored verification_timestamp past the TTL by writing
     # directly to the underlying row.
-    stale = (
-        datetime.now(timezone.utc) - timedelta(days=_TTL_DAYS + 1)
-    ).isoformat()
+    stale = (datetime.now(timezone.utc) - timedelta(days=_TTL_DAYS + 1)).isoformat()
     conn = sqlite3.connect(str(db))
     conn.execute(
-        "UPDATE verification_cache SET verification_timestamp = ? "
-        "WHERE citation_key = ?",
+        "UPDATE verification_cache SET verification_timestamp = ? " "WHERE citation_key = ?",
         (stale, "old2020"),
     )
     conn.commit()
@@ -85,20 +80,17 @@ def test_expired_entry_returns_none(tmp_path, monkeypatch):
 
 
 def test_fresh_entry_within_ttl_returns_value(tmp_path, monkeypatch):
-    from verification_cache import VerificationCache, _TTL_DAYS
+    from verification_cache import _TTL_DAYS, VerificationCache
 
     db = tmp_path / "verification.db"
     monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(db))
     c = VerificationCache()
     c.put("recent2026", "arxiv", "2605.18661", {"matched": True})
 
-    fresh = (
-        datetime.now(timezone.utc) - timedelta(days=_TTL_DAYS - 1)
-    ).isoformat()
+    fresh = (datetime.now(timezone.utc) - timedelta(days=_TTL_DAYS - 1)).isoformat()
     conn = sqlite3.connect(str(db))
     conn.execute(
-        "UPDATE verification_cache SET verification_timestamp = ? "
-        "WHERE citation_key = ?",
+        "UPDATE verification_cache SET verification_timestamp = ? " "WHERE citation_key = ?",
         (fresh, "recent2026"),
     )
     conn.commit()
@@ -223,8 +215,9 @@ def _backdate(cache, citation_key, days):
     ts = (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
     with sqlite3.connect(cache.path) as conn:
         conn.execute(
-            "UPDATE verification_cache SET verification_timestamp = ? "
-            "WHERE citation_key = ?", (ts, citation_key))
+            "UPDATE verification_cache SET verification_timestamp = ? " "WHERE citation_key = ?",
+            (ts, citation_key),
+        )
 
 
 def test_stale_threshold_default_env_zero_and_malformed(monkeypatch):

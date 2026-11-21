@@ -7,10 +7,18 @@ from pathlib import Path
 from scripts import check_role_scoped_contract as lint
 
 REPO = Path(__file__).resolve().parents[1]
-MIRROR_FILES = tuple(lint.CONTRACTS) + tuple(lint.AGENTS) + (
-    lint.PROTOCOL, lint.SYNTH, lint.PANEL_CHECKER, lint.PHASE_CHECKER,
-    lint.TEMPLATE,
-) + tuple(lint.SHIPPED_EXAMPLES)
+MIRROR_FILES = (
+    tuple(lint.CONTRACTS)
+    + tuple(lint.AGENTS)
+    + (
+        lint.PROTOCOL,
+        lint.SYNTH,
+        lint.PANEL_CHECKER,
+        lint.PHASE_CHECKER,
+        lint.TEMPLATE,
+    )
+    + tuple(lint.SHIPPED_EXAMPLES)
+)
 
 
 def mirror(tmp_path: Path) -> Path:
@@ -44,7 +52,8 @@ def test_unmutated_mirror_passes(tmp_path):
 def test_eligibility_map_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
-        root, "shared/contracts/reviewer/full.json",
+        root,
+        "shared/contracts/reviewer/full.json",
         '"eligible_roles": ["methodology"]',
         '"eligible_roles": ["eic"]',
     )
@@ -54,7 +63,8 @@ def test_eligibility_map_mutation_fails(tmp_path):
 def test_delivered_phase1_literal_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
-        root, next(iter(lint.AGENTS)),
+        root,
+        next(iter(lint.AGENTS)),
         "`what_triggers_fatal: <single-line non-empty text>`",
         "`fatal_trigger: <single-line non-empty text>`",
     )
@@ -133,7 +143,8 @@ def test_delivered_phase1_terminal_preflight_relocation_fails(tmp_path):
 def test_delivered_phase2_literal_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
-        root, next(iter(lint.AGENTS)),
+        root,
+        next(iter(lint.AGENTS)),
         "block_class: <fatal|repairable>",
         "block_kind: <fatal|repairable>",
     )
@@ -294,9 +305,7 @@ def test_delivered_phase2_role_token_mutations_fail(tmp_path):
 
 
 def test_delivered_phase2_strength_severity_mutations_fail(tmp_path):
-    non_da_agents = [
-        rel for rel, role in lint.AGENTS.items() if role != "da"
-    ]
+    non_da_agents = [rel for rel, role in lint.AGENTS.items() if role != "da"]
     for index, rel in enumerate(non_da_agents):
         root = mirror(tmp_path / str(index))
         mutate(
@@ -323,7 +332,8 @@ def test_delivered_phase2_quote_preflight_mutations_fail(tmp_path):
 def test_delivered_phase2_per_finding_grammar_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
-        root, next(iter(lint.AGENTS)),
+        root,
+        next(iter(lint.AGENTS)),
         "Findings never share an anchor.",
         "Findings may share an anchor.",
     )
@@ -344,7 +354,8 @@ def test_da_required_table_grammar_mutation_fails(tmp_path):
 def test_protocol_pattern_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
-        root, lint.PROTOCOL,
+        root,
+        lint.PROTOCOL,
         "any dimension scores '<score>' or worse",
         "some dimension scores '<score>' or worse",
     )
@@ -455,11 +466,8 @@ def test_da_severity_regex_ignorecase_mutation_fails(tmp_path):
     mutate(
         root,
         lint.PANEL_CHECKER,
-        r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n"
-        "    re.IGNORECASE,\n"
-        ")",
-        r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n"
-        ")",
+        r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n" "    re.IGNORECASE,\n" ")",
+        r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n" ")",
     )
     assert lint.check(root)
 
@@ -607,8 +615,7 @@ def test_da_nfkc_conditional_bypass_mutation_fails(tmp_path):
         root,
         lint.PANEL_CHECKER,
         'rendered = unicodedata.normalize("NFKC", rendered)',
-        'rendered = unicodedata.normalize("NFKC", rendered) '
-        "if False else rendered",
+        'rendered = unicodedata.normalize("NFKC", rendered) ' "if False else rendered",
     )
     assert lint.check(root)
 
@@ -735,11 +742,8 @@ def test_phase_finding_declaration_ignorecase_mutations_fail(tmp_path):
         mutate(
             current,
             lint.PHASE_CHECKER,
-            rf'    r"\*\*{name}(?:\*\*)?\s*:",' "\n"
-            "    re.IGNORECASE,\n"
-            ")",
-            rf'    r"\*\*{name}(?:\*\*)?\s*:",' "\n"
-            ")",
+            rf'    r"\*\*{name}(?:\*\*)?\s*:",' "\n" "    re.IGNORECASE,\n" ")",
+            rf'    r"\*\*{name}(?:\*\*)?\s*:",' "\n" ")",
         )
         assert lint.check(current)
 
@@ -936,7 +940,7 @@ def test_anchor_validator_quote_scanner_mutation_fails(tmp_path):
         lint.ANCHOR_QUOTE_SCANNER_WITNESS,
         lint.ANCHOR_QUOTE_SCANNER_WITNESS.replace(
             'if not stack or stack[-1][0] != "curly":',
-            'if not stack:',
+            "if not stack:",
             1,
         ),
     )
@@ -960,10 +964,7 @@ def test_anchor_validator_quote_pair_limit_mutation_fails(tmp_path):
         root,
         lint.PANEL_CHECKER,
         lint.ANCHOR_QUOTE_LIMIT_WITNESS,
-        (
-            "not quote_texts[0].strip() "
-            "or len(quote_texts[0].split()) > 25"
-        ),
+        ("not quote_texts[0].strip() " "or len(quote_texts[0].split()) > 25"),
     )
     assert lint.check(root)
 
@@ -1045,7 +1046,7 @@ def test_anchor_validator_wrapper_mutations_fail(tmp_path):
 def test_anchor_validator_content_balance_mutations_fail(tmp_path):
     replacements = (
         (
-            "if not _balanced_square_brackets(tail) or tail.count(\"`\") % 2:",
+            'if not _balanced_square_brackets(tail) or tail.count("`") % 2:',
             "if False:",
         ),
     )

@@ -8,9 +8,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_evidence_row_integration as guard
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COPIED = tuple(
@@ -63,15 +61,12 @@ def test_each_consumer_contract_pointer_is_required(tmp_path: Path, rel: str) ->
 
 
 @pytest.mark.parametrize("rel", tuple(guard.REQUIRED_POINTERS))
-def test_each_surface_requires_explicit_legacy_compatibility_gate(
-    tmp_path: Path, rel: str
-) -> None:
+def test_each_surface_requires_explicit_legacy_compatibility_gate(tmp_path: Path, rel: str) -> None:
     root = _tree(tmp_path)
     _replace_all(root, rel, "--allow-legacy-absence", "removed-explicit-legacy-gate")
     errors = guard.run_checks(root)
     assert any(
-        rel in error
-        and "missing #656 pointer/contract token '--allow-legacy-absence'" in error
+        rel in error and "missing #656 pointer/contract token '--allow-legacy-absence'" in error
         for error in errors
     )
 
@@ -102,9 +97,7 @@ def test_runtime_rendering_label_drift_is_rejected(tmp_path: Path) -> None:
         "from urllib.request import urlopen\n",
     ],
 )
-def test_runtime_retrieval_or_process_import_is_rejected(
-    tmp_path: Path, statement: str
-) -> None:
+def test_runtime_retrieval_or_process_import_is_rejected(tmp_path: Path, statement: str) -> None:
     root = _tree(tmp_path)
     path = root / guard.RUNTIME_REL
     path.write_text(statement + path.read_text(encoding="utf-8"), encoding="utf-8")
@@ -119,7 +112,7 @@ def test_unbounded_all_cli_option_is_rejected(tmp_path: Path) -> None:
     anchor = "def _parser() -> argparse.ArgumentParser:\n"
     injected = (
         "def _forbidden_all(parser: argparse.ArgumentParser) -> None:\n"
-        "    parser.add_argument(\"--all\", action=\"store_true\")\n\n\n"
+        '    parser.add_argument("--all", action="store_true")\n\n\n'
     )
     assert anchor in text
     path.write_text(text.replace(anchor, injected + anchor, 1), encoding="utf-8")
@@ -145,18 +138,22 @@ def test_renderer_reachable_ambient_file_read_is_rejected(tmp_path: Path) -> Non
     path = root / guard.RUNTIME_REL
     text = path.read_text(encoding="utf-8")
     lines = text.splitlines(keepends=True)
-    start = next(index for index, line in enumerate(lines) if line.startswith("def render_markdown("))
-    body = next(index for index in range(start + 1, len(lines)) if lines[index].startswith("    \"\"\""))
+    start = next(
+        index for index, line in enumerate(lines) if line.startswith("def render_markdown(")
+    )
+    body = next(
+        index for index in range(start + 1, len(lines)) if lines[index].startswith('    """')
+    )
     lines.insert(body, '    Path("ambient-source.txt").read_text(encoding="utf-8")\n')
     path.write_text("".join(lines), encoding="utf-8")
     errors = guard.run_checks(root)
     assert any("renderer-reachable ambient I/O/process call" in error for error in errors)
 
 
-@pytest.mark.parametrize("field", ["full_text", "human_read_source", "read_scope", "source_pointer"])
-def test_private_read_or_source_body_field_is_rejected(
-    tmp_path: Path, field: str
-) -> None:
+@pytest.mark.parametrize(
+    "field", ["full_text", "human_read_source", "read_scope", "source_pointer"]
+)
+def test_private_read_or_source_body_field_is_rejected(tmp_path: Path, field: str) -> None:
     root = _tree(tmp_path)
     path = root / guard.SCHEMA_REL
     schema = json.loads(path.read_text(encoding="utf-8"))
@@ -166,9 +163,7 @@ def test_private_read_or_source_body_field_is_rejected(
 
 
 @pytest.mark.parametrize("rel", guard.OUT_OF_SCOPE)
-def test_opt_in_claim_audit_and_formatter_cannot_adopt_v1_pointer(
-    tmp_path: Path, rel: str
-) -> None:
+def test_opt_in_claim_audit_and_formatter_cannot_adopt_v1_pointer(tmp_path: Path, rel: str) -> None:
     root = _tree(tmp_path)
     path = root / rel
     path.write_text(

@@ -42,9 +42,7 @@ def make_plugin_root(tmp_path, version, name="plugin_root", with_checker=True):
 
 def make_remote(tmp_path, version, name="remote_plugin.json"):
     remote = tmp_path / name
-    remote.write_text(
-        json.dumps({"name": "academic-research-skills", "version": version}) + "\n"
-    )
+    remote.write_text(json.dumps({"name": "academic-research-skills", "version": version}) + "\n")
     return "file://" + str(remote)
 
 
@@ -117,9 +115,7 @@ def test_home_unset_no_state_dir_is_silent(tmp_path):
     env.pop("HOME", None)
     env["CLAUDE_PLUGIN_ROOT"] = str(root)
     env["ARS_UPDATE_CHECK_REMOTE_URL"] = make_remote(tmp_path, "9.9.9")
-    r = subprocess.run(
-        ["bash", str(CHECKER)], capture_output=True, text=True, env=env, timeout=30
-    )
+    r = subprocess.run(["bash", str(CHECKER)], capture_output=True, text=True, env=env, timeout=30)
     assert r.returncode == 0
     assert r.stdout == ""
     assert r.stderr == ""
@@ -150,9 +146,7 @@ def test_update_available_token_and_cache(tmp_path):
     assert r.returncode == 0
     assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
     assert r.stderr == ""
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 # ------------------------------------------------- cache + failure semantics
@@ -170,9 +164,7 @@ def test_fresh_update_available_cache_renders_without_fetch(tmp_path):
         state_dir=state,
     )
     assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 def test_fresh_up_to_date_cache_suppresses_fetch(tmp_path):
@@ -198,9 +190,7 @@ def test_expired_cache_refetches(tmp_path):
         state_dir=state,
     )
     assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 def test_expired_cache_unreachable_remote_is_silent_and_preserved(tmp_path):
@@ -214,9 +204,7 @@ def test_expired_cache_unreachable_remote_is_silent_and_preserved(tmp_path):
     )
     assert r.returncode == 0
     assert r.stdout == ""
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 def test_malformed_remote_is_silent_cache_untouched(tmp_path):
@@ -240,9 +228,7 @@ def test_corrupt_cache_refetches(tmp_path):
         state_dir=state,
     )
     assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 def test_local_version_changed_invalidates_fresh_cache(tmp_path):
@@ -335,9 +321,7 @@ def test_cache_third_field_injection_payload_rejected(tmp_path):
     assert "EVIL" not in r.stdout
     # Poisoned cache rejected -> refetch -> clean token rendered.
     assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 def test_local_version_malformed_is_silent(tmp_path):
@@ -417,9 +401,7 @@ def test_cache_kebab_prose_third_field_rejected(tmp_path):
     assert r.returncode == 0
     assert "Ignore" not in r.stdout
     assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 def test_legitimate_prerelease_version_accepted(tmp_path):
@@ -533,9 +515,7 @@ def test_cache_prose_prerelease_rejected(tmp_path):
     assert "ignore" not in r.stdout
     assert "instructions" not in r.stdout
     assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 def test_exit_zero_when_rm_and_mv_absent(tmp_path):
@@ -564,9 +544,7 @@ def test_exit_zero_when_rm_and_mv_absent(tmp_path):
     env["CLAUDE_PLUGIN_ROOT"] = str(root)
     env["ARS_UPDATE_CHECK_STATE_DIR"] = str(state)
     env["ARS_UPDATE_CHECK_REMOTE_URL"] = make_remote(tmp_path, "3.18.0")
-    r = subprocess.run(
-        ["bash", str(CHECKER)], capture_output=True, text=True, env=env, timeout=30
-    )
+    r = subprocess.run(["bash", str(CHECKER)], capture_output=True, text=True, env=env, timeout=30)
     # Always-exit-0 contract holds even when mv/rm are absent.
     assert r.returncode == 0
     assert r.stderr == ""
@@ -619,9 +597,7 @@ def test_valid_fresh_cache_still_short_circuits(tmp_path):
     )
     assert r.returncode == 0
     assert r.stdout.strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
-    assert (
-        state / "update-check"
-    ).read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
+    assert (state / "update-check").read_text().strip() == "UPDATE_AVAILABLE 3.17.0 3.18.0"
 
 
 # -------------------------------------------------------- announce integration

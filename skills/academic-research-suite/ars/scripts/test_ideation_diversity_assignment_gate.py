@@ -5,9 +5,9 @@ import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import shutil
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -40,9 +40,7 @@ def finalized_bundle(tmp_path_factory) -> Path:
     authorization = fixtures._authorization_file(base, plan)
     for cell in plan["cells"]:
         source.unlink(missing_ok=True)
-        source.write_bytes(
-            fixtures.runner._json_bytes(fixtures._transcript(plan, cell))
-        )
+        source.write_bytes(fixtures.runner._json_bytes(fixtures._transcript(plan, cell)))
         fixtures.runner.ingest(
             fixtures._command_args(
                 run_dir,
@@ -51,9 +49,7 @@ def finalized_bundle(tmp_path_factory) -> Path:
                 authorization_record=authorization,
             )
         )
-    outcome = fixtures.runner.prepare_blind_packet(
-        fixtures._command_args(run_dir, plan_sha)
-    )
+    outcome = fixtures.runner.prepare_blind_packet(fixtures._command_args(run_dir, plan_sha))
     assert outcome["state"] == "blind_finalized"
     return run_dir
 
@@ -67,9 +63,7 @@ def _copy_bundle(finalized_bundle: Path, tmp_path: Path) -> Path:
 
 
 def _map_by_blind(run_dir: Path, field: str) -> dict[str, str]:
-    private_map = json.loads(
-        (run_dir / "blind" / "private" / "arm-map.json").read_bytes()
-    )
+    private_map = json.loads((run_dir / "blind" / "private" / "arm-map.json").read_bytes())
     return {row["blind_session_id"]: row[field] for row in private_map["mapping"]}
 
 
@@ -84,19 +78,13 @@ def _valid_ledger(run_dir: Path) -> dict:
         blinds = sorted(by_pair[pair_id])
         assert len(blinds) == 16
         for slot, blind_id in enumerate(blinds):
-            assignments.append(
-                {"judge_id": judges[2 * slot], "blind_session_id": blind_id}
-            )
-            assignments.append(
-                {"judge_id": judges[2 * slot + 1], "blind_session_id": blind_id}
-            )
+            assignments.append({"judge_id": judges[2 * slot], "blind_session_id": blind_id})
+            assignments.append({"judge_id": judges[2 * slot + 1], "blind_session_id": blind_id})
     assignments.sort(key=lambda row: (row["blind_session_id"], row["judge_id"]))
     return {
         "schema_version": "ideation-diversity-judge-assignment-ledger/1.0",
         "suite": runner.SUITE,
-        "run_plan_sha256": hashlib.sha256(
-            (run_dir / "run-plan.json").read_bytes()
-        ).hexdigest(),
+        "run_plan_sha256": hashlib.sha256((run_dir / "run-plan.json").read_bytes()).hexdigest(),
         "inventory_sha256": hashlib.sha256(
             (run_dir / "blind" / "inventory.json").read_bytes()
         ).hexdigest(),
@@ -124,11 +112,7 @@ def _write_ledger(tmp_path: Path, ledger: dict) -> Path:
 
 
 def _receipt_path(run_dir: Path) -> Path:
-    return (
-        run_dir.parent
-        / f"{run_dir.name}-assignment-gate"
-        / "assignment-gate-receipt.json"
-    )
+    return run_dir.parent / f"{run_dir.name}-assignment-gate" / "assignment-gate-receipt.json"
 
 
 def _verify_args(run_dir: Path, ledger_path: Path) -> argparse.Namespace:
@@ -146,9 +130,7 @@ def _deliver_args(
     )
 
 
-def test_gate_passes_valid_ledger_and_writes_write_once_receipt(
-    finalized_bundle, tmp_path
-):
+def test_gate_passes_valid_ledger_and_writes_write_once_receipt(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     ledger_path = _write_ledger(tmp_path, ledger)
@@ -158,9 +140,7 @@ def test_gate_passes_valid_ledger_and_writes_write_once_receipt(
     receipt_raw = receipt_path.read_bytes()
     receipt = json.loads(receipt_raw)
     assert receipt["verdict"] == "pass"
-    assert receipt["ledger_sha256"] == hashlib.sha256(
-        ledger_path.read_bytes()
-    ).hexdigest()
+    assert receipt["ledger_sha256"] == hashlib.sha256(ledger_path.read_bytes()).hexdigest()
     assert receipt["ledger"] == ledger
     assert (
         receipt["delivery_rule"]
@@ -178,9 +158,7 @@ def test_gate_passes_valid_ledger_and_writes_write_once_receipt(
     assert receipt_path.read_bytes() == receipt_raw
 
 
-def test_receipt_and_ledger_never_carry_pair_or_arm_fields(
-    finalized_bundle, tmp_path
-):
+def test_receipt_and_ledger_never_carry_pair_or_arm_fields(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger_path = _write_ledger(tmp_path, _valid_ledger(run_dir))
     gate.verify(_verify_args(run_dir, ledger_path))
@@ -196,9 +174,7 @@ def test_receipt_and_ledger_never_carry_pair_or_arm_fields(
         assert forbidden not in receipt_text
 
 
-def test_judge_sharing_a_pair_fails_closed_and_writes_nothing(
-    finalized_bundle, tmp_path
-):
+def test_judge_sharing_a_pair_fails_closed_and_writes_nothing(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     pair_by_blind = _map_by_blind(run_dir, "pair_id")
@@ -209,8 +185,7 @@ def test_judge_sharing_a_pair_fails_closed_and_writes_nothing(
         for row in rows
         if row["judge_id"] != first["judge_id"]
         and row["blind_session_id"] != first["blind_session_id"]
-        and pair_by_blind[row["blind_session_id"]]
-        == pair_by_blind[first["blind_session_id"]]
+        and pair_by_blind[row["blind_session_id"]] == pair_by_blind[first["blind_session_id"]]
     )
     conflicting["judge_id"] = first["judge_id"]
     ledger_path = _write_ledger(tmp_path, ledger)
@@ -219,9 +194,7 @@ def test_judge_sharing_a_pair_fails_closed_and_writes_nothing(
     assert not (_receipt_path(run_dir)).exists()
 
 
-def test_cross_experiment_same_scenario_exposure_is_also_blocked(
-    finalized_bundle, tmp_path
-):
+def test_cross_experiment_same_scenario_exposure_is_also_blocked(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     pair_by_blind = _map_by_blind(run_dir, "pair_id")
@@ -232,8 +205,7 @@ def test_cross_experiment_same_scenario_exposure_is_also_blocked(
         row
         for row in rows
         if row["judge_id"] != first["judge_id"]
-        and pair_by_blind[row["blind_session_id"]]
-        == pair_by_blind[first["blind_session_id"]]
+        and pair_by_blind[row["blind_session_id"]] == pair_by_blind[first["blind_session_id"]]
         and experiment_by_blind[row["blind_session_id"]]
         != experiment_by_blind[first["blind_session_id"]]
     )
@@ -248,12 +220,8 @@ def test_every_packet_needs_two_distinct_judges(finalized_bundle, tmp_path):
     ledger = _valid_ledger(run_dir)
     rows = ledger["first_round_assignments"]
     removed = rows.pop(0)
-    survivor = next(
-        row for row in rows if row["blind_session_id"] != removed["blind_session_id"]
-    )
-    rows.append(
-        {"judge_id": "judge-33", "blind_session_id": survivor["blind_session_id"]}
-    )
+    survivor = next(row for row in rows if row["blind_session_id"] != removed["blind_session_id"])
+    rows.append({"judge_id": "judge-33", "blind_session_id": survivor["blind_session_id"]})
     ledger["judges"] = [*ledger["judges"], "judge-33"]
     ledger_path = _write_ledger(tmp_path, ledger)
     with pytest.raises(gate.GateError, match="LEDGER-COVERAGE"):
@@ -276,9 +244,7 @@ def test_unknown_blind_id_or_unlisted_judge_fails(finalized_bundle, tmp_path):
         gate.verify(_verify_args(run_dir, _write_ledger(tmp_path, ledger)))
 
 
-def test_adjudicator_handle_cannot_take_a_first_round_packet(
-    finalized_bundle, tmp_path
-):
+def test_adjudicator_handle_cannot_take_a_first_round_packet(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     ledger["first_round_assignments"][0]["judge_id"] = "adjudicator-01"
@@ -299,9 +265,7 @@ def test_binding_drift_or_loosened_private_map_fails(finalized_bundle, tmp_path)
         gate.verify(_verify_args(run_dir_loose, ledger_path))
 
 
-def test_tampered_bundle_fails_replay_before_any_receipt(
-    finalized_bundle, tmp_path
-):
+def test_tampered_bundle_fails_replay_before_any_receipt(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     packet_path = sorted((run_dir / "blind" / "sessions").glob("*.json"))[0]
@@ -318,9 +282,7 @@ def test_delivery_requires_pass_receipt(finalized_bundle, tmp_path):
     row = ledger["first_round_assignments"][0]
     dest = tmp_path / "judge-desk"
     with pytest.raises(gate.GateError, match="DELIVERY-RECEIPT"):
-        gate.deliver(
-            _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest)
-        )
+        gate.deliver(_deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest))
 
 
 def test_delivery_copies_exactly_one_packet_once(finalized_bundle, tmp_path):
@@ -330,22 +292,17 @@ def test_delivery_copies_exactly_one_packet_once(finalized_bundle, tmp_path):
     gate.verify(_verify_args(run_dir, ledger_path))
     row = ledger["first_round_assignments"][0]
     dest = tmp_path / "judge-desk"
-    result = gate.deliver(
-        _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest)
-    )
+    result = gate.deliver(_deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest))
     assert result["delivered"] == 1
     delivered = list(dest.iterdir())
-    assert [path.name for path in delivered] == [
-        f"{row['blind_session_id']}.json"
-    ]
-    assert delivered[0].read_bytes() == (
-        run_dir / "blind" / "sessions" / f"{row['blind_session_id']}.json"
-    ).read_bytes()
+    assert [path.name for path in delivered] == [f"{row['blind_session_id']}.json"]
+    assert (
+        delivered[0].read_bytes()
+        == (run_dir / "blind" / "sessions" / f"{row['blind_session_id']}.json").read_bytes()
+    )
     with pytest.raises(gate.GateError, match="DELIVERY-DUPLICATE"):
         gate.deliver(
-            _deliver_args(
-                run_dir, row["judge_id"], row["blind_session_id"], tmp_path / "again"
-            )
+            _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], tmp_path / "again")
         )
     own_blinds = {
         other["blind_session_id"]
@@ -372,42 +329,28 @@ def test_delivery_copies_exactly_one_packet_once(finalized_bundle, tmp_path):
     second = ledger["first_round_assignments"][1]
     with pytest.raises(gate.GateError, match="DELIVERY-DEST"):
         gate.deliver(
-            _deliver_args(
-                run_dir, second["judge_id"], second["blind_session_id"], occupied
-            )
+            _deliver_args(run_dir, second["judge_id"], second["blind_session_id"], occupied)
         )
     inside = run_dir / "blind" / "inside-dest"
     with pytest.raises(gate.GateError, match="DELIVERY-DEST"):
-        gate.deliver(
-            _deliver_args(
-                run_dir, second["judge_id"], second["blind_session_id"], inside
-            )
-        )
+        gate.deliver(_deliver_args(run_dir, second["judge_id"], second["blind_session_id"], inside))
 
 
-def test_delivery_refuses_when_bundle_drifts_after_receipt(
-    finalized_bundle, tmp_path
-):
+def test_delivery_refuses_when_bundle_drifts_after_receipt(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     ledger_path = _write_ledger(tmp_path, ledger)
     gate.verify(_verify_args(run_dir, ledger_path))
     row = ledger["first_round_assignments"][0]
-    packet_path = (
-        run_dir / "blind" / "sessions" / f"{row['blind_session_id']}.json"
-    )
+    packet_path = run_dir / "blind" / "sessions" / f"{row['blind_session_id']}.json"
     packet_path.write_bytes(b"TAMPERED AFTER RECEIPT\n")
     with pytest.raises(gate.GateError, match="DELIVERY-DRIFT"):
         gate.deliver(
-            _deliver_args(
-                run_dir, row["judge_id"], row["blind_session_id"], tmp_path / "late"
-            )
+            _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], tmp_path / "late")
         )
 
 
-def test_exposure_diagnostic_carries_no_judge_or_blind_identifiers(
-    finalized_bundle, tmp_path
-):
+def test_exposure_diagnostic_carries_no_judge_or_blind_identifiers(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     pair_by_blind = _map_by_blind(run_dir, "pair_id")
@@ -418,8 +361,7 @@ def test_exposure_diagnostic_carries_no_judge_or_blind_identifiers(
         for row in rows
         if row["judge_id"] != first["judge_id"]
         and row["blind_session_id"] != first["blind_session_id"]
-        and pair_by_blind[row["blind_session_id"]]
-        == pair_by_blind[first["blind_session_id"]]
+        and pair_by_blind[row["blind_session_id"]] == pair_by_blind[first["blind_session_id"]]
     )
     conflicting["judge_id"] = first["judge_id"]
     with pytest.raises(gate.GateError) as caught:
@@ -443,8 +385,7 @@ def test_fabricated_receipt_cannot_authorize_exposure_violating_delivery(
         for row in rows
         if row["judge_id"] != first["judge_id"]
         and row["blind_session_id"] != first["blind_session_id"]
-        and pair_by_blind[row["blind_session_id"]]
-        == pair_by_blind[first["blind_session_id"]]
+        and pair_by_blind[row["blind_session_id"]] == pair_by_blind[first["blind_session_id"]]
     )
     conflicting["judge_id"] = first["judge_id"]
     ledger_raw = runner._json_bytes(ledger)
@@ -454,9 +395,7 @@ def test_fabricated_receipt_cannot_authorize_exposure_violating_delivery(
         "verdict": "pass",
         "ledger_sha256": hashlib.sha256(ledger_raw).hexdigest(),
         "ledger": ledger,
-        "delivery_rule": (
-            "deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"
-        ),
+        "delivery_rule": ("deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"),
     }
     receipt_path = _receipt_path(run_dir)
     receipt_path.parent.mkdir(parents=True)
@@ -472,19 +411,13 @@ def test_fabricated_receipt_cannot_authorize_exposure_violating_delivery(
         )
 
 
-def test_fabricated_receipt_over_tampered_bundle_fails_delivery_replay(
-    finalized_bundle, tmp_path
-):
+def test_fabricated_receipt_over_tampered_bundle_fails_delivery_replay(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     map_path = run_dir / "blind" / "private" / "arm-map.json"
     private_map = json.loads(map_path.read_bytes())
     swap = private_map["mapping"][0]
-    donor = next(
-        row
-        for row in private_map["mapping"]
-        if row["pair_id"] != swap["pair_id"]
-    )
+    donor = next(row for row in private_map["mapping"] if row["pair_id"] != swap["pair_id"])
     swap["pair_id"] = donor["pair_id"]
     tampered_raw = runner._json_bytes(private_map)
     map_path.write_bytes(tampered_raw)
@@ -495,9 +428,7 @@ def test_fabricated_receipt_over_tampered_bundle_fails_delivery_replay(
         "verdict": "pass",
         "ledger_sha256": hashlib.sha256(runner._json_bytes(ledger)).hexdigest(),
         "ledger": ledger,
-        "delivery_rule": (
-            "deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"
-        ),
+        "delivery_rule": ("deliver_exactly_one_isolated_packet_per_first_round_judge_assignment"),
     }
     receipt_path = _receipt_path(run_dir)
     receipt_path.parent.mkdir(parents=True)
@@ -505,15 +436,11 @@ def test_fabricated_receipt_over_tampered_bundle_fails_delivery_replay(
     row = ledger["first_round_assignments"][0]
     with pytest.raises(gate.GateError, match="DELIVERY-DRIFT"):
         gate.deliver(
-            _deliver_args(
-                run_dir, row["judge_id"], row["blind_session_id"], tmp_path / "desk"
-            )
+            _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], tmp_path / "desk")
         )
 
 
-def test_new_delivery_refuses_any_preexisting_destination(
-    finalized_bundle, tmp_path
-):
+def test_new_delivery_refuses_any_preexisting_destination(finalized_bundle, tmp_path):
     run_dir = _copy_bundle(finalized_bundle, tmp_path)
     ledger = _valid_ledger(run_dir)
     gate.verify(_verify_args(run_dir, _write_ledger(tmp_path, ledger)))
@@ -521,11 +448,7 @@ def test_new_delivery_refuses_any_preexisting_destination(
     empty_dest = tmp_path / "pre-existing-empty"
     empty_dest.mkdir()
     with pytest.raises(gate.GateError, match="DELIVERY-DEST"):
-        gate.deliver(
-            _deliver_args(
-                run_dir, row["judge_id"], row["blind_session_id"], empty_dest
-            )
-        )
+        gate.deliver(_deliver_args(run_dir, row["judge_id"], row["blind_session_id"], empty_dest))
 
 
 def test_concurrent_writer_racing_the_desk_fails_before_completion(
@@ -545,9 +468,7 @@ def test_concurrent_writer_racing_the_desk_fails_before_completion(
 
     monkeypatch.setattr(gate.envelope, "_ensure_exact_new", racing_writer)
     with pytest.raises(gate.GateError, match="DELIVERY-DEST"):
-        gate.deliver(
-            _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest)
-        )
+        gate.deliver(_deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest))
     monkeypatch.setattr(gate.envelope, "_ensure_exact_new", original)
     completion = (
         run_dir.parent
@@ -565,15 +486,11 @@ def test_completed_delivery_is_never_reissued(finalized_bundle, tmp_path):
     gate.verify(_verify_args(run_dir, _write_ledger(tmp_path, ledger)))
     row = ledger["first_round_assignments"][0]
     dest = tmp_path / "desk"
-    gate.deliver(
-        _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest)
-    )
+    gate.deliver(_deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest))
     delivered = dest / f"{row['blind_session_id']}.json"
     delivered.unlink()
     with pytest.raises(gate.GateError, match="DELIVERY-DUPLICATE"):
-        gate.deliver(
-            _deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest)
-        )
+        gate.deliver(_deliver_args(run_dir, row["judge_id"], row["blind_session_id"], dest))
 
 
 def test_gate_artifacts_live_outside_the_run_and_keep_validate_run_green(
@@ -590,9 +507,7 @@ def test_gate_artifacts_live_outside_the_run_and_keep_validate_run_green(
     assert _receipt_path(run_dir).is_file()
     assert not (run_dir / "assignment-gate-receipt.json").exists()
     plan_sha = hashlib.sha256((run_dir / "run-plan.json").read_bytes()).hexdigest()
-    outcome = fixtures.runner.validate_run(
-        fixtures._command_args(run_dir, plan_sha)
-    )
+    outcome = fixtures.runner.validate_run(fixtures._command_args(run_dir, plan_sha))
     assert outcome["status"] == "blind_finalized"
 
 

@@ -42,16 +42,14 @@ try:
     from scripts import claim_standing_discovery as discovery
 except ImportError:  # direct script execution
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import build_claim_standing_candidate_ledger as substrate  # noqa: E402
-    import claim_standing_discovery as discovery  # noqa: E402
+    import build_claim_standing_candidate_ledger as substrate
+    import claim_standing_discovery as discovery
 
 SURFACE_KIND = "claim-standing-consent-surface/1.0"
 DECLINATION_KIND = "claim-standing-probe-declination/1.0"
 QUERY_PLAN_SUFFIX = ".query-plan.json"
 DECISION_VALUES = ("retrieval_only", "retrieval_plus_stance", "cancel")
-SESSION_ONLY_EXPORT_BOUNDARY = (
-    "No local export is authorized under session_only persistence."
-)
+SESSION_ONLY_EXPORT_BOUNDARY = "No local export is authorized under session_only persistence."
 ADVISORY_STATEMENT = (
     "The probe result is advisory, search-bounded, and fallible; it is not a "
     "gate, it never changes a Phase E verdict, checkpoint result, manuscript "
@@ -82,16 +80,10 @@ def _require(condition: bool, message: str) -> None:
 
 def _valid_basis(values: Any, source: str) -> list[str]:
     _require(
-        isinstance(values, list)
-        and bool(values)
-        and all(isinstance(item, str) for item in values),
+        isinstance(values, list) and bool(values) and all(isinstance(item, str) for item in values),
         f"{source}: high_impact_basis must be a non-empty string list",
     )
-    unknown = [
-        item
-        for item in values
-        if item not in substrate.HIGH_IMPACT_BASIS_VALUES
-    ]
+    unknown = [item for item in values if item not in substrate.HIGH_IMPACT_BASIS_VALUES]
     if unknown:
         _fail(f"{source}: unknown high_impact_basis token {unknown[0]!r}")
     _require(
@@ -107,13 +99,10 @@ def _confirmed_basis(confirmation: dict[str, Any]) -> list[str]:
         "eligibility confirmation must set confirmed_high_impact true",
     )
     _require(
-        isinstance(confirmation.get("recorded_at"), str)
-        and bool(confirmation["recorded_at"]),
+        isinstance(confirmation.get("recorded_at"), str) and bool(confirmation["recorded_at"]),
         "eligibility confirmation must record recorded_at",
     )
-    return _valid_basis(
-        confirmation.get("high_impact_basis"), "eligibility confirmation"
-    )
+    return _valid_basis(confirmation.get("high_impact_basis"), "eligibility confirmation")
 
 
 def assess_eligibility(
@@ -226,9 +215,7 @@ def _claim_text(registry_row: dict[str, Any]) -> str:
     return claim_text
 
 
-def _queries(
-    registry_row: dict[str, Any], decisions: dict[str, Any]
-) -> list[dict[str, Any]]:
+def _queries(registry_row: dict[str, Any], decisions: dict[str, Any]) -> list[dict[str, Any]]:
     claim_text = _claim_text(registry_row)
     derived = substrate.exact_claim_query(claim_text)
     claim_sha = substrate.text_digest(claim_text)
@@ -321,9 +308,7 @@ def _stance_plan(decisions: dict[str, Any]) -> dict[str, Any] | None:
 def _explicit_string_list(decisions: dict[str, Any], field: str) -> list[str]:
     values = decisions.get(field)
     _require(
-        isinstance(values, list)
-        and bool(values)
-        and all(isinstance(item, str) for item in values),
+        isinstance(values, list) and bool(values) and all(isinstance(item, str) for item in values),
         f"decisions.{field} must be a non-empty string list (an explicit "
         "falsey or wrong-type value is refused, never defaulted)",
     )
@@ -336,9 +321,7 @@ def _draft_plan(
     """Everything of the future plan except the consent block and plan hash."""
     basis, basis_source, confirmation = _resolved_basis(registry_row, decisions)
     stance_plan = _stance_plan(decisions)
-    version = (
-        substrate.PLAN_VERSION_1_1 if stance_plan else substrate.PLAN_VERSION
-    )
+    version = substrate.PLAN_VERSION_1_1 if stance_plan else substrate.PLAN_VERSION
     draft: dict[str, Any] = {
         "schema_version": version,
         "probe_id": decisions.get("probe_id"),
@@ -347,20 +330,14 @@ def _draft_plan(
             "claim_id": registry_row.get("claim_id"),
             "claim_text": _claim_text(registry_row),
             "claim_sha256": substrate.text_digest(_claim_text(registry_row)),
-            "registry_selection_tier": registry_row.get(
-                "registry_selection_tier"
-            ),
+            "registry_selection_tier": registry_row.get("registry_selection_tier"),
             "high_impact_basis": basis,
             "eligibility_confirmed_by_researcher": True,
         },
         "queries": _queries(registry_row, decisions),
         "provider_roster": _roster(decisions),
-        "allowed_languages": _explicit_string_list(
-            decisions, "allowed_languages"
-        ),
-        "allowed_document_types": _explicit_string_list(
-            decisions, "allowed_document_types"
-        ),
+        "allowed_languages": _explicit_string_list(decisions, "allowed_languages"),
+        "allowed_document_types": _explicit_string_list(decisions, "allowed_document_types"),
         "authorized_content_classes": list(
             substrate.STANCE_CONTENT_CLASSES
             if stance_plan
@@ -383,9 +360,7 @@ def build_consent_surface(
     construct from the same inputs, so the surface digest covers every field
     the consent receipt later binds.
     """
-    return _surface_from_draft(
-        *_draft_plan(registry_row, decisions), decisions
-    )
+    return _surface_from_draft(*_draft_plan(registry_row, decisions), decisions)
 
 
 def _surface_from_draft(
@@ -408,15 +383,11 @@ def _surface_from_draft(
             "authorized_output_path must not end with a path separator: "
             "derived artifact names would become hidden dotfiles",
         )
-    constructions = {
-        query["construction"] for query in draft["queries"]
-    }
+    constructions = {query["construction"] for query in draft["queries"]}
     claim_display = dict(draft["claim"])
     claim_display["high_impact_basis_source"] = basis_source
     if confirmation is not None:
-        claim_display["basis_confirmation_recorded_at"] = confirmation[
-            "recorded_at"
-        ]
+        claim_display["basis_confirmation_recorded_at"] = confirmation["recorded_at"]
     return {
         "surface_kind": SURFACE_KIND,
         "probe_id": draft["probe_id"],
@@ -435,8 +406,7 @@ def _surface_from_draft(
                 stance_plan and stance_plan.get("abstracts_to_llm_authorized")
             ),
             "session_held_full_text_to_llm": bool(
-                stance_plan
-                and stance_plan.get("session_held_full_text_to_llm_authorized")
+                stance_plan and stance_plan.get("session_held_full_text_to_llm_authorized")
             ),
         },
         "stance_provider": (
@@ -496,9 +466,7 @@ def _declination(
     }
 
 
-def bind_plan(
-    registry_row: dict[str, Any], decisions: dict[str, Any]
-) -> dict[str, Any]:
+def bind_plan(registry_row: dict[str, Any], decisions: dict[str, Any]) -> dict[str, Any]:
     """Bind researcher acceptance to the exact proposed consent surface.
 
     Returns the schema-valid plan, or an explicit `not_checked` declination
@@ -514,12 +482,8 @@ def bind_plan(
     # cancel must record consent_cancelled, never consent_invalidated).
     if decisions.get("decision") == "cancel":
         return _declination(registry_row, decisions, "consent_cancelled")
-    draft, stance_plan, basis_source, confirmation = _draft_plan(
-        registry_row, decisions
-    )
-    surface = _surface_from_draft(
-        draft, stance_plan, basis_source, confirmation, decisions
-    )
+    draft, stance_plan, basis_source, confirmation = _draft_plan(registry_row, decisions)
+    surface = _surface_from_draft(draft, stance_plan, basis_source, confirmation, decisions)
     supplied_hash = decisions.get("consent_surface_sha256")
     if supplied_hash is None:
         return _declination(registry_row, decisions, "consent_absent")
@@ -545,26 +509,21 @@ def bind_plan(
         "authorized_output_path": surface["authorized_output_path"],
     }
     if version == substrate.PLAN_VERSION_1_1:
-        consent["stance_plan_sha256"] = (
-            substrate.digest(stance_plan) if stance_plan else None
-        )
+        consent["stance_plan_sha256"] = substrate.digest(stance_plan) if stance_plan else None
     plan = dict(draft)
     plan["consent"] = consent
     consent["consentable_plan_sha256"] = substrate.digest(
         substrate.consentable_plan_projection(plan)
     )
     _require(
-        consent["consentable_plan_sha256"]
-        == substrate.digest(surface["consentable_plan"]),
+        consent["consentable_plan_sha256"] == substrate.digest(surface["consentable_plan"]),
         "internal consistency failure: the bound consentable-plan projection "
         "does not equal the projection the accepted surface displayed",
     )
     consent["receipt_sha256"] = substrate.bound_digest(consent, "receipt_sha256")
     plan["plan_sha256"] = substrate.bound_digest(plan, "plan_sha256")
     try:
-        substrate.validate_schema(
-            plan, substrate.plan_schema_filename(plan), "query plan"
-        )
+        substrate.validate_schema(plan, substrate.plan_schema_filename(plan), "query plan")
         substrate.validate_plan(plan)
     except substrate.LedgerError as exc:
         raise PlanBuilderError(f"bound plan failed validation: {exc}") from exc
@@ -602,9 +561,7 @@ def main(argv: list[str] | None = None) -> int:
                 json.dumps(
                     {
                         "consent_surface": surface,
-                        "consent_surface_sha256": consent_surface_sha256(
-                            surface
-                        ),
+                        "consent_surface_sha256": consent_surface_sha256(surface),
                     },
                     ensure_ascii=False,
                     indent=2,

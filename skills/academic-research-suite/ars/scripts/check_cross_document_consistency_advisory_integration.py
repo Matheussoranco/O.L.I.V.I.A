@@ -18,36 +18,23 @@ import json
 import re
 import stat
 import sys
-import tomllib
 from pathlib import Path
 from typing import Any
 
+import tomllib
 from jsonschema import Draft202012Validator
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
-SIDECAR_SCHEMA = Path(
-    "shared/contracts/passport/preregistration_artifact.schema.json"
-)
+SIDECAR_SCHEMA = Path("shared/contracts/passport/preregistration_artifact.schema.json")
 EVIDENCE_SCHEMA = Path("shared/contracts/evidence/evidence_row_v1_2.schema.json")
-MANIFEST_SCHEMA = Path(
-    "shared/contracts/audit/cross_document_source_manifest.schema.json"
-)
-DRAFT_SCHEMA = Path(
-    "shared/contracts/audit/cross_document_consistency_advisory_draft.schema.json"
-)
-ADVISORY_SCHEMA = Path(
-    "shared/contracts/audit/cross_document_consistency_advisory.schema.json"
-)
+MANIFEST_SCHEMA = Path("shared/contracts/audit/cross_document_source_manifest.schema.json")
+DRAFT_SCHEMA = Path("shared/contracts/audit/cross_document_consistency_advisory_draft.schema.json")
+ADVISORY_SCHEMA = Path("shared/contracts/audit/cross_document_consistency_advisory.schema.json")
 RUNTIME = Path("scripts/build_cross_document_consistency_advisory.py")
 RUNTIME_TEST = Path("scripts/test_cross_document_consistency_advisory.py")
-DESIGN_SPEC = Path(
-    "docs/design/2026-08-10-672-cross-document-consistency-advisory-spec.md"
-)
-PROTOCOL = Path(
-    "shared/references/cross_document_consistency_advisory_protocol.md"
-)
+DESIGN_SPEC = Path("docs/design/2026-08-10-672-cross-document-consistency-advisory-spec.md")
+PROTOCOL = Path("shared/references/cross_document_consistency_advisory_protocol.md")
 CONTRACT_README = Path("shared/contracts/README.md")
 EVIDENCE_PROTOCOL = Path("shared/references/evidence_row_protocol.md")
 CLAIM_LADDER = Path("shared/references/claim_strength_ladder.md")
@@ -60,12 +47,8 @@ HANDOFF_EXAMPLE = Path("deep-research/examples/handoff_to_paper.md")
 PAPER_SKILL = Path("academic-paper/WORKFLOW.md")
 INTAKE_AGENT = Path("academic-paper/agents/intake_agent.md")
 PIPELINE_SKILL = Path("academic-pipeline/WORKFLOW.md")
-PIPELINE_ORCHESTRATOR = Path(
-    "academic-pipeline/agents/pipeline_orchestrator_agent.md"
-)
-INTEGRITY_PROTOCOL = Path(
-    "academic-pipeline/references/integrity_review_protocol.md"
-)
+PIPELINE_ORCHESTRATOR = Path("academic-pipeline/agents/pipeline_orchestrator_agent.md")
+INTEGRITY_PROTOCOL = Path("academic-pipeline/references/integrity_review_protocol.md")
 STATE_MACHINE = Path("academic-pipeline/references/pipeline_state_machine.md")
 CHANGELOG = Path("CHANGELOG.md")
 HELDOUT_ROOT = Path("evals/heldout/cross_document_consistency")
@@ -74,18 +57,24 @@ CI_MANIFEST = Path("scripts/_ci_pytest_manifest.toml")
 WORKFLOW = Path(".github/workflows/spec-consistency.yml")
 
 LEGACY_HASHES = {
-    Path("shared/contracts/evidence/evidence_row.schema.json"):
-        "02f4fc4e32658249e7065724f1cb5c2f9dcec3f599f86a1a7ffee726ae422f5a",
-    Path("shared/contracts/evidence/evidence_row_v1_1.schema.json"):
-        "ab7fdb15b8845bcf898fef5177c636b8ca43f2785c3b79bf284fa04a4ede14b9",
-    Path("scripts/evidence_rows.py"):
-        "eccfa0a5cfe9b438aac9c4ec85cd6c2ca07052de7eb521cfc1e7f799a971d7e3",
-    Path("shared/contracts/passport/claim_intent_manifest.schema.json"):
-        "d6c4fd060812dc2a2b2dd73b6d9e77e366fcc0803486d5f38b4def6893d70cec",
-    Path("shared/contracts/revision/claim_surface_manifest.schema.json"):
-        "85460c1c195c890eb505c95e2767f72461c4a1f631203b7b26decb7a841afb1d",
-    Path("deep-research/templates/preregistration_template.md"):
-        "40054e26c527ff3dd237a5eef3fee60b821cf8549e210d48a057005333c8e0d2",
+    Path(
+        "shared/contracts/evidence/evidence_row.schema.json"
+    ): "02f4fc4e32658249e7065724f1cb5c2f9dcec3f599f86a1a7ffee726ae422f5a",
+    Path(
+        "shared/contracts/evidence/evidence_row_v1_1.schema.json"
+    ): "ab7fdb15b8845bcf898fef5177c636b8ca43f2785c3b79bf284fa04a4ede14b9",
+    Path(
+        "scripts/evidence_rows.py"
+    ): "eccfa0a5cfe9b438aac9c4ec85cd6c2ca07052de7eb521cfc1e7f799a971d7e3",
+    Path(
+        "shared/contracts/passport/claim_intent_manifest.schema.json"
+    ): "d6c4fd060812dc2a2b2dd73b6d9e77e366fcc0803486d5f38b4def6893d70cec",
+    Path(
+        "shared/contracts/revision/claim_surface_manifest.schema.json"
+    ): "85460c1c195c890eb505c95e2767f72461c4a1f631203b7b26decb7a841afb1d",
+    Path(
+        "deep-research/templates/preregistration_template.md"
+    ): "40054e26c527ff3dd237a5eef3fee60b821cf8549e210d48a057005333c8e0d2",
 }
 
 SCHEMA_VERSIONS = {
@@ -96,25 +85,18 @@ SCHEMA_VERSIONS = {
     ADVISORY_SCHEMA: "cross-document-consistency-advisory/1.0",
 }
 NEW_SCHEMA_HASHES = {
-    SIDECAR_SCHEMA:
-        "998c8a1df9149a591fc722fabc2b2afce4bc27ea23212c2b7a8e0c4f1bcea05b",
-    EVIDENCE_SCHEMA:
-        "277e7b7b437a523286e06d2f55d058989f88865f4a364045405c5bcb33d94c51",
-    MANIFEST_SCHEMA:
-        "875285713a881d6228d7d1a4af882d66d881628549b6917b96c350e0b4fd3d4a",
-    DRAFT_SCHEMA:
-        "fa061192e0d97f3913b9af83228f4355f1879a56955d2609cc1279b7f206f3e0",
-    ADVISORY_SCHEMA:
-        "2bc6229ad77a5e86bd96021b3ac1d1fc8afc6834c4158280ca01091629652418",
+    SIDECAR_SCHEMA: "998c8a1df9149a591fc722fabc2b2afce4bc27ea23212c2b7a8e0c4f1bcea05b",
+    EVIDENCE_SCHEMA: "277e7b7b437a523286e06d2f55d058989f88865f4a364045405c5bcb33d94c51",
+    MANIFEST_SCHEMA: "875285713a881d6228d7d1a4af882d66d881628549b6917b96c350e0b4fd3d4a",
+    DRAFT_SCHEMA: "fa061192e0d97f3913b9af83228f4355f1879a56955d2609cc1279b7f206f3e0",
+    ADVISORY_SCHEMA: "2bc6229ad77a5e86bd96021b3ac1d1fc8afc6834c4158280ca01091629652418",
 }
 SCHEMA_EXTERNAL_REF_ALLOWLIST = {
     SIDECAR_SCHEMA: frozenset(),
     EVIDENCE_SCHEMA: frozenset(),
     MANIFEST_SCHEMA: frozenset(),
     DRAFT_SCHEMA: frozenset(),
-    ADVISORY_SCHEMA: frozenset(
-        {"../evidence/evidence_row_v1_2.schema.json"}
-    ),
+    ADVISORY_SCHEMA: frozenset({"../evidence/evidence_row_v1_2.schema.json"}),
 }
 PAIR_ORDER = (
     "abstract_results",
@@ -310,9 +292,7 @@ FORBIDDEN_CONSUMER_IDENTIFIER_PARTS = frozenset(
         "torturedphrase",
     }
 )
-FORBIDDEN_LEGACY_MAPPING_LITERALS = frozenset(
-    {"P1", "P2", "P3", "PASS", "MINOR", "MATERIAL"}
-)
+FORBIDDEN_LEGACY_MAPPING_LITERALS = frozenset({"P1", "P2", "P3", "PASS", "MINOR", "MATERIAL"})
 FORBIDDEN_CLOCK_SUFFIXES = {
     "datetime.now",
     "datetime.today",
@@ -354,9 +334,7 @@ OWNED_DOC_MARKERS = (
     "evidence-row/1.2",
     "preregistration-artifact/1.0",
 )
-DEDICATED_CLAIM_CEILING_DOCS = frozenset(
-    {DESIGN_SPEC, PROTOCOL, HELDOUT_STATUS}
-)
+DEDICATED_CLAIM_CEILING_DOCS = frozenset({DESIGN_SPEC, PROTOCOL, HELDOUT_STATUS})
 RENDERER_CLAIM_CEILING_SENTENCE = (
     "NO LISTED INCONSISTENCY LOCATED — not proof of agreement, completeness, "
     "or a clean document."
@@ -379,9 +357,7 @@ FUNCTION_SCOPED_RUNTIME_MARKERS: dict[str, tuple[str, ...]] = {
         '_fail("SOURCE_BINDING_INVALID", "companion", "must not be blank")',
     ),
     "_prepare_inputs": ("if total > MAX_TOTAL_SOURCE_BYTES:",),
-    "finalize_advisory": (
-        "if len(_canonical_bytes(report)) > MAX_FINAL_BYTES:",
-    ),
+    "finalize_advisory": ("if len(_canonical_bytes(report)) > MAX_FINAL_BYTES:",),
     "paginate": ("page_size > MAX_PAGE_SIZE",),
     "render_advisory": (
         RENDERER_CLAIM_CEILING_SENTENCE,
@@ -598,9 +574,7 @@ def _schema_errors(root: Path) -> list[str]:
             schemas[relative] = schema
             forbidden = _all_property_names(schema) & FORBIDDEN_PROPERTY_NAMES
             if forbidden:
-                errors.append(
-                    f"{relative}: forbidden determination fields: {sorted(forbidden)}"
-                )
+                errors.append(f"{relative}: forbidden determination fields: {sorted(forbidden)}")
             external_refs = {ref for ref in _all_refs(schema) if not ref.startswith("#")}
             if external_refs != set(SCHEMA_EXTERNAL_REF_ALLOWLIST[relative]):
                 errors.append(
@@ -614,7 +588,10 @@ def _schema_errors(root: Path) -> list[str]:
 
     sidecar = schemas[SIDECAR_SCHEMA]
     if set(sidecar["properties"]["status"].get("enum", [])) != {
-        "provided", "not_provided", "access_failed", "retrieval_failed"
+        "provided",
+        "not_provided",
+        "access_failed",
+        "retrieval_failed",
     }:
         errors.append("preregistration sidecar status mapping vocabulary drifted")
     if sidecar["properties"]["source_artifact_size_bytes"].get("maximum") != 67108864:
@@ -629,11 +606,17 @@ def _schema_errors(root: Path) -> list[str]:
     if len(artifacts.get("allOf", [])) != 2:
         errors.append("source manifest one-manuscript/one-preregistration matrix drifted")
     manifest_required = set(manifest.get("required", []))
-    if not {"accepted_draft_artifact_id", "accepted_draft_sha256", "manifest_digest"} <= manifest_required:
+    if (
+        not {"accepted_draft_artifact_id", "accepted_draft_sha256", "manifest_digest"}
+        <= manifest_required
+    ):
         errors.append("source manifest designated accepted-draft binding drifted")
     artifact = manifest["$defs"]["artifact"]
     if set(artifact["properties"]["artifact_state"].get("enum", [])) != {
-        "present", "source_missing", "access_failed", "retrieval_failed"
+        "present",
+        "source_missing",
+        "access_failed",
+        "retrieval_failed",
     }:
         errors.append("source manifest availability vocabulary drifted")
 
@@ -642,7 +625,10 @@ def _schema_errors(root: Path) -> list[str]:
         errors.append("evidence-row/1.2 surface drifted")
     if set(evidence["$defs"]["pair_kind"].get("enum", [])) != set(PAIR_ORDER):
         errors.append("evidence-row pair roster drifted")
-    if set(evidence["$defs"]["evidence_slot"]["properties"]["evidence_state"].get("enum", [])) != EVIDENCE_STATES:
+    if (
+        set(evidence["$defs"]["evidence_slot"]["properties"]["evidence_state"].get("enum", []))
+        != EVIDENCE_STATES
+    ):
         errors.append("evidence-row state vocabulary drifted")
     for pair, roles in PAIR_ROLES.items():
         slot_def = evidence["$defs"][f"{pair}_slots"]
@@ -658,10 +644,17 @@ def _schema_errors(root: Path) -> list[str]:
             errors.append(f"evidence-row {pair} ordered roles drifted")
     checked = evidence["$defs"].get("checked_scope", {})
     if set(checked.get("required", [])) != {
-        "source_span_utf8", "scope_sha256", "scope_utf8_bytes", "checked_at", "completeness_provenance"
+        "source_span_utf8",
+        "scope_sha256",
+        "scope_utf8_bytes",
+        "checked_at",
+        "completeness_provenance",
     }:
         errors.append("checked_no_match checked_scope binding drifted")
-    if evidence["$defs"].get("cache", {}).get("properties", {}).get("status", {}).get("const") != "not_used":
+    if (
+        evidence["$defs"].get("cache", {}).get("properties", {}).get("status", {}).get("const")
+        != "not_used"
+    ):
         errors.append("evidence-row cache must remain not_used")
 
     draft = schemas[DRAFT_SCHEMA]
@@ -681,7 +674,10 @@ def _schema_errors(root: Path) -> list[str]:
     if len(observations.get("allOf", [])) != 4:
         errors.append("draft must require at least one observation for every pair")
     observation = draft["$defs"]["observation"]
-    if set(observation["properties"]["check_state"].get("enum", [])) != {"performed", "not_checked"}:
+    if set(observation["properties"]["check_state"].get("enum", [])) != {
+        "performed",
+        "not_checked",
+    }:
         errors.append("draft check-state vocabulary drifted")
     if len(observation.get("allOf", [])) < 15:
         errors.append("draft pair/outcome/witness conditional matrix weakened")
@@ -703,9 +699,13 @@ def _schema_errors(root: Path) -> list[str]:
         errors.append("final canonical pair ordering drifted")
     binding_required = set(final["$defs"]["input_binding"].get("required", []))
     required_binding = {
-        "draft_sha256", "source_manifest_sha256", "preregistration_record_sha256",
-        "preregistration_record_digest", "accepted_draft_artifact_id",
-        "accepted_draft_sha256", "source_bundle_sha256",
+        "draft_sha256",
+        "source_manifest_sha256",
+        "preregistration_record_sha256",
+        "preregistration_record_digest",
+        "accepted_draft_artifact_id",
+        "accepted_draft_sha256",
+        "source_bundle_sha256",
     }
     if not required_binding <= binding_required:
         errors.append("final complete source/input binding drifted")
@@ -748,7 +748,12 @@ def _literal(node: ast.AST) -> Any:
     if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Mult, ast.Add)):
         left, right = _literal(node.left), _literal(node.right)
         return left * right if isinstance(node.op, ast.Mult) else left + right
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "frozenset" and len(node.args) == 1:
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "frozenset"
+        and len(node.args) == 1
+    ):
         return frozenset(_literal(node.args[0]))
     raise ValueError(f"unsupported literal: {type(node).__name__}")
 
@@ -756,7 +761,11 @@ def _literal(node: ast.AST) -> Any:
 def _assignments(tree: ast.Module) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for node in tree.body:
-        if isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+        if (
+            isinstance(node, ast.Assign)
+            and len(node.targets) == 1
+            and isinstance(node.targets[0], ast.Name)
+        ):
             try:
                 result[node.targets[0].id] = _literal(node.value)
             except ValueError:
@@ -811,7 +820,10 @@ def _runtime_errors(root: Path) -> list[str]:
     for name, expected in expected_constants.items():
         if constants.get(name) != expected:
             errors.append(f"runtime constant {name} drifted")
-    if constants.get("TEMPLATE_SHA256") != LEGACY_HASHES[Path("deep-research/templates/preregistration_template.md")]:
+    if (
+        constants.get("TEMPLATE_SHA256")
+        != LEGACY_HASHES[Path("deep-research/templates/preregistration_template.md")]
+    ):
         errors.append("runtime frozen preregistration-template digest drifted")
     runtime_findings = constants.get("FINDING_TYPES")
     if runtime_findings != {key: frozenset(value) for key, value in FINDING_TYPES.items()}:
@@ -834,9 +846,12 @@ def _runtime_errors(root: Path) -> list[str]:
     if unexpected_imports:
         errors.append(f"runtime import allowlist drifted: {unexpected_imports}")
     bad_imports = sorted(
-        name for name in imports
+        name
+        for name in imports
         if name.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS
-        or any(name == prefix or name.startswith(prefix + ".") for prefix in FORBIDDEN_IMPORT_PREFIXES)
+        or any(
+            name == prefix or name.startswith(prefix + ".") for prefix in FORBIDDEN_IMPORT_PREFIXES
+        )
     )
     if bad_imports:
         errors.append(f"runtime has forbidden model/network/process import: {bad_imports}")
@@ -863,9 +878,8 @@ def _runtime_errors(root: Path) -> list[str]:
         if id(node) in docs:
             continue
         normalized = _normalized_identifier(node.value)
-        if (
-            node.value in FORBIDDEN_LEGACY_MAPPING_LITERALS
-            or any(part in normalized for part in FORBIDDEN_CONSUMER_IDENTIFIER_PARTS)
+        if node.value in FORBIDDEN_LEGACY_MAPPING_LITERALS or any(
+            part in normalized for part in FORBIDDEN_CONSUMER_IDENTIFIER_PARTS
         ):
             forbidden_literals.add(node.value)
     if forbidden_identifiers or forbidden_literals:
@@ -918,12 +932,16 @@ def _runtime_errors(root: Path) -> list[str]:
             name
             for name, _ in calls
             if name in FORBIDDEN_CALLS
-            or any(name == suffix or name.endswith("." + suffix) for suffix in FORBIDDEN_CLOCK_SUFFIXES)
+            or any(
+                name == suffix or name.endswith("." + suffix) for suffix in FORBIDDEN_CLOCK_SUFFIXES
+            )
         }
     )
     if bad_calls:
         errors.append(f"runtime has forbidden model/network/process/clock call: {bad_calls}")
-    scan_calls = sorted({name for name, _ in calls if name.rsplit(".", 1)[-1] in FORBIDDEN_SCAN_NAMES})
+    scan_calls = sorted(
+        {name for name, _ in calls if name.rsplit(".", 1)[-1] in FORBIDDEN_SCAN_NAMES}
+    )
     if scan_calls:
         errors.append(f"runtime has forbidden ambient directory scan: {scan_calls}")
     if "--all" in source:
@@ -940,13 +958,10 @@ def _runtime_errors(root: Path) -> list[str]:
 
     for function_name, markers in FUNCTION_SCOPED_RUNTIME_MARKERS.items():
         function = functions.get(function_name)
-        function_source = (
-            ast.get_source_segment(source, function) if function is not None else None
-        )
+        function_source = ast.get_source_segment(source, function) if function is not None else None
         if function_source is None:
             errors.append(
-                f"runtime function-scoped hardened structure drifted: "
-                f"missing {function_name}"
+                f"runtime function-scoped hardened structure drifted: " f"missing {function_name}"
             )
             continue
         missing = [marker for marker in markers if marker not in function_source]
@@ -995,9 +1010,7 @@ def _runtime_errors(root: Path) -> list[str]:
         or '"SOURCE_BINDING_INVALID", "accepted draft", "must not be blank"'
         not in accepted_draft_source
     ):
-        errors.append(
-            "runtime hardened structure drifted: accepted-draft blank preflight"
-        )
+        errors.append("runtime hardened structure drifted: accepted-draft blank preflight")
     try:
         preflight_order = tuple(
             source.index(marker)

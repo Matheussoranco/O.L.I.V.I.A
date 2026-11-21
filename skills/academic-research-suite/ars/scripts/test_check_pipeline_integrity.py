@@ -24,7 +24,6 @@ def _build_workspace(root: Path, structure: dict[str, list[str]]) -> None:
 
 
 class CheckPipelineIntegrityTests(unittest.TestCase):
-
     def test_empty_workdir_no_findings(self) -> None:
         with TemporaryDirectory() as td:
             result = _run(Path(td))
@@ -43,13 +42,16 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
         """STRUCTURAL: phase5 with only generic review.md should flag missing
         attribution. This is the exact #133 reported failure pattern."""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase2_bibliography": ["annotated_bib.md"],
-                "phase3_synthesis": ["synthesis.md"],
-                "phase4_draft": ["draft_v1.md"],
-                "phase5_review": ["review.md"],
-                "phase6_revision": ["draft_v2.md"],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase2_bibliography": ["annotated_bib.md"],
+                    "phase3_synthesis": ["synthesis.md"],
+                    "phase4_draft": ["draft_v1.md"],
+                    "phase5_review": ["review.md"],
+                    "phase6_revision": ["draft_v2.md"],
+                },
+            )
             result = _run(Path(td))
         self.assertEqual(result.returncode, 0)
         self.assertIn("STRUCTURAL", result.stdout)
@@ -62,17 +64,20 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
         """Phase 5 with separate DA + EIC + Ethics files should produce
         no STRUCTURAL findings."""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase2_bibliography": ["annotated_bib.md"],
-                "phase3_synthesis": ["synthesis.md"],
-                "phase4_draft": ["draft_v1.md"],
-                "phase5_review": [
-                    "devils_advocate_report.md",
-                    "editor_in_chief_decision.md",
-                    "ethics_review.md",
-                ],
-                "phase6_revision": ["draft_v2.md"],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase2_bibliography": ["annotated_bib.md"],
+                    "phase3_synthesis": ["synthesis.md"],
+                    "phase4_draft": ["draft_v1.md"],
+                    "phase5_review": [
+                        "devils_advocate_report.md",
+                        "editor_in_chief_decision.md",
+                        "ethics_review.md",
+                    ],
+                    "phase6_revision": ["draft_v2.md"],
+                },
+            )
             result = _run(Path(td))
         self.assertEqual(result.returncode, 0)
         self.assertNotIn("STRUCTURAL", result.stdout)
@@ -83,13 +88,16 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
         3-category rule (any of methodology/domain/perspective for the
         'ethics or panel reviewer' category)."""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase5_review": [
-                    "devils_advocate_card.md",
-                    "eic_card.md",
-                    "methodology_reviewer_card.md",
-                ],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase5_review": [
+                        "devils_advocate_card.md",
+                        "eic_card.md",
+                        "methodology_reviewer_card.md",
+                    ],
+                },
+            )
             result = _run(Path(td))
         self.assertEqual(result.returncode, 0)
         self.assertIn("No advisory findings.", result.stdout)
@@ -105,9 +113,12 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
         """editorial_synthesizer alone is NOT enough — DA category and
         ethics/panel category are still missing."""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase5_review": ["editorial_synthesizer_letter.md"],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase5_review": ["editorial_synthesizer_letter.md"],
+                },
+            )
             result = _run(Path(td))
         self.assertEqual(result.returncode, 0)
         self.assertIn("phase5_missing_independent_reviewer", result.stdout)
@@ -119,10 +130,13 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
     def test_strict_flag_triggers_heuristic(self) -> None:
         """--strict enables the adjacent-phase-same-window heuristic."""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase2_bibliography": ["annotated_bib.md"],
-                "phase3_synthesis": ["synthesis.md"],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase2_bibliography": ["annotated_bib.md"],
+                    "phase3_synthesis": ["synthesis.md"],
+                },
+            )
             result = _run(Path(td), "--strict")
         self.assertEqual(result.returncode, 0)
         self.assertIn("HEURISTIC", result.stdout)
@@ -131,10 +145,13 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
     def test_no_strict_flag_skips_heuristic(self) -> None:
         """Default mode does NOT run the timestamp heuristic."""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase2_bibliography": ["annotated_bib.md"],
-                "phase3_synthesis": ["synthesis.md"],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase2_bibliography": ["annotated_bib.md"],
+                    "phase3_synthesis": ["synthesis.md"],
+                },
+            )
             result = _run(Path(td))
         self.assertEqual(result.returncode, 0)
         self.assertNotIn("HEURISTIC", result.stdout)
@@ -142,9 +159,12 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
 
     def test_json_output_format(self) -> None:
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase5_review": ["review.md"],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase5_review": ["review.md"],
+                },
+            )
             result = _run(Path(td), "--json")
         self.assertEqual(result.returncode, 0)
         payload = json.loads(result.stdout)
@@ -175,15 +195,18 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
         """Hidden files (.DS_Store, .gitkeep, Thumbs.db) should not count as
         review reports. They're noise from the OS/git, not authored content."""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase5_review": [
-                    ".DS_Store",
-                    ".gitkeep",
-                    "devils_advocate_card.md",
-                    "eic_card.md",
-                    "ethics_review.md",
-                ],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase5_review": [
+                        ".DS_Store",
+                        ".gitkeep",
+                        "devils_advocate_card.md",
+                        "eic_card.md",
+                        "ethics_review.md",
+                    ],
+                },
+            )
             result = _run(Path(td))
         self.assertEqual(result.returncode, 0)
         self.assertIn("No advisory findings.", result.stdout)
@@ -193,16 +216,19 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
         evaluated independently. If one is complete and the other isn't, only
         the incomplete one flags."""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase5_review_r1": [
-                    "devils_advocate_card.md",
-                    "eic_card.md",
-                    "ethics_review.md",
-                ],
-                "phase5_review_r2": [
-                    "review.md",  # Incomplete — missing all 3 categories
-                ],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase5_review_r1": [
+                        "devils_advocate_card.md",
+                        "eic_card.md",
+                        "ethics_review.md",
+                    ],
+                    "phase5_review_r2": [
+                        "review.md",  # Incomplete — missing all 3 categories
+                    ],
+                },
+            )
             result = _run(Path(td))
         self.assertEqual(result.returncode, 0)
         # The complete dir produces no finding; the incomplete one does.
@@ -215,13 +241,16 @@ class CheckPipelineIntegrityTests(unittest.TestCase):
         """Filenames with non-ASCII characters but containing the canonical
         agent stem in ASCII should still match. E.g., devils_advocate_報告.md"""
         with TemporaryDirectory() as td:
-            _build_workspace(Path(td), {
-                "phase5_review": [
-                    "devils_advocate_報告.md",
-                    "editor_in_chief_決定.md",
-                    "ethics_review_報告.md",
-                ],
-            })
+            _build_workspace(
+                Path(td),
+                {
+                    "phase5_review": [
+                        "devils_advocate_報告.md",
+                        "editor_in_chief_決定.md",
+                        "ethics_review_報告.md",
+                    ],
+                },
+            )
             result = _run(Path(td))
         self.assertEqual(result.returncode, 0)
         self.assertIn("No advisory findings.", result.stdout)

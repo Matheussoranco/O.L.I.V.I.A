@@ -57,10 +57,11 @@ import sys
 import time
 import unicodedata
 import uuid
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import datetime
 from pathlib import Path, PurePosixPath
-from typing import Any, Callable, Iterable, Iterator, Mapping, NoReturn, Sequence
+from typing import Any, NoReturn
 
 try:  # POSIX is the supported durable-publication platform for this alpha.
     import fcntl
@@ -70,20 +71,28 @@ except ImportError:  # pragma: no cover - exercised only on non-POSIX hosts
 try:  # Dual-path import: script invocation vs package import under pytest.
     from research_workflow_profile import (
         JCS_SAFE_INTEGER_MAX,
-        ContractError as ProfileContractError,
-        canonical_bytes as _profile_canonical_bytes,
         load_profile,
         profile_binding,
         validate_profile,
     )
+    from research_workflow_profile import (
+        ContractError as ProfileContractError,
+    )
+    from research_workflow_profile import (
+        canonical_bytes as _profile_canonical_bytes,
+    )
 except ImportError:  # pragma: no cover - package-import path
     from scripts.research_workflow_profile import (
         JCS_SAFE_INTEGER_MAX,
-        ContractError as ProfileContractError,
-        canonical_bytes as _profile_canonical_bytes,
         load_profile,
         profile_binding,
         validate_profile,
+    )
+    from scripts.research_workflow_profile import (
+        ContractError as ProfileContractError,
+    )
+    from scripts.research_workflow_profile import (
+        canonical_bytes as _profile_canonical_bytes,
     )
 
 
@@ -369,9 +378,7 @@ def _nullable_slug(value: Any, path: str) -> str | None:
     return _slug(value, path)
 
 
-def _text_list(
-    value: Any, path: str, *, unique: bool = False
-) -> list[str]:
+def _text_list(value: Any, path: str, *, unique: bool = False) -> list[str]:
     if not isinstance(value, list):
         _fail(path, "must be an array")
     result = [_text(item, f"{path}[{index}]") for index, item in enumerate(value)]
@@ -384,12 +391,8 @@ def _validate_binding(value: Any, path: str) -> dict[str, str]:
     binding = _object(value, path, _BINDING_FIELDS)
     return {
         "profile_id": _slug(binding["profile_id"], f"{path}.profile_id"),
-        "profile_version": _semver(
-            binding["profile_version"], f"{path}.profile_version"
-        ),
-        "content_sha256": _sha256(
-            binding["content_sha256"], f"{path}.content_sha256"
-        ),
+        "profile_version": _semver(binding["profile_version"], f"{path}.profile_version"),
+        "content_sha256": _sha256(binding["content_sha256"], f"{path}.content_sha256"),
     }
 
 
@@ -430,8 +433,8 @@ def _validate_event_shape(raw_event: Any, path: str) -> None:
     kind = _enum(event["kind"], f"{path}.kind", EVENT_KINDS)
     _sha256(event["prev_event_sha256"], f"{path}.prev_event_sha256")
 
-    expected_actor = "ai" if kind in AI_EVENT_KINDS else (
-        "system" if kind in SYSTEM_EVENT_KINDS else "author"
+    expected_actor = (
+        "ai" if kind in AI_EVENT_KINDS else ("system" if kind in SYSTEM_EVENT_KINDS else "author")
     )
     if actor != expected_actor:
         _fail(f"{path}.actor", f"must equal {expected_actor} for {kind}")
@@ -461,9 +464,7 @@ def _validate_event_shape(raw_event: Any, path: str) -> None:
         _text(value["statement"], f"{payload_path}.statement")
         _text_list(value["assumptions"], f"{payload_path}.assumptions")
         _text_list(value["evidence_sought"], f"{payload_path}.evidence_sought")
-        _validate_conditions(
-            value["reopen_conditions"], f"{payload_path}.reopen_conditions"
-        )
+        _validate_conditions(value["reopen_conditions"], f"{payload_path}.reopen_conditions")
         _text_list(
             value["downstream_refs"],
             f"{payload_path}.downstream_refs",
@@ -481,9 +482,7 @@ def _validate_event_shape(raw_event: Any, path: str) -> None:
         )
         _positive_int(value["source_event_id"], f"{payload_path}.source_event_id")
         surfaced = _text(value["surfaced_text"], f"{payload_path}.surfaced_text")
-        formulation = _text(
-            value["author_formulation"], f"{payload_path}.author_formulation"
-        )
+        formulation = _text(value["author_formulation"], f"{payload_path}.author_formulation")
         if formulation == surfaced:
             _fail(
                 f"{payload_path}.author_formulation",
@@ -550,13 +549,9 @@ def _validate_event_shape(raw_event: Any, path: str) -> None:
         )
         _text(value["selection_receipt_ref"], f"{payload_path}.selection_receipt_ref")
     elif kind == "artifact_marked_stale":
-        value = _object(
-            payload, payload_path, {"artifact_ref", "reopening_event_id"}
-        )
+        value = _object(payload, payload_path, {"artifact_ref", "reopening_event_id"})
         _text(value["artifact_ref"], f"{payload_path}.artifact_ref")
-        _positive_int(
-            value["reopening_event_id"], f"{payload_path}.reopening_event_id"
-        )
+        _positive_int(value["reopening_event_id"], f"{payload_path}.reopening_event_id")
     elif kind == "artifact_reconfirmed":
         value = _object(
             payload,
@@ -669,10 +664,7 @@ def _resolve_profile(
 def _is_terminal(branch: Mapping[str, Any]) -> bool:
     if branch["status"] in TERMINAL_STATUSES:
         return True
-    return (
-        branch["status"] == "rejected"
-        and branch["provenance"] == "ai_surfaced_facet"
-    )
+    return branch["status"] == "rejected" and branch["provenance"] == "ai_surfaced_facet"
 
 
 def _require_branch(
@@ -685,10 +677,7 @@ def _require_branch(
 
 
 def _condition_map(branch: Mapping[str, Any]) -> dict[str, Mapping[str, Any]]:
-    return {
-        condition["condition_id"]: condition
-        for condition in branch["reopen_conditions"]
-    }
+    return {condition["condition_id"]: condition for condition in branch["reopen_conditions"]}
 
 
 def _dedupe_ordered(values: Iterable[str]) -> list[str]:
@@ -696,11 +685,7 @@ def _dedupe_ordered(values: Iterable[str]) -> list[str]:
 
 
 def _public_branch(branch: Mapping[str, Any]) -> dict[str, Any]:
-    return {
-        key: copy.deepcopy(value)
-        for key, value in branch.items()
-        if not key.startswith("_")
-    }
+    return {key: copy.deepcopy(value) for key, value in branch.items() if not key.startswith("_")}
 
 
 def replay_ledger(
@@ -727,9 +712,7 @@ def replay_ledger(
     initial_binding = _validate_binding(
         ledger["initial_profile_binding"], "ledger.initial_profile_binding"
     )
-    current_profile = _resolve_profile(
-        initial_binding, catalog, "ledger.initial_profile_binding"
-    )
+    current_profile = _resolve_profile(initial_binding, catalog, "ledger.initial_profile_binding")
     effective_binding = copy.deepcopy(initial_binding)
 
     branches: dict[str, dict[str, Any]] = {}
@@ -918,8 +901,7 @@ def replay_ledger(
             branch["status"] = "reopened"
             branch["disposition_reason"] = payload["reason"]
             expected_stale = [
-                (artifact_ref, event["event_id"])
-                for artifact_ref in branch["downstream_refs"]
+                (artifact_ref, event["event_id"]) for artifact_ref in branch["downstream_refs"]
             ]
         elif kind == "branch_merged":
             branch = _require_branch(branches, branch_id, f"{path}.branch_id")
@@ -971,9 +953,7 @@ def replay_ledger(
             if rebound == effective_binding:
                 _fail(path, "profile_rebound must change the effective profile binding")
             replacement = _resolve_profile(rebound, catalog, f"{path}.payload")
-            live_count = sum(
-                branch["status"] in LIVE_STATUSES for branch in branches.values()
-            )
+            live_count = sum(branch["status"] in LIVE_STATUSES for branch in branches.values())
             if live_count > replacement["branch_budget"]:
                 _fail(
                     path,
@@ -1026,9 +1006,7 @@ def replay_ledger(
         else:  # pragma: no cover - shape validation closes the enum
             _fail(path, f"unhandled event kind: {kind}")
 
-        live_count = sum(
-            branch["status"] in LIVE_STATUSES for branch in branches.values()
-        )
+        live_count = sum(branch["status"] in LIVE_STATUSES for branch in branches.values())
         if live_count > current_profile["branch_budget"]:
             _fail(
                 path,
@@ -1055,18 +1033,12 @@ def replay_ledger(
             {
                 "artifact_ref": artifact["artifact_ref"],
                 "stale": bool(artifact["outstanding_stale_causes"]),
-                "outstanding_stale_causes": copy.deepcopy(
-                    artifact["outstanding_stale_causes"]
-                ),
+                "outstanding_stale_causes": copy.deepcopy(artifact["outstanding_stale_causes"]),
                 "resolution_history": copy.deepcopy(artifact["resolution_history"]),
             }
         )
-    live_count = sum(
-        branch["status"] in LIVE_STATUSES for branch in branches.values()
-    )
-    head = ZERO_SHA256 if not events else hashlib.sha256(
-        canonical_bytes(events[-1])
-    ).hexdigest()
+    live_count = sum(branch["status"] in LIVE_STATUSES for branch in branches.values())
+    head = ZERO_SHA256 if not events else hashlib.sha256(canonical_bytes(events[-1])).hexdigest()
     return {
         "project_ref": ledger["project_ref"],
         "effective_profile_binding": copy.deepcopy(effective_binding),
@@ -1081,9 +1053,7 @@ def replay_ledger(
     }
 
 
-def new_ledger(
-    project_ref: str, initial_profile: Mapping[str, Any]
-) -> dict[str, Any]:
+def new_ledger(project_ref: str, initial_profile: Mapping[str, Any]) -> dict[str, Any]:
     """Create an in-memory empty ledger; publication waits for branch two."""
 
     _text(project_ref, "project_ref")
@@ -1107,9 +1077,7 @@ def _complete_event(
     completed = copy.deepcopy(dict(event_input))
     completed["event_id"] = len(events) + 1
     completed["prev_event_sha256"] = (
-        ZERO_SHA256
-        if not events
-        else hashlib.sha256(canonical_bytes(events[-1])).hexdigest()
+        ZERO_SHA256 if not events else hashlib.sha256(canonical_bytes(events[-1])).hexdigest()
     )
     # Put fields into one stable human-readable order. Canonical serialization
     # itself sorts keys, but stable insertion order keeps replay output tidy.
@@ -1142,9 +1110,7 @@ def append_event(
 
     _object(event, "event", _EVENT_INPUT_FIELDS)
     catalog = build_profile_catalog(profiles)
-    before = replay_ledger(
-        ledger, catalog, expected_project_ref=expected_project_ref
-    )
+    before = replay_ledger(ledger, catalog, expected_project_ref=expected_project_ref)
     if event.get("kind") == "artifact_marked_stale":
         _fail("event.kind", "artifact_marked_stale is emitted mechanically")
     updated = copy.deepcopy(dict(ledger))
@@ -1154,11 +1120,7 @@ def append_event(
 
     if completed["kind"] == "branch_reopened":
         branch = next(
-            (
-                item
-                for item in before["branches"]
-                if item["branch_id"] == completed["branch_id"]
-            ),
+            (item for item in before["branches"] if item["branch_id"] == completed["branch_id"]),
             None,
         )
         if branch is None:
@@ -1214,25 +1176,19 @@ def _summary_text(value: Any, path: str) -> str:
     return "".join(escaped)
 
 
-def render_summary(
-    projection: Mapping[str, Any], *, signal_event_id: int | None = None
-) -> str:
+def render_summary(projection: Mapping[str, Any], *, signal_event_id: int | None = None) -> str:
     """Render the compact, provenance-labelled branch summary."""
 
     branches = projection.get("branches")
     if not isinstance(branches, list):
         _fail("projection.branches", "must be an array")
     live_count = _nonnegative_int(projection.get("live_count"), "projection.live_count")
-    branch_budget = _positive_int(
-        projection.get("branch_budget"), "projection.branch_budget"
-    )
+    branch_budget = _positive_int(projection.get("branch_budget"), "projection.branch_budget")
     branch_by_id: dict[str, Mapping[str, Any]] = {}
     for index, branch in enumerate(branches):
         if not isinstance(branch, Mapping):
             _fail(f"projection.branches[{index}]", "must be an object")
-        branch_id = _slug(
-            branch.get("branch_id"), f"projection.branches[{index}].branch_id"
-        )
+        branch_id = _slug(branch.get("branch_id"), f"projection.branches[{index}].branch_id")
         if branch_id in branch_by_id:
             _fail("projection.branches", f"duplicate branch_id: {branch_id}")
         branch_by_id[branch_id] = branch
@@ -1275,10 +1231,7 @@ def render_summary(
             "signal.branch.provenance",
             PROVENANCE_VALUES,
         )
-        if (
-            status not in AUTHOR_REOPENABLE_STATUSES
-            or provenance not in AUTHOR_OWNED_PROVENANCE
-        ):
+        if status not in AUTHOR_REOPENABLE_STATUSES or provenance not in AUTHOR_OWNED_PROVENANCE:
             _fail(
                 "signal_event_id",
                 "branch is not currently eligible for an author-owned reopen",
@@ -1294,9 +1247,7 @@ def render_summary(
         )
         if current_condition is None:
             _fail("signal_event_id", "condition_id is no longer current on the branch")
-        historical_statement = _text(
-            signal["condition_statement"], "signal.condition_statement"
-        )
+        historical_statement = _text(signal["condition_statement"], "signal.condition_statement")
         if historical_statement != current_condition["statement"]:
             _fail(
                 "signal_event_id",
@@ -1317,9 +1268,7 @@ def render_summary(
         statement = branch.get("statement") or branch.get("surfaced_text") or "(unstated)"
         branch_id = _slug(branch["branch_id"], "branch.branch_id")
         status = _enum(branch["status"], "branch.status", ("active", "reopened"))
-        provenance = _enum(
-            branch["provenance"], "branch.provenance", PROVENANCE_VALUES
-        )
+        provenance = _enum(branch["provenance"], "branch.provenance", PROVENANCE_VALUES)
         lines.append(
             f"- {branch_id} [{status}; {provenance}]: "
             f"{_summary_text(statement, 'branch.statement')}"
@@ -1395,9 +1344,7 @@ def checkpoint_summary(
 
 def validate_pointer(pointer: Mapping[str, Any]) -> dict[str, str]:
     value = _object(pointer, "inquiry_ledger_ref", _POINTER_FIELDS)
-    ledger_path = _workspace_relative_path(
-        value["ledger_path"], "inquiry_ledger_ref.ledger_path"
-    )
+    ledger_path = _workspace_relative_path(value["ledger_path"], "inquiry_ledger_ref.ledger_path")
     if value["ledger_version"] != POINTER_LEDGER_VERSION:
         _fail(
             "inquiry_ledger_ref.ledger_version",
@@ -1406,9 +1353,7 @@ def validate_pointer(pointer: Mapping[str, Any]) -> dict[str, str]:
     return {
         "ledger_path": ledger_path,
         "ledger_version": POINTER_LEDGER_VERSION,
-        "content_sha256": _sha256(
-            value["content_sha256"], "inquiry_ledger_ref.content_sha256"
-        ),
+        "content_sha256": _sha256(value["content_sha256"], "inquiry_ledger_ref.content_sha256"),
     }
 
 
@@ -1444,9 +1389,7 @@ def _workspace_root(path: Path | str) -> Path:
     return resolved
 
 
-def _authoritative_passport_path(
-    path: Path | str, root: Path
-) -> tuple[str, Path]:
+def _authoritative_passport_path(path: Path | str, root: Path) -> tuple[str, Path]:
     """Resolve a passport without erasing evidence of a symlinked parent."""
 
     raw = Path(path)
@@ -1462,9 +1405,7 @@ def _authoritative_passport_path(
     try:
         resolved_parent = passport.parent.resolve(strict=True)
     except OSError as exc:
-        raise ContractError(
-            f"passport_path: parent directory is not readable: {exc}"
-        ) from exc
+        raise ContractError(f"passport_path: parent directory is not readable: {exc}") from exc
     if resolved_parent != passport.parent:
         _fail(
             "passport_path",
@@ -1500,9 +1441,7 @@ def _relative_to_workspace(path: Path | str, root: Path, field: str) -> str:
     return _workspace_relative_path(relative, field)
 
 
-def default_ledger_relative_path(
-    passport_path: Path | str, workspace_root: Path | str
-) -> str:
+def default_ledger_relative_path(passport_path: Path | str, workspace_root: Path | str) -> str:
     """Return the deterministic beside-passport orphan-discovery candidate."""
 
     root = _workspace_root(workspace_root)
@@ -1661,8 +1600,7 @@ def _assert_safe_ledger_target(passport: Path, ledger: Path) -> None:
     if collisions:
         _fail(
             "ledger_path",
-            "collides with reserved passport transaction path(s): "
-            + ", ".join(sorted(collisions)),
+            "collides with reserved passport transaction path(s): " + ", ".join(sorted(collisions)),
         )
 
 
@@ -1672,9 +1610,7 @@ def _transaction_lock(passport: Path, *, timeout_seconds: float = 30.0) -> Itera
         raise ContractError(
             "concurrency protection unavailable on this platform; refusing ledger access"
         )
-    if isinstance(timeout_seconds, bool) or not isinstance(
-        timeout_seconds, (int, float)
-    ):
+    if isinstance(timeout_seconds, bool) or not isinstance(timeout_seconds, (int, float)):
         _fail("lock_timeout", "must be a finite number between 0 and 60 seconds")
     try:
         normalized_timeout = float(timeout_seconds)
@@ -1697,9 +1633,7 @@ def _transaction_lock(passport: Path, *, timeout_seconds: float = 30.0) -> Itera
                 break
             except BlockingIOError:
                 if time.monotonic() >= deadline:
-                    raise ContractError(
-                        f"passport locked by another session: {passport}"
-                    )
+                    raise ContractError(f"passport locked by another session: {passport}")
                 time.sleep(0.05)
         yield
     finally:
@@ -1742,9 +1676,7 @@ def _journal_shape(value: Mapping[str, Any]) -> Mapping[str, Any]:
     ):
         _workspace_relative_path(journal[field], f"transaction.{field}")
     old_pointer = (
-        None
-        if journal["old_pointer"] is None
-        else validate_pointer(journal["old_pointer"])
+        None if journal["old_pointer"] is None else validate_pointer(journal["old_pointer"])
     )
     new_pointer = validate_pointer(journal["new_pointer"])
     if journal["old_ledger_sha256"] is not None:
@@ -1782,13 +1714,9 @@ def _path_digest(path: Path, *, field: str = "transaction_target") -> str | None
     except FileNotFoundError:
         return None
     except OSError as exc:
-        raise TransactionRecoveryError(
-            f"cannot inspect {field} {path}: {exc}"
-        ) from exc
+        raise TransactionRecoveryError(f"cannot inspect {field} {path}: {exc}") from exc
     if stat.S_ISLNK(mode) or not stat.S_ISREG(mode):
-        raise TransactionRecoveryError(
-            f"{field} must be a regular non-symlink file: {path}"
-        )
+        raise TransactionRecoveryError(f"{field} must be a regular non-symlink file: {path}")
     try:
         raw = path.read_bytes()
     except OSError as exc:
@@ -1821,9 +1749,7 @@ def _write_journal(path: Path, temp: Path, journal: Mapping[str, Any]) -> None:
     _require_regular_nonsymlink(temp, "transaction_journal_temp")
     try:
         if temp.read_bytes() != journal_bytes:
-            raise TransactionRecoveryError(
-                "transaction journal temp changed before publication"
-            )
+            raise TransactionRecoveryError("transaction journal temp changed before publication")
     except OSError as exc:
         raise TransactionRecoveryError(
             f"cannot verify transaction journal temp {temp}: {exc}"
@@ -1834,9 +1760,7 @@ def _write_journal(path: Path, temp: Path, journal: Mapping[str, Any]) -> None:
     _fsync_directory(path.parent)
 
 
-def _recovery_passport_snapshot(
-    path: Path, field: str
-) -> tuple[bytes, Mapping[str, Any]]:
+def _recovery_passport_snapshot(path: Path, field: str) -> tuple[bytes, Mapping[str, Any]]:
     try:
         raw, document = _load_passport_snapshot(path)
     except ContractError as exc:
@@ -1844,9 +1768,7 @@ def _recovery_passport_snapshot(
     return raw, document
 
 
-def _recovery_passport_pointer(
-    document: Mapping[str, Any], field: str
-) -> dict[str, str] | None:
+def _recovery_passport_pointer(document: Mapping[str, Any], field: str) -> dict[str, str] | None:
     try:
         return _passport_pointer(document)
     except ContractError as exc:
@@ -1880,9 +1802,7 @@ def _recover_transaction_locked(passport: Path, root: Path) -> bool:
     passport_temp = _contained_path(
         root, journal["passport_temp_path"], "transaction.passport_temp_path"
     )
-    ledger_temp = _contained_path(
-        root, journal["ledger_temp_path"], "transaction.ledger_temp_path"
-    )
+    ledger_temp = _contained_path(root, journal["ledger_temp_path"], "transaction.ledger_temp_path")
     try:
         _assert_safe_ledger_target(passport, ledger)
     except ContractError as exc:
@@ -1928,9 +1848,7 @@ def _recover_transaction_locked(passport: Path, root: Path) -> bool:
 
     staged_passport_present = passport_temp.exists() or passport_temp.is_symlink()
     if staged_passport_present:
-        staged_raw, staged_document = _recovery_passport_snapshot(
-            passport_temp, "staged passport"
-        )
+        staged_raw, staged_document = _recovery_passport_snapshot(passport_temp, "staged passport")
         if hashlib.sha256(staged_raw).hexdigest() != new_passport_digest:
             raise TransactionRecoveryError(
                 "staged passport is not the journal's complete new byte image"
@@ -1970,9 +1888,7 @@ def _recover_transaction_locked(passport: Path, root: Path) -> bool:
         os.replace(ledger_temp, ledger)
         _fsync_directory(ledger.parent)
     if publish_passport:
-        check_raw, check_document = _recovery_passport_snapshot(
-            passport, "live passport CAS"
-        )
+        check_raw, check_document = _recovery_passport_snapshot(passport, "live passport CAS")
         if hashlib.sha256(check_raw).hexdigest() != old_passport_digest:
             raise TransactionRecoveryError("live passport changed during recovery")
         if _recovery_passport_pointer(check_document, "live passport CAS") != old_pointer:
@@ -1982,23 +1898,14 @@ def _recover_transaction_locked(passport: Path, root: Path) -> bool:
         )
         if hashlib.sha256(check_staged_raw).hexdigest() != new_passport_digest:
             raise TransactionRecoveryError("staged passport changed during recovery")
-        if (
-            _recovery_passport_pointer(
-                check_staged_document, "staged passport CAS"
-            )
-            != new_pointer
-        ):
+        if _recovery_passport_pointer(check_staged_document, "staged passport CAS") != new_pointer:
             raise TransactionRecoveryError("staged passport pointer changed during recovery")
         os.replace(passport_temp, passport)
         _fsync_directory(passport.parent)
 
-    final_raw, final_document = _recovery_passport_snapshot(
-        passport, "recovered passport"
-    )
+    final_raw, final_document = _recovery_passport_snapshot(passport, "recovered passport")
     if hashlib.sha256(final_raw).hexdigest() != new_passport_digest:
-        raise TransactionRecoveryError(
-            "recovered passport digest is not the new passport digest"
-        )
+        raise TransactionRecoveryError("recovered passport digest is not the new passport digest")
     if _recovery_passport_pointer(final_document, "recovered passport") != new_pointer:
         raise TransactionRecoveryError("recovered passport pointer is not the new pointer")
     if _path_digest(ledger, field="recovered ledger") != new_digest:
@@ -2071,9 +1978,7 @@ def _load_bound_locked(
             "ledger_path": None,
         }
 
-    ledger_path = _contained_path(
-        root, pointer["ledger_path"], "inquiry_ledger_ref.ledger_path"
-    )
+    ledger_path = _contained_path(root, pointer["ledger_path"], "inquiry_ledger_ref.ledger_path")
     try:
         _assert_safe_ledger_target(passport, ledger_path)
     except ContractError as exc:
@@ -2251,9 +2156,7 @@ def commit_ledger_transaction(
         _write_exclusive_durable(ledger_temp, ledger_bytes)
         try:
             passport_mode = stat.S_IMODE(passport.stat().st_mode)
-            _write_exclusive_durable(
-                sidecars["passport_temp"], passport_bytes, mode=passport_mode
-            )
+            _write_exclusive_durable(sidecars["passport_temp"], passport_bytes, mode=passport_mode)
         except BaseException:
             ledger_temp.unlink(missing_ok=True)
             raise
@@ -2267,9 +2170,7 @@ def commit_ledger_transaction(
             "passport_temp_path": _relative_to_workspace(
                 sidecars["passport_temp"], root, "passport_temp_path"
             ),
-            "ledger_temp_path": _relative_to_workspace(
-                ledger_temp, root, "ledger_temp_path"
-            ),
+            "ledger_temp_path": _relative_to_workspace(ledger_temp, root, "ledger_temp_path"),
             "old_pointer": _plain_pointer(old_pointer),
             "new_pointer": _plain_pointer(new_pointer),
             "old_ledger_sha256": old_digest,
@@ -2290,37 +2191,20 @@ def commit_ledger_transaction(
             preflight_passport_raw, preflight_passport = _recovery_passport_snapshot(
                 sidecars["passport_temp"], "staged passport preflight"
             )
+            if hashlib.sha256(preflight_passport_raw).hexdigest() != new_passport_digest:
+                raise TransactionRecoveryError("staged passport changed before publication")
             if (
-                hashlib.sha256(preflight_passport_raw).hexdigest()
-                != new_passport_digest
-            ):
-                raise TransactionRecoveryError(
-                    "staged passport changed before publication"
-                )
-            if (
-                _recovery_passport_pointer(
-                    preflight_passport, "staged passport preflight"
-                )
+                _recovery_passport_pointer(preflight_passport, "staged passport preflight")
                 != new_pointer
             ):
-                raise TransactionRecoveryError(
-                    "staged passport pointer changed before publication"
-                )
+                raise TransactionRecoveryError("staged passport pointer changed before publication")
             preflight_live_raw, preflight_live = _recovery_passport_snapshot(
                 passport, "live passport preflight"
             )
-            if (
-                hashlib.sha256(preflight_live_raw).hexdigest()
-                != old_passport_digest
-            ):
+            if hashlib.sha256(preflight_live_raw).hexdigest() != old_passport_digest:
                 raise TransactionRecoveryError("live passport changed before publication")
-            if (
-                _recovery_passport_pointer(preflight_live, "live passport preflight")
-                != old_pointer
-            ):
-                raise TransactionRecoveryError(
-                    "live passport pointer changed before publication"
-                )
+            if _recovery_passport_pointer(preflight_live, "live passport preflight") != old_pointer:
+                raise TransactionRecoveryError("live passport pointer changed before publication")
             os.replace(ledger_temp, ledger_target)
             _fsync_directory(ledger_target.parent)
             hook("ledger_published")
@@ -2329,28 +2213,16 @@ def commit_ledger_transaction(
                 sidecars["passport_temp"], "staged passport"
             )
             if hashlib.sha256(staged_passport_raw).hexdigest() != new_passport_digest:
-                raise TransactionRecoveryError(
-                    "staged passport changed before publication"
-                )
-            if (
-                _recovery_passport_pointer(staged_passport, "staged passport")
-                != new_pointer
-            ):
-                raise TransactionRecoveryError(
-                    "staged passport pointer changed before publication"
-                )
+                raise TransactionRecoveryError("staged passport changed before publication")
+            if _recovery_passport_pointer(staged_passport, "staged passport") != new_pointer:
+                raise TransactionRecoveryError("staged passport pointer changed before publication")
             live_passport_raw, live_passport = _recovery_passport_snapshot(
                 passport, "live passport CAS"
             )
             if hashlib.sha256(live_passport_raw).hexdigest() != old_passport_digest:
                 raise TransactionRecoveryError("live passport changed before publication")
-            if (
-                _recovery_passport_pointer(live_passport, "live passport CAS")
-                != old_pointer
-            ):
-                raise TransactionRecoveryError(
-                    "live passport pointer changed before publication"
-                )
+            if _recovery_passport_pointer(live_passport, "live passport CAS") != old_pointer:
+                raise TransactionRecoveryError("live passport pointer changed before publication")
             os.replace(sidecars["passport_temp"], passport)
             _fsync_directory(passport.parent)
             hook("passport_published")
@@ -2361,10 +2233,7 @@ def commit_ledger_transaction(
             )
             if hashlib.sha256(committed_raw).hexdigest() != new_passport_digest:
                 raise TransactionRecoveryError("committed passport digest mismatch")
-            if (
-                _recovery_passport_pointer(committed_document, "committed passport")
-                != new_pointer
-            ):
+            if _recovery_passport_pointer(committed_document, "committed passport") != new_pointer:
                 raise TransactionRecoveryError("committed passport pointer mismatch")
             if _path_digest(ledger_target, field="committed ledger") != new_digest:
                 raise TransactionRecoveryError("committed ledger digest mismatch")
@@ -2414,9 +2283,7 @@ def main(argv: list[str] | None = None) -> int:
         command_parser: argparse.ArgumentParser, *, authoritative: bool = False
     ) -> None:
         command_parser.add_argument("ledger", type=Path)
-        command_parser.add_argument(
-            "--profile", action="append", required=True, type=Path
-        )
+        command_parser.add_argument("--profile", action="append", required=True, type=Path)
         command_parser.add_argument(
             "--project-ref",
             required=authoritative,
@@ -2495,9 +2362,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             sys.stdout.buffer.write(canonical_bytes(updated))
         elif args.command == "summary":
-            projection = replay_ledger(
-                ledger, catalog, expected_project_ref=args.project_ref
-            )
+            projection = replay_ledger(ledger, catalog, expected_project_ref=args.project_ref)
             env = {ENV_FLAG: "1"} if args.force else None
             rendered = checkpoint_summary(
                 projection,

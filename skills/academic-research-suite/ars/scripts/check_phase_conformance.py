@@ -31,25 +31,17 @@ _METADATA_KEYS = frozenset({"title", "field", "word_count"})
 _FIELD_PATTERNS = {
     "dimension_id": re.compile(r"^dimension_id: (?P<value>D\d+)$"),
     "what_to_look_for": re.compile(r"^what_to_look_for: (?P<value>\S.*)$"),
-    "what_triggers_block": re.compile(
-        r"^what_triggers_block: (?P<value>\S.*)$"
-    ),
-    "what_triggers_warn": re.compile(
-        r"^what_triggers_warn: (?P<value>\S.*)$"
-    ),
-    "what_triggers_fatal": re.compile(
-        r"^what_triggers_fatal: (?P<value>\S.*)$"
-    ),
+    "what_triggers_block": re.compile(r"^what_triggers_block: (?P<value>\S.*)$"),
+    "what_triggers_warn": re.compile(r"^what_triggers_warn: (?P<value>\S.*)$"),
+    "what_triggers_fatal": re.compile(r"^what_triggers_fatal: (?P<value>\S.*)$"),
 }
 _DISSENT_DIM_RE = re.compile(r"^dimension_id: (?P<dim>D\d+)\s*$")
 _DISSENT_RATIONALE_RE = re.compile(r"^rationale: (?P<text>\S.*)\s*$")
 _SEVERITY_RE = re.compile(
-    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity\*\*:\s*"
-    r"(?P<severity>Critical|Major|Minor)\b"
+    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity\*\*:\s*" r"(?P<severity>Critical|Major|Minor)\b"
 )
 _ANCHOR_RE = re.compile(
-    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*"
-    r"(?P<value>[^|]+)"
+    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*" r"(?P<value>[^|]+)"
 )
 _SEVERITY_DECL_RE = re.compile(
     r"\*\*Severity(?:\*\*)?\s*:",
@@ -74,41 +66,35 @@ _FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")
 # silently passing a forbidden-field guard or failing a required count.
 _RECEIPT_SECTION = "Arithmetic Receipts"
 _RECEIPT_H3_RE = re.compile(r"^AR[1-9]\d*$")
-_RECEIPT_PROCEDURES = frozenset(
-    {"p_from_test_statistic", "grim", "grimmer", "n_from_df"}
+_RECEIPT_PROCEDURES = frozenset({"p_from_test_statistic", "grim", "grimmer", "n_from_df"})
+_RECEIPT_STATUSES = frozenset({"consistent", "mismatch", "not_computable", "not_applicable"})
+_NOT_COMPUTABLE_REASONS = frozenset(
+    {
+        "missing_reported_value",
+        "test_family_ambiguous",
+        "tail_ambiguous",
+        "nonstandard_p_procedure",
+        "inequality_unresolvable",
+        "rounding_rule_ambiguous",
+        "rounding_boundary_ambiguous",
+        "scale_granularity_unknown",
+        "scale_support_unknown",
+        "analytic_n_ambiguous",
+        "aggregation_or_weighting_unknown",
+        "sd_convention_unknown",
+        "mean_grim_inconsistent",
+        "df_identity_ambiguous",
+        "model_correction_or_pooling",
+        "reachability_not_completed",
+    }
 )
-_RECEIPT_STATUSES = frozenset(
-    {"consistent", "mismatch", "not_computable", "not_applicable"}
-)
-_NOT_COMPUTABLE_REASONS = frozenset({
-    "missing_reported_value",
-    "test_family_ambiguous",
-    "tail_ambiguous",
-    "nonstandard_p_procedure",
-    "inequality_unresolvable",
-    "rounding_rule_ambiguous",
-    "rounding_boundary_ambiguous",
-    "scale_granularity_unknown",
-    "scale_support_unknown",
-    "analytic_n_ambiguous",
-    "aggregation_or_weighting_unknown",
-    "sd_convention_unknown",
-    "mean_grim_inconsistent",
-    "df_identity_ambiguous",
-    "model_correction_or_pooling",
-    "reachability_not_completed",
-})
-_TAIL_CONVENTIONS = frozenset(
-    {"two-tailed", "one-tailed", "upper-tail", "unstated"}
-)
+_TAIL_CONVENTIONS = frozenset({"two-tailed", "one-tailed", "upper-tail", "unstated"})
 
 
 def _receipt_field_re(key: str) -> re.Pattern[str]:
     # Bold is balanced-or-absent: a half-bold `**key:` is a decorated line
     # for the shape guard to abort, never a canonical field (#610 round-2).
-    return re.compile(
-        rf"^(?:[-*] )?(?:{key}|\*\*{key}\*\*): (?P<value>\S.*?)\s*$"
-    )
+    return re.compile(rf"^(?:[-*] )?(?:{key}|\*\*{key}\*\*): (?P<value>\S.*?)\s*$")
 
 
 _RECEIPT_FIELD_RES = {
@@ -149,8 +135,7 @@ _FINDING_REF_VALUE_RE = re.compile(r"^W[1-9]\d*$")
 # table pipe. `AR1, AR2` and trailing prose fail this parse and then abort
 # via the lenient declaration count below rather than half-reading `AR1`.
 _RECEIPT_BACKREF_RE = re.compile(
-    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Arithmetic Receipt\*\*:\s*"
-    r"(?P<value>AR[1-9]\d*)\s*(?=\||$)"
+    r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Arithmetic Receipt\*\*:\s*" r"(?P<value>AR[1-9]\d*)\s*(?=\||$)"
 )
 # Lenient declaration shape for the back-reference, checked against the
 # canonical parse per line (`_is_dissent_field_shaped` construction): a line
@@ -170,8 +155,7 @@ _RECEIPT_BACKREF_SHAPE_NAME = "arithmeticreceipt"
 # `twotailed` typo still counts as the label — it carries its value, and
 # rejecting it would be a false abort on an unretryable phase.
 _TAIL_LABEL_RES = {
-    label: re.compile(rf"(?<![a-z]){label}[\s‐-―-]?tailed(?![a-z])")
-    for label in ("two", "one")
+    label: re.compile(rf"(?<![a-z]){label}[\s‐-―-]?tailed(?![a-z])") for label in ("two", "one")
 }
 # Conditional-field matrix, spec §4/§5 (2026-08-02 #610 spec): which
 # procedure-specific lines each procedure may carry. `tail_convention` is
@@ -191,20 +175,14 @@ _PROCEDURE_FIELDS = {
 # Inverted view driving the conditional-field loop, so the matrix above is
 # the single authority: field -> the procedures that carry it.
 _PROCEDURE_FIELD_OWNERS = {
-    field: tuple(
-        procedure
-        for procedure, fields in _PROCEDURE_FIELDS.items()
-        if field in fields
-    )
+    field: tuple(procedure for procedure, fields in _PROCEDURE_FIELDS.items() if field in fields)
     for fields in _PROCEDURE_FIELDS.values()
     for field in fields
 }
 _ALWAYS_REQUIRED_PROCEDURE_FIELDS = frozenset({"tail_convention"})
 # --- end #610 receipt grammar --------------------------------------------
 _DISSENT_FIELD_NAMES = frozenset({"dimensionid", "rationale"})
-_MARKUP_SPAN_RE = re.compile(
-    r"<[^>]*>|\]\((?:[^()]|\([^()]*\))*\)|\]\[[^\]]*\]|\[[ xX]?\]"
-)
+_MARKUP_SPAN_RE = re.compile(r"<[^>]*>|\]\((?:[^()]|\([^()]*\))*\)|\]\[[^\]]*\]|\[[ xX]?\]")
 # Non-comment raw HTML is forbidden only inside the dissent span (#682).
 # Match the opening delimiter rather than requiring a complete tag: CommonMark
 # raw blocks such as a line ending in ``<script`` can still hide the canonical
@@ -217,6 +195,8 @@ _DISSENT_RAW_HTML_RE = re.compile(
     r"<(?:(?:/?[A-Za-z][A-Za-z0-9-]*)(?=[\s/>]|$)|![A-Za-z]|!\[CDATA\[|\?)",
     re.IGNORECASE,
 )
+
+
 # A block opener, including one behind list or blockquote markers: rendered
 # through CommonMark, `- <!--` opens raw HTML just as a bare `<!--` does, and
 # needs no closer to swallow the rest of the item. The indentation allowances
@@ -261,9 +241,7 @@ _SETEXT_UNDERLINE_RE = re.compile(r"^ {0,3}(?:=+|-{2,})[ \t]*$")
 _EMPTY_LIST_ITEM_RE = re.compile(r"^ {0,3}(?:[*+]|\d{1,9}[.)])[ \t]*$")
 _ANY_ORDERED_MARKER = r"\d{1,9}[.)]"
 _PARAGRAPH_INTERRUPTING_MARKER = r"1[.)]"
-_COMMENT_OPENER_RE = re.compile(
-    rf"^ {{0,3}}{_container_prefix(_ANY_ORDERED_MARKER)}<!--"
-)
+_COMMENT_OPENER_RE = re.compile(rf"^ {{0,3}}{_container_prefix(_ANY_ORDERED_MARKER)}<!--")
 _PARAGRAPH_OPENER_RE = re.compile(
     rf"^ {{0,3}}{_container_prefix(_PARAGRAPH_INTERRUPTING_MARKER)}<!--"
 )
@@ -328,9 +306,7 @@ def _is_dissent_field_shaped(line: str) -> bool:
     name a field stays prose rather than collapsing onto the field name and
     aborting a panel it should tolerate.
     """
-    stripped = _MARKUP_SPAN_RE.sub(
-        "", unicodedata.normalize("NFKC", line).casefold()
-    )
+    stripped = _MARKUP_SPAN_RE.sub("", unicodedata.normalize("NFKC", line).casefold())
     head, separator, _ = stripped.partition(":")
     label = "".join(char for char in head if char.isalpha())
     return bool(separator) and label in _DISSENT_FIELD_NAMES
@@ -463,8 +439,7 @@ def _tail_value_shown(derived_fold: str, label_re: re.Pattern[str]) -> bool:
     both show the value); the one-pass any() also keeps the scan linear.
     """
     return any(
-        label_re.search(segment)
-        and any(char.isdigit() for char in segment)
+        label_re.search(segment) and any(char.isdigit() for char in segment)
         for segment in derived_fold.split(";")
     )
 
@@ -478,9 +453,7 @@ def _is_backref_shaped(line: str) -> bool:
     return bool(separator) and label == _RECEIPT_BACKREF_SHAPE_NAME
 
 
-def _strip_inline_comment_spans(
-    line: str, open_: bool
-) -> tuple[str, list[str], bool]:
+def _strip_inline_comment_spans(line: str, open_: bool) -> tuple[str, list[str], bool]:
     """(rendered remainder, hidden segments, state) for inline spans.
 
     The block visibility model deliberately refuses to read a mid-paragraph
@@ -532,10 +505,7 @@ def _backref_declared_count(line: str) -> int:
     """
     if "|" not in line:
         return 1 if _is_backref_shaped(line) else 0
-    return sum(
-        1 for cell in _cell_split_form(line).split("|")
-        if _is_backref_shaped(cell)
-    )
+    return sum(1 for cell in _cell_split_form(line).split("|") if _is_backref_shaped(cell))
 
 
 def _lines_with_fence_state(text: str):
@@ -560,7 +530,7 @@ def _lines_with_fence_state(text: str):
                     fence_char, fence_len, fence_indent = None, 0, 0
                     continue
             leading = len(line) - len(line.lstrip(" "))
-            yield line[min(fence_indent, leading):], True
+            yield line[min(fence_indent, leading) :], True
             continue
         if match := panel._FENCE_OPEN_RE.fullmatch(line):
             token, info = match.group("fence"), match.group("info")
@@ -587,9 +557,7 @@ def _opens_comment(line: str, *, paragraph_open: bool) -> bool:
     return bool(pattern.match(line.expandtabs(4)))
 
 
-def _comment_state_after(
-    line: str, *, commented: bool, paragraph_open: bool = False
-) -> bool:
+def _comment_state_after(line: str, *, commented: bool, paragraph_open: bool = False) -> bool:
     """Whether the line ends inside an HTML comment.
 
     Resolved by delimiter ORDER, not by presence: `<!-- a --> <!--` closes
@@ -664,9 +632,7 @@ def _lines_with_hidden_state(text: str):
     paragraph_open = False
     for line, fenced in _lines_with_fence_state(text):
         entered_commented = commented
-        opens_comment = not fenced and _opens_comment(
-            line, paragraph_open=paragraph_open
-        )
+        opens_comment = not fenced and _opens_comment(line, paragraph_open=paragraph_open)
         if not fenced:
             commented = _comment_state_after(
                 line, commented=commented, paragraph_open=paragraph_open
@@ -678,12 +644,9 @@ def _lines_with_hidden_state(text: str):
             and bool(line.strip(" \t"))
             and expanded.startswith("    ")
         )
-        state_dependent = (
-            _SETEXT_UNDERLINE_RE if paragraph_open else _EMPTY_LIST_ITEM_RE
-        )
+        state_dependent = _SETEXT_UNDERLINE_RE if paragraph_open else _EMPTY_LIST_ITEM_RE
         closes_paragraph = bool(
-            _CLOSES_PARAGRAPH_RE.match(expanded)
-            or state_dependent.match(expanded)
+            _CLOSES_PARAGRAPH_RE.match(expanded) or state_dependent.match(expanded)
         )
         paragraph_open = (
             not fenced
@@ -740,9 +703,7 @@ def _raw_dissent_span(text: str) -> DissentSpan:
     for line, fenced in _lines_with_fence_state(text):
         entered_commented = commented
         entered_inline = span_inline
-        opens_comment = not fenced and _opens_comment(
-            line, paragraph_open=paragraph_open
-        )
+        opens_comment = not fenced and _opens_comment(line, paragraph_open=paragraph_open)
         if not fenced:
             # A block opener only, list and blockquote markers included:
             # four columns STARTING a block makes indented code, and a fence
@@ -772,12 +733,9 @@ def _raw_dissent_span(text: str) -> DissentSpan:
         # an ideographic space is a paragraph. Calling it blank put the next
         # line at a block start and aborted a valid zh-TW card.
         expanded = line.expandtabs(4)
-        state_dependent = (
-            _SETEXT_UNDERLINE_RE if paragraph_open else _EMPTY_LIST_ITEM_RE
-        )
+        state_dependent = _SETEXT_UNDERLINE_RE if paragraph_open else _EMPTY_LIST_ITEM_RE
         closes_paragraph = bool(
-            _CLOSES_PARAGRAPH_RE.match(expanded)
-            or state_dependent.match(expanded)
+            _CLOSES_PARAGRAPH_RE.match(expanded) or state_dependent.match(expanded)
         )
         paragraph_open = (
             not fenced
@@ -796,18 +754,14 @@ def _raw_dissent_span(text: str) -> DissentSpan:
                 code_parity_suspect = False
             opens_inline = False
             blanked = None
-            if (not fenced and not entered_commented and not entered_inline
-                    and not opens_comment):
+            if not fenced and not entered_commented and not entered_inline and not opens_comment:
                 # #613: only lines the block model does NOT already own can
                 # open the inline state; code spans are blanked first so the
                 # grammar's sanctioned `` `<!--` `` mention stays prose —
                 # unless this paragraph's runs stopped pairing locally, in
                 # which case blanking is off and every marker opens.
                 escaped = _ESCAPED_BACKTICK_RE.sub("  ", line)
-                blanked = (
-                    escaped if code_parity_suspect
-                    else _blank_code_spans(line)
-                )
+                blanked = escaped if code_parity_suspect else _blank_code_spans(line)
                 opens_inline = "<!--" in blanked
                 if len(re.findall(r"`+", escaped)) % 2:
                     code_parity_suspect = True
@@ -831,8 +785,7 @@ def _raw_dissent_span(text: str) -> DissentSpan:
             # merely mentions them in inline code from matching the
             # canonical parse, aborting an unretryable Phase 2 on a valid
             # card.
-            if (entered_commented or opens_comment or entered_inline
-                    or opens_inline):
+            if entered_commented or opens_comment or entered_inline or opens_inline:
                 span.append(line.replace("<!--", " ").replace("-->", " "))
             else:
                 span.append(line)
@@ -840,8 +793,7 @@ def _raw_dissent_span(text: str) -> DissentSpan:
                 hidden_by_comment.append(line)
             if not fenced and (entered_inline or opens_inline):
                 span_inline = _inline_comment_state_after(
-                    blanked if blanked is not None
-                    else _blank_code_spans(line),
+                    blanked if blanked is not None else _blank_code_spans(line),
                     commented=entered_inline,
                 )
     return DissentSpan(span, hidden_by_comment, raw_html)
@@ -866,8 +818,9 @@ def _one_field(
     required: bool,
     dimension_id: str,
 ) -> str | None:
-    hits = [match.group("value") for line in lines
-            if (match := _FIELD_PATTERNS[field].fullmatch(line))]
+    hits = [
+        match.group("value") for line in lines if (match := _FIELD_PATTERNS[field].fullmatch(line))
+    ]
     expected = "exactly one" if required else "at most one"
     if (required and len(hits) != 1) or (not required and len(hits) > 1):
         raise ConformanceError(
@@ -877,24 +830,18 @@ def _one_field(
     return hits[0] if hits else None
 
 
-def parse_phase1(
-    path: str, text: str, contract: dict, role: str
-) -> PhaseOnePlan:
+def parse_phase1(path: str, text: str, contract: dict, role: str) -> PhaseOnePlan:
     lines = panel.strip_fences(text)
     sections, dupes = panel.split_sections(lines)
     if "Scoring Plan" in dupes or "Scoring Plan" not in sections:
-        raise ConformanceError(
-            f"[PHASE1-GRAMMAR: {path}: exactly one ## Scoring Plan required]"
-        )
+        raise ConformanceError(f"[PHASE1-GRAMMAR: {path}: exactly one ## Scoring Plan required]")
     # §4 names three requirements, not one: the paraphrase section and the
     # terminal acknowledgement are as mandatory as the plan, and a plan
     # alone passing would let the dispatcher retry -- or accept -- a
     # protocol-invalid Phase 1.
-    if "Contract Paraphrase" in dupes or "Contract Paraphrase" \
-            not in sections:
+    if "Contract Paraphrase" in dupes or "Contract Paraphrase" not in sections:
         raise ConformanceError(
-            f"[PHASE1-GRAMMAR: {path}: exactly one ## Contract Paraphrase "
-            "required]"
+            f"[PHASE1-GRAMMAR: {path}: exactly one ## Contract Paraphrase " "required]"
         )
     # BOTH tails must be the marker. The raw tail catches output after
     # the acknowledgement (a trailing fenced block would vanish from the
@@ -904,22 +851,19 @@ def parse_phase1(
     # ending): an indented `    [CONTRACT-ACKNOWLEDGED]` renders as a
     # code block, and stripping before comparison let it pass the exact
     # terminal-line requirement.
-    raw_tail = next(
-        (line for line in reversed(text.splitlines())
-         if line.strip()), "")
-    fenced_tail = next(
-        (line for line in reversed(lines) if line.strip()), "")
-    if raw_tail.rstrip() != "[CONTRACT-ACKNOWLEDGED]" or \
-            fenced_tail.rstrip() != "[CONTRACT-ACKNOWLEDGED]":
+    raw_tail = next((line for line in reversed(text.splitlines()) if line.strip()), "")
+    fenced_tail = next((line for line in reversed(lines) if line.strip()), "")
+    if (
+        raw_tail.rstrip() != "[CONTRACT-ACKNOWLEDGED]"
+        or fenced_tail.rstrip() != "[CONTRACT-ACKNOWLEDGED]"
+    ):
         raise ConformanceError(
-            f"[PHASE1-GRAMMAR: {path}: final nonblank line must be "
-            "[CONTRACT-ACKNOWLEDGED]]"
+            f"[PHASE1-GRAMMAR: {path}: final nonblank line must be " "[CONTRACT-ACKNOWLEDGED]]"
         )
     # And in §4's exact order, with nothing else at H2: presence alone
     # would let a reordered or extra-sectioned precommitment pass. All
     # four real dispatch outputs carry exactly this sequence.
-    h2_titles = [line[3:].strip() for line in lines
-                 if line.startswith("## ")]
+    h2_titles = [line[3:].strip() for line in lines if line.startswith("## ")]
     if h2_titles != ["Contract Paraphrase", "Scoring Plan"]:
         raise ConformanceError(
             f"[PHASE1-GRAMMAR: {path}: H2 sections must be exactly "
@@ -949,10 +893,10 @@ def parse_phase1(
     # base rate in committed panels is zero, and §4's substantive
     # judgment sits with the seat's preflight, not this floor.
     separator = re.compile(
-        r"#{1,6}(\s|$)"          # ATX heading
+        r"#{1,6}(\s|$)"  # ATX heading
         r"|([-*_])(\s*\2){2,}$"  # thematic break
-        r"|<!--.*-->$"           # single-line HTML comment
-        r"|[-*+]$"               # lone list marker, no item text
+        r"|<!--.*-->$"  # single-line HTML comment
+        r"|[-*+]$"  # lone list marker, no item text
     )
     paragraphs, in_paragraph, in_comment = 0, False, False
     for line in sections["Contract Paraphrase"]:
@@ -978,23 +922,16 @@ def parse_phase1(
                 in_paragraph = True
         else:
             in_paragraph = False
-    minimum = contract.get("measurement_procedure", {}).get(
-        "paraphrase_minimum_dimensions")
-    required = len(dimensions) if minimum == "all" else (
-        minimum if isinstance(minimum, int) else 0)
+    minimum = contract.get("measurement_procedure", {}).get("paraphrase_minimum_dimensions")
+    required = len(dimensions) if minimum == "all" else (minimum if isinstance(minimum, int) else 0)
     if paragraphs < required:
         raise ConformanceError(
             f"[PHASE1-GRAMMAR: {path}: Contract Paraphrase has "
             f"{paragraphs} paragraph(s), fewer than the {required} "
             "required]"
         )
-    eligible = {
-        did for did, dim in dimensions.items()
-        if role in dim["eligible_roles"]
-    }
-    subsections, subsection_dupes = panel.split_subsections(
-        sections["Scoring Plan"]
-    )
+    eligible = {did for did, dim in dimensions.items() if role in dim["eligible_roles"]}
+    subsections, subsection_dupes = panel.split_subsections(sections["Scoring Plan"])
     if subsection_dupes:
         raise ConformanceError(
             f"[PHASE1-GRAMMAR: {path}: duplicate scoring-plan subsection: "
@@ -1005,18 +942,12 @@ def parse_phase1(
     for title, sublines in subsections.items():
         match = panel._DIM_H3_RE.fullmatch(title)
         if not match or match.group("dim") not in dimensions:
-            raise ConformanceError(
-                f"[PHASE1-GRAMMAR: {path}: invalid subsection '### {title}']"
-            )
+            raise ConformanceError(f"[PHASE1-GRAMMAR: {path}: invalid subsection '### {title}']")
         did = match.group("dim")
         if did not in eligible:
-            raise ConformanceError(
-                f"[PHASE1-OUT-OF-ROLE: {path}: role {role} planned {did}]"
-            )
+            raise ConformanceError(f"[PHASE1-OUT-OF-ROLE: {path}: role {role} planned {did}]")
         if match.group("name") != dimensions[did]["name"]:
-            raise ConformanceError(
-                f"[PHASE1-GRAMMAR: {path}: {did} name mismatch]"
-            )
+            raise ConformanceError(f"[PHASE1-GRAMMAR: {path}: {did} name mismatch]")
         fields = {
             field: _one_field(
                 sublines,
@@ -1026,8 +957,10 @@ def parse_phase1(
                 dimension_id=did,
             )
             for field in (
-                "dimension_id", "what_to_look_for",
-                "what_triggers_block", "what_triggers_warn",
+                "dimension_id",
+                "what_to_look_for",
+                "what_triggers_block",
+                "what_triggers_warn",
             )
         }
         mandatory = dimensions[did]["priority"] == "mandatory"
@@ -1060,14 +993,14 @@ def parse_phase1(
                 "commitments must be pairwise distinct]"
             )
         for field in (
-            "what_triggers_block", "what_triggers_warn",
+            "what_triggers_block",
+            "what_triggers_warn",
             "what_triggers_fatal",
         ):
             value = fields[field]
             if value is not None and len(value.split()) < 8:
                 warnings.append(
-                    f"[PHASE1-TRIGGER-SHORT: {path}: {did} {field} "
-                    "has fewer than 8 words]"
+                    f"[PHASE1-TRIGGER-SHORT: {path}: {did} {field} " "has fewer than 8 words]"
                 )
         commitments[did] = fields
     if set(commitments) != eligible:
@@ -1080,17 +1013,9 @@ def parse_phase1(
 
 def _flatten_metadata_values(value) -> list[str]:
     if isinstance(value, dict):
-        return [
-            item
-            for nested in value.values()
-            for item in _flatten_metadata_values(nested)
-        ]
+        return [item for nested in value.values() for item in _flatten_metadata_values(nested)]
     if isinstance(value, list):
-        return [
-            item
-            for nested in value
-            for item in _flatten_metadata_values(nested)
-        ]
+        return [item for nested in value for item in _flatten_metadata_values(nested)]
     if isinstance(value, (str, int, float, bool)):
         return [str(value)]
     return []
@@ -1098,14 +1023,9 @@ def _flatten_metadata_values(value) -> list[str]:
 
 def validate_metadata_envelope(metadata) -> None:
     if not isinstance(metadata, dict) or set(metadata) != _METADATA_KEYS:
-        actual = (
-            sorted(metadata)
-            if isinstance(metadata, dict)
-            else type(metadata).__name__
-        )
+        actual = sorted(metadata) if isinstance(metadata, dict) else type(metadata).__name__
         raise panel.ContractError(
-            "[METADATA-INVALID: expected exact title/field/word_count "
-            f"envelope, got {actual}]"
+            "[METADATA-INVALID: expected exact title/field/word_count " f"envelope, got {actual}]"
         )
     if (
         not isinstance(metadata["title"], str)
@@ -1128,14 +1048,10 @@ def check_manuscript_leakage(
     validate_metadata_envelope(metadata)
     phase1_norm = _normalise(phase1_text)
     words = _normalise(manuscript_text).split()
-    exemption_haystacks = [
-        _normalise(value) for value in _flatten_metadata_values(metadata)
-    ]
-    exemption_haystacks.append(_normalise(json.dumps(
-        contract, ensure_ascii=False, sort_keys=True
-    )))
+    exemption_haystacks = [_normalise(value) for value in _flatten_metadata_values(metadata)]
+    exemption_haystacks.append(_normalise(json.dumps(contract, ensure_ascii=False, sort_keys=True)))
     for index in range(max(0, len(words) - 11)):
-        shingle = " ".join(words[index:index + 12])
+        shingle = " ".join(words[index : index + 12])
         if shingle not in phase1_norm:
             continue
         if any(shingle in haystack for haystack in exemption_haystacks):
@@ -1150,9 +1066,7 @@ def parse_dissent_dimensions(text: str) -> DissentParse:
     lines = panel.strip_fences(text)
     sections, dupes = panel.split_sections(lines)
     if "Scoring Plan Dissent" in dupes:
-        raise ConformanceError(
-            "[DISSENT-GRAMMAR: duplicate ## Scoring Plan Dissent]"
-        )
+        raise ConformanceError("[DISSENT-GRAMMAR: duplicate ## Scoring Plan Dissent]")
     if "Scoring Plan Dissent" not in sections:
         return DissentParse(set(), [])
     body = sections["Scoring Plan Dissent"]
@@ -1168,15 +1082,13 @@ def parse_dissent_dimensions(text: str) -> DissentParse:
             continue
         visible.append(line)
     parsed = Counter(
-        line for line in visible
-        if _DISSENT_DIM_RE.fullmatch(line)
-        or _DISSENT_RATIONALE_RE.fullmatch(line)
+        line
+        for line in visible
+        if _DISSENT_DIM_RE.fullmatch(line) or _DISSENT_RATIONALE_RE.fullmatch(line)
     )
-    dims = [match.group("dim") for line in visible
-            if (match := _DISSENT_DIM_RE.fullmatch(line))]
+    dims = [match.group("dim") for line in visible if (match := _DISSENT_DIM_RE.fullmatch(line))]
     rationales = [
-        match.group("text") for line in visible
-        if (match := _DISSENT_RATIONALE_RE.fullmatch(line))
+        match.group("text") for line in visible if (match := _DISSENT_RATIONALE_RE.fullmatch(line))
     ]
     # Scanned on the RAW span, not the sanitized body: a field the sanitizers
     # delete (fence, comment) or relocate (its own H2) would otherwise reach
@@ -1185,10 +1097,7 @@ def parse_dissent_dimensions(text: str) -> DissentParse:
     # fails whether or not it is canonically spelled. Counted rather than
     # matched by value, so a hidden copy of a canonical field is still one
     # unparsed occurrence and cannot ride in on its twin's identity.
-    hidden = Counter(
-        candidate for candidate in raw_span
-        if _is_dissent_field_shaped(candidate)
-    )
+    hidden = Counter(candidate for candidate in raw_span if _is_dissent_field_shaped(candidate))
     # Raw HTML owns its own diagnostic even when stripping the tag leaves a
     # field-shaped line.  Checking it first prevents a ``<span>dimension_id``
     # wrapper from being mislabeled as comment hiding by the older generic
@@ -1211,8 +1120,7 @@ def parse_dissent_dimensions(text: str) -> DissentParse:
             "clear and mention comment syntax only in inline code]"
         )
     if any(
-        _is_dissent_field_shaped(candidate) and candidate not in parsed
-        for candidate in visible
+        _is_dissent_field_shaped(candidate) and candidate not in parsed for candidate in visible
     ):
         raise ConformanceError(
             "[DISSENT-GRAMMAR: dissent fields must be canonical unbulleted "
@@ -1224,31 +1132,22 @@ def parse_dissent_dimensions(text: str) -> DissentParse:
         # aborting an unretryable Phase 2. The occurrence stays auditable in
         # the run record, and full Phase 1 trigger binding still applies to
         # every dimension.
-        return DissentParse(
-            set(), [_empty_dissent_section_diagnostic(raw_span)]
-        )
+        return DissentParse(set(), [_empty_dissent_section_diagnostic(raw_span)])
     h2_positions = {
         match.group(1): index
         for index, line in enumerate(lines)
         if (match := panel._H2_RE.fullmatch(line))
     }
-    if h2_positions["Scoring Plan Dissent"] > h2_positions.get(
-        "Dimension Scores", -1
-    ):
+    if h2_positions["Scoring Plan Dissent"] > h2_positions.get("Dimension Scores", -1):
         raise ConformanceError(
-            "[DISSENT-GRAMMAR: ## Scoring Plan Dissent must precede "
-            "## Dimension Scores]"
+            "[DISSENT-GRAMMAR: ## Scoring Plan Dissent must precede " "## Dimension Scores]"
         )
     if not dims:
-        raise ConformanceError(
-            "[DISSENT-GRAMMAR: dissent section must name dimension_id]"
-        )
+        raise ConformanceError("[DISSENT-GRAMMAR: dissent section must name dimension_id]")
     if len(dims) != len(set(dims)):
         raise ConformanceError("[DISSENT-GRAMMAR: duplicate dimension_id]")
     if len(rationales) != len(dims):
-        raise ConformanceError(
-            "[DISSENT-GRAMMAR: each dissent requires one rationale: line]"
-        )
+        raise ConformanceError("[DISSENT-GRAMMAR: each dissent requires one rationale: line]")
     return DissentParse(set(dims), [])
 
 
@@ -1260,14 +1159,11 @@ def check_trigger_binding(
 ) -> None:
     if len(dissent) >= 2:
         raise ConformanceError(
-            f"[PROTOCOL-VIOLATION: multi_dissent=true, "
-            f"dimensions={sorted(dissent)}]"
+            f"[PROTOCOL-VIOLATION: multi_dissent=true, " f"dimensions={sorted(dissent)}]"
         )
     unknown = dissent - set(dimensions)
     if unknown:
-        raise ConformanceError(
-            f"[DISSENT-GRAMMAR: unknown dimensions {sorted(unknown)}]"
-        )
+        raise ConformanceError(f"[DISSENT-GRAMMAR: unknown dimensions {sorted(unknown)}]")
     uncommitted = dissent - set(plan.commitments)
     if uncommitted:
         raise ConformanceError(
@@ -1284,9 +1180,7 @@ def check_trigger_binding(
             )
         if did in dissent:
             if value.block_class == "fatal":
-                raise ConformanceError(
-                    f"[DISSENT-FATALITY: {did} dissent may not mint fatality]"
-                )
+                raise ConformanceError(f"[DISSENT-FATALITY: {did} dissent may not mint fatality]")
             continue
         if not value.trigger:
             continue
@@ -1299,19 +1193,17 @@ def check_trigger_binding(
         committed = plan.commitments.get(did, {}).get(field)
         if not committed or _normalise(value.trigger) not in _normalise(committed):
             raise ConformanceError(
-                f"[TRIGGER-DRIFT: {did} {field} does not contain emitted "
-                "trigger text]"
+                f"[TRIGGER-DRIFT: {did} {field} does not contain emitted " "trigger text]"
             )
         matching_fields = {
             candidate
             for candidate in (
-                "what_triggers_block", "what_triggers_warn",
+                "what_triggers_block",
+                "what_triggers_warn",
                 "what_triggers_fatal",
             )
             if plan.commitments.get(did, {}).get(candidate)
-            and _normalise(value.trigger) in _normalise(
-                plan.commitments[did][candidate]
-            )
+            and _normalise(value.trigger) in _normalise(plan.commitments[did][candidate])
         }
         if matching_fields != {field}:
             raise ConformanceError(
@@ -1331,24 +1223,19 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
     lines = panel.strip_fences(report.text)
     sections, dupes = panel.split_sections(lines)
     if "Review Body" in dupes or "Review Body" not in sections:
-        raise ConformanceError(
-            f"[REVIEW-BODY-MISSING: {report.path}]"
-        )
+        raise ConformanceError(f"[REVIEW-BODY-MISSING: {report.path}]")
     current_h2 = None
     for line in lines:
         if match := panel._H2_RE.fullmatch(line):
             current_h2 = match.group(1)
         elif _SEVERITY_DECL_RE.search(line) and current_h2 != "Review Body":
             raise ConformanceError(
-                f"[FINDING-GRAMMAR: {report.path}: Severity outside "
-                "## Review Body]"
+                f"[FINDING-GRAMMAR: {report.path}: Severity outside " "## Review Body]"
             )
     review_lines = sections["Review Body"]
     blocks, subsection_dupes = panel.split_subsections(review_lines)
     if subsection_dupes:
-        raise ConformanceError(
-            f"[FINDING-GRAMMAR: {report.path}: duplicate finding heading]"
-        )
+        raise ConformanceError(f"[FINDING-GRAMMAR: {report.path}: duplicate finding heading]")
     preamble = []
     for line in review_lines:
         if panel._H3_RE.fullmatch(line):
@@ -1360,12 +1247,9 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
             "Severity must have its own ### finding heading]"
         )
     for title, block in blocks.items():
-        severity_declarations = sum(
-            len(_SEVERITY_DECL_RE.findall(line)) for line in block
-        )
+        severity_declarations = sum(len(_SEVERITY_DECL_RE.findall(line)) for line in block)
         severities = [
-            match.group("severity") for line in block
-            for match in _SEVERITY_RE.finditer(line)
+            match.group("severity") for line in block for match in _SEVERITY_RE.finditer(line)
         ]
         is_finding = _FINDING_H3_RE.fullmatch(title) is not None
         if severity_declarations and not is_finding:
@@ -1397,36 +1281,31 @@ def check_scoring_seat_anchors(report: panel.ReviewerReport) -> None:
         # ladder); and two parseable declarations on ONE line are not a
         # reading-order correction at all. The advisory line below keeps the
         # full declaration trail in the gate log for adjudication.
-        parseable_per_line = [
-            sum(1 for _ in _SEVERITY_RE.finditer(line)) for line in block
-        ]
-        if (not severities or len(severities) != severity_declarations
-                or any(count > 1 for count in parseable_per_line)):
+        parseable_per_line = [sum(1 for _ in _SEVERITY_RE.finditer(line)) for line in block]
+        if (
+            not severities
+            or len(severities) != severity_declarations
+            or any(count > 1 for count in parseable_per_line)
+        ):
             raise ConformanceError(
                 f"[FINDING-GRAMMAR: {report.path}: {title} must contain "
                 "exactly one parseable Severity declaration]"
             )
         severity_rank = {"Minor": 0, "Major": 1, "Critical": 2}
-        if any(severity_rank[later] <= severity_rank[earlier]
-               for earlier, later in zip(severities, severities[1:])):
+        if any(
+            severity_rank[later] <= severity_rank[earlier]
+            for earlier, later in zip(severities, severities[1:])
+        ):
             raise ConformanceError(
                 f"[FINDING-GRAMMAR: {report.path}: {title}: multiple "
                 "Severity declarations must form a strictly escalating "
                 "self-correction chain]"
             )
         if len(severities) > 1:
-            print(
-                f"[SEVERITY-SUPERSEDED: {report.path}: {title}: "
-                + " -> ".join(severities) + "]"
-            )
+            print(f"[SEVERITY-SUPERSEDED: {report.path}: {title}: " + " -> ".join(severities) + "]")
         operative_severity = severities[-1]
-        anchor_declarations = sum(
-            len(_ANCHOR_DECL_RE.findall(line)) for line in block
-        )
-        anchors = [
-            match.group("value") for line in block
-            for match in _ANCHOR_RE.finditer(line)
-        ]
+        anchor_declarations = sum(len(_ANCHOR_DECL_RE.findall(line)) for line in block)
+        anchors = [match.group("value") for line in block for match in _ANCHOR_RE.finditer(line)]
         if operative_severity not in {"Critical", "Major"}:
             if anchor_declarations > 1 or len(anchors) != anchor_declarations:
                 raise ConformanceError(
@@ -1453,21 +1332,16 @@ def check_da_anchors(report: panel.ReviewerReport) -> None:
     expected = [f"C{index}" for index in range(1, len(rows) + 1)]
     if list(rows) != expected:
         raise ConformanceError(
-            f"[DA-CRITICAL-ID: {report.path}: IDs must be dense C1..Cn; "
-            f"got={list(rows)}]"
+            f"[DA-CRITICAL-ID: {report.path}: IDs must be dense C1..Cn; " f"got={list(rows)}]"
         )
     for finding_id, anchor in rows.items():
         if not anchor:
-            raise ConformanceError(
-                f"[ANCHOR-MISSING: {report.path}: {finding_id}]"
-            )
+            raise ConformanceError(f"[ANCHOR-MISSING: {report.path}: {finding_id}]")
         _validate_anchor(anchor, f"{report.path}:{finding_id}")
 
     for anchor in major_anchors:
         if not anchor:
-            raise ConformanceError(
-                f"[ANCHOR-MISSING: {report.path}: DA MAJOR row]"
-            )
+            raise ConformanceError(f"[ANCHOR-MISSING: {report.path}: DA MAJOR row]")
         _validate_anchor(anchor, f"{report.path}:DA MAJOR")
 
 
@@ -1475,9 +1349,7 @@ def _one_receipt_field(
     lines: list[str], key: str, path: str, receipt_id: str, *, required: bool
 ) -> str | None:
     hits = [
-        match.group("value")
-        for line in lines
-        if (match := _RECEIPT_FIELD_RES[key].fullmatch(line))
+        match.group("value") for line in lines if (match := _RECEIPT_FIELD_RES[key].fullmatch(line))
     ]
     expected = "exactly one" if required else "at most one"
     if (required and len(hits) != 1) or (not required and len(hits) > 1):
@@ -1506,18 +1378,12 @@ def _review_body_receipt_backrefs(
     sections, _ = panel.split_sections(lines)
     review_lines = sections.get("Review Body", [])
     blocks, _ = panel.split_subsections(review_lines)
-    finding_ids = {
-        title.split(":", 1)[0]
-        for title in blocks
-        if _FINDING_H3_RE.fullmatch(title)
-    }
+    finding_ids = {title.split(":", 1)[0] for title in blocks if _FINDING_H3_RE.fullmatch(title)}
     backrefs: dict[str, list[str]] = {}
     current = "(preamble)"
     inside = False
     inline_commented = False
-    for line, fenced, hidden, code_indented in _lines_with_hidden_state(
-        report.text
-    ):
+    for line, fenced, hidden, code_indented in _lines_with_hidden_state(report.text):
         if not fenced and (match := panel._H2_RE.fullmatch(line)):
             inside = match.group(1) == "Review Body"
             current = "(preamble)"
@@ -1534,17 +1400,12 @@ def _review_body_receipt_backrefs(
             # later prose. Code spans are blanked first, matching the
             # renderer's precedence: a literal `<!--` inside inline code
             # opens nothing (#610 round-4).
-            if (
-                not line.strip(" \t")
-                or _ATX_HEADING_RE.match(line)
-            ):
+            if not line.strip(" \t") or _ATX_HEADING_RE.match(line):
                 inline_commented = False
             else:
                 code_blanked = _blank_code_spans(line)
-                visible, hidden_segments, inline_commented = (
-                    _strip_inline_comment_spans(
-                        code_blanked, inline_commented
-                    )
+                visible, hidden_segments, inline_commented = _strip_inline_comment_spans(
+                    code_blanked, inline_commented
                 )
                 if visible != code_blanked:
                     # A declaration inside a hidden span aborts whether or
@@ -1552,10 +1413,7 @@ def _review_body_receipt_backrefs(
                     # 5): hidden prose is skippable, a hidden machine
                     # declaration never is. Each span is checked on its
                     # own (#610 round-6).
-                    if any(
-                        _backref_declared_count(segment)
-                        for segment in hidden_segments
-                    ):
+                    if any(_backref_declared_count(segment) for segment in hidden_segments):
                         raise ConformanceError(
                             f"[RECEIPT-LINKAGE: {report.path}: an "
                             "Arithmetic Receipt back-reference "
@@ -1575,11 +1433,7 @@ def _review_body_receipt_backrefs(
             # code — is a loud failure, not a silent drop or a silent
             # credit (#610 rounds 2-3).
             if _backref_declared_count(line):
-                kind = (
-                    "fenced" if fenced
-                    else "commented-out" if hidden
-                    else "indented-code"
-                )
+                kind = "fenced" if fenced else "commented-out" if hidden else "indented-code"
                 raise ConformanceError(
                     f"[RECEIPT-LINKAGE: {report.path}: a {kind} Arithmetic "
                     "Receipt back-reference declaration does not render as "
@@ -1670,8 +1524,7 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
     occurrences = h2_titles.count(_RECEIPT_SECTION)
     if occurrences > 1:
         raise ConformanceError(
-            f"[RECEIPT-GRAMMAR: {report.path}: duplicate "
-            f"## {_RECEIPT_SECTION}]"
+            f"[RECEIPT-GRAMMAR: {report.path}: duplicate " f"## {_RECEIPT_SECTION}]"
         )
     if occurrences == 0:
         raise ConformanceError(
@@ -1708,10 +1561,7 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
             continue
         canonical = bool(
             _RECEIPT_ATTESTATION_RE.fullmatch(line)
-            or any(
-                pattern.fullmatch(line)
-                for pattern in _RECEIPT_FIELD_RES.values()
-            )
+            or any(pattern.fullmatch(line) for pattern in _RECEIPT_FIELD_RES.values())
         )
         if canonical:
             if hidden:
@@ -1720,10 +1570,7 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                     f"line {line.strip()!r} is inside an HTML comment; the "
                     "rendered card does not show it]"
                 )
-            if (
-                not in_subsection
-                and not _RECEIPT_ATTESTATION_RE.fullmatch(line)
-            ):
+            if not in_subsection and not _RECEIPT_ATTESTATION_RE.fullmatch(line):
                 raise ConformanceError(
                     f"[RECEIPT-GRAMMAR: {report.path}: receipt machine "
                     f"line {line.strip()!r} sits outside every ### AR<n> "
@@ -1732,8 +1579,7 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                 )
             continue
         if any(
-            _is_receipt_field_shaped(candidate)
-            for candidate in _receipt_shape_candidates(line)
+            _is_receipt_field_shaped(candidate) for candidate in _receipt_shape_candidates(line)
         ):
             # One neutral message for both visibility states: an opener
             # line like `<!-- c --> key: value` is hidden to the model but
@@ -1746,9 +1592,7 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                 "leading list marker, balanced bold around the key)]"
             )
     body = [line for line, _, _ in view]
-    attestations = [
-        line for line in body if _RECEIPT_ATTESTATION_RE.fullmatch(line)
-    ]
+    attestations = [line for line in body if _RECEIPT_ATTESTATION_RE.fullmatch(line)]
     subsections, sub_dupes = panel.split_subsections(body)
     if sub_dupes:
         raise ConformanceError(
@@ -1797,31 +1641,38 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                 f"procedure_id '{procedure}' is not a bounded procedure]"
             )
         anchor = _one_receipt_field(
-            sublines, "evidence_anchor", report.path, receipt_id,
+            sublines,
+            "evidence_anchor",
+            report.path,
+            receipt_id,
             required=True,
         )
         _validate_anchor(anchor, f"{report.path}:{receipt_id}")
         for key in (
-            "reported_inputs", "assumptions", "derivation",
+            "reported_inputs",
+            "assumptions",
+            "derivation",
             "comparison_rule",
         ):
-            _one_receipt_field(
-                sublines, key, report.path, receipt_id, required=True
-            )
+            _one_receipt_field(sublines, key, report.path, receipt_id, required=True)
         derived = _one_receipt_field(
-            sublines, "derived_value_or_range", report.path, receipt_id,
+            sublines,
+            "derived_value_or_range",
+            report.path,
+            receipt_id,
             required=True,
         )
-        status = _one_receipt_field(
-            sublines, "status", report.path, receipt_id, required=True
-        )
+        status = _one_receipt_field(sublines, "status", report.path, receipt_id, required=True)
         if status not in _RECEIPT_STATUSES:
             raise ConformanceError(
                 f"[RECEIPT-GRAMMAR: {report.path}: {receipt_id} status "
                 f"'{status}' is not in the closed status enum]"
             )
         reason = _one_receipt_field(
-            sublines, "not_computable_reason", report.path, receipt_id,
+            sublines,
+            "not_computable_reason",
+            report.path,
+            receipt_id,
             required=(status == "not_computable"),
         )
         if status != "not_computable" and reason is not None:
@@ -1840,8 +1691,7 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
         for key, procedures in _PROCEDURE_FIELD_OWNERS.items():
             if procedure in procedures:
                 required = (
-                    key in _ALWAYS_REQUIRED_PROCEDURE_FIELDS
-                    or status in _RECEIPT_VERDICT_STATUSES
+                    key in _ALWAYS_REQUIRED_PROCEDURE_FIELDS or status in _RECEIPT_VERDICT_STATUSES
                 )
                 value = _one_receipt_field(
                     sublines, key, report.path, receipt_id, required=required
@@ -1849,9 +1699,10 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                 if key == "tail_convention":
                     tail = value
             else:
-                if _one_receipt_field(
-                    sublines, key, report.path, receipt_id, required=False
-                ) is not None:
+                if (
+                    _one_receipt_field(sublines, key, report.path, receipt_id, required=False)
+                    is not None
+                ):
                     raise ConformanceError(
                         f"[RECEIPT-GRAMMAR: {report.path}: {receipt_id} "
                         f"{key} is forbidden for procedure {procedure}]"
@@ -1863,9 +1714,7 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                     f"tail_convention '{tail}' is not in the closed enum]"
                 )
             if tail == "unstated" and status in _RECEIPT_VERDICT_STATUSES:
-                derived_fold = unicodedata.normalize(
-                    "NFKC", derived
-                ).casefold()
+                derived_fold = unicodedata.normalize("NFKC", derived).casefold()
                 if not all(
                     _tail_value_shown(derived_fold, label_re)
                     for label_re in _TAIL_LABEL_RES.values()
@@ -1878,7 +1727,10 @@ def check_methodology_receipts(report: panel.ReviewerReport) -> None:
                         "with its derived number, either order]"
                     )
         finding_ref = _one_receipt_field(
-            sublines, "finding_ref", report.path, receipt_id,
+            sublines,
+            "finding_ref",
+            report.path,
+            receipt_id,
             required=(status == "mismatch"),
         )
         if status != "mismatch":
@@ -1938,8 +1790,7 @@ def check_recompute_extraction(path: str, text: str) -> None:
     sections, dupes = panel.split_sections(lines)
     if recompute.EXTRACTION_SECTION in dupes:
         raise ConformanceError(
-            f"[EXTRACTION-GRAMMAR: {path}: duplicate "
-            f"## {recompute.EXTRACTION_SECTION}]"
+            f"[EXTRACTION-GRAMMAR: {path}: duplicate " f"## {recompute.EXTRACTION_SECTION}]"
         )
     if recompute.EXTRACTION_SECTION not in sections:
         raise ConformanceError(
@@ -1947,8 +1798,7 @@ def check_recompute_extraction(path: str, text: str) -> None:
             f"## {recompute.EXTRACTION_SECTION} section is required]"
         )
     extra = [
-        title for title in list(sections) + list(dupes)
-        if title != recompute.EXTRACTION_SECTION
+        title for title in list(sections) + list(dupes) if title != recompute.EXTRACTION_SECTION
     ]
     if extra:
         raise ConformanceError(
@@ -1969,21 +1819,15 @@ def check_recompute_extraction(path: str, text: str) -> None:
     try:
         extraction = recompute.parse_extraction(text)
     except recompute.ExtractionError as exc:
-        raise ConformanceError(
-            f"[EXTRACTION-GRAMMAR: {path}: {exc}]"
-        ) from exc
+        raise ConformanceError(f"[EXTRACTION-GRAMMAR: {path}: {exc}]") from exc
     for request in extraction.requests:
-        _validate_anchor(
-            request["evidence_anchor"], f"{path}:{request.rr_id}"
-        )
+        _validate_anchor(request["evidence_anchor"], f"{path}:{request.rr_id}")
     if extraction.attestation is not None:
         # Same declaration-only honesty boundary as the receipt attestation.
         print(_RECEIPT_ATTESTATION_ADVISORY)
 
 
-def check_injected_receipts(
-    report: panel.ReviewerReport, injected_text: str
-) -> None:
+def check_injected_receipts(report: panel.ReviewerReport, injected_text: str) -> None:
     """#610 step-5 identity gate: the card's receipt section must be the
     dispatcher-injected receipts verbatim, plus only the canonical
     ``finding_ref:`` lines the mismatch receipts require.
@@ -1995,14 +1839,11 @@ def check_injected_receipts(
     uses — so a decorated or re-spelled injected line fails identity loudly
     rather than being silently re-read.
     """
-    injected_lines = [
-        line.rstrip("\r") for line in injected_text.split("\n")
-    ]
+    injected_lines = [line.rstrip("\r") for line in injected_text.split("\n")]
     heading = f"## {recompute.RECEIPT_SECTION}"
     if not injected_lines or injected_lines[0] != heading:
         raise panel.ContractError(
-            f"[INJECTED-RECEIPTS-INVALID: the injected file must begin "
-            f"with {heading!r}]"
+            f"[INJECTED-RECEIPTS-INVALID: the injected file must begin " f"with {heading!r}]"
         )
     expected = [line for line in injected_lines[1:] if line.strip()]
     view, _, _ = _receipt_section_view(report.text)
@@ -2012,10 +1853,7 @@ def check_injected_receipts(
     # undecorated canonical form — a bolded or bulleted spelling stays in
     # the comparison and fails identity loudly.
     plain_finding_ref = re.compile(r"^finding_ref: W[1-9]\d*$")
-    actual = [
-        line for line, _, _ in view
-        if line.strip() and not plain_finding_ref.fullmatch(line)
-    ]
+    actual = [line for line, _, _ in view if line.strip() and not plain_finding_ref.fullmatch(line)]
     if actual != expected:
         divergence = next(
             (
@@ -2023,8 +1861,7 @@ def check_injected_receipts(
                 for card, wanted in zip(actual, expected)
                 if card != wanted
             ),
-            f"card has {len(actual)} content lines, injected has "
-            f"{len(expected)}",
+            f"card has {len(actual)} content lines, injected has " f"{len(expected)}",
         )
         raise ConformanceError(
             f"[RECEIPT-IDENTITY: {report.path}: the ## "
@@ -2080,30 +1917,22 @@ def main(argv=None) -> int:
         contract, _ = panel.load_contract(args.contract)
         if args.role not in panel.ROLE_SETS[contract["mode"]]:
             raise panel.ContractError(
-                f"[ROLE-BINDING: --role {args.role} is invalid for "
-                f"{contract['mode']}]"
+                f"[ROLE-BINDING: --role {args.role} is invalid for " f"{contract['mode']}]"
             )
         phase1_text = panel._read_text(args.phase1)
-        phase2_text = (
-            panel._read_text(args.phase2) if args.phase2 is not None
-            else None
-        )
+        phase2_text = panel._read_text(args.phase2) if args.phase2 is not None else None
         manuscript_text = panel._read_text(args.manuscript)
         try:
             metadata = json.loads(panel._read_text(args.metadata))
         except json.JSONDecodeError as exc:
-            raise panel.ContractError(
-                f"[METADATA-INVALID: {args.metadata}: {exc}]"
-            ) from exc
+            raise panel.ContractError(f"[METADATA-INVALID: {args.metadata}: {exc}]") from exc
         if args.phase1_only:
             # Blindness FIRST, before structural parsing: a response both
             # malformed and leaking would otherwise report only the grammar
             # failure, and the dispatcher would grant the retry a proven
             # leak must never receive. It is the half a retry must not be
             # granted in spite of.
-            check_manuscript_leakage(
-                phase1_text, manuscript_text, metadata, contract
-            )
+            check_manuscript_leakage(phase1_text, manuscript_text, metadata, contract)
         plan = parse_phase1(str(args.phase1), phase1_text, contract, args.role)
         for warning in plan.warnings:
             print(warning)
@@ -2118,31 +1947,20 @@ def main(argv=None) -> int:
                     f"[ROLE-BINDING: --extraction is methodology-only, "
                     f"dispatched as {args.role}]"
                 )
-            check_manuscript_leakage(
-                phase1_text, manuscript_text, metadata, contract
-            )
-            check_recompute_extraction(
-                str(args.extraction), panel._read_text(args.extraction)
-            )
+            check_manuscript_leakage(phase1_text, manuscript_text, metadata, contract)
+            check_recompute_extraction(str(args.extraction), panel._read_text(args.extraction))
             print("EXTRACTION-CONFORMANCE: PASS")
             return EXIT_PASS
-        report = panel.parse_report(
-            str(args.phase2), phase2_text, contract
-        )
+        report = panel.parse_report(str(args.phase2), phase2_text, contract)
         if report.role != args.role:
             raise ConformanceError(
-                f"[ROLE-BINDING: report declares {report.role}, dispatched "
-                f"as {args.role}]"
+                f"[ROLE-BINDING: report declares {report.role}, dispatched " f"as {args.role}]"
             )
-        check_manuscript_leakage(
-            phase1_text, manuscript_text, metadata, contract
-        )
+        check_manuscript_leakage(phase1_text, manuscript_text, metadata, contract)
         dissent = parse_dissent_dimensions(phase2_text)
         for diagnostic in dissent.diagnostics:
             print(diagnostic)
-        dimensions = {
-            dim["id"]: dim for dim in contract["acceptance_dimensions"]
-        }
+        dimensions = {dim["id"]: dim for dim in contract["acceptance_dimensions"]}
         check_trigger_binding(report, plan, dimensions, dissent.dimensions)
         if report.role == "da":
             check_da_anchors(report)
@@ -2151,9 +1969,7 @@ def main(argv=None) -> int:
         if report.role == "methodology":
             check_methodology_receipts(report)
             if args.injected_receipts is not None:
-                check_injected_receipts(
-                    report, panel._read_text(args.injected_receipts)
-                )
+                check_injected_receipts(report, panel._read_text(args.injected_receipts))
                 # A distinct witness line (security round 1, P2-5): the
                 # evidence contract names this gate as contract content, so
                 # a Phase 2 gated WITHOUT it must be distinguishable in the

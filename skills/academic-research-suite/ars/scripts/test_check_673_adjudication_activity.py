@@ -6,7 +6,6 @@ from copy import deepcopy
 from pathlib import Path
 
 import pytest
-
 from scripts import check_673_adjudication_activity as guard
 
 
@@ -48,7 +47,7 @@ def _schemas() -> tuple[dict[str, object], dict[str, object]]:
 
 
 def _runtime() -> str:
-    return f'''
+    return f"""
 import argparse
 
 LIMITATION = {guard.LIMITATION_SENTENCE!r}
@@ -84,7 +83,7 @@ def parser():
     build.add_argument("--store-id")
     build.add_argument("--output")
     return root
-'''
+"""
 
 
 def _wiring() -> dict[Path, str]:
@@ -110,9 +109,7 @@ def _wiring() -> dict[Path, str]:
             "After the qualifying action, best-effort write the "
             "compliance_override_action_receipt."
         ),
-        guard.HANDOFFS: (
-            "Adjudication activity never enters a Material Passport or handoff."
-        ),
+        guard.HANDOFFS: ("Adjudication activity never enters a Material Passport or handoff."),
     }
 
 
@@ -128,9 +125,7 @@ def test_synthetic_contracts_pass() -> None:
     [guard.LIMITATION_SENTENCE, guard.ADVISORY_SENTENCE, guard.COVERAGE_LINE],
 )
 def test_frozen_exact_renderer_language_is_load_bearing(exact: str) -> None:
-    spec = "\n".join(
-        [guard.LIMITATION_SENTENCE, guard.ADVISORY_SENTENCE, guard.COVERAGE_LINE]
-    )
+    spec = "\n".join([guard.LIMITATION_SENTENCE, guard.ADVISORY_SENTENCE, guard.COVERAGE_LINE])
     assert guard.check_spec_text(spec) == []
     assert any(
         "missing exact renderer text" in error
@@ -143,9 +138,7 @@ def test_retired_stage_tokens_are_rejected_across_text_surfaces(retired: str) ->
     assert guard.check_retired_tokens(Path("surface.md"), "clean") == []
     assert any(
         retired in error
-        for error in guard.check_retired_tokens(
-            Path("surface.md"), f"reintroduced {retired}"
-        )
+        for error in guard.check_retired_tokens(Path("surface.md"), f"reintroduced {retired}")
     )
 
 
@@ -183,9 +176,7 @@ def test_caller_derived_input_fields_are_rejected(field: str) -> None:
 
 def test_store_artifact_hashes_may_repeat() -> None:
     input_schema, store_schema = _schemas()
-    store_schema["$defs"]["source_receipt"]["properties"]["artifact_sha256s"][  # type: ignore[index]
-        "uniqueItems"
-    ] = True
+    store_schema["$defs"]["source_receipt"]["properties"]["artifact_sha256s"]["uniqueItems"] = True  # type: ignore[index]
     assert any(
         "legitimate repeated hashes" in error
         for error in guard.check_schema_contracts(input_schema, store_schema)
@@ -195,10 +186,14 @@ def test_store_artifact_hashes_may_repeat() -> None:
 @pytest.mark.parametrize(
     ("old", "new", "expected"),
     [
-        ("build.add_argument(\"--output\")", "build.add_argument(\"--source-sha256\")", "build-input"),
-        ("subs.add_parser(\"render\")", "subs.add_parser(\"judge\")", "CLI command surface"),
+        ('build.add_argument("--output")', 'build.add_argument("--source-sha256")', "build-input"),
+        ('subs.add_parser("render")', 'subs.add_parser("judge")', "CLI command surface"),
         ("import argparse", "import argparse\nimport requests", "forbidden model/network"),
-        ("return state_path, artifact_root, pending_bindings", "return artifact_root.rglob('*')", "ambient scan"),
+        (
+            "return state_path, artifact_root, pending_bindings",
+            "return artifact_root.rglob('*')",
+            "ambient scan",
+        ),
         (guard.COVERAGE_LINE, "Coverage: available runs shown.", "exact renderer text"),
     ],
 )
@@ -277,9 +272,7 @@ def test_authority_ast_mutations_fail(old: str, new: str, expected: str) -> None
         ),
     ],
 )
-def test_wiring_mutations_fail(
-    path: Path, old: str, new: str, expected: str
-) -> None:
+def test_wiring_mutations_fail(path: Path, old: str, new: str, expected: str) -> None:
     texts = deepcopy(_wiring())
     assert old in texts[path]
     texts[path] = texts[path].replace(old, new, 1)

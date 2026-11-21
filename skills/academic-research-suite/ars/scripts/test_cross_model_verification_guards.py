@@ -289,27 +289,63 @@ _GUARD_DERIVE_CASES = [
     (
         "multi-candidate-cand0-unsupported",
         [
-            {"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": "X"}}], "groundingSupports": [{"groundingChunkIndices": []}]}},
-            {"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": "Y"}}], "groundingSupports": [{"groundingChunkIndices": [0]}]}},
+            {
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": [{"web": {"uri": "X"}}],
+                    "groundingSupports": [{"groundingChunkIndices": []}],
+                }
+            },
+            {
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": [{"web": {"uri": "Y"}}],
+                    "groundingSupports": [{"groundingChunkIndices": [0]}],
+                }
+            },
         ],
         False,
     ),
     # fractional index: jq does not fractional-index, so the extractor yields nothing → guard fails.
     (
         "fractional-index",
-        [{"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": "X"}}], "groundingSupports": [{"groundingChunkIndices": [0.5]}]}}],
+        [
+            {
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": [{"web": {"uri": "X"}}],
+                    "groundingSupports": [{"groundingChunkIndices": [0.5]}],
+                }
+            }
+        ],
         False,
     ),
     # valid index but the indexed chunk's uri is not a string → no extractable source → guard fails.
     (
         "non-string-uri",
-        [{"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": 123}}], "groundingSupports": [{"groundingChunkIndices": [0]}]}}],
+        [
+            {
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": [{"web": {"uri": 123}}],
+                    "groundingSupports": [{"groundingChunkIndices": [0]}],
+                }
+            }
+        ],
         False,
     ),
     # a real grounded response: guard passes.
     (
         "legit-grounded",
-        [{"groundingMetadata": {"webSearchQueries": ["q"], "groundingChunks": [{"web": {"uri": "A"}}], "groundingSupports": [{"groundingChunkIndices": [0]}]}}],
+        [
+            {
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": [{"web": {"uri": "A"}}],
+                    "groundingSupports": [{"groundingChunkIndices": [0]}],
+                }
+            }
+        ],
         True,
     ),
 ]
@@ -342,7 +378,16 @@ def test_gemini_guard_pass_implies_sources_nonblank():
 
     # The guard is strictly stronger: chunks + valid support but NO webSearchQueries → guard fails
     # even though a source is extractable.
-    no_search = {"candidates": [{"groundingMetadata": {"groundingChunks": [{"web": {"uri": "X"}}], "groundingSupports": [{"groundingChunkIndices": [0]}]}}]}
+    no_search = {
+        "candidates": [
+            {
+                "groundingMetadata": {
+                    "groundingChunks": [{"web": {"uri": "X"}}],
+                    "groundingSupports": [{"groundingChunkIndices": [0]}],
+                }
+            }
+        ]
+    }
     rc_ns, _ = _run_jq(GEMINI_GUARD, no_search, exit_test=True)
     _, src_ns = _run_jq(GEMINI_SOURCES, no_search, raw=True)
     assert rc_ns != 0 and src_ns != ""
@@ -484,7 +529,9 @@ OPENAI_URL_OBJECT = {
                 {
                     "type": "output_text",
                     "text": "VERIFIED",
-                    "annotations": [{"type": "url_citation", "url": {"n": 1}}],  # object → join crash
+                    "annotations": [
+                        {"type": "url_citation", "url": {"n": 1}}
+                    ],  # object → join crash
                 }
             ],
         },
@@ -627,9 +674,7 @@ def test_openai_text_fails_closed_on_non_string_text():
     """#351: an output_text whose `text` is an object must not crash `join` (rc 5) — the malformed
     value is dropped, yielding empty text rather than a jq error."""
     payload = {
-        "output": [
-            {"type": "message", "content": [{"type": "output_text", "text": {"bad": 1}}]}
-        ]
+        "output": [{"type": "message", "content": [{"type": "output_text", "text": {"bad": 1}}]}]
     }
     rc, text = _run_jq(OPENAI_TEXT, payload, raw=True)
     assert rc == 0
@@ -647,14 +692,32 @@ def test_openai_text_fails_closed_on_non_string_text():
         (OPENAI_SOURCES, {"output": [5]}),
         (OPENAI_TEXT, {"output": [{"type": "message", "content": [7]}]}),
         (OPENAI_SOURCES, {"output": [{"type": "message", "content": [7]}]}),
-        (OPENAI_SOURCES, {"output": [{"type": "message", "content": [{"type": "output_text", "annotations": [9]}]}]}),
+        (
+            OPENAI_SOURCES,
+            {
+                "output": [
+                    {"type": "message", "content": [{"type": "output_text", "annotations": [9]}]}
+                ]
+            },
+        ),
     ],
-    ids=["guard-output", "text-output", "sources-output", "text-content", "sources-content", "sources-annotations"],
+    ids=[
+        "guard-output",
+        "text-output",
+        "sources-output",
+        "text-content",
+        "sources-content",
+        "sources-annotations",
+    ],
 )
 def test_openai_filters_skip_non_object_array_elements(filter_path, payload):
     """A non-object array element at any iterated level must not crash the filter."""
-    rc, out = _run_jq(filter_path, payload, raw=(filter_path is not OPENAI_GUARD),
-                      exit_test=(filter_path is OPENAI_GUARD))
+    rc, out = _run_jq(
+        filter_path,
+        payload,
+        raw=(filter_path is not OPENAI_GUARD),
+        exit_test=(filter_path is OPENAI_GUARD),
+    )
     if filter_path is OPENAI_GUARD:
         assert rc != 0  # no completed web_search_call → not grounded, no crash
     else:
@@ -672,28 +735,52 @@ def test_openai_filters_skip_non_object_array_elements(filter_path, payload):
 _GEMINI_NONOBJECT_CASES = [
     {"candidates": [5]},
     {"candidates": [{"groundingMetadata": 5}]},
-    {"candidates": [{"groundingMetadata": {
-        "webSearchQueries": ["q"],
-        "groundingChunks": [{"web": {"uri": "https://ok.org"}}],
-        "groundingSupports": [5],
-    }}]},
-    {"candidates": [{"groundingMetadata": {
-        "webSearchQueries": ["q"],
-        "groundingChunks": [5],
-        "groundingSupports": [{"groundingChunkIndices": [0]}],
-    }}]},
-    {"candidates": [{"groundingMetadata": {
-        "webSearchQueries": ["q"],
-        "groundingChunks": [{"web": 5}],
-        "groundingSupports": [{"groundingChunkIndices": [0]}],
-    }}]},
+    {
+        "candidates": [
+            {
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": [{"web": {"uri": "https://ok.org"}}],
+                    "groundingSupports": [5],
+                }
+            }
+        ]
+    },
+    {
+        "candidates": [
+            {
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": [5],
+                    "groundingSupports": [{"groundingChunkIndices": [0]}],
+                }
+            }
+        ]
+    },
+    {
+        "candidates": [
+            {
+                "groundingMetadata": {
+                    "webSearchQueries": ["q"],
+                    "groundingChunks": [{"web": 5}],
+                    "groundingSupports": [{"groundingChunkIndices": [0]}],
+                }
+            }
+        ]
+    },
 ]
 
 
 @pytest.mark.parametrize(
     "payload",
     _GEMINI_NONOBJECT_CASES,
-    ids=["candidates0", "groundingMetadata", "groundingSupports-elem", "groundingChunks-elem", "web"],
+    ids=[
+        "candidates0",
+        "groundingMetadata",
+        "groundingSupports-elem",
+        "groundingChunks-elem",
+        "web",
+    ],
 )
 def test_gemini_guard_fails_closed_on_non_object_dereference(payload):
     """The Gemini guard must return a clean non-grounded verdict (rc 1), never a jq crash (rc 5)."""
@@ -704,7 +791,13 @@ def test_gemini_guard_fails_closed_on_non_object_dereference(payload):
 @pytest.mark.parametrize(
     "payload",
     _GEMINI_NONOBJECT_CASES,
-    ids=["candidates0", "groundingMetadata", "groundingSupports-elem", "groundingChunks-elem", "web"],
+    ids=[
+        "candidates0",
+        "groundingMetadata",
+        "groundingSupports-elem",
+        "groundingChunks-elem",
+        "web",
+    ],
 )
 def test_gemini_sources_fails_closed_on_non_object_dereference(payload):
     """The Gemini source extractor must yield blank (rc 0, empty), never a jq crash (rc 5)."""
@@ -720,7 +813,8 @@ def test_gemini_sources_fails_closed_on_non_object_dereference(payload):
 # `arr(obj(.).candidates)`. `null` already fail-closed (`.candidates` on null is null), so it is a
 # crash-free control here, not a regression witness.
 @pytest.mark.parametrize(
-    "root", [5, "x", True, [], {}, 1.5, None],
+    "root",
+    [5, "x", True, [], {}, 1.5, None],
     ids=["int", "str", "bool", "array", "object", "float", "null"],
 )
 def test_gemini_filters_fail_closed_on_non_object_root(root):
@@ -729,7 +823,9 @@ def test_gemini_filters_fail_closed_on_non_object_root(root):
     rc_s, sources = _run_jq(GEMINI_SOURCES, root, raw=True)
     assert rc_g != 5, f"guard crashed (rc 5) on root {root!r}"
     assert rc_g != 0, f"guard must not pass an ungrounded non-object root {root!r}"
-    assert rc_s == 0 and sources == "", f"sources must be blank, no crash, on root {root!r} (got rc {rc_s}, {sources!r})"
+    assert (
+        rc_s == 0 and sources == ""
+    ), f"sources must be blank, no crash, on root {root!r} (got rc {rc_s}, {sources!r})"
 
 
 # ---------------------------------------------------------------------------
@@ -776,7 +872,7 @@ def test_mutation_naive_sources_would_leak_negative_index():
     naive = (
         "(.candidates[0].groundingMetadata.groundingChunks // []) as $chunks "
         "| [ .candidates[0].groundingMetadata.groundingSupports[]?.groundingChunkIndices[]? ] "
-        "| unique | [ .[] | $chunks[.].web.uri // empty ] | unique | join(\", \")"
+        '| unique | [ .[] | $chunks[.].web.uri // empty ] | unique | join(", ")'
     )
     naive_out = subprocess.run(
         [jq, "-r", naive],

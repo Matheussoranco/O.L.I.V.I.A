@@ -22,7 +22,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLD_SET = REPO_ROOT / "evals/gold/field_norm_severity/gold_set.json"
 
@@ -77,9 +76,7 @@ def validate(data: dict[str, Any]) -> list[str]:
 
         subtype = item.get("subtype")
         if subtype not in VALID_SUBTYPES:
-            errors.append(
-                f"{where}: subtype={subtype!r} not in {sorted(VALID_SUBTYPES)}"
-            )
+            errors.append(f"{where}: subtype={subtype!r} not in {sorted(VALID_SUBTYPES)}")
 
         field_norm = item.get("field_norm")
         if not isinstance(field_norm, str) or not field_norm.strip():
@@ -103,13 +100,9 @@ def validate(data: dict[str, Any]) -> list[str]:
         is_exception = item.get("exception") is True
         has_reason = bool(str(item.get("exception_reason", "")).strip())
         if is_exception and not has_reason:
-            errors.append(
-                f"{where}: exception=true but exception_reason missing/empty"
-            )
+            errors.append(f"{where}: exception=true but exception_reason missing/empty")
         if not is_exception and has_reason:
-            errors.append(
-                f"{where}: exception_reason present but exception is not true"
-            )
+            errors.append(f"{where}: exception_reason present but exception is not true")
 
         # An id that declares itself an exception case MUST carry exception=true. Without
         # this an exception item that loses BOTH its flag and reason passes the paired

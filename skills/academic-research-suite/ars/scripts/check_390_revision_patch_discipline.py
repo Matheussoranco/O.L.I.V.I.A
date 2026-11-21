@@ -72,34 +72,46 @@ ESCALATION_TAG = "[PATCH-ESCALATION-REQUIRED:"
 
 def check_writer(text: str) -> list[str]:
     """Invariant 1."""
-    return check_section_literals(1, text, WRITER_HEADING, "writer", {
-        "patch-not-full-draft": "cannot produce a current #670 authorization witness",
-        "schema path": "shared/contracts/patch/revision_patch.schema.json",
-        "sidecar emission path": "phase6_*/revision_patch_round<N>.json",
-        "hash copy discipline": "Copy hashes/bindings, never compute them.",
-        "escalation tag": ESCALATION_TAG + " layer=pre_drafting",
-        "block-marker prohibition": "MUST NOT contain `<!--block:` markers",
-        "retry-once": "Do not patch the patch",
-        "role boundary": "emit **provisional** Schema 8 response items",
-    })
+    return check_section_literals(
+        1,
+        text,
+        WRITER_HEADING,
+        "writer",
+        {
+            "patch-not-full-draft": "cannot produce a current #670 authorization witness",
+            "schema path": "shared/contracts/patch/revision_patch.schema.json",
+            "sidecar emission path": "phase6_*/revision_patch_round<N>.json",
+            "hash copy discipline": "Copy hashes/bindings, never compute them.",
+            "escalation tag": ESCALATION_TAG + " layer=pre_drafting",
+            "block-marker prohibition": "MUST NOT contain `<!--block:` markers",
+            "retry-once": "Do not patch the patch",
+            "role boundary": "emit **provisional** Schema 8 response items",
+        },
+    )
 
 
 def check_orchestrator(text: str) -> list[str]:
     """Invariant 2."""
-    fails = check_section_literals(2, text, ORCH_HEADING, "orchestrator", {
-        "no-rewrite window": "nothing may rewrite the draft between steps 1 and 3",
-        "layer-1 trigger": ESCALATION_TAG,
-        "layer-2 trigger": "refused_structural",
-        "checkpoint": "MANDATORY CHECKPOINT",
-        "legacy isolation": "outside the current #670 contract",
-        "no current replay fallback": "cannot emit a current",
-        "retry-once": "one patch re-emission",
-        "Schema 8 completion": "change_block_ids",
-        "bundle completion": "revision-evidence-bundle/1.0",
-        "budget surface": "preserved_ratio",
-        "threshold value": "0.6",
-        "authority rebinding": "re-anchorize/rebuild bindings",
-    })
+    fails = check_section_literals(
+        2,
+        text,
+        ORCH_HEADING,
+        "orchestrator",
+        {
+            "no-rewrite window": "nothing may rewrite the draft between steps 1 and 3",
+            "layer-1 trigger": ESCALATION_TAG,
+            "layer-2 trigger": "refused_structural",
+            "checkpoint": "MANDATORY CHECKPOINT",
+            "legacy isolation": "outside the current #670 contract",
+            "no current replay fallback": "cannot emit a current",
+            "retry-once": "one patch re-emission",
+            "Schema 8 completion": "change_block_ids",
+            "bundle completion": "revision-evidence-bundle/1.0",
+            "budget surface": "preserved_ratio",
+            "threshold value": "0.6",
+            "authority rebinding": "re-anchorize/rebuild bindings",
+        },
+    )
     section = h2_section_body(text, ORCH_HEADING)
     if section is not None:
         steps = [
@@ -113,45 +125,57 @@ def check_orchestrator(text: str) -> list[str]:
         positions = [section.find(s) for s in steps]
         if -1 in positions:
             fails.append(
-                "invariant 2: orchestrator sequencing lost step "
-                f"{steps[positions.index(-1)]!r}")
+                "invariant 2: orchestrator sequencing lost step " f"{steps[positions.index(-1)]!r}"
+            )
         elif positions != sorted(positions):
             fails.append(
                 "invariant 2: orchestrator sequencing steps are out of the "
                 "normative order (anchorize → authority → dispatch → apply "
-                "→ finalizer → Schema 8/bundle completion)")
+                "→ finalizer → Schema 8/bundle completion)"
+            )
     return fails
 
 
 def check_paper_skill(text: str) -> list[str]:
     """Invariant 3."""
-    fails = check_section_literals(3, text, SKILL_HEADING, "SKILL.md", {
-        "protocol doc pointer": "references/revision_patch_protocol.md",
-        "current patch": "patch 1.1",
-        "bundle boundary": "revision-evidence-bundle/1.0",
-        "honest boundary": "unregistered semantic drift still requires E6 review",
-        "legacy boundary": "legacy full re-emission cannot claim current authorization PASS",
-    })
+    fails = check_section_literals(
+        3,
+        text,
+        SKILL_HEADING,
+        "SKILL.md",
+        {
+            "protocol doc pointer": "references/revision_patch_protocol.md",
+            "current patch": "patch 1.1",
+            "bundle boundary": "revision-evidence-bundle/1.0",
+            "honest boundary": "unregistered semantic drift still requires E6 review",
+            "legacy boundary": "legacy full re-emission cannot claim current authorization PASS",
+        },
+    )
     row = next(
-        (line for line in text.splitlines()
-         if line.lstrip().startswith("| `revision` |")), None)
+        (line for line in text.splitlines() if line.lstrip().startswith("| `revision` |")), None
+    )
     if row is None:
         fails.append("invariant 3: mode table lost the `revision` row")
     elif "Patch document" not in row:
         fails.append(
-            "invariant 3: mode-table revision row no longer names the "
-            "patch document deliverable")
+            "invariant 3: mode-table revision row no longer names the " "patch document deliverable"
+        )
     return fails
 
 
 def check_schema8(text: str) -> list[str]:
     """Invariant 4."""
     return check_section_literals(
-        4, text, "## Schema 8: Response to Reviewers", "Schema 8", {
+        4,
+        text,
+        "## Schema 8: Response to Reviewers",
+        "Schema 8",
+        {
             "field row": "`change_block_ids`",
             "producer split": "never by the writer",
             "consumer cross-check": "apply report",
-        })
+        },
+    )
 
 
 def check_protocol_doc(text: str | None) -> list[str]:
@@ -171,28 +195,30 @@ def check_protocol_doc(text: str | None) -> list[str]:
     }
     return [
         f"invariant 5: protocol doc lost the {name} literal ({lit!r})"
-        for name, lit in literals.items() if lit not in text
+        for name, lit in literals.items()
+        if lit not in text
     ]
 
 
 def check_marker_rules(formatter_text: str, word_count_text: str) -> list[str]:
     """Invariant 6."""
     fails = check_section_literals(
-        6, formatter_text, FMT_HEADING, "formatter", {
+        6,
+        formatter_text,
+        FMT_HEADING,
+        "formatter",
+        {
             "block marker": "<!--block:",
             "ref marker": "<!--ref:",
             "anchor marker": "<!--anchor:",
             "ordering": "ONLY AFTER every marker-dependent gate",
             "working-draft preservation": "keep their markers untouched",
-        })
+        },
+    )
     if "### HTML-comment markers" not in word_count_text:
-        fails.append(
-            "invariant 6: word_count_conventions lost the HTML-comment "
-            "markers section")
+        fails.append("invariant 6: word_count_conventions lost the HTML-comment " "markers section")
     if "Strip every `<!--...-->` comment before computing" not in word_count_text:
-        fails.append(
-            "invariant 6: word_count_conventions lost the strip-before-"
-            "count rule")
+        fails.append("invariant 6: word_count_conventions lost the strip-before-" "count rule")
     return fails
 
 
@@ -202,19 +228,27 @@ def _cli_default_is_the_constant(apply_src: str) -> bool:
     so a regression to `default=None` or a re-hardcoded literal is caught
     even though the constant itself still equals 0.6."""
     import ast
+
     tree = ast.parse(apply_src)
     for node in ast.walk(tree):
-        if not (isinstance(node, ast.Call)
-                and isinstance(node.func, ast.Attribute)
-                and node.func.attr == "add_argument"):
+        if not (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == "add_argument"
+        ):
             continue
-        if not (node.args and isinstance(node.args[0], ast.Constant)
-                and node.args[0].value == "--touched-ratio-threshold"):
+        if not (
+            node.args
+            and isinstance(node.args[0], ast.Constant)
+            and node.args[0].value == "--touched-ratio-threshold"
+        ):
             continue
         for kw in node.keywords:
             if kw.arg == "default":
-                return (isinstance(kw.value, ast.Name)
-                        and kw.value.id == "DEFAULT_TOUCHED_RATIO_THRESHOLD")
+                return (
+                    isinstance(kw.value, ast.Name)
+                    and kw.value.id == "DEFAULT_TOUCHED_RATIO_THRESHOLD"
+                )
     return False
 
 
@@ -226,19 +260,28 @@ def check_threshold_lock(spec_text: str, apply_src: str) -> list[str]:
             "invariant 7: DEFAULT_TOUCHED_RATIO_THRESHOLD is "
             f"{DEFAULT_TOUCHED_RATIO_THRESHOLD!r}, the recorded #424 ship "
             "decision is 0.6 — changing it requires a new spec amendment "
-            "AND updating every 0.6 prose citation this lint guards")
+            "AND updating every 0.6 prose citation this lint guards"
+        )
     if not _cli_default_is_the_constant(apply_src):
         fails.append(
             "invariant 7: the --touched-ratio-threshold argparse default is "
             "not `DEFAULT_TOUCHED_RATIO_THRESHOLD` — a regression to None or "
             "a re-hardcoded literal would disable/desync the ship-decision "
-            "default while the constant still reads 0.6")
-    fails.extend(check_section_literals(
-        7, spec_text, AMENDMENT_HEADING, "spec amendment", {
-            "threshold decision": "0.6",
-            "exemption decision": "heading-anchor exemption",
-            "emission decision": "sidecar file",
-        }))
+            "default while the constant still reads 0.6"
+        )
+    fails.extend(
+        check_section_literals(
+            7,
+            spec_text,
+            AMENDMENT_HEADING,
+            "spec amendment",
+            {
+                "threshold decision": "0.6",
+                "exemption decision": "heading-anchor exemption",
+                "emission decision": "sidecar file",
+            },
+        )
+    )
     return fails
 
 
@@ -261,8 +304,10 @@ def check_spec_example(spec_text: str, schema: dict) -> list[str]:
     try:
         jsonschema.validate(example, schema)
     except jsonschema.ValidationError as exc:
-        return [f"invariant 8: spec §3.2 example no longer validates "
-                f"against revision_patch.schema.json: {exc.message}"]
+        return [
+            f"invariant 8: spec §3.2 example no longer validates "
+            f"against revision_patch.schema.json: {exc.message}"
+        ]
     return []
 
 
@@ -273,15 +318,14 @@ def main() -> int:
     failures += check_paper_skill(PAPER_SKILL.read_text(encoding="utf-8"))
     failures += check_schema8(SCHEMAS.read_text(encoding="utf-8"))
     failures += check_protocol_doc(
-        PROTOCOL.read_text(encoding="utf-8") if PROTOCOL.exists() else None)
+        PROTOCOL.read_text(encoding="utf-8") if PROTOCOL.exists() else None
+    )
     failures += check_marker_rules(
-        FORMATTER.read_text(encoding="utf-8"),
-        WORD_COUNT.read_text(encoding="utf-8"))
+        FORMATTER.read_text(encoding="utf-8"), WORD_COUNT.read_text(encoding="utf-8")
+    )
     spec_text = SPEC.read_text(encoding="utf-8")
-    failures += check_threshold_lock(
-        spec_text, APPLY_SCRIPT.read_text(encoding="utf-8"))
-    failures += check_spec_example(
-        spec_text, json.loads(PATCH_SCHEMA.read_text(encoding="utf-8")))
+    failures += check_threshold_lock(spec_text, APPLY_SCRIPT.read_text(encoding="utf-8"))
+    failures += check_spec_example(spec_text, json.loads(PATCH_SCHEMA.read_text(encoding="utf-8")))
 
     if failures:
         print("check_390_revision_patch_discipline: FAIL")

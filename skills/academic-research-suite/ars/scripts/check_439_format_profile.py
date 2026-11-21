@@ -40,7 +40,7 @@ from jsonschema import Draft202012Validator
 
 if str(Path(__file__).resolve().parent) not in sys.path:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-from _skill_lint import check_section_literals  # noqa: E402
+from _skill_lint import check_section_literals
 
 ROOT = Path(__file__).resolve().parent.parent
 SCHEMA = ROOT / "shared" / "contracts" / "submission" / "format_profile.schema.json"
@@ -62,7 +62,7 @@ def check_schema_valid(schema: dict) -> list[str]:
     errors: list[str] = []
     try:
         Draft202012Validator.check_schema(schema)
-    except Exception as exc:  # noqa: BLE001 - surface any schema-meta failure
+    except Exception as exc:  # - surface any schema-meta failure
         errors.append(f"format_profile schema is not a valid Draft 2020-12 schema: {exc}")
     if schema.get("additionalProperties") is not False:
         errors.append("format_profile root must set additionalProperties:false")
@@ -88,11 +88,17 @@ def check_fixed_pt_conditional(schema: dict) -> list[str]:
     if not valid({"line_spacing": {"mode": "double"}}):
         errors.append("line_spacing double (no fixed_pt) should be VALID but is rejected")
     if valid({"line_spacing": {"mode": "double", "fixed_pt": 20}}):
-        errors.append("line_spacing double WITH fixed_pt must be INVALID (fixed_pt only with mode==fixed_pt)")
+        errors.append(
+            "line_spacing double WITH fixed_pt must be INVALID (fixed_pt only with mode==fixed_pt)"
+        )
     if valid({"line_spacing": {"mode": "fixed_pt"}}):
-        errors.append("line_spacing fixed_pt WITHOUT fixed_pt must be INVALID (fixed_pt required when mode==fixed_pt)")
+        errors.append(
+            "line_spacing fixed_pt WITHOUT fixed_pt must be INVALID (fixed_pt required when mode==fixed_pt)"
+        )
     if valid({"line_spacing": {"fixed_pt": 20}}):
-        errors.append("line_spacing WITHOUT mode must be INVALID (mode is required) — guards against dropping required:[mode]")
+        errors.append(
+            "line_spacing WITHOUT mode must be INVALID (mode is required) — guards against dropping required:[mode]"
+        )
     return errors
 
 
@@ -154,11 +160,15 @@ def check_cut_fields_stay_cut(schema: dict) -> list[str]:
     props = schema.get("properties", {})
     for field in CUT_ROOT_FIELDS:
         if field in props:
-            errors.append(f"cut field '{field}' reappeared at root (design §4 — no concrete use case)")
+            errors.append(
+                f"cut field '{field}' reappeared at root (design §4 — no concrete use case)"
+            )
     caption_props = props.get("caption", {}).get("properties", {})
     for field in CUT_CAPTION_FIELDS:
         if field in caption_props:
-            errors.append(f"cut field 'caption.{field}' reappeared (design §4 — no #436 requirement)")
+            errors.append(
+                f"cut field 'caption.{field}' reappeared (design §4 — no #436 requirement)"
+            )
     return errors
 
 
@@ -177,8 +187,7 @@ def check_example_fixture(schema: dict) -> list[str]:
         return [f"format_profile example fixture is not valid YAML: {exc}"]
     schema_errors = list(Draft202012Validator(schema).iter_errors(example))
     return [
-        f"format_profile example fixture violates the schema: {e.message}"
-        for e in schema_errors
+        f"format_profile example fixture violates the schema: {e.message}" for e in schema_errors
     ]
 
 
@@ -189,13 +198,19 @@ def check_formatter_wiring(text: str) -> list[str]:
     the way the #394 formatter advisories are — a refactor that drops the byte-equivalence
     guard, the fail-closed STOP, or the venue-precedence rule fails loudly.
     """
-    return check_section_literals(6, text, FMT_HEADING, "formatter format-profile", {
-        "byte-equivalence guard (skip when no row)": "skip this entire section",
-        "fail-closed before formatting": "fail closed BEFORE formatting",
-        "no-inference rule": "Never infer a missing layout field",
-        "venue precedence": "venue compliance wins",
-        "best-effort per target": "best-effort per output target",
-    })
+    return check_section_literals(
+        6,
+        text,
+        FMT_HEADING,
+        "formatter format-profile",
+        {
+            "byte-equivalence guard (skip when no row)": "skip this entire section",
+            "fail-closed before formatting": "fail closed BEFORE formatting",
+            "no-inference rule": "Never infer a missing layout field",
+            "venue precedence": "venue compliance wins",
+            "best-effort per target": "best-effort per output target",
+        },
+    )
 
 
 STEP5_HEADING = "### Step 5: Output Format"
@@ -207,7 +222,7 @@ PCR_HEADING_RE = re.compile(r"^## Paper Configuration Record\s*$", re.MULTILINE)
 PCR_FORMAT_ROW_RE = re.compile(r"^\|\s*\*\*Format Profile\*\*\s*\|", re.MULTILINE)
 
 
-def _h2_block(text: str, heading_re: "re.Pattern[str]") -> str | None:
+def _h2_block(text: str, heading_re: re.Pattern[str]) -> str | None:
     """The block from an H2 heading (located by regex) to the next `## ` heading.
 
     Used to scope the production PCR table, matched exactly so the Plan Mode PCR variant
@@ -217,7 +232,7 @@ def _h2_block(text: str, heading_re: "re.Pattern[str]") -> str | None:
     if m is None:
         return None
     nxt = re.compile(r"^## \S", re.MULTILINE).search(text, m.end())
-    return text[m.start() : nxt.start()] if nxt else text[m.start():]
+    return text[m.start() : nxt.start()] if nxt else text[m.start() :]
 
 
 def _step_block(text: str, heading: str) -> str | None:
@@ -272,10 +287,14 @@ def check_positioning_boundary(text: str) -> list[str]:
     """
     errors: list[str] = []
     if "format-profile content" not in text.lower():
-        errors.append("POSITIONING.md missing the #439 institutional/journal format-profile boundary note")
+        errors.append(
+            "POSITIONING.md missing the #439 institutional/journal format-profile boundary note"
+        )
         return errors
     if "Review criterion:" not in text or "out-of-tree" not in text:
-        errors.append("POSITIONING.md #439 boundary must keep its Review criterion + out-of-tree rule")
+        errors.append(
+            "POSITIONING.md #439 boundary must keep its Review criterion + out-of-tree rule"
+        )
     return errors
 
 

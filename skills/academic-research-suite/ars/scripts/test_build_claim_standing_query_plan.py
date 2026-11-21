@@ -15,7 +15,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import build_claim_standing_candidate_ledger as substrate
 from scripts import build_claim_standing_query_plan as builder
 from scripts import claim_standing_discovery as discovery
@@ -108,9 +107,7 @@ def test_stage_4_5_all_tier_with_recorded_basis_is_eligible() -> None:
     assert verdict["eligible"] is True
 
 
-@pytest.mark.parametrize(
-    "tier", ["HIGH-IMPACT", "RANDOM", "TOP-UP", "NOT-SELECTED"]
-)
+@pytest.mark.parametrize("tier", ["HIGH-IMPACT", "RANDOM", "TOP-UP", "NOT-SELECTED"])
 def test_stage_4_5_non_all_tiers_are_ineligible(tier: str) -> None:
     row = _registry_row(checkpoint="stage_4_5", tier=tier, basis=("causal",))
     assert builder.assess_eligibility(row)["eligible"] is False
@@ -167,9 +164,7 @@ def test_stage_4_5_missing_basis_is_ambiguous_until_confirmed() -> None:
         ("indexes", ()),
     ],
 )
-def test_explicit_falsey_or_wrong_type_decisions_are_refused(
-    field: str, value: object
-) -> None:
+def test_explicit_falsey_or_wrong_type_decisions_are_refused(field: str, value: object) -> None:
     row = _registry_row()
     with pytest.raises(builder.PlanBuilderError):
         builder.build_consent_surface(row, _decisions(**{field: value}))
@@ -230,9 +225,7 @@ def test_bind_with_stale_surface_hash_records_consent_invalidated() -> None:
     record = builder.bind_plan(revised, bound)
     assert record["record_kind"] == "claim-standing-probe-declination/1.0"
     assert record["reason"] == "consent_invalidated"
-    assert record["claim_sha256"] == substrate.text_digest(
-        revised["claim_text"]
-    )
+    assert record["claim_sha256"] == substrate.text_digest(revised["claim_text"])
     assert "consent" not in record
 
 
@@ -253,9 +246,7 @@ def test_cancel_after_viewing_a_stance_surface_records_cancelled() -> None:
     # The decision flip must not be misread as consent_invalidated.
     row = _registry_row()
     proposed = _stance_decisions()
-    surface_hash = builder.consent_surface_sha256(
-        builder.build_consent_surface(row, proposed)
-    )
+    surface_hash = builder.consent_surface_sha256(builder.build_consent_surface(row, proposed))
     cancelled = {
         **proposed,
         "decision": "cancel",
@@ -297,7 +288,8 @@ def test_cli_declination_exits_with_distinct_status(tmp_path, capsys) -> None:
     rc = builder.main(
         [
             "bind",
-            "--registry-claim", str(_write_json(tmp_path / "row.json", row)),
+            "--registry-claim",
+            str(_write_json(tmp_path / "row.json", row)),
             "--decisions",
             str(_write_json(tmp_path / "decisions.json", _decisions())),
         ]
@@ -309,9 +301,7 @@ def test_cli_declination_exits_with_distinct_status(tmp_path, capsys) -> None:
 
 def test_cancel_produces_not_checked_declination_and_no_plan() -> None:
     row = _registry_row()
-    decisions = _decisions(
-        decision="cancel", recorded_at="2026-08-14T01:05:00Z"
-    )
+    decisions = _decisions(decision="cancel", recorded_at="2026-08-14T01:05:00Z")
     record = builder.bind_plan(row, _bound_decisions(row, decisions))
     assert record["record_kind"] == "claim-standing-probe-declination/1.0"
     assert record["status"] == "not_checked"
@@ -339,9 +329,7 @@ def test_retrieval_plus_stance_plan_validates_as_1_1() -> None:
     assert plan["schema_version"] == "claim-standing-query-plan/1.1"
     substrate.validate_plan(plan)
     substrate.validate_schema(plan, "query_plan_v1_1.schema.json", "query plan")
-    assert plan["consent"]["stance_plan_sha256"] == substrate.digest(
-        plan["stance_plan"]
-    )
+    assert plan["consent"]["stance_plan_sha256"] == substrate.digest(plan["stance_plan"])
     assert plan["authorized_content_classes"] == [
         "accepted_search_query",
         "claim_and_selected_evidence_to_stance_provider",
@@ -427,9 +415,7 @@ def test_more_than_three_queries_is_refused() -> None:
         "date_filter": {"from_year": None, "through_year": None},
         "index_targets": ["semantic_scholar"],
     }
-    decisions = _decisions(
-        queries=[{**query, "query_id": f"q{i}"} for i in range(1, 5)]
-    )
+    decisions = _decisions(queries=[{**query, "query_id": f"q{i}"} for i in range(1, 5)])
     with pytest.raises(builder.PlanBuilderError, match="quer"):
         builder.build_consent_surface(row, decisions)
 
@@ -437,9 +423,7 @@ def test_more_than_three_queries_is_refused() -> None:
 def test_unknown_index_is_refused() -> None:
     row = _registry_row()
     with pytest.raises(builder.PlanBuilderError, match="index"):
-        builder.build_consent_surface(
-            row, _decisions(indexes=["semantic_scholar", "shadow_index"])
-        )
+        builder.build_consent_surface(row, _decisions(indexes=["semantic_scholar", "shadow_index"]))
 
 
 def test_roster_entries_come_from_the_declared_discovery_adapters() -> None:
@@ -468,10 +452,7 @@ def test_explicit_local_export_binds_the_authorized_path() -> None:
     plan = builder.bind_plan(row, _bound_decisions(row, decisions))
     substrate.validate_plan(plan)
     assert plan["consent"]["authorized_output_path"] == "/operator-named/probe-001"
-    assert (
-        plan["consent"]["export_boundary"]
-        == substrate.EXPLICIT_LOCAL_EXPORT_BOUNDARY
-    )
+    assert plan["consent"]["export_boundary"] == substrate.EXPLICIT_LOCAL_EXPORT_BOUNDARY
 
 
 # --- consent surface content (§3.2 closed receipt) --------------------------
@@ -538,18 +519,12 @@ def test_surface_for_retrieval_only_names_no_stance_provider() -> None:
 def test_surface_digest_is_stable_and_claim_bound() -> None:
     row = _registry_row()
     decisions = _decisions()
-    first = builder.consent_surface_sha256(
-        builder.build_consent_surface(row, decisions)
-    )
-    second = builder.consent_surface_sha256(
-        builder.build_consent_surface(row, decisions)
-    )
+    first = builder.consent_surface_sha256(builder.build_consent_surface(row, decisions))
+    second = builder.consent_surface_sha256(builder.build_consent_surface(row, decisions))
     assert first == second
     revised = dict(row)
     revised["claim_text"] = CLAIM_TEXT + " Revised."
-    third = builder.consent_surface_sha256(
-        builder.build_consent_surface(revised, decisions)
-    )
+    third = builder.consent_surface_sha256(builder.build_consent_surface(revised, decisions))
     assert third != first
 
 
@@ -557,21 +532,16 @@ def test_surface_digest_is_stable_and_claim_bound() -> None:
 
 
 def test_artifact_suffix_map_matches_every_owning_module() -> None:
+    from scripts import check_claim_standing_transmissions as transmissions_module
     from scripts import claim_standing_discovery as discovery_module
     from scripts import claim_standing_stance_runner as runner_module
-    from scripts import check_claim_standing_transmissions as transmissions_module
     from scripts import render_claim_standing_view as view_module
 
     suffixes = substrate.ARTIFACT_SUFFIXES
     assert suffixes["candidate_ledger"] == ""
     assert suffixes["query_plan"] == builder.QUERY_PLAN_SUFFIX
-    assert (
-        suffixes["retrieval_input"] == discovery_module.RETRIEVAL_INPUT_SUFFIX
-    )
-    assert (
-        suffixes["transmission_ledger"]
-        == transmissions_module.TRANSMISSION_LEDGER_SUFFIX
-    )
+    assert suffixes["retrieval_input"] == discovery_module.RETRIEVAL_INPUT_SUFFIX
+    assert suffixes["transmission_ledger"] == transmissions_module.TRANSMISSION_LEDGER_SUFFIX
     assert suffixes["stance_record"] == runner_module.STANCE_RECORD_SUFFIX
     assert suffixes["evidence_rows"] == runner_module.EVIDENCE_ROWS_SUFFIX
     assert suffixes["rendered_view"] == view_module.VIEW_SUFFIX
@@ -610,9 +580,9 @@ def test_substrate_trigger_constants_match_the_plan_schema() -> None:
         claim["properties"]["high_impact_basis"]["items"]["enum"]
     )
     schema_tiers = {
-        branch["if"]["properties"]["checkpoint"]["const"]: branch["then"][
-            "properties"
-        ]["registry_selection_tier"]["const"]
+        branch["if"]["properties"]["checkpoint"]["const"]: branch["then"]["properties"][
+            "registry_selection_tier"
+        ]["const"]
         for branch in claim["allOf"]
     }
     assert schema_tiers == substrate.CHECKPOINT_REQUIRED_TIER
@@ -659,17 +629,17 @@ def test_cli_propose_prints_surface_and_digest(tmp_path, capsys) -> None:
     rc = builder.main(
         [
             "propose",
-            "--registry-claim", str(_write_json(tmp_path / "row.json", row)),
-            "--decisions", str(_write_json(tmp_path / "decisions.json", decisions)),
+            "--registry-claim",
+            str(_write_json(tmp_path / "row.json", row)),
+            "--decisions",
+            str(_write_json(tmp_path / "decisions.json", decisions)),
         ]
     )
     assert rc == 0
     payload = json.loads(capsys.readouterr().out)
     surface = builder.build_consent_surface(row, decisions)
     assert payload["consent_surface"] == surface
-    assert payload["consent_surface_sha256"] == builder.consent_surface_sha256(
-        surface
-    )
+    assert payload["consent_surface_sha256"] == builder.consent_surface_sha256(surface)
 
 
 def test_cli_bind_prints_plan_under_session_only_and_creates_no_path(
@@ -692,9 +662,7 @@ def test_cli_bind_prints_plan_under_session_only_and_creates_no_path(
     ]
 
 
-def test_cli_bind_export_requires_the_consent_derived_path(
-    tmp_path, capsys
-) -> None:
+def test_cli_bind_export_requires_the_consent_derived_path(tmp_path, capsys) -> None:
     row = _registry_row()
     base = tmp_path / "authorized" / "probe-001"
     (tmp_path / "authorized").mkdir()
@@ -710,9 +678,12 @@ def test_cli_bind_export_requires_the_consent_derived_path(
     rc = builder.main(
         [
             "bind",
-            "--registry-claim", str(row_file),
-            "--decisions", str(decisions_file),
-            "--output", str(elsewhere),
+            "--registry-claim",
+            str(row_file),
+            "--decisions",
+            str(decisions_file),
+            "--output",
+            str(elsewhere),
         ]
     )
     assert rc == 1
@@ -723,9 +694,12 @@ def test_cli_bind_export_requires_the_consent_derived_path(
     rc = builder.main(
         [
             "bind",
-            "--registry-claim", str(row_file),
-            "--decisions", str(decisions_file),
-            "--output", str(derived),
+            "--registry-claim",
+            str(row_file),
+            "--decisions",
+            str(decisions_file),
+            "--output",
+            str(derived),
         ]
     )
     assert rc == 0
@@ -741,9 +715,12 @@ def test_cli_bind_refuses_output_under_session_only(tmp_path, capsys) -> None:
     rc = builder.main(
         [
             "bind",
-            "--registry-claim", str(_write_json(tmp_path / "row.json", row)),
-            "--decisions", str(_write_json(tmp_path / "decisions.json", decisions)),
-            "--output", str(output),
+            "--registry-claim",
+            str(_write_json(tmp_path / "row.json", row)),
+            "--decisions",
+            str(_write_json(tmp_path / "decisions.json", decisions)),
+            "--output",
+            str(output),
         ]
     )
     assert rc == 1
@@ -758,10 +735,12 @@ def test_cli_bind_refuses_ineligible_row_without_output(tmp_path, capsys) -> Non
     rc = builder.main(
         [
             "bind",
-            "--registry-claim", str(_write_json(tmp_path / "row.json", row)),
+            "--registry-claim",
+            str(_write_json(tmp_path / "row.json", row)),
             "--decisions",
             str(_write_json(tmp_path / "decisions.json", _decisions())),
-            "--output", str(output),
+            "--output",
+            str(output),
         ]
     )
     assert rc == 1
@@ -769,9 +748,7 @@ def test_cli_bind_refuses_ineligible_row_without_output(tmp_path, capsys) -> Non
     assert not output.exists()
 
 
-def test_cli_bind_cancel_prints_declination_and_writes_no_plan(
-    tmp_path, capsys
-) -> None:
+def test_cli_bind_cancel_prints_declination_and_writes_no_plan(tmp_path, capsys) -> None:
     row = _registry_row()
     decisions = _bound_decisions(
         row, _decisions(decision="cancel", recorded_at="2026-08-14T01:05:00Z")
@@ -780,9 +757,12 @@ def test_cli_bind_cancel_prints_declination_and_writes_no_plan(
     rc = builder.main(
         [
             "bind",
-            "--registry-claim", str(_write_json(tmp_path / "row.json", row)),
-            "--decisions", str(_write_json(tmp_path / "decisions.json", decisions)),
-            "--output", str(output),
+            "--registry-claim",
+            str(_write_json(tmp_path / "row.json", row)),
+            "--decisions",
+            str(_write_json(tmp_path / "decisions.json", decisions)),
+            "--output",
+            str(output),
         ]
     )
     assert rc == 3

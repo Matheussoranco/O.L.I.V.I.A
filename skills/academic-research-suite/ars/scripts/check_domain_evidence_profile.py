@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 # Path.cwd() (not __file__) so fixture tests can subprocess.run(cwd=fixture_repo).
 REPO_ROOT = Path.cwd()
@@ -49,7 +49,7 @@ def _heading_range(text: str, heading: str) -> str | None:
     if idx == -1:
         return None
     level = len(heading) - len(heading.lstrip("#"))
-    rest = text[idx + len(heading):]
+    rest = text[idx + len(heading) :]
     lines = rest.splitlines(keepends=True)
     offset = 0
     in_fence = False
@@ -61,9 +61,9 @@ def _heading_range(text: str, heading: str) -> str | None:
             offset += len(ln)
             continue
         if not in_fence and heading_re.match(ln):
-            return text[idx: idx + len(heading) + offset]
+            return text[idx : idx + len(heading) + offset]
         offset += len(ln)
-    return text[idx: idx + len(heading) + len(rest)]
+    return text[idx : idx + len(heading) + len(rest)]
 
 
 def _strip_fences(text: str) -> str:
@@ -108,8 +108,12 @@ def check_c1() -> list[str]:
     if "[PROFILE-OVERRIDE-NO-RESCREEN]" not in t:
         f.append("C1: intake missing [PROFILE-OVERRIDE-NO-RESCREEN] advisory")
     # Both halves of the override condition: already-run AND was-skipped.
-    if not (re.search(r"already run", t) and re.search(r"was (explicitly )?skipped|skipped entirely", t)):
-        f.append("C1: override condition missing 'already run OR was skipped' (both halves required)")
+    if not (
+        re.search(r"already run", t) and re.search(r"was (explicitly )?skipped|skipped entirely", t)
+    ):
+        f.append(
+            "C1: override condition missing 'already run OR was skipped' (both halves required)"
+        )
     if "Phase-1-fully-skipped carve-out" not in t and "skips literature screening" not in t:
         f.append("C1: intake missing Phase-1-fully-skipped carve-out")
     return f
@@ -212,7 +216,9 @@ def check_c3() -> list[str]:
     block_prose = _strip_fences(block)
     for kw in ("relevance", "methodology", "predatory"):
         if kw not in block_prose:
-            f.append(f"C3: resolution PROSE (outside code fences) missing universal-gate keyword '{kw}'")
+            f.append(
+                f"C3: resolution PROSE (outside code fences) missing universal-gate keyword '{kw}'"
+            )
     # source_verification must NOT be given a profile step in this consumer file
     if "source_verification_agent is NOT" not in t.replace("`", ""):
         f.append("C3: consumer must state source_verification_agent is NOT a profile consumer")
@@ -246,7 +252,9 @@ def check_c5() -> list[str]:
         f.append("C5: legacy carry-forward must be labeled non-normative")
     # Medicine/Health legacy row — distinctive phrase from the verbatim text.
     if "Medicine/Health" not in t or "evidence-based-medicine" not in t.lower():
-        f.append("C5: missing preserved Medicine/Health legacy row (verbatim 'evidence-based-medicine' text)")
+        f.append(
+            "C5: missing preserved Medicine/Health legacy row (verbatim 'evidence-based-medicine' text)"
+        )
     # Education legacy row — distinctive phrase, NOT the bare reserved token.
     if "quasi-experimental" not in t.lower():
         f.append("C5: missing preserved Education legacy row (verbatim 'quasi-experimental' text)")
@@ -255,11 +263,11 @@ def check_c5() -> list[str]:
     # Policy, so checking the bare phrase would still pass if only the Policy row
     # were deleted (Social Science's identical phrase survives). Require a single
     # line containing both "Policy" and the fold target. (hardening from a review round.)
-    policy_fold = re.compile(
-        r"Policy.*folded into\s*`?general_social_science`?", re.IGNORECASE
-    )
+    policy_fold = re.compile(r"Policy.*folded into\s*`?general_social_science`?", re.IGNORECASE)
     if not any(policy_fold.search(line) for line in t.splitlines()):
-        f.append("C5: missing Policy→general_social_science fold (a single line binding 'Policy' to 'folded into general_social_science')")
+        f.append(
+            "C5: missing Policy→general_social_science fold (a single line binding 'Policy' to 'folded into general_social_science')"
+        )
     return f
 
 
@@ -278,15 +286,20 @@ def check_c6() -> list[str]:
     deep-research table legitimately changes for an unrelated reason).
     """
     import hashlib
+
     f: list[str] = []
     t = _read(SQH)
     if not t:
         return ["C6: source_quality_hierarchy.md not found"]
     if "## Domain Evidence Profiles" in t:
-        f.append("C6: '## Domain Evidence Profiles' leaked into source_quality_hierarchy.md (R-5 violation)")
+        f.append(
+            "C6: '## Domain Evidence Profiles' leaked into source_quality_hierarchy.md (R-5 violation)"
+        )
     block = _heading_range(t, "## Field-Specific Adjustments")
     if block is None:
-        f.append("C6: source_quality_hierarchy.md '## Field-Specific Adjustments' block missing (was it edited?)")
+        f.append(
+            "C6: source_quality_hierarchy.md '## Field-Specific Adjustments' block missing (was it edited?)"
+        )
         return f
     # Normalize trailing whitespace per line so a stray editor newline does not
     # false-fail, but any substantive row/cell change does.
@@ -356,7 +369,7 @@ def check_c7() -> list[str]:
         for line in block.splitlines():
             for token in forbidden:
                 for m in re.finditer(re.escape(token), line):
-                    pre = line[:m.start()]
+                    pre = line[: m.start()]
                     if neg_before.search(pre):
                         continue  # this occurrence is explicitly negated -> allowed
                     f.append(
@@ -512,9 +525,16 @@ def check_c10() -> list[str]:
 
 
 CHECKS: list[tuple[str, Callable[[], list[str]]]] = [
-    ("C1", check_c1), ("C2", check_c2), ("C3", check_c3), ("C4", check_c4),
-    ("C5", check_c5), ("C6", check_c6), ("C7", check_c7), ("C8", check_c8),
-    ("C9", check_c9), ("C10", check_c10),
+    ("C1", check_c1),
+    ("C2", check_c2),
+    ("C3", check_c3),
+    ("C4", check_c4),
+    ("C5", check_c5),
+    ("C6", check_c6),
+    ("C7", check_c7),
+    ("C8", check_c8),
+    ("C9", check_c9),
+    ("C10", check_c10),
 ]
 
 

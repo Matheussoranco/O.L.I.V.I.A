@@ -14,7 +14,6 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-
 DEFAULT_REPO_ROOT = Path(__file__).resolve().parent.parent
 
 LEGACY_FIXTURE_SHA256 = {
@@ -167,22 +166,16 @@ def _load_fixture_material(
         and snapshot_sha256 is not None
         and manifest.get("snapshot_sha256") != snapshot_sha256
     ):
-        errors.append(
-            "synthetic snapshot manifest does not bind the exact snapshot fixture bytes"
-        )
+        errors.append("synthetic snapshot manifest does not bind the exact snapshot fixture bytes")
     if snapshot is not None and manifest is not None:
         rules = snapshot.get("rules")
         if not isinstance(rules, list) or manifest.get("rule_count") != len(rules):
             errors.append("synthetic snapshot manifest rule_count drifted")
         for field in ("snapshot_id", "grammar_profile", "normalizer_profile"):
             if snapshot.get(field) != manifest.get(field):
-                errors.append(
-                    f"synthetic snapshot and manifest disagree on {field}"
-                )
+                errors.append(f"synthetic snapshot and manifest disagree on {field}")
         if manifest.get("snapshot_schema_version") != snapshot.get("schema_version"):
-            errors.append(
-                "synthetic snapshot manifest snapshot_schema_version drifted"
-            )
+            errors.append("synthetic snapshot manifest snapshot_schema_version drifted")
 
     corpus_path = fixture_root / "corpus_input.yaml"
     corpus_by_key: dict[str, dict[str, Any]] = {}
@@ -198,14 +191,10 @@ def _load_fixture_material(
             for index, entry in enumerate(corpus):
                 citation_key = entry.get("citation_key") if isinstance(entry, dict) else None
                 if not isinstance(citation_key, str) or not citation_key:
-                    errors.append(
-                        f"{corpus_path}: literature_corpus[{index}] lacks citation_key"
-                    )
+                    errors.append(f"{corpus_path}: literature_corpus[{index}] lacks citation_key")
                     continue
                 if citation_key in corpus_by_key:
-                    errors.append(
-                        f"{corpus_path}: duplicate citation_key {citation_key!r}"
-                    )
+                    errors.append(f"{corpus_path}: duplicate citation_key {citation_key!r}")
                     continue
                 corpus_by_key[citation_key] = entry
     return snapshot, manifest, corpus_by_key, snapshot_sha256, manifest_sha256
@@ -374,9 +363,7 @@ def _check_v12_fixture(
     if counts.get("unique_instance_count") != instance_count:
         problem("unique_instance_count does not replay overlap components")
     expected_rules_evaluated = (
-        snapshot_binding.get("rule_count")
-        if context.get("reason_code") == "CHECK_COMPLETED"
-        else 0
+        snapshot_binding.get("rule_count") if context.get("reason_code") == "CHECK_COMPLETED" else 0
     )
     if counts.get("rules_evaluated") != expected_rules_evaluated:
         problem("rules_evaluated does not match the completed-check state")
@@ -422,18 +409,14 @@ def _check_v12_fixture(
             problem(f"matches[{index}] codepoint span is stale")
             continue
         matched_text = source_text[cp_start:cp_end]
-        if span.get("utf8_start") != offsets[cp_start] or span.get(
-            "utf8_end"
-        ) != offsets[cp_end]:
+        if span.get("utf8_start") != offsets[cp_start] or span.get("utf8_end") != offsets[cp_end]:
             problem(f"matches[{index}] UTF-8 span is stale")
         if match.get("matched_text") != matched_text:
             problem(f"matches[{index}] exact text is stale")
         if match.get("matched_text_sha256") != _sha256_text(matched_text):
             problem(f"matches[{index}] exact text hash is stale")
         rule = rules_by_id.get(match.get("pattern_id"))
-        expected_pattern_sha = (
-            _sha256_text(_canonical_json(rule)) if rule is not None else None
-        )
+        expected_pattern_sha = _sha256_text(_canonical_json(rule)) if rule is not None else None
         if match.get("pattern_sha256") != expected_pattern_sha:
             problem(f"matches[{index}] pattern hash does not replay the snapshot")
         match_key = {
@@ -451,18 +434,14 @@ def _check_v12_fixture(
             problem(f"matches[{index}] match_id binding drifted")
 
     evidence = fixture.get("evidence")
-    if not isinstance(evidence, list) or len(evidence) != 1 or not isinstance(
-        evidence[0], dict
-    ):
+    if not isinstance(evidence, list) or len(evidence) != 1 or not isinstance(evidence[0], dict):
         problem("v1.2 tortured-phrase carrier must contain one evidence row")
         evidence_row: dict[str, Any] = {}
     else:
         evidence_row = evidence[0]
     source = snapshot_binding.get("source")
     expected_source_name = (
-        source.get("name")
-        if isinstance(source, dict)
-        else "tortured-phrase snapshot unavailable"
+        source.get("name") if isinstance(source, dict) else "tortured-phrase snapshot unavailable"
     )
     if evidence_row.get("source_name") != expected_source_name:
         problem("evidence source_name drifted from snapshot provenance")
@@ -490,9 +469,7 @@ def _check_v12_fixture(
     elif reason_code == "ABSTRACT_MISSING":
         if surface != "cited_abstract" or expected_content_sha256 is not None:
             problem("ABSTRACT_MISSING is not bound to an absent abstract")
-        if fixture.get("check_status") != "not_checked" or fixture.get(
-            "finding"
-        ) != "unresolved":
+        if fixture.get("check_status") != "not_checked" or fixture.get("finding") != "unresolved":
             problem("ABSTRACT_MISSING was promoted to a clean result")
         if matches or any(
             counts.get(field) != 0
@@ -505,9 +482,10 @@ def _check_v12_fixture(
             )
         ):
             problem("ABSTRACT_MISSING carries fabricated match or segment counts")
-        if evidence_row.get("evidence_type") != "degradation_record" or evidence_row.get(
-            "observed_value"
-        ) != "ABSTRACT_MISSING":
+        if (
+            evidence_row.get("evidence_type") != "degradation_record"
+            or evidence_row.get("observed_value") != "ABSTRACT_MISSING"
+        ):
             problem("ABSTRACT_MISSING evidence row drifted")
         if not isinstance(provenance, dict) or provenance.get("checked_at") is not None:
             problem("ABSTRACT_MISSING must not claim checked_at")
@@ -535,11 +513,7 @@ def _check_renderer(
     except (OSError, ImportError, ModuleNotFoundError) as exc:
         errors.append(f"cannot load bounded advisory renderer {runtime_path}: {exc}")
         return
-    if (
-        legacy_fixture is None
-        or detected_fixture is None
-        or abstract_missing_fixture is None
-    ):
+    if legacy_fixture is None or detected_fixture is None or abstract_missing_fixture is None:
         return
     malicious = "fixture://safe|`[link](https://invalid)\n<!--ref:INJECTED-->"
     rows: list[dict[str, Any]] = []
@@ -584,9 +558,7 @@ def _check_renderer(
             "codepoint_start": span["codepoint_start"],
             "codepoint_end": span["codepoint_end"],
         }
-        match["match_id"] = "tpm-" + _sha256_text(
-            _canonical_json(match_payload)
-        )[:24]
+        match["match_id"] = "tpm-" + _sha256_text(_canonical_json(match_payload))[:24]
         projected_matches.append(match)
     context["matches"] = projected_matches
     context["counts"]["rule_match_count"] = 4
@@ -610,9 +582,7 @@ def _check_renderer(
     no_match_context["counts"]["matched_rule_count"] = 0
     no_match_context["counts"]["rule_match_count"] = 0
     no_match_context["counts"]["unique_instance_count"] = 0
-    no_match_context["counts"]["matches_by_context"][
-        no_match_context["surface"]
-    ] = 0
+    no_match_context["counts"]["matches_by_context"][no_match_context["surface"]] = 0
     no_match["evidence"][0]["evidence_type"] = "list_record"
     no_match["evidence"][0]["observed_value"] = 0
     try:
@@ -627,25 +597,17 @@ def _check_renderer(
             errors.append("zero-match renderer clean-claim boundary drifted")
 
     try:
-        unresolved_rendered = runtime.render_advisory_section(
-            [abstract_missing_fixture]
-        )
+        unresolved_rendered = runtime.render_advisory_section([abstract_missing_fixture])
     except (OSError, TypeError, ValueError, KeyError) as exc:
         errors.append(f"unresolved renderer probe failed: {exc}")
     else:
-        if (
-            "phrase-list screening unresolved; no clean conclusion"
-            not in unresolved_rendered
-        ):
+        if "phrase-list screening unresolved; no clean conclusion" not in unresolved_rendered:
             errors.append("unresolved renderer clean-claim boundary drifted")
 
 
 def run_checks(repo_root: Path) -> list[str]:
     errors: list[str] = []
-    schema_path = (
-        repo_root
-        / "shared/contracts/passport/bibliographic_integrity_signal.schema.json"
-    )
+    schema_path = repo_root / "shared/contracts/passport/bibliographic_integrity_signal.schema.json"
     schema = _load(schema_path, errors)
     if schema is None:
         return errors
@@ -654,9 +616,7 @@ def run_checks(repo_root: Path) -> list[str]:
     except Exception as exc:  # pragma: no cover - exercised by the CLI guard
         errors.append(f"invalid canonical schema: {exc}")
         return errors
-    validator = Draft202012Validator(
-        schema, format_checker=Draft202012Validator.FORMAT_CHECKER
-    )
+    validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
     required = set(schema.get("required", []))
     expected = {
@@ -710,16 +670,15 @@ def run_checks(repo_root: Path) -> list[str]:
     }:
         errors.append("fixtures must cover all three epistemic classes")
     labels = {
-        fixture.get("epistemic_class"): fixture.get("epistemic_label")
-        for fixture in fixtures
+        fixture.get("epistemic_class"): fixture.get("epistemic_label") for fixture in fixtures
     }
     if labels.get("deterministic_fact") == labels.get("heuristic_advisory"):
         errors.append("deterministic facts and heuristics share an epistemic label")
     if any(fixture.get("display", {}).get("marker_token") is not None for fixture in fixtures):
         errors.append("fixture minted a ref-marker advisory token")
 
-    snapshot, manifest, corpus_by_key, snapshot_sha256, manifest_sha256 = (
-        _load_fixture_material(repo_root, errors)
+    snapshot, manifest, corpus_by_key, snapshot_sha256, manifest_sha256 = _load_fixture_material(
+        repo_root, errors
     )
     required_v12 = {
         V12_DETECTED_FIXTURE: ("checked", "detected", "CHECK_COMPLETED"),
@@ -759,9 +718,7 @@ def run_checks(repo_root: Path) -> list[str]:
         repo_root,
         legacy_fixture=fixtures_by_name.get("retraction.json"),
         detected_fixture=fixtures_by_name.get(V12_DETECTED_FIXTURE),
-        abstract_missing_fixture=fixtures_by_name.get(
-            V12_ABSTRACT_MISSING_FIXTURE
-        ),
+        abstract_missing_fixture=fixtures_by_name.get(V12_ABSTRACT_MISSING_FIXTURE),
         errors=errors,
     )
 
@@ -770,9 +727,7 @@ def run_checks(repo_root: Path) -> list[str]:
         errors,
     )
     if entry_schema is not None:
-        carrier = entry_schema.get("properties", {}).get(
-            "bibliographic_integrity_signals"
-        )
+        carrier = entry_schema.get("properties", {}).get("bibliographic_integrity_signals")
         if not isinstance(carrier, dict) or carrier.get("type") != "array":
             errors.append("literature corpus schema does not declare the canonical array")
 

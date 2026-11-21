@@ -105,9 +105,13 @@ def doc_sections(text: str) -> tuple[str, int, str, int]:
     jm = JUDGMENT_HEADING.search(text)
     em = EXECUTION_HEADING.search(text)
     if not jm or not em:
-        raise ValueError("canonical doc is missing a '### Judgment-type (N)' or '### Execution-type (N)' heading")
+        raise ValueError(
+            "canonical doc is missing a '### Judgment-type (N)' or '### Execution-type (N)' heading"
+        )
     if em.start() < jm.start():
-        raise ValueError("canonical doc tier sections are out of the expected order (Judgment before Execution)")
+        raise ValueError(
+            "canonical doc tier sections are out of the expected order (Judgment before Execution)"
+        )
     judgment_body = text[jm.end() : em.start()]
     execution_body = text[em.end() :]
     return judgment_body, int(jm.group(1)), execution_body, int(em.group(1))
@@ -133,7 +137,9 @@ def section_rows(section: str) -> tuple[dict[str, tuple[int, list[str]]], list[s
         if skill == "Skill":  # header guard (never matches the regex, kept for clarity)
             continue
         if skill in rows:
-            errors.append(f"duplicate '{skill}' row in one tier section — contradictory rows are ambiguous")
+            errors.append(
+                f"duplicate '{skill}' row in one tier section — contradictory rows are ambiguous"
+            )
             continue
         rows[skill] = (count, TOKEN_RE.findall(body))
     return rows, errors
@@ -159,16 +165,22 @@ def main() -> int:
     missing_from_manifest = sorted(disk - manifest_set)
     missing_from_disk = sorted(manifest_set - disk)
     for p in missing_from_manifest:
-        errors.append(f"agent file on disk has NO tier classification: {p} (add it to scripts/model_tiering_manifest.json AND shared/model_tiering.md)")
+        errors.append(
+            f"agent file on disk has NO tier classification: {p} (add it to scripts/model_tiering_manifest.json AND shared/model_tiering.md)"
+        )
     for p in missing_from_disk:
         errors.append(f"manifest classifies a file that does not exist on disk: {p}")
     for p in out_of_roster_agents():
-        errors.append(f"agent file outside the known skill agent dirs: {p} (a new skill directory must be added to AGENT_DIRS in this lint AND its agents classified)")
+        errors.append(
+            f"agent file outside the known skill agent dirs: {p} (a new skill directory must be added to AGENT_DIRS in this lint AND its agents classified)"
+        )
 
     # 2. tier enum
     for a in agents:
         if a.get("tier") not in VALID_TIERS:
-            errors.append(f"invalid tier {a.get('tier')!r} for {a.get('path')} (must be one of {sorted(VALID_TIERS)})")
+            errors.append(
+                f"invalid tier {a.get('tier')!r} for {a.get('path')} (must be one of {sorted(VALID_TIERS)})"
+            )
 
     # 3. doc sync
     try:
@@ -184,9 +196,13 @@ def main() -> int:
             by_tier[a["tier"]].append(a["path"])
 
     if judgment_count != len(by_tier["judgment"]):
-        errors.append(f"doc says Judgment-type ({judgment_count}) but manifest has {len(by_tier['judgment'])}")
+        errors.append(
+            f"doc says Judgment-type ({judgment_count}) but manifest has {len(by_tier['judgment'])}"
+        )
     if execution_count != len(by_tier["execution"]):
-        errors.append(f"doc says Execution-type ({execution_count}) but manifest has {len(by_tier['execution'])}")
+        errors.append(
+            f"doc says Execution-type ({execution_count}) but manifest has {len(by_tier['execution'])}"
+        )
 
     # Exact per-(tier, skill) token-set equality: missing, extra, and duplicate
     # tokens, wrong per-row (N) counts, and duplicate skill rows all fail.
@@ -196,7 +212,9 @@ def main() -> int:
         errors.extend(f"{tier} section: {e}" for e in row_errors)
         for skill, (declared, tokens) in rows.items():
             if len(tokens) != declared:
-                errors.append(f"{tier} section '{skill}' row declares ({declared}) but lists {len(tokens)} backticked agent name(s)")
+                errors.append(
+                    f"{tier} section '{skill}' row declares ({declared}) but lists {len(tokens)} backticked agent name(s)"
+                )
             dupes = sorted({t for t in tokens if tokens.count(t) > 1})
             if dupes:
                 errors.append(f"{tier} section '{skill}' row lists duplicate token(s): {dupes}")
@@ -213,9 +231,13 @@ def main() -> int:
         missing = sorted(manifest_map.get(key, set()) - doc_map.get(key, set()))
         extra = sorted(doc_map.get(key, set()) - manifest_map.get(key, set()))
         if missing:
-            errors.append(f"{tier} section '{skill}' row in {doc_rel} is missing manifest agent(s): {missing}")
+            errors.append(
+                f"{tier} section '{skill}' row in {doc_rel} is missing manifest agent(s): {missing}"
+            )
         if extra:
-            errors.append(f"{tier} section '{skill}' row in {doc_rel} lists agent(s) not classified '{tier}' for that skill in the manifest: {extra}")
+            errors.append(
+                f"{tier} section '{skill}' row in {doc_rel} lists agent(s) not classified '{tier}' for that skill in the manifest: {extra}"
+            )
 
     if errors:
         print(f"[model-tiering] FAIL ({len(errors)} error(s)):")
@@ -223,7 +245,9 @@ def main() -> int:
             print(f"  - {e}")
         return 1
 
-    print(f"[model-tiering] PASS: {len(agents)} agents classified ({len(by_tier['judgment'])} judgment / {len(by_tier['execution'])} execution); disk, manifest, and canonical table agree")
+    print(
+        f"[model-tiering] PASS: {len(agents)} agents classified ({len(by_tier['judgment'])} judgment / {len(by_tier['execution'])} execution); disk, manifest, and canonical table agree"
+    )
     return 0
 
 

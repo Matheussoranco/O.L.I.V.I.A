@@ -19,7 +19,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SCHEMA_REL = "shared/contracts/evidence/evidence_row.schema.json"
@@ -228,9 +227,7 @@ def _runtime_checks(path: Path) -> list[str]:
                 errors.append(f"{RUNTIME_REL}: {name}={actual!r}, expected {expected!r}")
 
     if "--allow-legacy-absence" not in text:
-        errors.append(
-            f"{RUNTIME_REL}: missing explicit --allow-legacy-absence compatibility gate"
-        )
+        errors.append(f"{RUNTIME_REL}: missing explicit --allow-legacy-absence compatibility gate")
 
     try:
         states = set(_assignment(tree, "EXCERPT_STATES"))
@@ -258,14 +255,13 @@ def _runtime_checks(path: Path) -> list[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported = [node.module]
         for module in imported:
-            if (
-                module.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS
-                or any(
-                    module == prefix or module.startswith(prefix + ".")
-                    for prefix in FORBIDDEN_IMPORT_PREFIXES
-                )
+            if module.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS or any(
+                module == prefix or module.startswith(prefix + ".")
+                for prefix in FORBIDDEN_IMPORT_PREFIXES
             ):
-                errors.append(f"{RUNTIME_REL}:{node.lineno}: forbidden retrieval/model/system import {module!r}")
+                errors.append(
+                    f"{RUNTIME_REL}:{node.lineno}: forbidden retrieval/model/system import {module!r}"
+                )
         if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
             if node.func.attr == "add_argument" and node.args:
                 try:
@@ -273,7 +269,9 @@ def _runtime_checks(path: Path) -> list[str]:
                 except (ValueError, TypeError):
                     option = None
                 if option == "--all":
-                    errors.append(f"{RUNTIME_REL}:{node.lineno}: resource-unbounded --all option is forbidden")
+                    errors.append(
+                        f"{RUNTIME_REL}:{node.lineno}: resource-unbounded --all option is forbidden"
+                    )
 
     functions = {
         node.name: node
@@ -336,7 +334,9 @@ def run_checks(root: Path = REPO_ROOT) -> list[str]:
         source_fields = set(properties.get("source", {}).get("properties", {}))
         forbidden = source_fields & FORBIDDEN_SCHEMA_FIELDS
         if forbidden:
-            errors.append(f"{SCHEMA_REL}: forbidden source/private/read fields: {sorted(forbidden)}")
+            errors.append(
+                f"{SCHEMA_REL}: forbidden source/private/read fields: {sorted(forbidden)}"
+            )
         schema_text = json.dumps(schema, ensure_ascii=False, sort_keys=True)
         leaked = sorted(field for field in FORBIDDEN_SCHEMA_FIELDS if f'"{field}"' in schema_text)
         if leaked:
@@ -365,9 +365,7 @@ def run_checks(root: Path = REPO_ROOT) -> list[str]:
             continue
         found = [token for token in adoption_tokens if token in text]
         if found:
-            errors.append(
-                f"{rel}: opt-in claim-audit/formatter V1 boundary crossed by {found!r}"
-            )
+            errors.append(f"{rel}: opt-in claim-audit/formatter V1 boundary crossed by {found!r}")
     return errors
 
 

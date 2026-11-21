@@ -10,18 +10,13 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
-
 from scripts import check_promotion_bakeoff_preregistration as sealed
-
 
 REPO = Path(__file__).resolve().parent.parent
 COMMITMENT_SCHEMA = (
-    REPO
-    / "shared/contracts/cross_model/promotion_bakeoff_sealed_commitment.schema.json"
+    REPO / "shared/contracts/cross_model/promotion_bakeoff_sealed_commitment.schema.json"
 )
-REVEAL_SCHEMA = (
-    REPO / "shared/contracts/cross_model/promotion_bakeoff_sealed_reveal.schema.json"
-)
+REVEAL_SCHEMA = REPO / "shared/contracts/cross_model/promotion_bakeoff_sealed_reveal.schema.json"
 
 
 def _run(repo: Path, *args: str) -> subprocess.CompletedProcess[str]:
@@ -152,9 +147,7 @@ def _valid_lifecycle(
     repo = _init_repo(tmp_path)
     probe_raw = _bytes(_probe(seed))
     commitment_rel, commitment_raw = _commit_seal(repo, campaign, probe_raw)
-    reveal_rel = _commit_reveal(
-        repo, campaign, probe_raw, commitment_rel, commitment_raw
-    )
+    reveal_rel = _commit_reveal(repo, campaign, probe_raw, commitment_rel, commitment_raw)
     return repo, reveal_rel, probe_raw
 
 
@@ -206,9 +199,7 @@ def test_valid_reveal_verifies_git_order_hash_and_freshness(tmp_path: Path) -> N
     assert receipt.commitment_git_commit != receipt.reveal_git_commit
     assert receipt.reveal_copy_git_commits == (receipt.reveal_git_commit,)
     assert receipt.published_probe_versions_checked == 0
-    assert [item.campaign_id for item in sealed.verify_tree(repo)] == [
-        "2026-08-24-candidate-api"
-    ]
+    assert [item.campaign_id for item in sealed.verify_tree(repo)] == ["2026-08-24-candidate-api"]
 
 
 def test_crlf_worktree_checkout_does_not_look_like_history_mutation(
@@ -292,9 +283,7 @@ def test_commitment_and_probe_in_same_commit_are_not_a_seal(tmp_path: Path) -> N
     reveal_rel = _campaign_rel(campaign, sealed.REVEAL_NAME)
     commitment_raw = _bytes(sealed.make_commitment(campaign, probe_raw))
     reveal_raw = _bytes(
-        sealed.make_reveal(
-            campaign, commitment_rel, commitment_raw, probe_rel, probe_raw
-        )
+        sealed.make_reveal(campaign, commitment_rel, commitment_raw, probe_rel, probe_raw)
     )
     _write(repo, commitment_rel, commitment_raw)
     _write(repo, probe_rel, probe_raw)
@@ -314,9 +303,7 @@ def test_probe_and_reveal_must_be_introduced_together(tmp_path: Path) -> None:
     reveal_rel = _campaign_rel(campaign, sealed.REVEAL_NAME)
     _write(repo, probe_rel, probe_raw)
     _commit(repo, "premature fixture-only reveal", probe_rel)
-    reveal = sealed.make_reveal(
-        campaign, commitment_rel, commitment_raw, probe_rel, probe_raw
-    )
+    reveal = sealed.make_reveal(campaign, commitment_rel, commitment_raw, probe_rel, probe_raw)
     _write(repo, reveal_rel, _bytes(reveal))
     _commit(repo, "late reveal carrier", reveal_rel)
     with pytest.raises(sealed.PreregistrationError) as failure:
@@ -335,9 +322,7 @@ def test_commitment_cannot_be_rewritten_at_reveal(tmp_path: Path) -> None:
     probe_rel = _campaign_rel(campaign, sealed.PROBE_NAME)
     reveal_rel = _campaign_rel(campaign, sealed.REVEAL_NAME)
     _write(repo, probe_rel, probe_raw)
-    reveal = sealed.make_reveal(
-        campaign, commitment_rel, mutated, probe_rel, probe_raw
-    )
+    reveal = sealed.make_reveal(campaign, commitment_rel, mutated, probe_rel, probe_raw)
     _write(repo, reveal_rel, _bytes(reveal))
     _commit(repo, "rewrite seal while revealing", commitment_rel, probe_rel, reveal_rel)
     with pytest.raises(sealed.PreregistrationError) as failure:
@@ -381,9 +366,7 @@ def test_merge_side_probe_mutation_cannot_be_hidden_by_ours_resolution(
 def test_merge_side_mode_mutation_with_same_blob_is_rejected(tmp_path: Path) -> None:
     repo, reveal_rel, _probe_raw = _valid_lifecycle(tmp_path)
     main_branch = _run(repo, "branch", "--show-current").stdout.strip()
-    commitment_rel = _campaign_rel(
-        "2026-08-24-candidate-api", sealed.COMMITMENT_NAME
-    )
+    commitment_rel = _campaign_rel("2026-08-24-candidate-api", sealed.COMMITMENT_NAME)
     commitment_path = repo / commitment_rel
     target = commitment_path.read_text(encoding="utf-8")
     _git(repo, "checkout", "-q", "-b", "mode-side")
@@ -424,15 +407,11 @@ def test_reformatted_fabrication_reuse_is_rejected(tmp_path: Path) -> None:
     _add_published_probe(repo, _bytes(old_probe))
     candidate = _probe("new")
     reused = old_probe["references"][20]["reference_text"]
-    candidate["references"][20]["reference_text"] = (
-        "  " + reused.upper().replace(".", " . ") + "  "
-    )
+    candidate["references"][20]["reference_text"] = "  " + reused.upper().replace(".", " . ") + "  "
     probe_raw = _bytes(candidate)
     campaign = "2026-08-24-candidate-api"
     commitment_rel, commitment_raw = _commit_seal(repo, campaign, probe_raw)
-    reveal_rel = _commit_reveal(
-        repo, campaign, probe_raw, commitment_rel, commitment_raw
-    )
+    reveal_rel = _commit_reveal(repo, campaign, probe_raw, commitment_rel, commitment_raw)
     with pytest.raises(sealed.PreregistrationError) as failure:
         sealed.verify_reveal(repo, reveal_rel)
     assert failure.value.code == "PUBLISHED_FABRICATION_REUSE"
@@ -444,9 +423,7 @@ def test_published_probe_bytes_cannot_be_reused_under_a_new_campaign(tmp_path: P
     _add_published_probe(repo, probe_raw)
     campaign = "2026-08-24-candidate-api"
     commitment_rel, commitment_raw = _commit_seal(repo, campaign, probe_raw)
-    reveal_rel = _commit_reveal(
-        repo, campaign, probe_raw, commitment_rel, commitment_raw
-    )
+    reveal_rel = _commit_reveal(repo, campaign, probe_raw, commitment_rel, commitment_raw)
     with pytest.raises(sealed.PreregistrationError) as failure:
         sealed.verify_reveal(repo, reveal_rel)
     assert failure.value.code == "PUBLISHED_SET_REUSE"
@@ -461,9 +438,7 @@ def test_real_rows_may_remain_while_fabrication_pool_is_fresh(tmp_path: Path) ->
     probe_raw = _bytes(candidate)
     campaign = "2026-08-24-candidate-api"
     commitment_rel, commitment_raw = _commit_seal(repo, campaign, probe_raw)
-    reveal_rel = _commit_reveal(
-        repo, campaign, probe_raw, commitment_rel, commitment_raw
-    )
+    reveal_rel = _commit_reveal(repo, campaign, probe_raw, commitment_rel, commitment_raw)
     receipt = sealed.verify_reveal(repo, reveal_rel)
     assert receipt.published_probe_versions_checked == 1
 
@@ -496,9 +471,7 @@ def test_freshness_scans_non_head_and_ours_merged_public_refs(
         assert _run(repo, "merge-base", "--is-ancestor", leaked_commit, "HEAD").returncode == 0
 
     candidate = _probe("fresh")
-    candidate["references"][20]["reference_text"] = old_probe["references"][20][
-        "reference_text"
-    ]
+    candidate["references"][20]["reference_text"] = old_probe["references"][20]["reference_text"]
     summary = sealed.validate_probe_set(_bytes(candidate))
     with pytest.raises(sealed.PreregistrationError) as failure:
         sealed.verify_freshness(repo, summary)
@@ -512,13 +485,11 @@ def test_freshness_scans_unicode_and_merge_only_probe_paths(tmp_path: Path) -> N
     _write(unicode_repo, unicode_rel, _bytes(unicode_probe))
     _commit(unicode_repo, "publish labels under unicode path", unicode_rel)
     unicode_candidate = _probe("unicode-fresh")
-    unicode_candidate["references"][20]["reference_text"] = unicode_probe[
-        "references"
-    ][20]["reference_text"]
+    unicode_candidate["references"][20]["reference_text"] = unicode_probe["references"][20][
+        "reference_text"
+    ]
     with pytest.raises(sealed.PreregistrationError) as unicode_failure:
-        sealed.verify_freshness(
-            unicode_repo, sealed.validate_probe_set(_bytes(unicode_candidate))
-        )
+        sealed.verify_freshness(unicode_repo, sealed.validate_probe_set(_bytes(unicode_candidate)))
     assert unicode_failure.value.code == "PUBLISHED_FABRICATION_REUSE"
 
     merge_repo = _init_repo(tmp_path / "merge-only")
@@ -537,13 +508,11 @@ def test_freshness_scans_unicode_and_merge_only_probe_paths(tmp_path: Path) -> N
     _write(merge_repo, merge_rel, _bytes(merge_probe))
     _commit(merge_repo, "merge commit publishes labels", merge_rel)
     merge_candidate = _probe("merge-fresh")
-    merge_candidate["references"][20]["reference_text"] = merge_probe[
-        "references"
-    ][20]["reference_text"]
+    merge_candidate["references"][20]["reference_text"] = merge_probe["references"][20][
+        "reference_text"
+    ]
     with pytest.raises(sealed.PreregistrationError) as merge_failure:
-        sealed.verify_freshness(
-            merge_repo, sealed.validate_probe_set(_bytes(merge_candidate))
-        )
+        sealed.verify_freshness(merge_repo, sealed.validate_probe_set(_bytes(merge_candidate)))
     assert merge_failure.value.code == "PUBLISHED_FABRICATION_REUSE"
 
 
@@ -567,9 +536,7 @@ def test_same_campaign_path_on_other_ref_is_not_excluded(tmp_path: Path) -> None
         sealed.preflight(repo, commitment_rel, private_probe)
     assert preflight_failure.value.code == "PUBLISHED_SET_REUSE"
 
-    reveal_rel = _commit_reveal(
-        repo, campaign, probe_raw, commitment_rel, commitment_raw
-    )
+    reveal_rel = _commit_reveal(repo, campaign, probe_raw, commitment_rel, commitment_raw)
     with pytest.raises(sealed.PreregistrationError) as reveal_failure:
         sealed.verify_reveal(repo, reveal_rel)
     assert reveal_failure.value.code == "PUBLISHED_SET_REUSE"
@@ -614,9 +581,7 @@ def test_post_seal_probe_only_ref_is_not_a_lifecycle_copy(tmp_path: Path) -> Non
     _write(repo, probe_rel, probe_raw)
     _commit(repo, "publish probe without bound reveal", probe_rel)
     _git(repo, "checkout", "-q", main_branch)
-    reveal_rel = _commit_reveal(
-        repo, campaign, probe_raw, commitment_rel, commitment_raw
-    )
+    reveal_rel = _commit_reveal(repo, campaign, probe_raw, commitment_rel, commitment_raw)
 
     with pytest.raises(sealed.PreregistrationError) as failure:
         sealed.verify_reveal(repo, reveal_rel)
@@ -648,9 +613,7 @@ def test_shallow_history_and_missing_historical_blob_fail_closed(tmp_path: Path)
     missing_blob_repo = _init_repo(tmp_path / "missing-blob")
     missing_raw = _bytes(_probe("missing-blob"))
     missing_rel = _add_published_probe(missing_blob_repo, missing_raw)
-    blob_oid = _run(
-        missing_blob_repo, "rev-parse", f"HEAD:{missing_rel}"
-    ).stdout.strip()
+    blob_oid = _run(missing_blob_repo, "rev-parse", f"HEAD:{missing_rel}").stdout.strip()
     object_path = missing_blob_repo / ".git/objects" / blob_oid[:2] / blob_oid[2:]
     assert object_path.is_file()
     object_path.unlink()
@@ -667,9 +630,7 @@ def test_shallow_history_and_missing_historical_blob_fail_closed(tmp_path: Path)
         "evals/bakeoff/noncanonical/nested/probe_set.json",
     ],
 )
-def test_tree_rejects_recursive_noncanonical_probe_paths(
-    tmp_path: Path, relpath: str
-) -> None:
+def test_tree_rejects_recursive_noncanonical_probe_paths(tmp_path: Path, relpath: str) -> None:
     repo = _init_repo(tmp_path)
     _write(repo, relpath, _bytes(_probe()))
     _commit(repo, "noncanonical probe", relpath)
@@ -699,9 +660,7 @@ def test_tree_reconciles_missing_tracked_campaign_and_root_symlink(
 
 
 @pytest.mark.parametrize("staged_name", [sealed.PROBE_NAME, sealed.REVEAL_NAME])
-def test_preflight_rejects_staged_probe_or_reveal(
-    tmp_path: Path, staged_name: str
-) -> None:
+def test_preflight_rejects_staged_probe_or_reveal(tmp_path: Path, staged_name: str) -> None:
     repo = _init_repo(tmp_path)
     campaign = "2026-08-24-candidate-api"
     probe_raw = _bytes(_probe())
@@ -733,9 +692,7 @@ def test_tree_rejects_new_unsealed_fixture_but_grandfathers_recorded_run(
     repo2 = _init_repo(tmp_path / "legacy")
     legacy_rel = next(iter(sealed.LEGACY_PUBLIC_PROBE_PATHS))
     legacy_raw = (REPO / legacy_rel).read_bytes()
-    assert sealed.sha256_bytes(legacy_raw) == sealed.LEGACY_PUBLIC_PROBE_SHA256[
-        legacy_rel
-    ]
+    assert sealed.sha256_bytes(legacy_raw) == sealed.LEGACY_PUBLIC_PROBE_SHA256[legacy_rel]
     _write(repo2, legacy_rel, legacy_raw)
     _commit(repo2, "recorded pre-seal run", legacy_rel)
     assert sealed.verify_tree(repo2) == []
@@ -792,8 +749,6 @@ def test_verification_receipt_discloses_local_evidence_limit(tmp_path: Path) -> 
 
 
 def test_protocol_requires_timing_witness_for_every_reveal_copy() -> None:
-    protocol = (REPO / "shared/cross_model_verification.md").read_text(
-        encoding="utf-8"
-    )
+    protocol = (REPO / "shared/cross_model_verification.md").read_text(encoding="utf-8")
     assert "`reveal_copy_git_commits`" in protocol
     assert "every listed reveal-copy commit" in protocol

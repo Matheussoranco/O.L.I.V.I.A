@@ -24,11 +24,11 @@ import stat
 import subprocess
 import sys
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path, PurePosixPath
-from typing import Any, Iterable
-
+from typing import Any
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BAKEOFF_ROOT = PurePosixPath("evals/bakeoff")
@@ -263,9 +263,7 @@ def _reference_fingerprint(reference_text: str) -> str:
     # edits.  This is an accidental/structural reuse gate, not a semantic
     # plagiarism detector.
     folded = unicodedata.normalize("NFKC", reference_text).casefold()
-    stable = "".join(
-        char for char in folded if unicodedata.category(char)[0] in {"L", "N"}
-    )
+    stable = "".join(char for char in folded if unicodedata.category(char)[0] in {"L", "N"})
     if not stable:
         _fail("PROBE_INVALID", "reference_text normalizes to an empty identity")
     return hashlib.sha256(stable.encode("utf-8")).hexdigest()
@@ -302,9 +300,7 @@ def validate_probe_set(raw: bytes, *, where: str = "probe set") -> ProbeSummary:
     if "purpose" in value and not _nonempty_string(value["purpose"]):
         _fail("PROBE_INVALID", f"{where}.purpose must be non-empty")
     if "labels" in value:
-        labels = _exact_keys(
-            value["labels"], {"real", "fabricated"}, where=f"{where}.labels"
-        )
+        labels = _exact_keys(value["labels"], {"real", "fabricated"}, where=f"{where}.labels")
         if not all(_nonempty_string(labels[key]) for key in labels):
             _fail("PROBE_INVALID", f"{where}.labels values must be non-empty")
     references = value.get("references")
@@ -431,10 +427,12 @@ def verify_probe_against_commitment(
     if summary.digest != commitment["probe_set_sha256"]:
         _fail(
             "HASH_MISMATCH",
-            f"{where} sha256 {summary.digest} != sealed "
-            f"{commitment['probe_set_sha256']}",
+            f"{where} sha256 {summary.digest} != sealed " f"{commitment['probe_set_sha256']}",
         )
-    if summary.row_count != commitment["row_count"] or summary.composition != commitment["composition"]:
+    if (
+        summary.row_count != commitment["row_count"]
+        or summary.composition != commitment["composition"]
+    ):
         _fail("COMPOSITION_MISMATCH", f"{where} does not match sealed composition")
     return summary
 
@@ -494,7 +492,11 @@ def _canonical_relpath(value: str) -> str:
     if not isinstance(value, str) or "\\" in value or "\x00" in value:
         _fail("PATH_INVALID", f"repository path is not canonical POSIX: {value!r}")
     path = PurePosixPath(value)
-    if path.is_absolute() or path.as_posix() != value or any(part in {"", ".", ".."} for part in path.parts):
+    if (
+        path.is_absolute()
+        or path.as_posix() != value
+        or any(part in {"", ".", ".."} for part in path.parts)
+    ):
         _fail("PATH_INVALID", f"repository path is not canonical relative POSIX: {value!r}")
     return value
 
@@ -624,9 +626,7 @@ def _immutable_intro(
         _fail("GIT_UNTRACKED", f"{relpath} is not present in HEAD")
     if normalized_bytes(head) != normalized_bytes(worktree):
         _fail("WORKTREE_DRIFT", f"{relpath} differs between worktree and HEAD")
-    additions = _log_commits(
-        repo, relpath, additions_only=True, all_refs=all_refs
-    )
+    additions = _log_commits(repo, relpath, additions_only=True, all_refs=all_refs)
     if len(additions) != 1:
         _fail(
             "HISTORY_AMBIGUOUS",
@@ -667,44 +667,56 @@ def _verify_commitment_history(
     repo: Path, campaign_id: str, *, revealed: bool
 ) -> tuple[str, bytes, str, str, str]:
     campaign_dir, commitment_path, probe_path, reveal_path = _campaign_paths(campaign_id)
-    intro, commitment_raw = _immutable_intro(
-        repo, commitment_path, kind="sealed commitment"
-    )
+    intro, commitment_raw = _immutable_intro(repo, commitment_path, kind="sealed commitment")
     commitment = validate_commitment(load_json_bytes(commitment_raw, where=commitment_path))
     if commitment["campaign_id"] != campaign_id:
         _fail("CAMPAIGN_MISMATCH", f"{commitment_path} campaign_id differs from directory")
-    tree = _git(
-        repo, "ls-tree", "-r", "--name-only", intro, "--", campaign_dir
-    ).stdout.decode("utf-8").splitlines()
+    tree = (
+        _git(repo, "ls-tree", "-r", "--name-only", intro, "--", campaign_dir)
+        .stdout.decode("utf-8")
+        .splitlines()
+    )
     if tree != [commitment_path]:
         _fail(
             "LABEL_EXPOSURE",
             f"commitment introduction must contain only {commitment_path} in its "
             f"campaign directory; found {tree}",
         )
-    introduced_paths = _git(
-        repo,
-        "diff-tree",
-        "--root",
-        "--no-commit-id",
-        "--name-only",
-        "-r",
-        intro,
-    ).stdout.decode("utf-8").splitlines()
+    introduced_paths = (
+        _git(
+            repo,
+            "diff-tree",
+            "--root",
+            "--no-commit-id",
+            "--name-only",
+            "-r",
+            intro,
+        )
+        .stdout.decode("utf-8")
+        .splitlines()
+    )
     if introduced_paths != [commitment_path]:
         _fail(
             "COMMITMENT_NOT_ISOLATED",
             "the sealed commitment must be a dedicated commit whose only changed "
             f"path is {commitment_path}; found {introduced_paths}",
         )
-    if _blob_at(repo, intro, probe_path) is not None or _blob_at(repo, intro, reveal_path) is not None:
+    if (
+        _blob_at(repo, intro, probe_path) is not None
+        or _blob_at(repo, intro, reveal_path) is not None
+    ):
         _fail("LABEL_EXPOSURE", "probe/reveal existed in the commitment commit")
     if not revealed:
-        if _blob_at(repo, "HEAD", probe_path) is not None or _blob_at(repo, "HEAD", reveal_path) is not None:
+        if (
+            _blob_at(repo, "HEAD", probe_path) is not None
+            or _blob_at(repo, "HEAD", reveal_path) is not None
+        ):
             _fail("PREMATURE_REVEAL", "probe/reveal is already tracked before the fleet")
-        head_tree = _git(
-            repo, "ls-tree", "-r", "--name-only", "HEAD", "--", campaign_dir
-        ).stdout.decode("utf-8").splitlines()
+        head_tree = (
+            _git(repo, "ls-tree", "-r", "--name-only", "HEAD", "--", campaign_dir)
+            .stdout.decode("utf-8")
+            .splitlines()
+        )
         if head_tree != [commitment_path]:
             _fail(
                 "LABEL_EXPOSURE",
@@ -772,9 +784,7 @@ def _public_probe_summary(raw: bytes, *, where: str) -> tuple[str, frozenset[str
 
 
 def _commit_parents(repo: Path, commit: str) -> list[str]:
-    fields = _git(repo, "rev-list", "--parents", "-n", "1", commit).stdout.decode(
-        "ascii"
-    ).split()
+    fields = _git(repo, "rev-list", "--parents", "-n", "1", commit).stdout.decode("ascii").split()
     if not fields or fields[0] != commit:
         _fail("GIT_ERROR", f"cannot resolve parent list for {commit}")
     return fields[1:]
@@ -797,8 +807,7 @@ def _is_bound_lifecycle_copy_intro(
         or commitment_raw is None
         or sha256_bytes(probe_raw) != candidate_digest
         or normalized_bytes(reveal_raw) != normalized_bytes(exemption.reveal_raw)
-        or normalized_bytes(commitment_raw)
-        != normalized_bytes(exemption.commitment_raw)
+        or normalized_bytes(commitment_raw) != normalized_bytes(exemption.commitment_raw)
     ):
         return False
     for path in (
@@ -828,17 +837,12 @@ def _is_current_lifecycle_version(
     copy_intros = {
         commit
         for commit in commits
-        if _is_bound_lifecycle_copy_intro(
-            repo, commit, exemption, candidate_digest
-        )
+        if _is_bound_lifecycle_copy_intro(repo, commit, exemption, candidate_digest)
     }
     if exemption.probe_intro not in copy_intros:
         return None
     if not all(
-        any(
-            commit == intro or _is_strict_ancestor(repo, intro, commit)
-            for intro in copy_intros
-        )
+        any(commit == intro or _is_strict_ancestor(repo, intro, commit) for intro in copy_intros)
         for commit in commits
     ):
         return None
@@ -854,16 +858,12 @@ def verify_freshness(
     """Compare against every committed version of every published probe set."""
     versions: dict[tuple[str, str], tuple[frozenset[str], set[str]]] = {}
     for path in sorted(_published_probe_paths(repo)):
-        for commit in _log_commits(
-            repo, path, all_refs=True, merge_diffs=True
-        ):
+        for commit in _log_commits(repo, path, all_refs=True, merge_diffs=True):
             raw = _blob_at(repo, commit, path)
             if raw is None:
                 continue
             _assert_git_regular(repo, commit, path)
-            digest, old_fingerprints = _public_probe_summary(
-                raw, where=f"{path}@{commit}"
-            )
+            digest, old_fingerprints = _public_probe_summary(raw, where=f"{path}@{commit}")
             identity = (path, digest)
             if identity in versions:
                 versions[identity][1].add(commit)
@@ -918,13 +918,10 @@ def preflight(repo: Path, commitment_path: str, probe_path: Path) -> ProbeSummar
         _fail("PATH_INVALID", "commitment path is not the canonical campaign path")
     campaign_dir = str(PurePosixPath(commitment_path).parent)
     indexed_campaign_paths = set(_index_paths(repo, campaign_dir))
-    if indexed_campaign_paths != {commitment_path} or _index_has_changes(
-        repo, campaign_dir
-    ):
+    if indexed_campaign_paths != {commitment_path} or _index_has_changes(repo, campaign_dir):
         _fail(
             "LABEL_EXPOSURE",
-            "the campaign index must contain only the unchanged committed seal "
-            "before the fleet",
+            "the campaign index must contain only the unchanged committed seal " "before the fleet",
         )
     probe_raw = _plain_external_file(probe_path).read_bytes()
     summary = verify_probe_against_commitment(commitment, probe_raw, where=str(probe_path))
@@ -965,9 +962,13 @@ def verify_reveal(repo: Path, reveal_path: str) -> VerificationReceipt:
     expected_reveal = f"{(BAKEOFF_ROOT / campaign_id).as_posix()}/{REVEAL_NAME}"
     if reveal_path != expected_reveal:
         _fail("PATH_INVALID", f"reveal must live at {expected_reveal}")
-    commitment_intro, commitment_raw, commitment_path, probe_path, canonical_reveal = (
-        _verify_commitment_history(repo, campaign_id, revealed=True)
-    )
+    (
+        commitment_intro,
+        commitment_raw,
+        commitment_path,
+        probe_path,
+        canonical_reveal,
+    ) = _verify_commitment_history(repo, campaign_id, revealed=True)
     if canonical_reveal != reveal_path:
         _fail("PATH_INVALID", "reveal path is not canonical")
     probe_intro, probe_raw = _immutable_intro(repo, probe_path, kind="revealed probe set")
@@ -1045,9 +1046,7 @@ def _head_lifecycle_inventory(repo: Path) -> set[str]:
         BAKEOFF_ROOT.as_posix(),
     ).stdout.decode("utf-8", errors="strict")
     inventory = {
-        line
-        for line in output.splitlines()
-        if line and PurePosixPath(line).name in LIFECYCLE_NAMES
+        line for line in output.splitlines() if line and PurePosixPath(line).name in LIFECYCLE_NAMES
     }
     for relpath in sorted(inventory):
         _campaign_lifecycle_parts(relpath)
@@ -1066,8 +1065,7 @@ def _worktree_lifecycle_inventory(repo: Path) -> set[str]:
             if candidate.is_symlink():
                 _fail(
                     "PATH_UNSAFE",
-                    f"symlink is forbidden below {BAKEOFF_ROOT}: "
-                    f"{candidate.relative_to(repo)}",
+                    f"symlink is forbidden below {BAKEOFF_ROOT}: " f"{candidate.relative_to(repo)}",
                 )
         for filename in filenames:
             if filename not in LIFECYCLE_NAMES:
@@ -1141,9 +1139,7 @@ def verify_tree(repo: Path) -> list[VerificationReceipt]:
             )
         if present == {COMMITMENT_NAME}:
             commitment_raw = _disk_path(repo, commitment_rel).read_bytes()
-            parsed = validate_commitment(
-                load_json_bytes(commitment_raw, where=commitment_rel)
-            )
+            parsed = validate_commitment(load_json_bytes(commitment_raw, where=commitment_rel))
             if parsed["campaign_id"] != campaign_id:
                 _fail("CAMPAIGN_MISMATCH", "commitment campaign_id differs from directory")
             _verify_commitment_history(repo, campaign_id, revealed=False)
@@ -1191,9 +1187,13 @@ def _command_make_reveal(args: argparse.Namespace) -> None:
         load_json_bytes(commitment_path.read_bytes(), where=commitment_rel)
     )
     campaign_id = commitment["campaign_id"]
-    _intro, commitment_raw, canonical_commitment, canonical_probe, _canonical_reveal = (
-        _verify_commitment_history(repo, campaign_id, revealed=False)
-    )
+    (
+        _intro,
+        commitment_raw,
+        canonical_commitment,
+        canonical_probe,
+        _canonical_reveal,
+    ) = _verify_commitment_history(repo, campaign_id, revealed=False)
     if canonical_commitment != commitment_rel:
         _fail("PATH_INVALID", "commitment path is not canonical")
     probe_path = _plain_external_file(args.probe_set)
@@ -1262,9 +1262,7 @@ def _build_parser() -> argparse.ArgumentParser:
     preflight_parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)
     preflight_parser.set_defaults(handler=_command_preflight)
 
-    reveal_parser = subparsers.add_parser(
-        "make-reveal", help="print the post-fleet reveal carrier"
-    )
+    reveal_parser = subparsers.add_parser("make-reveal", help="print the post-fleet reveal carrier")
     reveal_parser.add_argument("--commitment", required=True)
     reveal_parser.add_argument("--probe-set", required=True, type=Path)
     reveal_parser.add_argument("--repo-root", type=Path, default=REPO_ROOT)

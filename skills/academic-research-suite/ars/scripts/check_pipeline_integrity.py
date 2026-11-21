@@ -67,7 +67,6 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
 
 PHASE_DIR_RE = re.compile(r"^phase([1-6])(?:_.*)?$")
 
@@ -91,7 +90,10 @@ PHASE5_REVIEWER_PATTERNS = {
 PHASE5_REQUIRED_CATEGORIES = [
     ("devil's advocate", ["devils_advocate"]),
     ("editorial/EIC", ["editor_in_chief", "editorial_synthesizer"]),
-    ("ethics or panel reviewer", ["ethics_review", "methodology_reviewer", "domain_reviewer", "perspective_reviewer"]),
+    (
+        "ethics or panel reviewer",
+        ["ethics_review", "methodology_reviewer", "domain_reviewer", "perspective_reviewer"],
+    ),
 ]
 
 DEFAULT_SAME_CALL_WINDOW_SECONDS = 300  # 5 minutes
@@ -141,28 +143,29 @@ def check_phase5_attribution(report: Report) -> None:
         try:
             # Skip hidden files (.DS_Store, Thumbs.db, .gitkeep, etc.) — they're
             # never reviewer reports and would clutter advisory output noise.
-            files = [
-                p.name for p in path.rglob("*")
-                if p.is_file() and not p.name.startswith(".")
-            ]
+            files = [p.name for p in path.rglob("*") if p.is_file() and not p.name.startswith(".")]
         except OSError as exc:
-            report.findings.append(Finding(
-                rule="phase5_attribution_io_error",
-                severity="ADVISORY",
-                phase=5,
-                path=dir_path,
-                message=f"Could not read phase5 directory: {exc}",
-            ))
+            report.findings.append(
+                Finding(
+                    rule="phase5_attribution_io_error",
+                    severity="ADVISORY",
+                    phase=5,
+                    path=dir_path,
+                    message=f"Could not read phase5 directory: {exc}",
+                )
+            )
             continue
 
         if not files:
-            report.findings.append(Finding(
-                rule="phase5_empty",
-                severity="ADVISORY",
-                phase=5,
-                path=dir_path,
-                message="phase5_*/ directory is empty — Phase 5 should produce review reports",
-            ))
+            report.findings.append(
+                Finding(
+                    rule="phase5_empty",
+                    severity="ADVISORY",
+                    phase=5,
+                    path=dir_path,
+                    message="phase5_*/ directory is empty — Phase 5 should produce review reports",
+                )
+            )
             continue
 
         # Tally which reviewer categories are present
@@ -178,21 +181,23 @@ def check_phase5_attribution(report: Report) -> None:
                 missing_categories.append(category_label)
 
         if missing_categories:
-            report.findings.append(Finding(
-                rule="phase5_missing_independent_reviewer",
-                severity="STRUCTURAL",
-                phase=5,
-                path=dir_path,
-                message=(
-                    f"phase5_*/ missing independent reviewer attribution for categories: "
-                    f"{', '.join(missing_categories)}. "
-                    f"Files found: {files[:5]}{'...' if len(files) > 5 else ''}. "
-                    f"#133 pattern: Phase 5 deliverable was likely produced by a single agent "
-                    f"that inflated past its scope, skipping mandatory independent crosschecks "
-                    f"(DA / EIC / Ethics). Re-run via orchestrator-driven Mode A with "
-                    f"`/ars-full` or invoke each reviewer agent separately."
-                ),
-            ))
+            report.findings.append(
+                Finding(
+                    rule="phase5_missing_independent_reviewer",
+                    severity="STRUCTURAL",
+                    phase=5,
+                    path=dir_path,
+                    message=(
+                        f"phase5_*/ missing independent reviewer attribution for categories: "
+                        f"{', '.join(missing_categories)}. "
+                        f"Files found: {files[:5]}{'...' if len(files) > 5 else ''}. "
+                        f"#133 pattern: Phase 5 deliverable was likely produced by a single agent "
+                        f"that inflated past its scope, skipping mandatory independent crosschecks "
+                        f"(DA / EIC / Ethics). Re-run via orchestrator-driven Mode A with "
+                        f"`/ars-full` or invoke each reviewer agent separately."
+                    ),
+                )
+            )
 
 
 def _file_mtime(path: Path) -> float | None:
@@ -233,24 +238,26 @@ def check_same_call_heuristic(report: Report, window_seconds: int) -> None:
             for file_b, mtime_b in file_records[next_phase]:
                 delta = abs(mtime_a - mtime_b)
                 if delta <= window_seconds:
-                    report.findings.append(Finding(
-                        rule="adjacent_phase_same_window",
-                        severity="HEURISTIC",
-                        phase=phase,
-                        path=str(file_a),
-                        message=(
-                            f"phase{phase} file {file_a.name} and phase{next_phase} file "
-                            f"{file_b.name} share mtime within {int(delta)}s "
-                            f"(window={window_seconds}s). POSSIBLE same-call inflation. "
-                            f"Note: legitimate fast orchestrator runs also trigger this "
-                            f"heuristic — verify against orchestrator state ledger before "
-                            f"treating as #133-class violation."
-                        ),
-                    ))
+                    report.findings.append(
+                        Finding(
+                            rule="adjacent_phase_same_window",
+                            severity="HEURISTIC",
+                            phase=phase,
+                            path=str(file_a),
+                            message=(
+                                f"phase{phase} file {file_a.name} and phase{next_phase} file "
+                                f"{file_b.name} share mtime within {int(delta)}s "
+                                f"(window={window_seconds}s). POSSIBLE same-call inflation. "
+                                f"Note: legitimate fast orchestrator runs also trigger this "
+                                f"heuristic — verify against orchestrator state ledger before "
+                                f"treating as #133-class violation."
+                            ),
+                        )
+                    )
 
 
 def format_text(report: Report) -> str:
-    lines = [f"ARS pipeline integrity check (v3.9.2 advisory)"]
+    lines = ["ARS pipeline integrity check (v3.9.2 advisory)"]
     lines.append(f"Workdir: {report.workdir}")
     lines.append(f"Phase dirs found: {dict(sorted(report.phase_dirs.items()))}")
     lines.append("")

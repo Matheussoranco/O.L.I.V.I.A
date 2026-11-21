@@ -96,16 +96,12 @@ FORBIDDEN_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = tuple(
     (
         stem,
         re.compile(
-            r"\b" + re.escape(stem)
-            + (r"\b" if stem in _WHOLE_WORD_STEMS else ""),
+            r"\b" + re.escape(stem) + (r"\b" if stem in _WHOLE_WORD_STEMS else ""),
             re.IGNORECASE,
         ),
     )
     for stem in _NEVER_LICENSED_STEMS + _MEASURED_LICENSED_STEMS
-) + tuple(
-    (label, re.compile(pattern, re.IGNORECASE))
-    for label, pattern in _SURFACE_ONLY_PHRASES
-)
+) + tuple((label, re.compile(pattern, re.IGNORECASE)) for label, pattern in _SURFACE_ONLY_PHRASES)
 
 _PLUGIN_EXPOSED_RE = re.compile(r"(\d+)\s+plugin-exposed", re.IGNORECASE)
 
@@ -119,12 +115,13 @@ def _reject_json_constant(value: str) -> None:
 def _load_manifest(path: Path, errors: list[str]) -> dict | None:
     """D1: fail-closed manifest load."""
     if not path.is_file():
-        errors.append(f"D1: {path} is missing — the claim surface cannot "
-                      f"silently leave this lint's coverage")
+        errors.append(
+            f"D1: {path} is missing — the claim surface cannot "
+            f"silently leave this lint's coverage"
+        )
         return None
     try:
-        data = json.loads(path.read_text(encoding="utf-8"),
-                          parse_constant=_reject_json_constant)
+        data = json.loads(path.read_text(encoding="utf-8"), parse_constant=_reject_json_constant)
     except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
         errors.append(f"D1: {path} failed to parse as JSON ({exc})")
         return None
@@ -138,8 +135,7 @@ def _check_description(surface: str, value, errors: list[str]) -> None:
     """D2 shape + D3 claim-language discipline + D5 plugin-exposed binding
     for one description field."""
     if not isinstance(value, str) or not value.strip():
-        errors.append(f"D2: {surface} description is missing, empty, or "
-                      f"not a string")
+        errors.append(f"D2: {surface} description is missing, empty, or " f"not a string")
         return
     for label, pattern in FORBIDDEN_PATTERNS:
         if pattern.search(value):
@@ -174,9 +170,7 @@ def run(root: Path) -> list[str]:
     if plugin is not None:
         description = plugin.get("description")
         _check_description("plugin.json", description, errors)
-        if isinstance(description, str) and not AGENT_CLAIM_RE.search(
-            description
-        ):
+        if isinstance(description, str) and not AGENT_CLAIM_RE.search(description):
             errors.append(
                 "D4: plugin.json description carries no agent-count token "
                 "invariant 8 can bind ('N-agent' / 'N prompt roles', "
@@ -186,19 +180,18 @@ def run(root: Path) -> list[str]:
 
     marketplace = _load_manifest(plugin_dir / "marketplace.json", errors)
     if marketplace is not None:
-        _check_description(
-            "marketplace.json", marketplace.get("description"), errors
-        )
+        _check_description("marketplace.json", marketplace.get("description"), errors)
         plugins = marketplace.get("plugins")
         if not isinstance(plugins, list) or not plugins:
-            errors.append("D2: marketplace.json plugins[] is missing or "
-                          "empty — the per-plugin description surface cannot "
-                          "silently leave this lint's coverage")
+            errors.append(
+                "D2: marketplace.json plugins[] is missing or "
+                "empty — the per-plugin description surface cannot "
+                "silently leave this lint's coverage"
+            )
         else:
             for i, entry in enumerate(plugins):
                 if not isinstance(entry, dict):
-                    errors.append(f"D2: marketplace.json plugins[{i}] is "
-                                  f"not an object")
+                    errors.append(f"D2: marketplace.json plugins[{i}] is " f"not an object")
                     continue
                 _check_description(
                     f"marketplace.json plugins[{i}]",
@@ -217,8 +210,10 @@ def main(argv: list[str] | None = None) -> int:
         for e in errors:
             print(f"check_distribution_surface_claims: {e}", file=sys.stderr)
         return 1
-    print("PASSED: check_distribution_surface_claims — distribution-surface "
-          "descriptions stay within the evidence record")
+    print(
+        "PASSED: check_distribution_surface_claims — distribution-surface "
+        "descriptions stay within the evidence record"
+    )
     return 0
 
 

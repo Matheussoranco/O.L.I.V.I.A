@@ -9,20 +9,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
-REQUEST_SCHEMA = Path(
-    "shared/contracts/human_subjects/review_pathway_trace_request.schema.json"
-)
-TRACE_SCHEMA = Path(
-    "shared/contracts/human_subjects/review_pathway_rule_trace.schema.json"
-)
+REQUEST_SCHEMA = Path("shared/contracts/human_subjects/review_pathway_trace_request.schema.json")
+TRACE_SCHEMA = Path("shared/contracts/human_subjects/review_pathway_rule_trace.schema.json")
 REGISTRY = Path("shared/human_subjects_authority_registry.json")
 RUNTIME = Path("scripts/build_review_pathway_rule_trace.py")
 OUTPUT_LINT = Path("scripts/check_review_pathway_output.py")
 RUNTIME_TEST = Path("scripts/test_review_pathway_rule_trace.py")
-LINT_FIXTURE = Path(
-    "scripts/fixtures/review_pathway_rule_trace/lint-near-misses.json"
-)
+LINT_FIXTURE = Path("scripts/fixtures/review_pathway_rule_trace/lint-near-misses.json")
 DESIGN = Path("docs/design/2026-08-11-669-review-pathway-rule-trace-spec.md")
 PROTOCOL = Path("shared/references/review_pathway_rule_trace_protocol.md")
 AUTHORITY_PROTOCOL = Path("shared/references/human_subjects_authority_protocol.md")
@@ -227,9 +220,7 @@ REQUIRED_SNIPPETS: dict[Path, tuple[str, ...]] = {
         "python3 scripts/check_669_review_pathway_rule_trace.py",
     ),
 }
-SCOPED_SNIPPETS: dict[
-    Path, tuple[tuple[str, str | None, tuple[str, ...]], ...]
-] = {
+SCOPED_SNIPPETS: dict[Path, tuple[tuple[str, str | None, tuple[str, ...]], ...]] = {
     DESIGN: (
         (
             "## 9. Surface-scoped banned-output lint",
@@ -358,9 +349,7 @@ def _runtime_ast_errors(path: Path, source: str, required: set[str]) -> list[str
     except SyntaxError as exc:
         return [f"{path}: cannot parse: {exc}"]
     functions = {
-        node.name
-        for node in tree.body
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        node.name for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
     }
     for name in sorted(required - functions):
         errors.append(f"{path}: missing required function {name}")
@@ -372,9 +361,7 @@ def _runtime_ast_errors(path: Path, source: str, required: set[str]) -> list[str
             if node.module == "os":
                 for alias in node.names:
                     if alias.name in FORBIDDEN_SCAN_CALLS | FORBIDDEN_PROCESS_CALLS:
-                        errors.append(
-                            f"{path}: forbidden imported scan/process call {alias.name}"
-                        )
+                        errors.append(f"{path}: forbidden imported scan/process call {alias.name}")
         else:
             imports = []
         for imported in imports:
@@ -409,9 +396,7 @@ def _runtime_ast_errors(path: Path, source: str, required: set[str]) -> list[str
                 | FORBIDDEN_PROCESS_CALLS
                 | FORBIDDEN_DECISION_CALLS
             ):
-                errors.append(
-                    f"{path}: forbidden reflected call {node.args[1].value}"
-                )
+                errors.append(f"{path}: forbidden reflected call {node.args[1].value}")
     return errors
 
 
@@ -452,9 +437,7 @@ def run_checks(root: Path) -> list[str]:
         if const != "review-pathway-trace-request/1.0":
             errors.append(f"{REQUEST_SCHEMA}: schema version drifted")
         if (
-            request_schema.get("properties", {})
-            .get("ordering_semantics", {})
-            .get("const")
+            request_schema.get("properties", {}).get("ordering_semantics", {}).get("const")
             != ORDERING
         ):
             errors.append(f"{REQUEST_SCHEMA}: display-only ordering constant drifted")
@@ -572,7 +555,7 @@ def run_checks(root: Path) -> list[str]:
             banned = _literal_assignment(lint_tree, "ALWAYS_BANNED_TERMS")
             if set(pathway_terms or []) != EXPECTED_PATHWAY_TERMS:
                 errors.append(f"{OUTPUT_LINT}: closed pathway-name vocabulary drifted")
-            if not REQUIRED_ALWAYS_BANNED <= set(banned or []):
+            if not set(banned or []) >= REQUIRED_ALWAYS_BANNED:
                 errors.append(f"{OUTPUT_LINT}: required banned-output vocabulary drifted")
             if _literal_assignment(lint_tree, "MAX_RENDERED_BYTES") != 8 * 1024 * 1024:
                 errors.append(f"{OUTPUT_LINT}: rendered byte limit drifted")
@@ -635,9 +618,7 @@ def run_checks(root: Path) -> list[str]:
             section = text[content_start:end_index]
             for snippet in snippets:
                 if snippet not in section:
-                    errors.append(
-                        f"{rel}: primary #669 section {start!r} missing {snippet!r}"
-                    )
+                    errors.append(f"{rel}: primary #669 section {start!r} missing {snippet!r}")
 
     if ARCHITECT in texts and ARCHITECT_MIRROR in texts:
         if texts[ARCHITECT] != texts[ARCHITECT_MIRROR]:

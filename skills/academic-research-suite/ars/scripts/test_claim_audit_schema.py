@@ -24,7 +24,6 @@ Run:
 """
 from __future__ import annotations
 
-import copy
 import json
 import unittest
 from pathlib import Path
@@ -243,6 +242,7 @@ def run_lint(passport: Path) -> tuple[int, str, str]:
 # claim_audit_result schema. No lint invocation; pure Draft 2020-12 validate.
 # ---------------------------------------------------------------------------
 
+
 class TS1ValidMinimalEntry(unittest.TestCase):
     """T-S1: Valid minimal entry validates (SUPPORTED, all required fields)."""
 
@@ -309,6 +309,7 @@ class TS1ValidMinimalEntry(unittest.TestCase):
 # invokes the lint subprocess, and asserts findings.
 # ---------------------------------------------------------------------------
 
+
 class _LintTestBase(unittest.TestCase):
     def setUp(self) -> None:
         # Each test owns its tmpdir so concurrent unittest runners don't collide.
@@ -358,6 +359,7 @@ class _LintTestBase(unittest.TestCase):
 # Each invariant is one subTest; baseline = SUPPORTED entry, negative cases
 # mutate the field combination the invariant forbids.
 # ---------------------------------------------------------------------------
+
 
 class TS2ClaimAuditInvariants(_LintTestBase):
     """T-S2: each INV-N paired positive/negative fixture."""
@@ -664,6 +666,7 @@ class TS2ClaimAuditInvariants(_LintTestBase):
 # T-S3: anchor_kind=none + INV-6 violation paths.
 # ---------------------------------------------------------------------------
 
+
 class TS3AnchorNoneInv6(_LintTestBase):
     """T-S3: anchor=none entries that miss rationale prefix or use wrong method."""
 
@@ -697,6 +700,7 @@ class TS3AnchorNoneInv6(_LintTestBase):
 # ---------------------------------------------------------------------------
 # T-S4: M-INV-1 duplicate claim_id within ONE manifest.
 # ---------------------------------------------------------------------------
+
 
 class TS4ManifestInv1(_LintTestBase):
     """T-S4: duplicate claim_id within one manifest is rejected; cross-manifest collision permitted."""
@@ -750,6 +754,7 @@ class TS4ManifestInv1(_LintTestBase):
 # T-S5: M-INV-2 dangling NC-C{n}-{m} (no parent claim with C-{n}).
 # ---------------------------------------------------------------------------
 
+
 class TS5ManifestInv2(_LintTestBase):
     """T-S5: NC-C{n}-{m} must scope under a claims[] entry with claim_id=C-{n}."""
 
@@ -780,6 +785,7 @@ class TS5ManifestInv2(_LintTestBase):
 # ---------------------------------------------------------------------------
 # T-S6: M-INV-3 claim-level NC attempting to override MNC.
 # ---------------------------------------------------------------------------
+
 
 class TS6ManifestInv3(_LintTestBase):
     """T-S6: claim-level NC cannot DROP a global MNC; ADD is permitted."""
@@ -819,6 +825,7 @@ class TS6ManifestInv3(_LintTestBase):
 # ---------------------------------------------------------------------------
 # T-S7: U-INV-1..U-INV-4 paired positive/negative.
 # ---------------------------------------------------------------------------
+
 
 class TS7UncitedAssertionInvariants(_LintTestBase):
     """T-S7: U-INV-1..U-INV-4 paired pos/neg fixtures."""
@@ -878,6 +885,7 @@ class TS7UncitedAssertionInvariants(_LintTestBase):
 # Spec §3.1 table: 9 positive rows, lint rejects every (j, a, d) triple
 # outside the table; ≥5 disallowed combinations exercised explicitly.
 # ---------------------------------------------------------------------------
+
 
 class TS8AllowedMatrix(_LintTestBase):
     """T-S8: every allowed triple validates; ≥5 disallowed combinations rejected."""
@@ -1004,6 +1012,7 @@ class TS8AllowedMatrix(_LintTestBase):
 # Not labelled T-Sx in spec §7.1 but mandatory per §6.4a. Paired pos/neg.
 # ---------------------------------------------------------------------------
 
+
 class TSDDriftInvariants(_LintTestBase):
     """Spec §6.4a: claim_drift D-INV-1..D-INV-4."""
 
@@ -1058,6 +1067,7 @@ class TSDDriftInvariants(_LintTestBase):
 # ---------------------------------------------------------------------------
 # Spec §6.4b — CV-INV-1..CV-INV-4 constraint_violation cross-array integrity.
 # ---------------------------------------------------------------------------
+
 
 class TSCVConstraintViolationInvariants(_LintTestBase):
     """Spec §6.4b: constraint_violation CV-INV-1..CV-INV-4."""
@@ -1226,6 +1236,7 @@ class TSCVDedupeManifestScope(_LintTestBase):
 # ---------------------------------------------------------------------------
 # Spec §6.4c — S-INV-1..S-INV-4 audit_sampling_summary invariants.
 # ---------------------------------------------------------------------------
+
 
 class TSSamplingInvariants(_LintTestBase):
     """Spec §6.4c: audit_sampling_summary S-INV-1..S-INV-4."""
@@ -1599,8 +1610,14 @@ class TS9MalformedPassportGuard(_LintTestBase):
                     1,
                     msg=f"expected exit=1 for malformed={malformed!r}; got {code}\nstdout:\n{out}\nstderr:\n{err}",
                 )
-                self.assertIn("schema", out, msg=f"expected schema finding for malformed={malformed!r}:\n{out}")
-                self.assertNotIn("Traceback", err, msg=f"lint must not raise for malformed={malformed!r}:\n{err}")
+                self.assertIn(
+                    "schema",
+                    out,
+                    msg=f"expected schema finding for malformed={malformed!r}:\n{out}",
+                )
+                self.assertNotIn(
+                    "Traceback", err, msg=f"lint must not raise for malformed={malformed!r}:\n{err}"
+                )
 
     # Step 13 R6 codex P2 + R8 P2-2 — nested schema-invalid shapes must not
     # crash the cross-field invariant walkers. Schema validator records the
@@ -1629,7 +1646,9 @@ class TS9MalformedPassportGuard(_LintTestBase):
         path = write_passport(self.tmp, body)
         code, out, err = run_lint(path)
         self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
-        self.assertNotIn("Traceback", err, msg=f"lint must not crash on non-string claim_id:\n{err}")
+        self.assertNotIn(
+            "Traceback", err, msg=f"lint must not crash on non-string claim_id:\n{err}"
+        )
         self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
 
     def test_audited_indices_mixed_types_does_not_crash_sampling_walker(self) -> None:
@@ -1638,15 +1657,17 @@ class TS9MalformedPassportGuard(_LintTestBase):
         # (indices[i] <= indices[i-1]) must skip instead of raising
         # TypeError on '<=' between str and int.
         body = build_passport()
-        body["audit_sampling_summaries"] = [{
-            "audit_run_id": AUDIT_RUN_ID,
-            "max_claims_per_paper": 10,
-            "total_citation_count": 5,
-            "audited_count": 2,
-            "audited_indices": ["a", 1],
-            "sampling_strategy": "stratified_buckets_v1",
-            "emitted_at": "2026-05-15T10:15:00Z",
-        }]
+        body["audit_sampling_summaries"] = [
+            {
+                "audit_run_id": AUDIT_RUN_ID,
+                "max_claims_per_paper": 10,
+                "total_citation_count": 5,
+                "audited_count": 2,
+                "audited_indices": ["a", 1],
+                "sampling_strategy": "stratified_buckets_v1",
+                "emitted_at": "2026-05-15T10:15:00Z",
+            }
+        ]
         path = write_passport(self.tmp, body)
         code, out, err = run_lint(path)
         self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
@@ -1667,7 +1688,9 @@ class TS9MalformedPassportGuard(_LintTestBase):
         path = write_passport(self.tmp, body)
         code, out, err = run_lint(path)
         self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
-        self.assertNotIn("Traceback", err, msg=f"lint must not crash on unhashable claim_id:\n{err}")
+        self.assertNotIn(
+            "Traceback", err, msg=f"lint must not crash on unhashable claim_id:\n{err}"
+        )
         self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
 
     def test_unhashable_finding_id_does_not_crash_cv_inv_1(self) -> None:
@@ -1694,7 +1717,9 @@ class TS9MalformedPassportGuard(_LintTestBase):
         path = write_passport(self.tmp, body)
         code, out, err = run_lint(path)
         self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
-        self.assertNotIn("Traceback", err, msg=f"lint must not crash on unhashable finding_id:\n{err}")
+        self.assertNotIn(
+            "Traceback", err, msg=f"lint must not crash on unhashable finding_id:\n{err}"
+        )
         self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
 
     def test_unhashable_mnc_constraint_id_does_not_crash_m_inv_3(self) -> None:
@@ -1709,7 +1734,9 @@ class TS9MalformedPassportGuard(_LintTestBase):
         path = write_passport(self.tmp, body)
         code, out, err = run_lint(path)
         self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
-        self.assertNotIn("Traceback", err, msg=f"lint must not crash on unhashable MNC constraint_id:\n{err}")
+        self.assertNotIn(
+            "Traceback", err, msg=f"lint must not crash on unhashable MNC constraint_id:\n{err}"
+        )
         self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
 
     def test_non_string_claim_text_does_not_crash_cv_inv_4_dedupe(self) -> None:
@@ -1736,7 +1763,9 @@ class TS9MalformedPassportGuard(_LintTestBase):
         path = write_passport(self.tmp, body)
         code, out, err = run_lint(path)
         self.assertEqual(code, 1, msg=f"expected exit=1; got {code}\nstderr:\n{err}")
-        self.assertNotIn("Traceback", err, msg=f"lint must not crash on non-string claim_text:\n{err}")
+        self.assertNotIn(
+            "Traceback", err, msg=f"lint must not crash on non-string claim_text:\n{err}"
+        )
         self.assertIn("schema", out, msg=f"expected schema finding:\n{out}")
 
 

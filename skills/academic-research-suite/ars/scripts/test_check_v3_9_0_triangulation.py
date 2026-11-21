@@ -6,9 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
-
 SCRIPT = Path(__file__).parent / "check_v3_9_0_triangulation.py"
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -87,6 +84,7 @@ def test_lint_substring_collision_not_false_positive():
 # Rule 1 — marker syntax
 # ---------------------------------------------------------------------------
 
+
 def test_rule1_all_markers_present_in_real_repo():
     """Rule 1: real orchestrator has all 3 new v3.9.0 markers in subsection."""
     result = run_lint()
@@ -108,6 +106,7 @@ def test_rule1_missing_marker_fails(tmp_path):
 # ---------------------------------------------------------------------------
 # Rule 2 — preprint composition order
 # ---------------------------------------------------------------------------
+
 
 def test_rule2_preprint_order_correct_in_real_repo():
     """Rule 2: real orchestrator has all PREPRINT compositions with PREPRINT first."""
@@ -134,6 +133,7 @@ def test_rule2_preprint_order_violated_fails(tmp_path):
 # ---------------------------------------------------------------------------
 # Rule 3 — v3.7.3 legacy compat
 # ---------------------------------------------------------------------------
+
 
 def test_rule3_legacy_compat_preserved_in_real_repo():
     """Rule 3: real orchestrator's k=1 k_max=1 S2 row produces CONTAMINATED-UNMATCHED."""
@@ -203,6 +203,7 @@ def test_rule3_missing_legacy_rows_fails(tmp_path):
 # Rule 4 — no *-BLOCK in v3.9.0 subsection
 # ---------------------------------------------------------------------------
 
+
 def test_rule4_no_block_tokens_in_real_repo():
     """Rule 4: real orchestrator's v3.9.0 subsection has no backtick-quoted *-BLOCK tokens."""
     result = run_lint()
@@ -230,6 +231,7 @@ def test_rule4_high_block_injection_fails(tmp_path):
 # ---------------------------------------------------------------------------
 # (Clean-repo pass for all 13 allowlist tokens is covered by
 # test_lint_passes_on_clean_repo above — not duplicated here.)
+
 
 def test_delta1_missing_arxiv_allowlist_token_fails(tmp_path):
     """Drop CONTAMINATED-ARXIV-UNMATCHED from the formatter allowlist — set-equality
@@ -298,8 +300,7 @@ def test_delta1_arxiv_is_kmax1_carveout_documented():
     documented verbatim in the orchestrator subsection so a future edit cannot
     silently widen it (the resolved reading of the ambiguous 'single-index' phrase:
     single-index means k_max=1, not merely k=1). This pins the prompt contract."""
-    orch = (REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
-            ).read_text()
+    orch = (REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md").read_text()
     # The disambiguating sentence must be present.
     assert "single-index" in orch and "k_max=1" in orch
     assert "CONTAMINATED-COVERAGE-NOISE" in orch  # the k=1 k_max>=2 arxiv fallback
@@ -308,6 +309,7 @@ def test_delta1_arxiv_is_kmax1_carveout_documented():
 # ---------------------------------------------------------------------------
 # Invocation error handling
 # ---------------------------------------------------------------------------
+
 
 def test_orchestrator_path_missing_returns_2(tmp_path):
     """Missing orchestrator file → exit 2 (invocation error)."""

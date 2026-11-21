@@ -80,10 +80,7 @@ SQUARE_CITATION_RE = re.compile(r"\[(?:\d+[-,;\s]*)+\]")
 # `Smith`→`Jones` swap that keeps the same year and the same ref marker still
 # surfaces as a citation delta. The author phrase is capitalized-word runs
 # joined by `&` / `and` / `et al.`; the year alone is the parenthetical form.
-_NARRATIVE_AUTHOR = (
-    r"(?:[A-Z][\w'’-]+(?:\s+(?:&|and|et\s+al\.?)\s*)?)+"
-    r"(?:\s+et\s+al\.?)?\s+"
-)
+_NARRATIVE_AUTHOR = r"(?:[A-Z][\w'’-]+(?:\s+(?:&|and|et\s+al\.?)\s*)?)+" r"(?:\s+et\s+al\.?)?\s+"
 AUTHOR_YEAR_RE = re.compile(
     rf"(?:{_NARRATIVE_AUTHOR})?\((?:[^()]*\b(?:19|20)\d{{2}}[a-z]?\b[^()]*|(?:19|20)\d{{2}}[a-z]?)\)"
 )
@@ -148,9 +145,7 @@ def audit_pair(source: str, revision: str, protected_terms=()) -> dict:
         ),
     }
     result["conserved"] = all(
-        not delta[side]
-        for delta in result.values()
-        for side in ("removed", "added")
+        not delta[side] for delta in result.values() for side in ("removed", "added")
     )
     return result
 

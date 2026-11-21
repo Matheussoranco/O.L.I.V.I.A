@@ -14,7 +14,7 @@ import sys
 import unittest
 import urllib.error
 from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
@@ -43,12 +43,8 @@ class DoiLookupTest(unittest.TestCase):
     def test_doi_match_with_matching_title(self) -> None:
         client = ssc.SemanticScholarClient()
         payload = {"paperId": "abc123", "title": "AI in education"}
-        with patch(
-            "urllib.request.urlopen", _mock_urlopen_returning(payload)
-        ):
-            result = client.lookup(
-                {"title": "AI in education", "doi": "10.1234/xyz", "year": 2024}
-            )
+        with patch("urllib.request.urlopen", _mock_urlopen_returning(payload)):
+            result = client.lookup({"title": "AI in education", "doi": "10.1234/xyz", "year": 2024})
         self.assertEqual(result, {"matched": True, "paperId": "abc123"})
 
     def test_doi_lookup_quotes_doi_path_segment(self) -> None:
@@ -57,22 +53,29 @@ class DoiLookupTest(unittest.TestCase):
 
         def mock_urlopen(req, *args, **kwargs):
             captured_urls.append(req.full_url)
-            return _mock_response({
-                "paperId": "abc123",
-                "title": "AI in education",
-            })
+            return _mock_response(
+                {
+                    "paperId": "abc123",
+                    "title": "AI in education",
+                }
+            )
 
         with patch("urllib.request.urlopen", mock_urlopen):
-            result = client.lookup({
-                "title": "AI in education",
-                "doi": "10.1000/foo?bar=baz",
-                "year": 2024,
-            })
+            result = client.lookup(
+                {
+                    "title": "AI in education",
+                    "doi": "10.1000/foo?bar=baz",
+                    "year": 2024,
+                }
+            )
 
         self.assertEqual(result, {"matched": True, "paperId": "abc123"})
-        self.assertEqual(captured_urls, [
-            "https://api.semanticscholar.org/graph/v1/paper/DOI:10.1000%2Ffoo%3Fbar%3Dbaz?fields=title,authors,year,externalIds,venue,publicationDate"
-        ])
+        self.assertEqual(
+            captured_urls,
+            [
+                "https://api.semanticscholar.org/graph/v1/paper/DOI:10.1000%2Ffoo%3Fbar%3Dbaz?fields=title,authors,year,externalIds,venue,publicationDate"
+            ],
+        )
 
     def test_rejects_non_s2_api_url_before_urlopen(self) -> None:
         client = ssc.SemanticScholarClient()
@@ -100,19 +103,19 @@ class DoiLookupTest(unittest.TestCase):
         client = ssc.SemanticScholarClient(sleep=MagicMock())
         # DOI lookup 404s; title search finds match
         title_payload = {
-            "data": [
-                {"paperId": "title-hit", "title": "AI in education", "year": 2024}
-            ]
+            "data": [{"paperId": "title-hit", "title": "AI in education", "year": 2024}]
         }
         title_body = json.dumps(title_payload).encode("utf-8")
         title_resp = MagicMock()
         title_resp.read.return_value = title_body
         title_resp.__enter__ = MagicMock(return_value=title_resp)
         title_resp.__exit__ = MagicMock(return_value=False)
-        urlopen = MagicMock(side_effect=[
-            urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
-            title_resp,
-        ])
+        urlopen = MagicMock(
+            side_effect=[
+                urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
+                title_resp,
+            ]
+        )
         with patch("urllib.request.urlopen", urlopen):
             result = client.lookup(
                 {"title": "AI in education", "doi": "10.9999/bogus", "year": 2024}
@@ -125,9 +128,7 @@ class DoiLookupTest(unittest.TestCase):
         client = ssc.SemanticScholarClient(sleep=MagicMock())
         doi_payload = {"paperId": "wrong-paper", "title": "Totally unrelated"}
         title_payload = {
-            "data": [
-                {"paperId": "title-hit", "title": "AI in education", "year": 2024}
-            ]
+            "data": [{"paperId": "title-hit", "title": "AI in education", "year": 2024}]
         }
         doi_body = json.dumps(doi_payload).encode("utf-8")
         title_body = json.dumps(title_payload).encode("utf-8")
@@ -141,18 +142,18 @@ class DoiLookupTest(unittest.TestCase):
         title_resp.__exit__ = MagicMock(return_value=False)
         urlopen = MagicMock(side_effect=[doi_resp, title_resp])
         with patch("urllib.request.urlopen", urlopen):
-            result = client.lookup(
-                {"title": "AI in education", "doi": "10.1234/xyz", "year": 2024}
-            )
+            result = client.lookup({"title": "AI in education", "doi": "10.1234/xyz", "year": 2024})
         self.assertEqual(result, {"matched": True, "paperId": "title-hit"})
 
     def test_doi_404_and_title_404_returns_no_match(self) -> None:
         """Both endpoints miss: now legitimate unmatched."""
         client = ssc.SemanticScholarClient(sleep=MagicMock())
-        urlopen = MagicMock(side_effect=[
-            urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
-            urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
-        ])
+        urlopen = MagicMock(
+            side_effect=[
+                urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
+                urllib.error.HTTPError("u", 404, "Not Found", {}, io.BytesIO(b"")),
+            ]
+        )
         with patch("urllib.request.urlopen", urlopen):
             result = client.lookup(
                 {"title": "Truly nonexistent", "doi": "10.0000/bogus", "year": 2024}
@@ -163,35 +164,21 @@ class DoiLookupTest(unittest.TestCase):
 class TitleSearchTest(unittest.TestCase):
     def test_title_search_above_threshold_matches(self) -> None:
         client = ssc.SemanticScholarClient()
-        payload = {
-            "data": [
-                {"paperId": "abc123", "title": "AI in education", "year": 2024}
-            ]
-        }
-        with patch(
-            "urllib.request.urlopen", _mock_urlopen_returning(payload)
-        ):
+        payload = {"data": [{"paperId": "abc123", "title": "AI in education", "year": 2024}]}
+        with patch("urllib.request.urlopen", _mock_urlopen_returning(payload)):
             result = client.lookup({"title": "AI in education", "year": 2024})
         self.assertEqual(result, {"matched": True, "paperId": "abc123"})
 
     def test_title_search_below_threshold_no_match(self) -> None:
         client = ssc.SemanticScholarClient()
-        payload = {
-            "data": [
-                {"paperId": "xyz", "title": "Totally different", "year": 2024}
-            ]
-        }
-        with patch(
-            "urllib.request.urlopen", _mock_urlopen_returning(payload)
-        ):
+        payload = {"data": [{"paperId": "xyz", "title": "Totally different", "year": 2024}]}
+        with patch("urllib.request.urlopen", _mock_urlopen_returning(payload)):
             result = client.lookup({"title": "AI in education", "year": 2024})
         self.assertEqual(result, {"matched": False, "paperId": None})
 
     def test_empty_results_no_match(self) -> None:
         client = ssc.SemanticScholarClient()
-        with patch(
-            "urllib.request.urlopen", _mock_urlopen_returning({"data": []})
-        ):
+        with patch("urllib.request.urlopen", _mock_urlopen_returning({"data": []})):
             result = client.lookup({"title": "Unknown paper"})
         self.assertEqual(result, {"matched": False, "paperId": None})
 
@@ -213,15 +200,15 @@ class FailureHandlingTest(unittest.TestCase):
         resp.__exit__ = MagicMock(return_value=False)
 
         # First two calls 429, third succeeds
-        urlopen = MagicMock(side_effect=[
-            self._raise_http(429),
-            self._raise_http(429),
-            resp,
-        ])
+        urlopen = MagicMock(
+            side_effect=[
+                self._raise_http(429),
+                self._raise_http(429),
+                resp,
+            ]
+        )
         with patch("urllib.request.urlopen", urlopen):
-            result = client.lookup(
-                {"title": "AI in education", "doi": "10.1234/xyz"}
-            )
+            result = client.lookup({"title": "AI in education", "doi": "10.1234/xyz"})
         self.assertEqual(result, {"matched": True, "paperId": "abc"})
 
     def test_429_after_max_retries_raises_unavailable(self) -> None:
@@ -320,9 +307,7 @@ class RateLimitThrottleTest(unittest.TestCase):
         regardless of S2_API_KEY env (no comparison against tier)."""
         sleep = MagicMock()
         clock = MagicMock(return_value=1000.0)
-        client = ssc.SemanticScholarClient(
-            sleep=sleep, clock=clock, min_interval_seconds=1.0
-        )
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock, min_interval_seconds=1.0)
         with patch(
             "urllib.request.urlopen",
             MagicMock(return_value=self._good_resp({"paperId": "x", "title": "T"})),
@@ -341,9 +326,7 @@ class RateLimitThrottleTest(unittest.TestCase):
         # clock: first request at t=1000.0, second at t=1000.3 (0.3s later
         # — throttle should sleep 0.7s before issuing second request)
         clock = MagicMock(side_effect=[1000.0, 1000.3, 1000.3])
-        client = ssc.SemanticScholarClient(
-            sleep=sleep, clock=clock, min_interval_seconds=1.0
-        )
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock, min_interval_seconds=1.0)
         resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
         with patch(
             "urllib.request.urlopen",
@@ -363,9 +346,7 @@ class RateLimitThrottleTest(unittest.TestCase):
         sleep = MagicMock()
         # Second call 2.5s after first; no throttle sleep needed
         clock = MagicMock(side_effect=[1000.0, 1002.5, 1002.5])
-        client = ssc.SemanticScholarClient(
-            sleep=sleep, clock=clock, min_interval_seconds=1.0
-        )
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock, min_interval_seconds=1.0)
         resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
         with patch(
             "urllib.request.urlopen",
@@ -382,9 +363,7 @@ class RateLimitThrottleTest(unittest.TestCase):
         interval. When S2_API_KEY is set, throttle drops accordingly."""
         sleep = MagicMock()
         clock = MagicMock(side_effect=[1000.0, 1000.03, 1000.03])
-        client = ssc.SemanticScholarClient(
-            api_key="test-key", sleep=sleep, clock=clock
-        )
+        client = ssc.SemanticScholarClient(api_key="test-key", sleep=sleep, clock=clock)
         resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
         with patch(
             "urllib.request.urlopen",
@@ -412,18 +391,15 @@ class RateLimitThrottleTest(unittest.TestCase):
         #   from anchor with 1s interval = sleep 1.0s)
         # call 2 entry write t=1003.0
         clock = MagicMock(side_effect=[1000.0, 1002.0, 1002.0, 1003.0])
-        client = ssc.SemanticScholarClient(
-            sleep=sleep, clock=clock, min_interval_seconds=1.0
-        )
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock, min_interval_seconds=1.0)
         good = _mock_response({"paperId": "x", "title": "T"})
 
         def urlopen_side(*args, **kwargs):
             urlopen_side.count += 1
             if urlopen_side.count == 1:
-                raise urllib.error.HTTPError(
-                    "u", 429, "Too Many", {}, io.BytesIO(b"")
-                )
+                raise urllib.error.HTTPError("u", 429, "Too Many", {}, io.BytesIO(b""))
             return good
+
         urlopen_side.count = 0
 
         with patch("urllib.request.urlopen", urlopen_side):
@@ -441,9 +417,7 @@ class RateLimitThrottleTest(unittest.TestCase):
         for a hypothetical higher tier)."""
         sleep = MagicMock()
         clock = MagicMock(side_effect=[1000.0, 1000.0, 1000.0])
-        client = ssc.SemanticScholarClient(
-            sleep=sleep, clock=clock, min_interval_seconds=0.0
-        )
+        client = ssc.SemanticScholarClient(sleep=sleep, clock=clock, min_interval_seconds=0.0)
         resp_factory = lambda: self._good_resp({"paperId": "x", "title": "T"})
         with patch(
             "urllib.request.urlopen",
@@ -466,9 +440,7 @@ class OutageLatchTest(unittest.TestCase):
         call must raise immediately WITHOUT invoking urlopen — the
         latch short-circuits the network entirely."""
         client = ssc.SemanticScholarClient(sleep=MagicMock())
-        urlopen = MagicMock(
-            side_effect=urllib.error.URLError("connection refused")
-        )
+        urlopen = MagicMock(side_effect=urllib.error.URLError("connection refused"))
         with patch("urllib.request.urlopen", urlopen):
             with self.assertRaises(SemanticScholarUnavailable):
                 client.lookup({"title": "T", "doi": "10.1/y"})
@@ -494,9 +466,7 @@ class OutageLatchTest(unittest.TestCase):
 
         # Subsequent call should re-attempt urlopen (and succeed in this
         # mock scenario)
-        urlopen_good = MagicMock(
-            return_value=_mock_response({"paperId": "x", "title": "T"})
-        )
+        urlopen_good = MagicMock(return_value=_mock_response({"paperId": "x", "title": "T"}))
         with patch("urllib.request.urlopen", urlopen_good):
             result = client.lookup({"title": "T", "doi": "10.1/y"})
         self.assertEqual(result, {"matched": True, "paperId": "x"})
@@ -529,9 +499,11 @@ class OutageLatchTest(unittest.TestCase):
         remaining batch; HTTP failures don't. Make sure 5xx doesn't
         falsely latch the client."""
         client = ssc.SemanticScholarClient(sleep=MagicMock())
-        urlopen = MagicMock(side_effect=[
-            urllib.error.HTTPError("u", 503, "Service Unavailable", {}, io.BytesIO(b"")),
-        ])
+        urlopen = MagicMock(
+            side_effect=[
+                urllib.error.HTTPError("u", 503, "Service Unavailable", {}, io.BytesIO(b"")),
+            ]
+        )
         with patch("urllib.request.urlopen", urlopen):
             with self.assertRaises(SemanticScholarUnavailable):
                 client.lookup({"title": "T", "doi": "10.1/y"})
@@ -546,6 +518,7 @@ class CLIWiringTest(unittest.TestCase):
 
     def test_build_default_ss_client_returns_real_client(self) -> None:
         import migrate_literature_corpus_to_v3_7_3 as mig
+
         client = mig._build_default_ss_client()
         self.assertIsInstance(client, ssc.SemanticScholarClient)
 

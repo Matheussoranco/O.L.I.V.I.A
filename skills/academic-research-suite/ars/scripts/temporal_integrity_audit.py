@@ -32,12 +32,10 @@ DEICTIC_PATTERN = re.compile(
     re.IGNORECASE,
 )
 
-MONTH_NAMES = "January|February|March|April|May|June|July|August|September|October|November|December"
-DATE_REGEX = (
-    r"\d{4}-\d{2}-\d{2}"
-    r"|(?:" + MONTH_NAMES + r")\s+\d{4}"
-    r"|(?:19|20)\d{2}"
+MONTH_NAMES = (
+    "January|February|March|April|May|June|July|August|September|October|November|December"
 )
+DATE_REGEX = r"\d{4}-\d{2}-\d{2}" r"|(?:" + MONTH_NAMES + r")\s+\d{4}" r"|(?:19|20)\d{2}"
 
 PATTERN_A = re.compile(
     r"(?:as of|on|in|reported in|stated in|noted in)\s+"
@@ -63,13 +61,11 @@ COMPARATOR_FORM_A = re.compile(
     re.IGNORECASE,
 )
 COMPARATOR_FORM_B = re.compile(
-    r"\b(?P<year>(?:19|20)\d{2})\s+"
-    r"(?P<noun>edition|version|standard|handbook|guideline)\b",
+    r"\b(?P<year>(?:19|20)\d{2})\s+" r"(?P<noun>edition|version|standard|handbook|guideline)\b",
     re.IGNORECASE,
 )
 COMPARATOR_FORM_C = re.compile(
-    r"(?P<noun>edition|version|standard)\s+(?:of|from)\s+"
-    r"(?P<year>(?:19|20)\d{2})\b",
+    r"(?P<noun>edition|version|standard)\s+(?:of|from)\s+" r"(?P<year>(?:19|20)\d{2})\b",
     re.IGNORECASE,
 )
 
@@ -86,8 +82,20 @@ CAUSAL_TRIGGERS = [
 ]
 
 MONTH_TO_NUM = {name.lower(): f"{i+1:02d}" for i, name in enumerate(MONTH_NAMES.split("|"))}
-LAST_DAY = {"01": "31", "02": "28", "03": "31", "04": "30", "05": "31", "06": "30",
-            "07": "31", "08": "31", "09": "30", "10": "31", "11": "30", "12": "31"}
+LAST_DAY = {
+    "01": "31",
+    "02": "28",
+    "03": "31",
+    "04": "30",
+    "05": "31",
+    "06": "30",
+    "07": "31",
+    "08": "31",
+    "09": "30",
+    "10": "31",
+    "11": "30",
+    "12": "31",
+}
 
 
 def _date_to_interval(raw: str) -> tuple[str, str]:
@@ -214,8 +222,17 @@ def _pass_1_arithmetic(draft: str, findings: list[dict]) -> None:
                 pass
             else:
                 if event_start > anchor_end:
-                    violations.append(("A", anchor_raw, event_raw,
-                                       anchor_start, anchor_end, event_start, event_end))
+                    violations.append(
+                        (
+                            "A",
+                            anchor_raw,
+                            event_raw,
+                            anchor_start,
+                            anchor_end,
+                            event_start,
+                            event_end,
+                        )
+                    )
 
         m_b = PATTERN_B.search(sentence)
         if m_b:
@@ -229,50 +246,74 @@ def _pass_1_arithmetic(draft: str, findings: list[dict]) -> None:
             else:
                 # Pattern B violation: forthcoming event already past at anchor time
                 if event_start <= anchor_end:
-                    violations.append(("B", anchor_raw, event_raw,
-                                       anchor_start, anchor_end, event_start, event_end))
+                    violations.append(
+                        (
+                            "B",
+                            anchor_raw,
+                            event_raw,
+                            anchor_start,
+                            anchor_end,
+                            event_start,
+                            event_end,
+                        )
+                    )
 
         if not violations:
             continue
 
         # Emit one finding per sentence — pick the largest-gap violation.
         violations.sort(key=lambda v: abs(_date_diff_days(v[5], v[4])), reverse=True)
-        which, anchor_raw, event_raw, anchor_start, anchor_end, event_start, event_end = violations[0]
+        which, anchor_raw, event_raw, anchor_start, anchor_end, event_start, event_end = violations[
+            0
+        ]
         rationale = (
             f"Pattern {which}: anchor '{anchor_raw}' ({anchor_start}..{anchor_end}) "
             f"{'before' if which == 'A' else 'after'} event '{event_raw}' "
             f"({event_start}..{event_end}); "
-            + ("event has not yet occurred at anchor time" if which == "A"
-               else "forthcoming event already past at anchor time")
+            + (
+                "event has not yet occurred at anchor time"
+                if which == "A"
+                else "forthcoming event already past at anchor time"
+            )
         )
-        findings.append({
-            "finding_id": f"TF-{_next_finding_id(findings):03d}",
-            "finding_kind": "TEMPORAL-ARITHMETIC-IMPOSSIBLE",
-            "severity": "HIGH",
-            "mode": 1,
-            "block_eligible": True,
-            "draft_locator": {
-                "file": "phase4_composition/draft.md",
-                "line": line_no,
-                "sentence": sentence.strip(),
-            },
-            "matched_span": None,
-            "bound_refs": [],
-            "bound_event": None,
-            "bound_dates": {
-                "left": {"role": "anchor",
-                         "value": f"{anchor_start}..{anchor_end}",
-                         "source": "draft_capture", "ref_slug": None},
-                "right": {"role": "event",
-                          "value": f"{event_start}..{event_end}",
-                          "source": "draft_capture", "ref_slug": None},
-            },
-            "rationale": rationale,
-            "suggested_fix": "Restate the claim to match the anchor's true time horizon, or hedge.",
-        })
+        findings.append(
+            {
+                "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                "finding_kind": "TEMPORAL-ARITHMETIC-IMPOSSIBLE",
+                "severity": "HIGH",
+                "mode": 1,
+                "block_eligible": True,
+                "draft_locator": {
+                    "file": "phase4_composition/draft.md",
+                    "line": line_no,
+                    "sentence": sentence.strip(),
+                },
+                "matched_span": None,
+                "bound_refs": [],
+                "bound_event": None,
+                "bound_dates": {
+                    "left": {
+                        "role": "anchor",
+                        "value": f"{anchor_start}..{anchor_end}",
+                        "source": "draft_capture",
+                        "ref_slug": None,
+                    },
+                    "right": {
+                        "role": "event",
+                        "value": f"{event_start}..{event_end}",
+                        "source": "draft_capture",
+                        "ref_slug": None,
+                    },
+                },
+                "rationale": rationale,
+                "suggested_fix": "Restate the claim to match the anchor's true time horizon, or hedge.",
+            }
+        )
 
 
-def _pass_2_anachronism(draft: str, timeline: dict, citation_provenance: dict, findings: list[dict]) -> None:
+def _pass_2_anachronism(
+    draft: str, timeline: dict, citation_provenance: dict, findings: list[dict]
+) -> None:
     """P2 Mode 2 version-as-evidence-past anachronism.
 
     For each <!--ref:slug--> marker:
@@ -295,89 +336,99 @@ def _pass_2_anachronism(draft: str, timeline: dict, citation_provenance: dict, f
         # v3.9.4.1 hotfix: provenance confidence gate (spec §3.4)
         prov_conf = _provenance_confidence(slug, citation_provenance)
         if prov_conf in {"low", "conflict"}:
-            findings.append({
-                "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                "finding_kind": "TEMPORAL-METADATA-MISSING",
-                "severity": "LOW",
-                "mode": None,
-                "block_eligible": False,
-                "draft_locator": {
-                    "file": "phase4_composition/draft.md",
-                    "line": ref_line_no,
-                    "sentence": _sentence_around(draft, m_ref.start()),
-                },
-                "matched_span": None,
-                "bound_refs": [{"ref_slug": slug, "timeline_entry": None}],
-                "bound_event": None,
-                "bound_dates": None,
-                "rationale": f"<!--ref:{slug}--> citation_provenance confidence={prov_conf}; per spec §3.4 not used as arithmetic ground truth.",
-                "suggested_fix": None,
-            })
+            findings.append(
+                {
+                    "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                    "finding_kind": "TEMPORAL-METADATA-MISSING",
+                    "severity": "LOW",
+                    "mode": None,
+                    "block_eligible": False,
+                    "draft_locator": {
+                        "file": "phase4_composition/draft.md",
+                        "line": ref_line_no,
+                        "sentence": _sentence_around(draft, m_ref.start()),
+                    },
+                    "matched_span": None,
+                    "bound_refs": [{"ref_slug": slug, "timeline_entry": None}],
+                    "bound_event": None,
+                    "bound_dates": None,
+                    "rationale": f"<!--ref:{slug}--> citation_provenance confidence={prov_conf}; per spec §3.4 not used as arithmetic ground truth.",
+                    "suggested_fix": None,
+                }
+            )
             continue
 
         source = sources_by_key.get(slug)
         if source is None:
-            findings.append({
-                "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                "finding_kind": "TEMPORAL-METADATA-MISSING",
-                "severity": "LOW",
-                "mode": None,
-                "block_eligible": False,
-                "draft_locator": {
-                    "file": "phase4_composition/draft.md",
-                    "line": ref_line_no,
-                    "sentence": _sentence_around(draft, m_ref.start()),
-                },
-                "matched_span": None,
-                "bound_refs": [{"ref_slug": slug, "timeline_entry": None}],
-                "bound_event": None,
-                "bound_dates": None,
-                "rationale": f"<!--ref:{slug}--> has no entry in timeline.yaml; cannot verify temporal claims against this citation.",
-                "suggested_fix": None,
-            })
+            findings.append(
+                {
+                    "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                    "finding_kind": "TEMPORAL-METADATA-MISSING",
+                    "severity": "LOW",
+                    "mode": None,
+                    "block_eligible": False,
+                    "draft_locator": {
+                        "file": "phase4_composition/draft.md",
+                        "line": ref_line_no,
+                        "sentence": _sentence_around(draft, m_ref.start()),
+                    },
+                    "matched_span": None,
+                    "bound_refs": [{"ref_slug": slug, "timeline_entry": None}],
+                    "bound_event": None,
+                    "bound_dates": None,
+                    "rationale": f"<!--ref:{slug}--> has no entry in timeline.yaml; cannot verify temporal claims against this citation.",
+                    "suggested_fix": None,
+                }
+            )
             continue
 
         edr = source.get("effective_date_range")
         if not edr:
-            findings.append({
-                "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                "finding_kind": "TEMPORAL-METADATA-MISSING",
-                "severity": "LOW",
-                "mode": None,
-                "block_eligible": False,
-                "draft_locator": {
-                    "file": "phase4_composition/draft.md", "line": ref_line_no,
-                    "sentence": _sentence_around(draft, m_ref.start()),
-                },
-                "matched_span": None,
-                "bound_refs": [{"ref_slug": slug, "timeline_entry": slug}],
-                "bound_event": None,
-                "bound_dates": None,
-                "rationale": f"{slug} has no effective_date_range; anachronism check cannot run.",
-                "suggested_fix": None,
-            })
+            findings.append(
+                {
+                    "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                    "finding_kind": "TEMPORAL-METADATA-MISSING",
+                    "severity": "LOW",
+                    "mode": None,
+                    "block_eligible": False,
+                    "draft_locator": {
+                        "file": "phase4_composition/draft.md",
+                        "line": ref_line_no,
+                        "sentence": _sentence_around(draft, m_ref.start()),
+                    },
+                    "matched_span": None,
+                    "bound_refs": [{"ref_slug": slug, "timeline_entry": slug}],
+                    "bound_event": None,
+                    "bound_dates": None,
+                    "rationale": f"{slug} has no effective_date_range; anachronism check cannot run.",
+                    "suggested_fix": None,
+                }
+            )
             continue
 
         start = edr["start"]
         start_conf = start.get("provenance", {}).get("confidence")
         if start.get("value") is None or start_conf in {"unverified", "low"}:
-            findings.append({
-                "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                "finding_kind": "TEMPORAL-METADATA-MISSING",
-                "severity": "LOW",
-                "mode": None,
-                "block_eligible": False,
-                "draft_locator": {
-                    "file": "phase4_composition/draft.md", "line": ref_line_no,
-                    "sentence": _sentence_around(draft, m_ref.start()),
-                },
-                "matched_span": None,
-                "bound_refs": [{"ref_slug": slug, "timeline_entry": slug}],
-                "bound_event": None,
-                "bound_dates": None,
-                "rationale": f"{slug} effective_date_range.start absent or low/unverified confidence; cannot verify anachronism.",
-                "suggested_fix": None,
-            })
+            findings.append(
+                {
+                    "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                    "finding_kind": "TEMPORAL-METADATA-MISSING",
+                    "severity": "LOW",
+                    "mode": None,
+                    "block_eligible": False,
+                    "draft_locator": {
+                        "file": "phase4_composition/draft.md",
+                        "line": ref_line_no,
+                        "sentence": _sentence_around(draft, m_ref.start()),
+                    },
+                    "matched_span": None,
+                    "bound_refs": [{"ref_slug": slug, "timeline_entry": slug}],
+                    "bound_event": None,
+                    "bound_dates": None,
+                    "rationale": f"{slug} effective_date_range.start absent or low/unverified confidence; cannot verify anachronism.",
+                    "suggested_fix": None,
+                }
+            )
             continue
 
         # Find nearest event date in ±200 chars around ref marker
@@ -390,7 +441,8 @@ def _pass_2_anachronism(draft: str, timeline: dict, citation_provenance: dict, f
         ref_in_window_start = m_ref.start() - window_start
         ref_in_window_end = m_ref.end() - window_start
         event_dates = [
-            d for d in date_pattern.finditer(window)
+            d
+            for d in date_pattern.finditer(window)
             if d.end() <= ref_in_window_start or d.start() >= ref_in_window_end
         ]
         if not event_dates:
@@ -408,61 +460,69 @@ def _pass_2_anachronism(draft: str, timeline: dict, citation_provenance: dict, f
 
         # Future-version check (spec §3.2 P2 step 5 first clause): start > event.end
         if edr_start_start > event_end:
-            findings.append({
-                "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                "finding_kind": "TEMPORAL-ANACHRONISTIC-CITATION",
-                "severity": "HIGH",
-                "mode": 2,
-                "block_eligible": True,
-                "draft_locator": {
-                    "file": "phase4_composition/draft.md", "line": ref_line_no,
-                    "sentence": _sentence_around(draft, m_ref.start()),
-                },
-                "matched_span": None,
-                "bound_refs": [{"ref_slug": slug, "timeline_entry": slug}],
-                "bound_event": {"event_id": None, "date": f"{event_start}..{event_end}"},
-                "bound_dates": None,
-                "rationale": (
-                    f"{slug} effective_date_range starts {start['value']}, after cited "
-                    f"event {event_raw} ({event_start}..{event_end}). Cited version postdates the event."
-                ),
-                "suggested_fix": f"Cite the version of the source that was in effect during {event_raw}.",
-            })
+            findings.append(
+                {
+                    "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                    "finding_kind": "TEMPORAL-ANACHRONISTIC-CITATION",
+                    "severity": "HIGH",
+                    "mode": 2,
+                    "block_eligible": True,
+                    "draft_locator": {
+                        "file": "phase4_composition/draft.md",
+                        "line": ref_line_no,
+                        "sentence": _sentence_around(draft, m_ref.start()),
+                    },
+                    "matched_span": None,
+                    "bound_refs": [{"ref_slug": slug, "timeline_entry": slug}],
+                    "bound_event": {"event_id": None, "date": f"{event_start}..{event_end}"},
+                    "bound_dates": None,
+                    "rationale": (
+                        f"{slug} effective_date_range starts {start['value']}, after cited "
+                        f"event {event_raw} ({event_start}..{event_end}). Cited version postdates the event."
+                    ),
+                    "suggested_fix": f"Cite the version of the source that was in effect during {event_raw}.",
+                }
+            )
 
         # Superseded-version check (spec §3.2 P2 step 5 second clause)
         end = edr.get("end", {})
         end_open_ended = end.get("open_ended", False)
         end_value = end.get("value")
         end_conf = end.get("provenance", {}).get("confidence")
-        if (not end_open_ended and end_value is not None
-                and end_conf in {"high", "medium"}):
+        if not end_open_ended and end_value is not None and end_conf in {"high", "medium"}:
             try:
                 _, edr_end_end = _date_to_interval(end_value)
             except ValueError:
                 pass
             else:
                 if edr_end_end < event_start:
-                    findings.append({
-                        "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                        "finding_kind": "TEMPORAL-ANACHRONISTIC-CITATION",
-                        "severity": "HIGH",
-                        "mode": 2,
-                        "block_eligible": True,
-                        "draft_locator": {
-                            "file": "phase4_composition/draft.md", "line": ref_line_no,
-                            "sentence": _sentence_around(draft, m_ref.start()),
-                        },
-                        "matched_span": None,
-                        "bound_refs": [{"ref_slug": slug, "timeline_entry": slug}],
-                        "bound_event": {"event_id": None, "date": f"{event_start}..{event_end}"},
-                        "bound_dates": None,
-                        "rationale": (
-                            f"{slug} effective_date_range ended {end_value}, before cited "
-                            f"event {event_raw} ({event_start}..{event_end}). Cited version was "
-                            f"superseded before the event."
-                        ),
-                        "suggested_fix": f"Cite the version of the source that was in effect during {event_raw}.",
-                    })
+                    findings.append(
+                        {
+                            "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                            "finding_kind": "TEMPORAL-ANACHRONISTIC-CITATION",
+                            "severity": "HIGH",
+                            "mode": 2,
+                            "block_eligible": True,
+                            "draft_locator": {
+                                "file": "phase4_composition/draft.md",
+                                "line": ref_line_no,
+                                "sentence": _sentence_around(draft, m_ref.start()),
+                            },
+                            "matched_span": None,
+                            "bound_refs": [{"ref_slug": slug, "timeline_entry": slug}],
+                            "bound_event": {
+                                "event_id": None,
+                                "date": f"{event_start}..{event_end}",
+                            },
+                            "bound_dates": None,
+                            "rationale": (
+                                f"{slug} effective_date_range ended {end_value}, before cited "
+                                f"event {event_raw} ({event_start}..{event_end}). Cited version was "
+                                f"superseded before the event."
+                            ),
+                            "suggested_fix": f"Cite the version of the source that was in effect during {event_raw}.",
+                        }
+                    )
 
 
 def _pass_3_comparator(draft: str, timeline: dict, findings: list[dict]) -> None:
@@ -491,7 +551,11 @@ def _pass_3_comparator(draft: str, timeline: dict, findings: list[dict]) -> None
         line_no = _compute_line_number(draft, sentence_start)
         pos = sentence_start + len(sentence)
 
-        for pattern_name, pat in [("A", COMPARATOR_FORM_A), ("B", COMPARATOR_FORM_B), ("C", COMPARATOR_FORM_C)]:
+        for pattern_name, pat in [
+            ("A", COMPARATOR_FORM_A),
+            ("B", COMPARATOR_FORM_B),
+            ("C", COMPARATOR_FORM_C),
+        ]:
             for m in pat.finditer(sentence):
                 # Resolve version_family_id via ref marker in sentence
                 refs_in_sentence = REF_MARKER_PATTERN.findall(sentence)
@@ -507,7 +571,7 @@ def _pass_3_comparator(draft: str, timeline: dict, findings: list[dict]) -> None
                 if pattern_name == "A":
                     year_match = re.search(
                         r"\b(?:19|20)\d{2}\b",
-                        sentence[max(0, m.start() - 60):min(len(sentence), m.end() + 60)],
+                        sentence[max(0, m.start() - 60) : min(len(sentence), m.end() + 60)],
                     )
                     if not year_match:
                         continue
@@ -525,38 +589,43 @@ def _pass_3_comparator(draft: str, timeline: dict, findings: list[dict]) -> None
                         break
 
                 if not matched:
-                    findings.append({
-                        "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                        "finding_kind": "TEMPORAL-COMPARATOR-UNMATERIALIZED",
-                        "severity": "MEDIUM",
-                        "mode": 3,
-                        "block_eligible": False,
-                        "draft_locator": {
-                            "file": "phase4_composition/draft.md", "line": line_no,
-                            "sentence": sentence.strip(),
-                        },
-                        "matched_span": {
-                            "text": m.group(0),
-                            "char_start": m.start(),
-                            "char_end": m.end(),
-                        },
-                        "bound_refs": [{"ref_slug": bound_slug, "timeline_entry": bound_slug}],
-                        "bound_event": None,
-                        "bound_dates": None,
-                        "rationale": (
-                            f"Comparator '{m.group(0)}' (Form {pattern_name}, year={comparator_year}) "
-                            f"references version family '{family}' but no timeline entry exists for that year. "
-                            f"v3.9.4 reports this as claim-unsupported; v3.10 CC5 may escalate to phantom."
-                        ),
-                        "suggested_fix": (
-                            f"Either add a timeline entry for the {comparator_year} version of {family}, "
-                            f"or rewrite the prose to remove the comparator claim."
-                        ),
-                    })
+                    findings.append(
+                        {
+                            "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                            "finding_kind": "TEMPORAL-COMPARATOR-UNMATERIALIZED",
+                            "severity": "MEDIUM",
+                            "mode": 3,
+                            "block_eligible": False,
+                            "draft_locator": {
+                                "file": "phase4_composition/draft.md",
+                                "line": line_no,
+                                "sentence": sentence.strip(),
+                            },
+                            "matched_span": {
+                                "text": m.group(0),
+                                "char_start": m.start(),
+                                "char_end": m.end(),
+                            },
+                            "bound_refs": [{"ref_slug": bound_slug, "timeline_entry": bound_slug}],
+                            "bound_event": None,
+                            "bound_dates": None,
+                            "rationale": (
+                                f"Comparator '{m.group(0)}' (Form {pattern_name}, year={comparator_year}) "
+                                f"references version family '{family}' but no timeline entry exists for that year. "
+                                f"v3.9.4 reports this as claim-unsupported; v3.10 CC5 may escalate to phantom."
+                            ),
+                            "suggested_fix": (
+                                f"Either add a timeline entry for the {comparator_year} version of {family}, "
+                                f"or rewrite the prose to remove the comparator claim."
+                            ),
+                        }
+                    )
                     # do NOT break — spec allows one finding per match
 
 
-def _pass_4_causal(draft: str, timeline: dict, citation_provenance: dict, findings: list[dict]) -> None:
+def _pass_4_causal(
+    draft: str, timeline: dict, citation_provenance: dict, findings: list[dict]
+) -> None:
     """P4 Mode 4 causal inversion.
 
     For each causal trigger phrase, identifies left and right arguments. Each side
@@ -585,8 +654,8 @@ def _pass_4_causal(draft: str, timeline: dict, citation_provenance: dict, findin
             if not m_trig:
                 continue
 
-            pre = sentence[:m_trig.start()]
-            post = sentence[m_trig.end():]
+            pre = sentence[: m_trig.start()]
+            post = sentence[m_trig.end() :]
 
             # Bind left: nearest ref BEFORE trigger; else nearest direct date BEFORE
             left_refs = list(REF_MARKER_PATTERN.finditer(pre))
@@ -617,23 +686,26 @@ def _pass_4_causal(draft: str, timeline: dict, citation_provenance: dict, findin
                     continue
                 prov_conf = _provenance_confidence(chk_slug, citation_provenance)
                 if prov_conf in {"low", "conflict"}:
-                    findings.append({
-                        "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                        "finding_kind": "TEMPORAL-METADATA-MISSING",
-                        "severity": "LOW",
-                        "mode": None,
-                        "block_eligible": False,
-                        "draft_locator": {
-                            "file": "phase4_composition/draft.md", "line": line_no,
-                            "sentence": sentence.strip(),
-                        },
-                        "matched_span": None,
-                        "bound_refs": [{"ref_slug": chk_slug, "timeline_entry": None}],
-                        "bound_event": None,
-                        "bound_dates": None,
-                        "rationale": f"<!--ref:{chk_slug}--> citation_provenance confidence={prov_conf}; per spec §3.4 not used as arithmetic ground truth for P4.",
-                        "suggested_fix": None,
-                    })
+                    findings.append(
+                        {
+                            "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                            "finding_kind": "TEMPORAL-METADATA-MISSING",
+                            "severity": "LOW",
+                            "mode": None,
+                            "block_eligible": False,
+                            "draft_locator": {
+                                "file": "phase4_composition/draft.md",
+                                "line": line_no,
+                                "sentence": sentence.strip(),
+                            },
+                            "matched_span": None,
+                            "bound_refs": [{"ref_slug": chk_slug, "timeline_entry": None}],
+                            "bound_event": None,
+                            "bound_dates": None,
+                            "rationale": f"<!--ref:{chk_slug}--> citation_provenance confidence={prov_conf}; per spec §3.4 not used as arithmetic ground truth for P4.",
+                            "suggested_fix": None,
+                        }
+                    )
                     # Skip this trigger after emitting METADATA-MISSING for either side
                     break
             else:
@@ -641,7 +713,8 @@ def _pass_4_causal(draft: str, timeline: dict, citation_provenance: dict, findin
             # Re-check: if any prov gate fired, the for-else didn't run, we want to skip predicate
             if any(
                 _provenance_confidence(s, citation_provenance) in {"low", "conflict"}
-                for s in [left_slug, right_slug] if s is not None
+                for s in [left_slug, right_slug]
+                if s is not None
             ):
                 continue
 
@@ -685,9 +758,8 @@ def _pass_4_causal(draft: str, timeline: dict, citation_provenance: dict, findin
                     continue
                 right_source = "draft_capture"
 
-            violated = (
-                (required_order == "left<right" and left_start >= right_start)
-                or (required_order == "left>right" and left_start <= right_start)
+            violated = (required_order == "left<right" and left_start >= right_start) or (
+                required_order == "left>right" and left_start <= right_start
             )
             if not violated:
                 continue
@@ -699,35 +771,46 @@ def _pass_4_causal(draft: str, timeline: dict, citation_provenance: dict, findin
             if right_slug:
                 bound_refs_list.append({"ref_slug": right_slug, "timeline_entry": right_slug})
 
-            findings.append({
-                "finding_id": f"TF-{_next_finding_id(findings):03d}",
-                "finding_kind": "TEMPORAL-CAUSAL-INVERSION",
-                "severity": "MEDIUM",
-                "mode": 4,
-                "block_eligible": False,
-                "draft_locator": {
-                    "file": "phase4_composition/draft.md", "line": line_no,
-                    "sentence": sentence.strip(),
-                },
-                "matched_span": {
-                    "text": m_trig.group(0),
-                    "char_start": m_trig.start(),
-                    "char_end": m_trig.end(),
-                },
-                "bound_refs": bound_refs_list,
-                "bound_event": None,
-                "bound_dates": {
-                    "left": {"role": "left_arg", "value": left_start,
-                             "source": left_source, "ref_slug": left_slug},
-                    "right": {"role": "right_arg", "value": right_start,
-                              "source": right_source, "ref_slug": right_slug},
-                },
-                "rationale": (
-                    f"Trigger '{m_trig.group(0)}' requires ordering {required_order}, "
-                    f"but left.date={left_start} and right.date={right_start} violate predicate."
-                ),
-                "suggested_fix": "Rewrite to match the actual ordering, or revise the causal claim.",
-            })
+            findings.append(
+                {
+                    "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                    "finding_kind": "TEMPORAL-CAUSAL-INVERSION",
+                    "severity": "MEDIUM",
+                    "mode": 4,
+                    "block_eligible": False,
+                    "draft_locator": {
+                        "file": "phase4_composition/draft.md",
+                        "line": line_no,
+                        "sentence": sentence.strip(),
+                    },
+                    "matched_span": {
+                        "text": m_trig.group(0),
+                        "char_start": m_trig.start(),
+                        "char_end": m_trig.end(),
+                    },
+                    "bound_refs": bound_refs_list,
+                    "bound_event": None,
+                    "bound_dates": {
+                        "left": {
+                            "role": "left_arg",
+                            "value": left_start,
+                            "source": left_source,
+                            "ref_slug": left_slug,
+                        },
+                        "right": {
+                            "role": "right_arg",
+                            "value": right_start,
+                            "source": right_source,
+                            "ref_slug": right_slug,
+                        },
+                    },
+                    "rationale": (
+                        f"Trigger '{m_trig.group(0)}' requires ordering {required_order}, "
+                        f"but left.date={left_start} and right.date={right_start} violate predicate."
+                    ),
+                    "suggested_fix": "Rewrite to match the actual ordering, or revise the causal claim.",
+                }
+            )
             break  # one finding per sentence
 
 
@@ -739,32 +822,39 @@ def _pass_5_deictic(draft: str, findings: list[dict]) -> None:
         line_no = _compute_line_number(draft, m.start())
         line_text = lines[line_no - 1].rstrip("\n") if line_no <= len(lines) else ""
 
-        findings.append({
-            "finding_id": f"TF-{_next_finding_id(findings):03d}",
-            "finding_kind": "TEMPORAL-DEICTIC",
-            "severity": "LOW",
-            "mode": 5,
-            "block_eligible": False,
-            "draft_locator": {
-                "file": "phase4_composition/draft.md",
-                "line": line_no,
-                "sentence": line_text,
-            },
-            "matched_span": {
-                "text": m.group(0),
-                "char_start": m.start(),
-                "char_end": m.end(),
-            },
-            "bound_refs": [],
-            "bound_event": None,
-            "bound_dates": None,
-            "rationale": f"Deictic phrase '{m.group(0)}' anchors claim to writing time; rewrite to specific date or version identifier.",
-            "suggested_fix": "Replace with 'as of YYYY-MM-DD' or a specific edition/year reference.",
-        })
+        findings.append(
+            {
+                "finding_id": f"TF-{_next_finding_id(findings):03d}",
+                "finding_kind": "TEMPORAL-DEICTIC",
+                "severity": "LOW",
+                "mode": 5,
+                "block_eligible": False,
+                "draft_locator": {
+                    "file": "phase4_composition/draft.md",
+                    "line": line_no,
+                    "sentence": line_text,
+                },
+                "matched_span": {
+                    "text": m.group(0),
+                    "char_start": m.start(),
+                    "char_end": m.end(),
+                },
+                "bound_refs": [],
+                "bound_event": None,
+                "bound_dates": None,
+                "rationale": f"Deictic phrase '{m.group(0)}' anchors claim to writing time; rewrite to specific date or version identifier.",
+                "suggested_fix": "Replace with 'as of YYYY-MM-DD' or a specific edition/year reference.",
+            }
+        )
 
 
-def audit(draft: str, timeline: dict, citation_provenance: dict,
-          report_reference_date: str, audit_run_id: str) -> dict:
+def audit(
+    draft: str,
+    timeline: dict,
+    citation_provenance: dict,
+    report_reference_date: str,
+    audit_run_id: str,
+) -> dict:
     """Run the 5-pass verifier. Returns an aggregate matching temporal_audit_results.schema.json.
 
     v3.9.4.1 hotfix: citation_provenance now flows through to P2 and P4 (per spec §3.4).
@@ -797,14 +887,16 @@ def _render_markdown(result: dict) -> str:
         lines.append("_No temporal-integrity findings in this draft._")
         return "\n".join(lines) + "\n"
     for f in result["findings"]:
-        lines.extend([
-            f"## {f['finding_id']} — {f['finding_kind']} ({f['severity']})",
-            "",
-            f"- mode: {f['mode']}",
-            f"- file: `{f['draft_locator']['file']}` line {f['draft_locator']['line']}",
-            f"- sentence: \"{f['draft_locator']['sentence']}\"",
-            f"- rationale: {f['rationale']}",
-        ])
+        lines.extend(
+            [
+                f"## {f['finding_id']} — {f['finding_kind']} ({f['severity']})",
+                "",
+                f"- mode: {f['mode']}",
+                f"- file: `{f['draft_locator']['file']}` line {f['draft_locator']['line']}",
+                f"- sentence: \"{f['draft_locator']['sentence']}\"",
+                f"- rationale: {f['rationale']}",
+            ]
+        )
         if f.get("suggested_fix"):
             lines.append(f"- suggested fix: {f['suggested_fix']}")
         lines.append("")
@@ -812,13 +904,19 @@ def _render_markdown(result: dict) -> str:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="v3.9.4 temporal integrity verifier (Phase 4 → 5 boundary)")
+    parser = argparse.ArgumentParser(
+        description="v3.9.4 temporal integrity verifier (Phase 4 → 5 boundary)"
+    )
     parser.add_argument("--draft", type=Path, required=True)
     parser.add_argument("--timeline", type=Path, required=True)
     parser.add_argument("--citation-provenance", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--markdown-output", type=Path, default=None,
-                        help="Optional path for human-readable .md report")
+    parser.add_argument(
+        "--markdown-output",
+        type=Path,
+        default=None,
+        help="Optional path for human-readable .md report",
+    )
     parser.add_argument("--report-reference-date", required=True)
     parser.add_argument("--audit-run-id", required=True)
     args = parser.parse_args(argv)
@@ -827,8 +925,9 @@ def main(argv: list[str] | None = None) -> int:
     timeline = yaml.safe_load(args.timeline.read_text())
     citation_provenance = yaml.safe_load(args.citation_provenance.read_text())
 
-    result = audit(draft, timeline, citation_provenance,
-                   args.report_reference_date, args.audit_run_id)
+    result = audit(
+        draft, timeline, citation_provenance, args.report_reference_date, args.audit_run_id
+    )
 
     args.output.write_text(yaml.safe_dump(result, sort_keys=False))
     if args.markdown_output:

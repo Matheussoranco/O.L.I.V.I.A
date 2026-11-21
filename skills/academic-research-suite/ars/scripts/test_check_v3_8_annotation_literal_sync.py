@@ -27,7 +27,6 @@ from scripts.check_v3_8_annotation_literal_sync import (
     _extract_refuse_block,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LINT_SCRIPT = REPO_ROOT / "scripts" / "check_v3_8_annotation_literal_sync.py"
 
@@ -101,13 +100,9 @@ class RefuseBlockExtractorTest(unittest.TestCase):
         self.assertIsNotNone(block)
         self.assertIn("[HIGH-WARN-CLAIM-NOT-SUPPORTED]", block)
         # The intro mention before the REFUSE marker MUST be excluded.
-        self.assertNotIn(
-            "Some intro prose mentioning HIGH-WARN-CLAIM-NOT-SUPPORTED here.", block
-        )
+        self.assertNotIn("Some intro prose mentioning HIGH-WARN-CLAIM-NOT-SUPPORTED here.", block)
         # The Output Format mention after the next H2 MUST be excluded.
-        self.assertNotIn(
-            "Mentions HIGH-WARN-CLAIM-NOT-SUPPORTED outside the REFUSE block.", block
-        )
+        self.assertNotIn("Mentions HIGH-WARN-CLAIM-NOT-SUPPORTED outside the REFUSE block.", block)
 
     def test_returns_none_when_refuse_marker_absent(self) -> None:
         sample = "## Some heading\n\nNo REFUSE-list marker anywhere.\n"
@@ -140,14 +135,18 @@ class LintScriptTest(unittest.TestCase):
         # prose, not raw substring match. A rename that appends text
         # (`[HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION-RENAMED`) would have
         # passed the R1/R2 lint via prefix-substring containment.
-        import tempfile
         import shutil
+        import tempfile
 
         with tempfile.TemporaryDirectory() as td:
             tmp_root = Path(td) / "repo"
-            shutil.copytree(REPO_ROOT, tmp_root, ignore=shutil.ignore_patterns(
-                ".git", "node_modules", "__pycache__", "*.pyc", "venv*", ".venv"
-            ))
+            shutil.copytree(
+                REPO_ROOT,
+                tmp_root,
+                ignore=shutil.ignore_patterns(
+                    ".git", "node_modules", "__pycache__", "*.pyc", "venv*", ".venv"
+                ),
+            )
             tmp_formatter = tmp_root / "academic-paper" / "agents" / "formatter_agent.md"
             text = tmp_formatter.read_text()
             mutated = text.replace(
@@ -158,7 +157,10 @@ class LintScriptTest(unittest.TestCase):
             tmp_formatter.write_text(mutated)
 
             result = subprocess.run(
-                [sys.executable, str(tmp_root / "scripts" / "check_v3_8_annotation_literal_sync.py")],
+                [
+                    sys.executable,
+                    str(tmp_root / "scripts" / "check_v3_8_annotation_literal_sync.py"),
+                ],
                 capture_output=True,
                 text=True,
                 cwd=str(tmp_root),
@@ -166,8 +168,7 @@ class LintScriptTest(unittest.TestCase):
             self.assertEqual(
                 result.returncode,
                 1,
-                f"expected lint to fail on dynamic-literal rename; "
-                f"stdout={result.stdout!r}",
+                f"expected lint to fail on dynamic-literal rename; " f"stdout={result.stdout!r}",
             )
             self.assertIn(
                 "HIGH-WARN-NEGATIVE-CONSTRAINT-VIOLATION",
@@ -181,14 +182,18 @@ class LintScriptTest(unittest.TestCase):
         # formatter REFUSE list was edited to `[HIGH-WARN-FABRICATED-
         # REFERENCE-RENAMED]`). The closing bracket is the contract
         # terminator for closed literals.
-        import tempfile
         import shutil
+        import tempfile
 
         with tempfile.TemporaryDirectory() as td:
             tmp_root = Path(td) / "repo"
-            shutil.copytree(REPO_ROOT, tmp_root, ignore=shutil.ignore_patterns(
-                ".git", "node_modules", "__pycache__", "*.pyc", "venv*", ".venv"
-            ))
+            shutil.copytree(
+                REPO_ROOT,
+                tmp_root,
+                ignore=shutil.ignore_patterns(
+                    ".git", "node_modules", "__pycache__", "*.pyc", "venv*", ".venv"
+                ),
+            )
             tmp_formatter = tmp_root / "academic-paper" / "agents" / "formatter_agent.md"
             text = tmp_formatter.read_text()
             # Replace the closed literal in the formatter REFUSE rule with a
@@ -203,7 +208,10 @@ class LintScriptTest(unittest.TestCase):
             tmp_formatter.write_text(mutated)
 
             result = subprocess.run(
-                [sys.executable, str(tmp_root / "scripts" / "check_v3_8_annotation_literal_sync.py")],
+                [
+                    sys.executable,
+                    str(tmp_root / "scripts" / "check_v3_8_annotation_literal_sync.py"),
+                ],
                 capture_output=True,
                 text=True,
                 cwd=str(tmp_root),
@@ -224,14 +232,18 @@ class LintScriptTest(unittest.TestCase):
         # Renaming (not adding) keeps the count at 5 so the constant-count
         # gate doesn't fire first — the real failure mode is the literal-
         # match gate, which is what we want this test to pin.
-        import tempfile
         import shutil
+        import tempfile
 
         with tempfile.TemporaryDirectory() as td:
             tmp_root = Path(td) / "repo"
-            shutil.copytree(REPO_ROOT, tmp_root, ignore=shutil.ignore_patterns(
-                ".git", "node_modules", "__pycache__", "*.pyc", "venv*", ".venv"
-            ))
+            shutil.copytree(
+                REPO_ROOT,
+                tmp_root,
+                ignore=shutil.ignore_patterns(
+                    ".git", "node_modules", "__pycache__", "*.pyc", "venv*", ".venv"
+                ),
+            )
             tmp_finalizer = tmp_root / "scripts" / "claim_audit_finalizer.py"
             text = tmp_finalizer.read_text()
             # Rename the CLAIM-NOT-SUPPORTED literal in place — the formatter
@@ -245,7 +257,10 @@ class LintScriptTest(unittest.TestCase):
             tmp_finalizer.write_text(mutated)
 
             result = subprocess.run(
-                [sys.executable, str(tmp_root / "scripts" / "check_v3_8_annotation_literal_sync.py")],
+                [
+                    sys.executable,
+                    str(tmp_root / "scripts" / "check_v3_8_annotation_literal_sync.py"),
+                ],
                 capture_output=True,
                 text=True,
                 cwd=str(tmp_root),

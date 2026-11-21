@@ -11,7 +11,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import run_evals
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -22,6 +21,7 @@ def _ro(crossref="skipped", openalex="skipped", semantic_scholar="skipped", arxi
     """Each arg is a status string or (status, queried_by) tuple. A bare
     `unmatched` defaults queried_by='id' (the ID-keyed = false-producing case)
     so existing branch pins keep their intent under the narrowed-false reducer."""
+
     def cell(v):
         if isinstance(v, tuple):
             status, queried_by = v
@@ -29,6 +29,7 @@ def _ro(crossref="skipped", openalex="skipped", semantic_scholar="skipped", arxi
             status = v
             queried_by = "id" if status == "unmatched" else None
         return {"status": status, "queried_by": queried_by, "response_summary": None}
+
     return {
         "crossref": cell(crossref),
         "openalex": cell(openalex),
@@ -46,40 +47,62 @@ def test_reducer_matched_wins_true():
 
 def test_reducer_matched_plus_unmatched_still_true():
     # matched WINS even if another applicable resolver returned unmatched.
-    assert run_evals.reduce_lookup_verified(
-        _ro(crossref="matched", openalex="unmatched")
-    ) == "true"
+    assert run_evals.reduce_lookup_verified(_ro(crossref="matched", openalex="unmatched")) == "true"
 
 
 def test_reducer_arxiv_matched_crossref_unmatched_true():
     # valid_arxiv shape: crossref unmatched, arxiv matched -> true (matched wins).
-    assert run_evals.reduce_lookup_verified(
-        _ro(crossref="unmatched", openalex="matched", semantic_scholar="matched", arxiv="matched")
-    ) == "true"
+    assert (
+        run_evals.reduce_lookup_verified(
+            _ro(
+                crossref="unmatched",
+                openalex="matched",
+                semantic_scholar="matched",
+                arxiv="matched",
+            )
+        )
+        == "true"
+    )
 
 
 def test_reducer_unmatched_no_matched_false():
-    assert run_evals.reduce_lookup_verified(
-        _ro(crossref="unmatched", openalex="unmatched", semantic_scholar="unmatched")
-    ) == "false"
+    assert (
+        run_evals.reduce_lookup_verified(
+            _ro(crossref="unmatched", openalex="unmatched", semantic_scholar="unmatched")
+        )
+        == "false"
+    )
 
 
 def test_reducer_partial_outage_unmatched_plus_unreachable_false():
     # Anti-fabrication bias: >=1 ID-keyed unmatched & 0 matched -> false even
     # with outage.
-    assert run_evals.reduce_lookup_verified(
-        _ro(crossref="unmatched", openalex="unmatched",
-            semantic_scholar="unmatched", arxiv="unreachable")
-    ) == "false"
+    assert (
+        run_evals.reduce_lookup_verified(
+            _ro(
+                crossref="unmatched",
+                openalex="unmatched",
+                semantic_scholar="unmatched",
+                arxiv="unreachable",
+            )
+        )
+        == "false"
+    )
 
 
 def test_reducer_title_only_unmatched_unresolvable_NOT_false():
     # v3.11 narrowed-false (C-V6(a)): title-only unmatched (no resolvable ID)
     # is a coverage gap -> unresolvable, never false.
-    assert run_evals.reduce_lookup_verified(
-        _ro(crossref=("unmatched", "title"), openalex=("unmatched", "title"),
-            semantic_scholar=("unmatched", "title"))
-    ) == "unresolvable"
+    assert (
+        run_evals.reduce_lookup_verified(
+            _ro(
+                crossref=("unmatched", "title"),
+                openalex=("unmatched", "title"),
+                semantic_scholar=("unmatched", "title"),
+            )
+        )
+        == "unresolvable"
+    )
 
 
 def test_reducer_all_skipped_unresolvable():
@@ -89,18 +112,27 @@ def test_reducer_all_skipped_unresolvable():
 
 def test_reducer_all_unreachable_unresolvable():
     # Total outage -> unresolvable (NOT false).
-    assert run_evals.reduce_lookup_verified(
-        _ro(crossref="unreachable", openalex="unreachable",
-            semantic_scholar="unreachable", arxiv="unreachable")
-    ) == "unresolvable"
+    assert (
+        run_evals.reduce_lookup_verified(
+            _ro(
+                crossref="unreachable",
+                openalex="unreachable",
+                semantic_scholar="unreachable",
+                arxiv="unreachable",
+            )
+        )
+        == "unresolvable"
+    )
 
 
 def test_reducer_unresolvable_never_collapsed_into_false():
     # Explicit anti-collapse pin: total outage stays unresolvable.
-    assert run_evals.reduce_lookup_verified(
-        _ro(crossref="unreachable", openalex="unreachable",
-            semantic_scholar="unreachable")
-    ) != "false"
+    assert (
+        run_evals.reduce_lookup_verified(
+            _ro(crossref="unreachable", openalex="unreachable", semantic_scholar="unreachable")
+        )
+        != "false"
+    )
 
 
 # ---------------------------------------------------------------------------

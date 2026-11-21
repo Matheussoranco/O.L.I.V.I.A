@@ -6,9 +6,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_human_subjects_reference_migration as migration
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -41,7 +39,7 @@ def remove_all(root: Path, rel: Path, value: str) -> None:
 
 
 def test_closed_input_list_is_pinned() -> None:
-    assert migration.TEXT_FILES == (
+    assert (
         Path("deep-research/references/irb_decision_tree.md"),
         Path("deep-research/references/ethics_checklist.md"),
         Path("shared/references/irb_terminology_glossary.md"),
@@ -49,7 +47,7 @@ def test_closed_input_list_is_pinned() -> None:
         Path("deep-research/agents/ethics_review_agent.md"),
         Path("deep-research/agents/research_architect_agent.md"),
         Path("agents/research_architect_agent.md"),
-    )
+    ) == migration.TEXT_FILES
 
 
 def test_real_repository_and_cli_pass() -> None:
@@ -62,9 +60,7 @@ def test_real_repository_and_cli_pass() -> None:
     "pointer",
     (migration.PROTOCOL_POINTER, migration.REGISTRY_POINTER),
 )
-def test_each_reference_requires_both_666_pointers(
-    tmp_path: Path, rel: Path, pointer: str
-) -> None:
+def test_each_reference_requires_both_666_pointers(tmp_path: Path, rel: Path, pointer: str) -> None:
     root = mirror(tmp_path)
     remove_all(root, rel, pointer)
     errors = migration.run_checks(root)
@@ -76,9 +72,7 @@ def test_each_reference_requires_both_666_pointers(
     "pointer",
     (migration.PROTOCOL_POINTER, migration.REGISTRY_POINTER),
 )
-def test_each_consumer_requires_both_666_pointers(
-    tmp_path: Path, rel: Path, pointer: str
-) -> None:
+def test_each_consumer_requires_both_666_pointers(tmp_path: Path, rel: Path, pointer: str) -> None:
     root = mirror(tmp_path)
     remove_all(root, rel, pointer)
     errors = migration.run_checks(root)
@@ -97,16 +91,18 @@ def test_each_agent_requires_resolved_gate(tmp_path: Path, rel: Path) -> None:
 @pytest.mark.parametrize(
     ("old", "new"),
     (
-        ("`downstream_gate.profile_dependent_result_allowed=true`",
-         "`downstream_gate.profile_dependent_result_allowed=false`"),
-        ("`downstream_gate.profile_dependent_result_allowed=true`",
-         "`downstream_gate.profile_dependent_result_allowed=unknown`"),
+        (
+            "`downstream_gate.profile_dependent_result_allowed=true`",
+            "`downstream_gate.profile_dependent_result_allowed=false`",
+        ),
+        (
+            "`downstream_gate.profile_dependent_result_allowed=true`",
+            "`downstream_gate.profile_dependent_result_allowed=unknown`",
+        ),
         ("`resolution_state=resolved`", "`resolution_state=applicability_unresolved`"),
     ),
 )
-def test_agent_gate_adverse_values_fail(
-    tmp_path: Path, rel: Path, old: str, new: str
-) -> None:
+def test_agent_gate_adverse_values_fail(tmp_path: Path, rel: Path, old: str, new: str) -> None:
     root = mirror(tmp_path)
     replace_once(root, rel, old, new)
     assert any("resolved+true" in error for error in migration.run_checks(root))
@@ -120,9 +116,7 @@ def test_agent_gate_adverse_values_fail(
         (migration.ARCHITECT_MIRROR, "allowed only when", "allowed unless"),
     ),
 )
-def test_reversed_gate_logic_fails(
-    tmp_path: Path, rel: Path, old: str, new: str
-) -> None:
+def test_reversed_gate_logic_fails(tmp_path: Path, rel: Path, old: str, new: str) -> None:
     root = mirror(tmp_path)
     replace_once(root, rel, old, new)
     assert any("missing exact resolved+true" in error for error in migration.run_checks(root))
@@ -132,7 +126,9 @@ def test_reversed_gate_logic_fails(
 def test_closed_gate_fallback_cannot_be_reversed(tmp_path: Path, rel: Path) -> None:
     root = mirror(tmp_path)
     replace_once(root, rel, "and emit no profile-dependent", "and emit profile-dependent")
-    assert any("missing exact unresolved/closed-gate" in error for error in migration.run_checks(root))
+    assert any(
+        "missing exact unresolved/closed-gate" in error for error in migration.run_checks(root)
+    )
 
 
 @pytest.mark.parametrize(
@@ -152,7 +148,9 @@ def test_closed_gate_fallback_cannot_be_reversed(tmp_path: Path, rel: Path) -> N
 def test_appended_gate_contradictions_fail(tmp_path: Path, clause: str) -> None:
     root = mirror(tmp_path)
     append(root, migration.ETHICS_AGENT, f"\n{clause}\n")
-    assert any("non-canonical positive profile use" in error for error in migration.run_checks(root))
+    assert any(
+        "non-canonical positive profile use" in error for error in migration.run_checks(root)
+    )
 
 
 def test_canonical_gate_cannot_mask_same_paragraph_extra_permission(
@@ -179,9 +177,7 @@ def test_canonical_gate_cannot_mask_same_paragraph_extra_permission(
         "Profile-dependent results remain unresolved.",
     ),
 )
-def test_negative_profile_use_clause_is_not_a_false_positive(
-    tmp_path: Path, clause: str
-) -> None:
+def test_negative_profile_use_clause_is_not_a_false_positive(tmp_path: Path, clause: str) -> None:
     root = mirror(tmp_path)
     append(root, migration.ETHICS_AGENT, f"\n{clause}\n")
     assert migration.run_checks(root) == []
@@ -190,10 +186,14 @@ def test_negative_profile_use_clause_is_not_a_false_positive(
 @pytest.mark.parametrize(
     ("old", "new"),
     (
-        ("confirms a successful `validate_resolved_context",
-         "does not require a successful `validate_resolved_context"),
-        ("This role must not simulate or claim that replay check.",
-         "This role may simulate and claim that replay check."),
+        (
+            "confirms a successful `validate_resolved_context",
+            "does not require a successful `validate_resolved_context",
+        ),
+        (
+            "This role must not simulate or claim that replay check.",
+            "This role may simulate and claim that replay check.",
+        ),
     ),
 )
 def test_ethics_replay_evidence_and_no_simulation_are_pinned(
@@ -221,14 +221,15 @@ def test_architect_replay_evidence_is_pinned_across_both_mirrors(tmp_path: Path)
         ("same", "This role may simulate and claim that replay check."),
         ("new", "This role may simulate replay validation."),
         ("new", "This role may claim replay validation was run."),
-        ("new", "Authority-bound review may consume a serialized result without replay validation."),
+        (
+            "new",
+            "Authority-bound review may consume a serialized result without replay validation.",
+        ),
         ("split", "This role may simulate and\nclaim that replay check."),
         ("split", "This role does not require a successful\nvalidate_resolved_context replay."),
     ),
 )
-def test_appended_adverse_replay_claims_fail(
-    tmp_path: Path, mode: str, clause: str
-) -> None:
+def test_appended_adverse_replay_claims_fail(tmp_path: Path, mode: str, clause: str) -> None:
     root = mirror(tmp_path)
     if mode == "same":
         replace_once(
@@ -300,8 +301,11 @@ def test_unknown_requirement_id_is_rejected(tmp_path: Path) -> None:
     ("old", "new", "field"),
     (
         ("| `institution_or_irb` |", "| `principal_investigator` |", "obligated_actor"),
-        ("`[\"committee_governance\", \"pathway_trace\"]`",
-         "`[\"submission_packet\", \"pathway_trace\"]`", "consumer_scopes"),
+        (
+            '`["committee_governance", "pathway_trace"]`',
+            '`["submission_packet", "pathway_trace"]`',
+            "consumer_scopes",
+        ),
         ("| `45 CFR 46.107` |", "| `45 CFR 46.108` |", "provision"),
         ("section-46.107)", "section-46.108)", "authority_url"),
     ),
@@ -321,12 +325,16 @@ def test_requirement_table_requires_full_registry_coverage(tmp_path: Path) -> No
     lines = path.read_text(encoding="utf-8").splitlines()
     lines = [line for line in lines if "eu.gdpr.article-89.2.member-state-derogation" not in line]
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    assert any("missing exact requirement table row" in error for error in migration.run_checks(root))
+    assert any(
+        "missing exact requirement table row" in error for error in migration.run_checks(root)
+    )
 
 
 def test_requirement_anchor_label_must_name_exact_provision(tmp_path: Path) -> None:
     root = mirror(tmp_path)
-    replace_once(root, migration.IRB_REFERENCE, "[45 CFR 46.107](https://", "[45 CFR 46.108](https://")
+    replace_once(
+        root, migration.IRB_REFERENCE, "[45 CFR 46.107](https://", "[45 CFR 46.108](https://"
+    )
     assert any("anchor label" in error for error in migration.run_checks(root))
 
 
@@ -360,7 +368,9 @@ def test_committee_promotion_cannot_hide_across_line_wrap(tmp_path: Path) -> Non
         "\n`us.45cfr46.107.irb-composition` is an investigator\n"
         "`submission_packet` requirement.\n",
     )
-    assert any("promoted to an investigator/participant" in error for error in migration.run_checks(root))
+    assert any(
+        "promoted to an investigator/participant" in error for error in migration.run_checks(root)
+    )
 
 
 @pytest.mark.parametrize(
@@ -371,12 +381,12 @@ def test_committee_promotion_cannot_hide_across_line_wrap(tmp_path: Path) -> Non
         "The investigator assigns `tw.hsra.article-7.committee-composition` to a consent-element task.",
     ),
 )
-def test_natural_language_committee_promotions_fail(
-    tmp_path: Path, clause: str
-) -> None:
+def test_natural_language_committee_promotions_fail(tmp_path: Path, clause: str) -> None:
     root = mirror(tmp_path)
     append(root, migration.IRB_REFERENCE, f"\n{clause}\n")
-    assert any("promoted to an investigator/participant" in error for error in migration.run_checks(root))
+    assert any(
+        "promoted to an investigator/participant" in error for error in migration.run_checks(root)
+    )
 
 
 @pytest.mark.parametrize(
@@ -386,9 +396,7 @@ def test_natural_language_committee_promotions_fail(
         "`tw.hsra.article-7.committee-composition` is not participant information.",
     ),
 )
-def test_explicit_committee_nonpromotion_is_allowed(
-    tmp_path: Path, clause: str
-) -> None:
+def test_explicit_committee_nonpromotion_is_allowed(tmp_path: Path, clause: str) -> None:
     root = mirror(tmp_path)
     append(root, migration.IRB_REFERENCE, f"\n{clause}\n")
     assert migration.run_checks(root) == []
@@ -404,8 +412,7 @@ def test_safe_committee_clause_cannot_mask_unsafe_clause(tmp_path: Path) -> None
         "in the submission packet.\n",
     )
     assert any(
-        "promoted to an investigator/participant" in error
-        for error in migration.run_checks(root)
+        "promoted to an investigator/participant" in error for error in migration.run_checks(root)
     )
 
 
@@ -466,9 +473,7 @@ def test_registry_cannot_promote_committee_governance_scope(tmp_path: Path) -> N
         ),
     ),
 )
-def test_active_universal_regressions_are_rejected(
-    tmp_path: Path, line: str, reason: str
-) -> None:
+def test_active_universal_regressions_are_rejected(tmp_path: Path, line: str, reason: str) -> None:
     root = mirror(tmp_path)
     append(root, migration.IRB_REFERENCE, f"\n{line}\n")
     errors = migration.run_checks(root)
@@ -535,9 +540,7 @@ def test_safe_scenario_clause_cannot_mask_unsafe_clause(tmp_path: Path) -> None:
         "No automatic Full Board review is required for vulnerable populations.",
     ),
 )
-def test_negated_vulnerability_mapping_is_allowed(
-    tmp_path: Path, clause: str
-) -> None:
+def test_negated_vulnerability_mapping_is_allowed(tmp_path: Path, clause: str) -> None:
     root = mirror(tmp_path)
     append(root, migration.IRB_REFERENCE, f"\n{clause}\n")
     assert migration.run_checks(root) == []
@@ -681,10 +684,7 @@ def test_scoped_relink_clause_cannot_mask_unscoped_clause(tmp_path: Path) -> Non
         "\nUnder the named governing convention, data with a retained re-link key "
         "are pseudonymized. Data with a retained re-link key are pseudonymized.\n",
     )
-    assert any(
-        "retained-relink-key legal effect" in error
-        for error in migration.run_checks(root)
-    )
+    assert any("retained-relink-key legal effect" in error for error in migration.run_checks(root))
 
 
 @pytest.mark.parametrize(

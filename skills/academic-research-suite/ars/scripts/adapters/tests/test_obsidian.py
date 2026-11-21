@@ -1,8 +1,7 @@
 """Tests for scripts/adapters/obsidian.py."""
-from pathlib import Path
 import subprocess
 import sys
-import pytest
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER = REPO_ROOT / "scripts/adapters/obsidian.py"
@@ -133,6 +132,7 @@ def test_deterministic_output(tmp_path, load_yaml, clean_timestamps):
 # P1 — year coercion + authors type validation
 # ---------------------------------------------------------------------------
 
+
 def test_year_leading_4_digit_string_accepted(tmp_path, load_yaml):
     """Convention A: year='2024-01' (leading-year string) is accepted; year extracted as 2024."""
     vault = tmp_path / "v"
@@ -213,6 +213,7 @@ def test_authors_wrong_type_is_rejected(tmp_path, load_yaml):
 # P2-A — duplicate citekey disambiguation
 # ---------------------------------------------------------------------------
 
+
 def test_duplicate_citekey_convention_a_disambiguated(tmp_path, load_yaml):
     """Two Convention A notes with identical citekeys must both be accepted with suffix disambiguation."""
     vault = tmp_path / "v"
@@ -240,6 +241,7 @@ def test_duplicate_citekey_convention_a_disambiguated(tmp_path, load_yaml):
 # P2-B — malformed YAML frontmatter
 # ---------------------------------------------------------------------------
 
+
 def test_malformed_yaml_frontmatter_rejected(tmp_path, load_yaml):
     """File starting with '---' but containing invalid YAML must be rejected, not fall through to Convention B."""
     vault = tmp_path / "v"
@@ -264,6 +266,7 @@ def test_malformed_yaml_frontmatter_rejected(tmp_path, load_yaml):
 # ---------------------------------------------------------------------------
 # P3 — additional coverage
 # ---------------------------------------------------------------------------
+
 
 def test_empty_file_rejected(tmp_path, load_yaml):
     """Empty .md file must be rejected (no frontmatter, no body, no title/authors/year)."""
@@ -333,8 +336,10 @@ def test_all_rejected_corpus_produces_empty_passport(tmp_path, load_yaml):
 
 # --- v3.10 venue_type frontmatter declaration (spec §3 PR-B item 13) ---
 
+
 def _import_obsidian():
     import importlib.util
+
     spec = importlib.util.spec_from_file_location("obsidian_adapter", ADAPTER)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
@@ -343,7 +348,10 @@ def _import_obsidian():
 
 def test_obsidian_declare_venue_type_valid_frontmatter():
     o = _import_obsidian()
-    assert o.declare_venue_type({"venue_type": "journal-article"}) == ("journal-article", "user_declared")
+    assert o.declare_venue_type({"venue_type": "journal-article"}) == (
+        "journal-article",
+        "user_declared",
+    )
     assert o.declare_venue_type({"venue_type": "dissertation"}) == ("dissertation", "user_declared")
 
 

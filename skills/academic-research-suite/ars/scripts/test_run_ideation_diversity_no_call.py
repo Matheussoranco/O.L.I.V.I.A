@@ -3,19 +3,17 @@ from __future__ import annotations
 import argparse
 import ast
 import copy
-from datetime import datetime, timedelta, timezone
 import hashlib
 import importlib.util
 import json
 import os
-from pathlib import Path
 import stat
 import sys
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
-
 from scripts import check_spec_consistency as spec_consistency
-
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
@@ -25,6 +23,8 @@ SPEC = importlib.util.spec_from_file_location("ideation_no_call", MODULE_PATH)
 assert SPEC and SPEC.loader
 runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
+
+
 def _args(run_dir: Path) -> argparse.Namespace:
     return argparse.Namespace(
         run_dir=run_dir,
@@ -123,6 +123,7 @@ def _transcript(plan: dict, cell: dict, *, partial: bool = False) -> dict:
                 "text": text,
             }
         )
+
     def raw_event(
         event_kind: str, turn_index: int | None, text: str | None = None
     ) -> dict[str, str]:
@@ -149,9 +150,7 @@ def _transcript(plan: dict, cell: dict, *, partial: bool = False) -> dict:
                 "event_index": len(events) + 1,
                 "event_kind": f"{turn['role']}_message",
                 "turn_index": turn["turn_index"],
-                **raw_event(
-                    f"{turn['role']}_message", turn["turn_index"], turn["text"]
-                ),
+                **raw_event(f"{turn['role']}_message", turn["turn_index"], turn["text"]),
             }
         )
     events.append(
@@ -179,9 +178,7 @@ def _transcript(plan: dict, cell: dict, *, partial: bool = False) -> dict:
     return {
         "schema_version": "ideation-diversity-transcript/1.0",
         "suite": runner.SUITE,
-        "run_plan_sha256": hashlib.sha256(
-            runner._json_bytes(plan)
-        ).hexdigest(),
+        "run_plan_sha256": hashlib.sha256(runner._json_bytes(plan)).hexdigest(),
         "cell_id": cell["cell_id"],
         "sequence_index": cell["sequence_index"],
         "source": {
@@ -250,9 +247,7 @@ def _get_external_receipt(transcript: dict) -> dict:
 def test_plan_is_exact_48_cell_counterbalanced_no_call_cross_product(tmp_path):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     assert len(plan["cells"]) == 2 * 6 * 2 * 2 == 48
-    assert plan["order"]["cell_ids"] == [
-        f"cell-{index:03d}" for index in range(1, 49)
-    ]
+    assert plan["order"]["cell_ids"] == [f"cell-{index:03d}" for index in range(1, 49)]
     order_projection = [
         {
             key: cell[key]
@@ -268,9 +263,10 @@ def test_plan_is_exact_48_cell_counterbalanced_no_call_cross_product(tmp_path):
         }
         for cell in plan["cells"]
     ]
-    assert plan["order"]["order_sha256"] == hashlib.sha256(
-        runner._canonical(order_projection)
-    ).hexdigest()
+    assert (
+        plan["order"]["order_sha256"]
+        == hashlib.sha256(runner._canonical(order_projection)).hexdigest()
+    )
     alternate_config = runner._config_from_plan(plan)
     alternate_config["order_seed"] = "phase2-alternate-seed-v1"
     alternate = runner._build_plan(alternate_config)
@@ -287,34 +283,33 @@ def test_plan_is_exact_48_cell_counterbalanced_no_call_cross_product(tmp_path):
     assert len(observed) == 48
     for experiment, arms in runner.EXPERIMENTS:
         scenario_ids = {
-            cell["scenario_id"]
-            for cell in plan["cells"]
-            if cell["experiment_id"] == experiment
+            cell["scenario_id"] for cell in plan["cells"] if cell["experiment_id"] == experiment
         }
         assert len(scenario_ids) == 6
         for scenario_id in scenario_ids:
             rows = [
                 cell
                 for cell in plan["cells"]
-                if cell["experiment_id"] == experiment
-                and cell["scenario_id"] == scenario_id
+                if cell["experiment_id"] == experiment and cell["scenario_id"] == scenario_id
             ]
             first = [cell["arm_id"] for cell in rows if cell["replicate"] == 1]
             second = [cell["arm_id"] for cell in rows if cell["replicate"] == 2]
             assert set(first) == set(arms)
             assert second == list(reversed(first))
-    assert plan["execution"] | {
-        "runner_transport": "none",
-        "dispatch_available": False,
-        "api_spend_ceiling_usd": 0,
-        "api_fallback": False,
-        "envelope_grants_consent": False,
-    } == plan["execution"]
+    assert (
+        plan["execution"]
+        | {
+            "runner_transport": "none",
+            "dispatch_available": False,
+            "api_spend_ceiling_usd": 0,
+            "api_fallback": False,
+            "envelope_grants_consent": False,
+        }
+        == plan["execution"]
+    )
     assert plan["created_without_dispatch"] is True
     assert len(plan["asset_bindings"]) == 18
-    assert {
-        row["path"] for row in plan["asset_bindings"]
-    } >= {
+    assert {row["path"] for row in plan["asset_bindings"]} >= {
         "evals/heldout/within_session_ideation_diversity/stop_intent.schema.json",
         "evals/heldout/within_session_ideation_diversity/blind_intent.schema.json",
     }
@@ -353,9 +348,7 @@ def test_materializer_writes_only_frozen_inputs_and_never_changes_production(tmp
     actor = json.loads((run_dir / plan["cells"][0]["actor_packet_path"]).read_bytes())
     assert actor["model_generated_actor"] is False
     assert "arm_id" not in actor and "experiment_id" not in actor
-    envelope = json.loads(
-        (run_dir / plan["cells"][0]["session_envelope_path"]).read_bytes()
-    )
+    envelope = json.loads((run_dir / plan["cells"][0]["session_envelope_path"]).read_bytes())
     assert envelope["runner_transport"] == "none"
     assert envelope["dispatch_available"] is False
     assert envelope["tools"] == [] and envelope["web_enabled"] is False
@@ -396,21 +389,15 @@ def test_suite_commit_and_token_caps_are_declared_unverified_not_enforced(tmp_pa
     assert result["ingested"] == 1
 
 
-@pytest.mark.parametrize(
-    "semantic_empty", (" " * 8, "\u200b" * 8, "\u0301" * 8)
-)
-def test_plan_execution_identity_rejects_unicode_semantic_empty(
-    tmp_path, semantic_empty
-):
+@pytest.mark.parametrize("semantic_empty", (" " * 8, "\u200b" * 8, "\u0301" * 8))
+def test_plan_execution_identity_rejects_unicode_semantic_empty(tmp_path, semantic_empty):
     args = _args(tmp_path / "run")
     args.subject_provider = semantic_empty
     with pytest.raises(runner.EnvelopeError, match="semantic text"):
         runner.init_run(args)
 
 
-def test_atomic_write_failure_never_publishes_partial_target_or_orphan(
-    tmp_path, monkeypatch
-):
+def test_atomic_write_failure_never_publishes_partial_target_or_orphan(tmp_path, monkeypatch):
     target = tmp_path / "authorization" / "record.json"
     original_write = runner.os.write
     writes = 0
@@ -519,9 +506,7 @@ def test_plan_or_material_hash_drift_fails_closed(tmp_path):
     raw = runner._json_bytes(mutated)
     (other_dir / "run-plan.json").write_bytes(raw)
     with pytest.raises(runner.EnvelopeError, match="exact current asset/order/hash"):
-        runner.validate_run(
-            _command_args(other_dir, hashlib.sha256(raw).hexdigest())
-        )
+        runner.validate_run(_command_args(other_dir, hashlib.sha256(raw).hexdigest()))
 
 
 def test_first_partial_output_stops_preserves_raw_and_forbids_retry(tmp_path):
@@ -565,12 +550,8 @@ def test_oversize_transcript_acquisition_is_bounded_durable_stop(tmp_path):
     assert caught.value.code == "transcript_contract_failure"
     manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
     assert manifest["status"] == "stopped"
-    assert manifest["stop_receipt"]["raw_capture_kind"] == (
-        "bounded_acquisition_failure_record"
-    )
-    evidence = json.loads(
-        (run_dir / manifest["stop_receipt"]["raw_ref"]).read_bytes()
-    )
+    assert manifest["stop_receipt"]["raw_capture_kind"] == ("bounded_acquisition_failure_record")
+    evidence = json.loads((run_dir / manifest["stop_receipt"]["raw_ref"]).read_bytes())
     assert evidence["stat"]["size_bytes"] == runner.MAX_INPUT_BYTES + 1
     assert evidence["prefix_bytes"] == 64 * 1024
     assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "stopped"
@@ -661,15 +642,11 @@ def test_failed_success_manifest_staging_is_hash_registered_in_stopped_replay(
         runner.validate_run(_command_args(run_dir, plan_sha))
 
 
-def test_blocked_raw_partial_staging_is_registered_and_replayable(
-    tmp_path, monkeypatch
-):
+def test_blocked_raw_partial_staging_is_registered_and_replayable(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
     source = tmp_path / "partial.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     original_write = runner._write_new
     injected = False
 
@@ -678,9 +655,7 @@ def test_blocked_raw_partial_staging_is_registered_and_replayable(
         if not injected and path.parent.name == "blocked":
             injected = True
             path.parent.mkdir(parents=True, exist_ok=True)
-            orphan = path.with_name(
-                f".{path.name}.atomic-write-{'d' * 24}.tmp"
-            )
+            orphan = path.with_name(f".{path.name}.atomic-write-{'d' * 24}.tmp")
             orphan.write_bytes(b"AUTOMATED PARTIAL BLOCKED RAW STAGING\n")
             raise runner.EnvelopeError("AUTOMATED BLOCKED RAW STAGING FAILURE")
         return original_write(path, raw_bytes, **kwargs)
@@ -712,7 +687,7 @@ def test_compact_pre_stop_inventory_binds_many_long_files_and_empty_directories(
         directory = run_dir / f"unexpected-{index:03d}-{'d' * 80}"
         directory.mkdir()
         (directory / f"{'f' * 140}-{index:03d}.bin").write_bytes(
-            f"AUTOMATED INVENTORY {index}\n".encode("utf-8")
+            f"AUTOMATED INVENTORY {index}\n".encode()
         )
     empty = run_dir / "unexpected-empty-directory"
     empty.mkdir()
@@ -731,9 +706,7 @@ def test_compact_pre_stop_inventory_binds_many_long_files_and_empty_directories(
     manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
     assert manifest["stop_receipt"]["pre_stop_inventory"]["entry_count"] == 141
     marker = json.loads((run_dir / runner.STOP_INTENT_REF).read_bytes())
-    assert marker["pre_stop_inventory"] == manifest["stop_receipt"][
-        "pre_stop_inventory"
-    ]
+    assert marker["pre_stop_inventory"] == manifest["stop_receipt"]["pre_stop_inventory"]
     assert (run_dir / runner.STOP_INTENT_REF).stat().st_size < 200_000
     assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "stopped"
     (run_dir / "unexpected-after-stop").mkdir()
@@ -741,15 +714,11 @@ def test_compact_pre_stop_inventory_binds_many_long_files_and_empty_directories(
         runner.validate_run(_command_args(run_dir, plan_sha))
 
 
-def test_published_stop_marker_cleanup_alias_is_registered_and_replayable(
-    tmp_path, monkeypatch
-):
+def test_published_stop_marker_cleanup_alias_is_registered_and_replayable(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
     source = tmp_path / "partial.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     original_unlink = Path.unlink
 
     def retain_registered_alias(path, *args, **kwargs):
@@ -780,15 +749,11 @@ def test_published_stop_marker_cleanup_alias_is_registered_and_replayable(
         runner.validate_run(_command_args(run_dir, plan_sha))
 
 
-def test_primary_stop_slot_failure_uses_bound_fallback_and_stays_terminal(
-    tmp_path, monkeypatch
-):
+def test_primary_stop_slot_failure_uses_bound_fallback_and_stays_terminal(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
     source = tmp_path / "partial.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     original_link = runner.os.link
 
     def fail_primary(source_path, target_path, *args, **kwargs):
@@ -811,15 +776,11 @@ def test_primary_stop_slot_failure_uses_bound_fallback_and_stays_terminal(
     assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "stopped"
 
 
-def test_dual_stop_slot_failure_leaves_precommitted_active_poison_guard(
-    tmp_path, monkeypatch
-):
+def test_dual_stop_slot_failure_leaves_precommitted_active_poison_guard(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
     source = tmp_path / "partial.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     authorization = _authorization_file(tmp_path, plan)
     original_link = runner.os.link
 
@@ -929,9 +890,7 @@ def test_each_reported_stop_rule_fails_closed(tmp_path, mutation, reason_code):
         ("evidence_write_failure", "evidence_write_failure"),
     ),
 )
-def test_normalized_event_stream_cannot_hide_forbidden_actions(
-    tmp_path, event_kind, reason_code
-):
+def test_normalized_event_stream_cannot_hide_forbidden_actions(tmp_path, event_kind, reason_code):
     _, plan_sha, plan = _initialize(tmp_path)
     cell = plan["cells"][0]
     transcript = _transcript(plan, cell)
@@ -1015,9 +974,7 @@ def test_turn_text_must_be_derived_exactly_from_raw_message_bytes(tmp_path):
 
 
 @pytest.mark.parametrize("semantic_empty", ("   ", "\u200b", "\u0301"))
-def test_semantic_empty_subject_message_is_partial_and_stops_immediately(
-    tmp_path, semantic_empty
-):
+def test_semantic_empty_subject_message_is_partial_and_stops_immediately(tmp_path, semantic_empty):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
     transcript = _transcript(plan, plan["cells"][0])
@@ -1187,9 +1144,7 @@ def test_semantic_empty_authorization_never_counts_as_consent(
             )
         )
     assert caught.value.code == "authorization_record_missing_or_mismatch"
-    assert json.loads((run_dir / "ingestion-manifest.json").read_bytes())[
-        "status"
-    ] == "stopped"
+    assert json.loads((run_dir / "ingestion-manifest.json").read_bytes())["status"] == "stopped"
 
 
 def test_prior_transcript_and_receipt_drift_blocks_further_ingestion(tmp_path):
@@ -1268,9 +1223,7 @@ def test_preexisting_blocked_path_cannot_prevent_irreversible_first_stop(tmp_pat
     assert caught.value.code == "evidence_write_failure"
     manifest = json.loads((run_dir / "ingestion-manifest.json").read_bytes())
     assert manifest["status"] == "stopped"
-    assert manifest["stop_receipt"][
-        "stop_intent_committed_before_state_replacement"
-    ] is True
+    assert manifest["stop_receipt"]["stop_intent_committed_before_state_replacement"] is True
     assert sentinel.read_bytes() == b"PREEXISTING BLOCKED-PATH SENTINEL\n"
     assert (run_dir / manifest["stop_receipt"]["raw_ref"]).read_bytes() == raw
     with pytest.raises(runner.EnvelopeError, match="forbids retry"):
@@ -1281,9 +1234,7 @@ def test_blocked_raw_evidence_tamper_is_detected_on_replay(tmp_path):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
     source = tmp_path / "partial-transcript.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     with pytest.raises(runner.StopViolation):
         runner.ingest(
             _command_args(
@@ -1319,9 +1270,7 @@ def test_external_session_receipts_are_unique_and_monotonic(tmp_path, mutation):
     second = _transcript(plan, plan["cells"][1])
     receipt = _get_external_receipt(second)
     if mutation == "duplicate_session":
-        receipt["external_session_id"] = _get_external_receipt(first)[
-            "external_session_id"
-        ]
+        receipt["external_session_id"] = _get_external_receipt(first)["external_session_id"]
     else:
         receipt["started_at"] = "2026-08-13T00:00:01.500000Z"
         receipt["completed_at"] = "2026-08-13T00:00:01.750000Z"
@@ -1352,9 +1301,7 @@ def test_external_session_receipts_are_unique_and_monotonic(tmp_path, mutation):
         ),
     ),
 )
-def test_blind_packet_free_text_gate_rejects_mapping_or_human_evidence(
-    tmp_path, leak_text
-):
+def test_blind_packet_free_text_gate_rejects_mapping_or_human_evidence(tmp_path, leak_text):
     _, _, plan = _initialize(tmp_path)
     transcript = _transcript(plan, plan["cells"][0])
     transcript["turns"][1]["text"] += f" {leak_text}"
@@ -1380,9 +1327,7 @@ def test_blind_packet_free_text_gate_rejects_mapping_or_human_evidence(
         "The frozen id is c♥ell-048.",
     ),
 )
-def test_complete_identifier_gate_rejects_unicode_separator_obfuscation(
-    tmp_path, leak_text
-):
+def test_complete_identifier_gate_rejects_unicode_separator_obfuscation(tmp_path, leak_text):
     _, _, plan = _initialize(tmp_path)
     with pytest.raises(runner.EnvelopeError, match="frozen blind identifier"):
         runner._assert_blind_texts(plan, [leak_text])
@@ -1406,9 +1351,7 @@ def test_complete_identifier_gate_rejects_unicode_separator_obfuscation(
         "A feature tradeoff was considered.",
     ),
 )
-def test_complete_identifier_gate_keeps_letter_number_boundaries(
-    tmp_path, ordinary_text
-):
+def test_complete_identifier_gate_keeps_letter_number_boundaries(tmp_path, ordinary_text):
     _, _, plan = _initialize(tmp_path)
     runner._assert_blind_texts(plan, [ordinary_text])
 
@@ -1443,9 +1386,7 @@ def test_complete_identifier_gate_keeps_letter_number_boundaries(
         "The frozen id is c.e.l.l-048.",
     ),
 )
-def test_semantic_leak_stops_during_first_ingestion_before_next_cell(
-    tmp_path, leak_text
-):
+def test_semantic_leak_stops_during_first_ingestion_before_next_cell(tmp_path, leak_text):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
     transcript = _transcript(plan, plan["cells"][0])
@@ -1476,9 +1417,7 @@ def test_semantic_leak_stops_during_first_ingestion_before_next_cell(
         "pending",
     ]
     assert manifest["next_sequence_index"] == 1
-    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == (
-        "stopped"
-    )
+    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == ("stopped")
     with pytest.raises(runner.EnvelopeError, match="forbids retry"):
         runner.ingest(
             _command_args(
@@ -1532,9 +1471,7 @@ def test_partial_success_writes_are_registered_in_stopped_replay(tmp_path, monke
         runner.validate_run(_command_args(run_dir, plan_sha))
 
 
-def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(
-    tmp_path, monkeypatch
-):
+def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _initialize(tmp_path)
     runner.materialize(_command_args(run_dir, plan_sha))
     source = tmp_path / "external-transcript.json"
@@ -1578,14 +1515,11 @@ def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(
     assert pending["status"] == "complete"
     assert pending["blind_transaction_pending"] is True
     staged_ids = {
-        path.stem
-        for path in (run_dir / runner.BLIND_STAGING_REF / "sessions").glob("*.json")
+        path.stem for path in (run_dir / runner.BLIND_STAGING_REF / "sessions").glob("*.json")
     }
     assert len(staged_ids) == 48
     monkeypatch.setattr(runner, "_ensure_blind_exact", original_blind_write)
-    collision_path = next(
-        (run_dir / runner.BLIND_STAGING_REF / "sessions").glob("*.json")
-    )
+    collision_path = next((run_dir / runner.BLIND_STAGING_REF / "sessions").glob("*.json"))
     collision_raw = collision_path.read_bytes()
     collision_path.write_bytes(b"AUTOMATED BLIND STAGING COLLISION\n")
     with pytest.raises(runner.EnvelopeError, match="blind staging artifact collision"):
@@ -1603,9 +1537,7 @@ def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(
     retained_aliases = list((run_dir / runner.BLIND_ALIAS_ROOT).glob("*.tmp"))
     assert len(retained_aliases) == 1
     assert stat.S_IMODE(retained_aliases[0].stat().st_mode) == 0o600
-    assert retained_aliases[0].stat().st_ino == (
-        run_dir / "blind/manifest.json"
-    ).stat().st_ino
+    assert retained_aliases[0].stat().st_ino == (run_dir / "blind/manifest.json").stat().st_ino
     monkeypatch.setattr(Path, "unlink", original_unlink)
     assert result["sessions"] == 48
     assert result["artifact_presence"] == runner._artifact_presence()
@@ -1613,20 +1545,19 @@ def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(
     assert result["recovered_existing_atomic_bundle"] is True
     assert intent_path.read_bytes() == intent_raw
     assert not (run_dir / runner.BLIND_STAGING_REF).exists()
-    assert intent["blind_manifest_sha256"] == hashlib.sha256(
-        (run_dir / "blind/manifest.json").read_bytes()
-    ).hexdigest()
-    assert intent["inventory_sha256"] == hashlib.sha256(
-        (run_dir / "blind/inventory.json").read_bytes()
-    ).hexdigest()
+    assert (
+        intent["blind_manifest_sha256"]
+        == hashlib.sha256((run_dir / "blind/manifest.json").read_bytes()).hexdigest()
+    )
+    assert (
+        intent["inventory_sha256"]
+        == hashlib.sha256((run_dir / "blind/inventory.json").read_bytes()).hexdigest()
+    )
     inventory = json.loads((run_dir / "blind/inventory.json").read_bytes())
     assert inventory["artifact_presence"] == runner._artifact_presence()
     assert inventory["assignment_boundary"] == runner._assignment_boundary()
     assert len(inventory["packets"]) == 48
-    assert all(
-        set(row) == {"blind_session_id", "packet_sha256"}
-        for row in inventory["packets"]
-    )
+    assert all(set(row) == {"blind_session_id", "packet_sha256"} for row in inventory["packets"])
     public_inventory_text = json.dumps(inventory, sort_keys=True)
     for forbidden in (
         "arm_id",
@@ -1675,9 +1606,10 @@ def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(
     assert stat.S_IMODE(arm_map_path.parent.stat().st_mode) == 0o700
     assert stat.S_IMODE(arm_map_path.stat().st_mode) == 0o600
     assert len(arm_map["mapping"]) == 48
-    assert arm_map["inventory_sha256"] == hashlib.sha256(
-        (run_dir / "blind/inventory.json").read_bytes()
-    ).hexdigest()
+    assert (
+        arm_map["inventory_sha256"]
+        == hashlib.sha256((run_dir / "blind/inventory.json").read_bytes()).hexdigest()
+    )
     final = runner.validate_run(_command_args(run_dir, plan_sha))
     assert final["status"] == "blind_finalized"
     # Replay the crash boundary after the atomic bundle rename but before the
@@ -1689,9 +1621,7 @@ def test_48_external_ingestions_prepare_unlabeled_arm_blind_packet(
     )
     recovered = runner.prepare_blind_packet(_command_args(run_dir, plan_sha))
     assert recovered["recovered_existing_atomic_bundle"] is True
-    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == (
-        "blind_finalized"
-    )
+    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == ("blind_finalized")
     isolated_paths[0].write_bytes(b"TAMPERED BLIND PACKET\n")
     with pytest.raises(runner.EnvelopeError, match="blind packet replay|hash drift"):
         runner.validate_run(_command_args(run_dir, plan_sha))
@@ -1733,7 +1663,7 @@ def test_spec_consistency_integration_accepts_current_no_call_contract():
     spec_consistency.ERRORS.clear()
     try:
         spec_consistency.check_ideation_diversity_no_call_contract()
-        assert spec_consistency.ERRORS == []
+        assert [] == spec_consistency.ERRORS
     finally:
         spec_consistency.ERRORS.clear()
         spec_consistency.ERRORS.extend(previous)
@@ -1746,9 +1676,7 @@ def test_spec_consistency_integration_rejects_48_cell_drift(monkeypatch):
         text = original_read(rel_path)
         if rel_path.endswith("run_plan.schema.json"):
             value = json.loads(text)
-            value["properties"]["design"]["properties"][
-                "subject_session_cells"
-            ]["const"] = 47
+            value["properties"]["design"]["properties"]["subject_session_cells"]["const"] = 47
             return json.dumps(value)
         return text
 
@@ -1785,9 +1713,7 @@ def test_spec_consistency_integration_rejects_48_cell_drift(monkeypatch):
         "import os\nmatch {}:\n    case {**os}:\n        os.open('forbidden', 0)\n",
     ),
 )
-def test_spec_consistency_ast_rejects_transport_or_process_surface(
-    monkeypatch, runner_mutation
-):
+def test_spec_consistency_ast_rejects_transport_or_process_surface(monkeypatch, runner_mutation):
     original_read = spec_consistency.read
 
     def mutated_read(rel_path: str) -> str:

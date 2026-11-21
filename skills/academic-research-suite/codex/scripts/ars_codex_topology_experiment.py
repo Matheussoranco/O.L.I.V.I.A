@@ -19,7 +19,6 @@ import time
 from pathlib import Path
 from typing import Any
 
-
 SCRIPT = Path(__file__).resolve()
 CODEX_ROOT = SCRIPT.parents[1]
 SUITE_ROOT = SCRIPT.parents[2]
@@ -51,7 +50,9 @@ def load_json(path: Path) -> dict[str, Any]:
 
 def write_json(path: Path, value: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(value, ensure_ascii=False, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def load_cohort() -> dict[str, Any]:
@@ -91,10 +92,14 @@ def reviewer_plan(arm_id: str) -> dict[str, Any]:
     elif arm_id == "reviewer-two-plus-synthesis":
         roots = ["methodology_reviewer_agent", "domain_reviewer_agent"]
         nodes = [{"id": item, "phase": "blind_review", "depends_on": []} for item in roots]
-        nodes.append({"id": "editorial_synthesizer_agent", "phase": "synthesis", "depends_on": roots})
+        nodes.append(
+            {"id": "editorial_synthesizer_agent", "phase": "synthesis", "depends_on": roots}
+        )
     elif arm_id == "reviewer-five-panel":
         nodes = [{"id": item, "phase": "blind_review", "depends_on": []} for item in five]
-        nodes.append({"id": "editorial_synthesizer_agent", "phase": "synthesis", "depends_on": five})
+        nodes.append(
+            {"id": "editorial_synthesizer_agent", "phase": "synthesis", "depends_on": five}
+        )
     elif arm_id == "reviewer-full-seven":
         nodes = [{"id": "field_analyst_agent", "phase": "configuration", "depends_on": []}]
         nodes.extend(
@@ -148,7 +153,9 @@ def topology_plan(arm_id: str, nodes: list[dict[str, Any]], blind: bool) -> dict
                     ["reviewer_configuration"]
                     if parent == "field_analyst_agent"
                     else [f"{parent}_report"]
-                    if any(item["id"] == parent and item["phase"] == "blind_review" for item in nodes)
+                    if any(
+                        item["id"] == parent and item["phase"] == "blind_review" for item in nodes
+                    )
                     else ["dispatch_plan"]
                 ),
             }
@@ -157,7 +164,11 @@ def topology_plan(arm_id: str, nodes: list[dict[str, Any]], blind: bool) -> dict
         ],
         "information_sharing": {
             "policy": "edge_allowlist" if len(nodes) > 1 else "single_context",
-            "peer_outputs": "hidden_until_synthesis" if blind else "workflow_dependencies_only" if len(nodes) > 1 else "not_applicable",
+            "peer_outputs": "hidden_until_synthesis"
+            if blind
+            else "workflow_dependencies_only"
+            if len(nodes) > 1
+            else "not_applicable",
             "memory_scope": "role_scoped" if len(nodes) > 1 else "off",
         },
     }
@@ -211,7 +222,12 @@ def evaluator_digest(task: dict[str, Any]) -> str:
 def environment_digest(codex_version: str) -> str:
     return digest(
         "ars.codex.topology-environment.v1",
-        {"codex_version": codex_version, "platform": "darwin", "sandbox": "read-only", "network": "disabled"},
+        {
+            "codex_version": codex_version,
+            "platform": "darwin",
+            "sandbox": "read-only",
+            "network": "disabled",
+        },
     )
 
 
@@ -223,7 +239,9 @@ def experiment_envelope(
     identity = {
         "baseline_commit": cohort["frozen_at_commit"],
         "input_digest": task["input_digest"],
-        "dataset_digest": digest("ars.codex.topology-dataset.v1", [item["task_id"] for item in cohort["tasks"]]),
+        "dataset_digest": digest(
+            "ars.codex.topology-dataset.v1", [item["task_id"] for item in cohort["tasks"]]
+        ),
         "evaluator_digest": evaluator_digest(task),
         "environment_digest": environment_digest(codex_version),
         "model_allowance_digest": digest("ars.codex.topology-models.v1", [matched["model_id"]]),
@@ -275,15 +293,24 @@ The only allowed task inputs are under ./input. Read ./input/rubric.md, ./input/
 Return a single JSON object matching the supplied output schema. Use exactly these protocol agent IDs: {json.dumps(ids)}. Every declared ID must appear exactly once in agent_reports and in completed_agent_ids. The synthesis node's own agent report may have an empty findings list. Do not mention or recommend a topology.
 """
     if arm_id == "inline-solo":
-        return base + "Act as inline_owner. Perform the audit and deduplicate your findings yourself. Do not spawn subagents. Set peer_outputs_hidden_until_synthesis to false."
+        return (
+            base
+            + "Act as inline_owner. Perform the audit and deduplicate your findings yourself. Do not spawn subagents. Set peer_outputs_hidden_until_synthesis to false."
+        )
     if arm_id == "reviewer-full-seven":
-        return base + """
+        return (
+            base
+            + """
 First spawn exactly one field_analyst_agent subagent. It must only validate and re-emit the supplied frozen reviewer configuration; it must not review the manuscript. Wait for it. Then spawn exactly five reviewer subagents in parallel, one for each frozen seat. Give each only the task files and its assigned focus. Do not give any reviewer another reviewer's output. Wait for all five. You are the editorial_synthesizer_agent: combine their completed reports, merge conceptual duplicates, preserve contributing agent IDs, and emit the final schema. Set peer_outputs_hidden_until_synthesis to true. Do not perform a sixth independent review yourself.
 """
+        )
     reviewer_ids = [node["id"] for node in plan["nodes"] if node["phase"] == "blind_review"]
-    return base + f"""
+    return (
+        base
+        + f"""
 Spawn exactly {len(reviewer_ids)} reviewer subagents in parallel, one for each of these IDs: {json.dumps(reviewer_ids)}. Give each only the task files and its assigned frozen focus. Do not give any reviewer another reviewer's output. Wait for all reviewers. You are editorial_synthesizer_agent: combine their completed reports, merge conceptual duplicates, preserve contributing agent IDs, and emit the final schema. Set peer_outputs_hidden_until_synthesis to true. Do not perform an additional independent review yourself.
 """
+    )
 
 
 def pipeline_prompt(task: dict[str, Any], arm_id: str, plan: dict[str, Any]) -> str:
@@ -295,14 +322,24 @@ The only allowed task inputs are under ./input. Read ./input/rubric.md and all o
 Return a single JSON object matching the supplied output schema. Use exactly these protocol agent IDs: {json.dumps(ids)}. Every declared ID must appear exactly once in agent_reports and in completed_agent_ids. Do not mention or recommend a topology.
 """
     if arm_id == "inline-solo":
-        return base + "Act as inline_owner. Audit all files together, deduplicate findings, and decide block/warn/pass. Do not spawn subagents. Set peer_outputs_hidden_until_synthesis to false."
-    return base + """
+        return (
+            base
+            + "Act as inline_owner. Audit all files together, deduplicate findings, and decide block/warn/pass. Do not spawn subagents. Set peer_outputs_hidden_until_synthesis to false."
+        )
+    return (
+        base
+        + """
 You are pipeline_orchestrator_agent. Spawn exactly two subagents in parallel: integrity_verification_agent audits every supplied file together for evidence and cross-file integrity; state_tracker_agent independently determines the legal pipeline action from the supplied passport and deliverable. Wait for both. Combine their outputs without inventing evidence, deduplicate findings, and decide block/warn/pass. Include a zero-finding pipeline_orchestrator_agent report plus both subagent reports. Set peer_outputs_hidden_until_synthesis to false.
 """
+    )
 
 
 def build_prompt(task: dict[str, Any], arm_id: str, plan: dict[str, Any]) -> str:
-    return reviewer_prompt(task, arm_id, plan) if task["workflow"] == "reviewer" else pipeline_prompt(task, arm_id, plan)
+    return (
+        reviewer_prompt(task, arm_id, plan)
+        if task["workflow"] == "reviewer"
+        else pipeline_prompt(task, arm_id, plan)
+    )
 
 
 def parse_events(stdout: str) -> tuple[list[dict[str, Any]], dict[str, int] | None]:
@@ -322,10 +359,16 @@ def parse_events(stdout: str) -> tuple[list[dict[str, Any]], dict[str, int] | No
 
 
 def metric(value: int | None) -> dict[str, Any]:
-    return {"state": "known", "value": value} if value is not None else {"state": "unknown", "value": None}
+    return (
+        {"state": "known", "value": value}
+        if value is not None
+        else {"state": "unknown", "value": None}
+    )
 
 
-def validate_output(output: dict[str, Any], task: dict[str, Any], arm_id: str, plan: dict[str, Any]) -> list[str]:
+def validate_output(
+    output: dict[str, Any], task: dict[str, Any], arm_id: str, plan: dict[str, Any]
+) -> list[str]:
     errors: list[str] = []
     expected = [node["id"] for node in plan["nodes"]]
     if output.get("task_id") != task["task_id"]:
@@ -397,7 +440,9 @@ def make_receipt(
     reports = {item["agent_id"]: item for item in output.get("agent_reports", [])}
     accepted = output.get("synthesis", {}).get("accepted_findings", [])
     duplicate_by_agent = {
-        agent_id: sum(1 for finding in accepted if agent_id in finding.get("contributing_agents", [])[1:])
+        agent_id: sum(
+            1 for finding in accepted if agent_id in finding.get("contributing_agents", [])[1:]
+        )
         for agent_id in reports
     }
     agent_receipts = []
@@ -417,7 +462,9 @@ def make_receipt(
             "verifier_catches": metric(None),
             "observability": "per-agent usage and verifier events unavailable from Codex CLI JSON; values remain unknown",
         }
-        agent_value["receipt_id"] = "rr-" + digest("ars.codex.agent-resource-receipt.v1", agent_value)[:32]
+        agent_value["receipt_id"] = (
+            "rr-" + digest("ars.codex.agent-resource-receipt.v1", agent_value)[:32]
+        )
         agent_receipts.append(agent_value)
     receipt = {
         "schema": "ars.codex.run-resource-receipt.v1",
@@ -436,7 +483,9 @@ def validate_receipt(receipt: dict[str, Any], envelope: dict[str, Any]) -> list[
     errors: list[str] = []
     expected_agents = [node["id"] for node in envelope["topology"]["nodes"]]
     actual_agents = [item.get("agent_id") for item in receipt.get("agent_receipts", [])]
-    if sorted(actual_agents) != sorted(expected_agents) or len(actual_agents) != len(set(actual_agents)):
+    if sorted(actual_agents) != sorted(expected_agents) or len(actual_agents) != len(
+        set(actual_agents)
+    ):
         errors.append("agent_receipts_mismatch")
     if receipt.get("protocol_digest") != envelope["protocol_digest"]:
         errors.append("receipt_protocol_mismatch")
@@ -451,7 +500,9 @@ def validate_receipt(receipt: dict[str, Any], envelope: dict[str, Any]) -> list[
         for measurement in usage.values():
             if measurement.get("state") == "unknown" and measurement.get("value") is not None:
                 errors.append("unknown_measurement_has_value")
-            if measurement.get("state") == "known" and not isinstance(measurement.get("value"), int):
+            if measurement.get("state") == "known" and not isinstance(
+                measurement.get("value"), int
+            ):
                 errors.append("known_measurement_missing_integer")
     return sorted(set(errors))
 
@@ -465,7 +516,9 @@ def run_one(task_id: str, arm_id: str, force: bool) -> dict[str, Any]:
     receipt_path = RECEIPTS_ROOT / f"{task_id}--{arm_id}.json"
     if result_path.exists() and receipt_path.exists() and not force:
         return {"status": "skipped", "result": str(result_path)}
-    codex_version = subprocess.run(["codex", "--version"], check=True, capture_output=True, text=True).stdout.strip()
+    codex_version = subprocess.run(
+        ["codex", "--version"], check=True, capture_output=True, text=True
+    ).stdout.strip()
     envelope = experiment_envelope(cohort, task, arm_id, codex_version)
     plan = envelope["topology"]
     dag_errors = validate_dag(plan)
@@ -497,7 +550,9 @@ def run_one(task_id: str, arm_id: str, force: bool) -> dict[str, Any]:
             "-",
         ]
         started = time.monotonic()
-        completed = subprocess.run(command, cwd=workdir, input=prompt, capture_output=True, text=True)
+        completed = subprocess.run(
+            command, cwd=workdir, input=prompt, capture_output=True, text=True
+        )
         wall_ms = round((time.monotonic() - started) * 1000)
         events, usage = parse_events(completed.stdout)
         errors = []
@@ -514,7 +569,11 @@ def run_one(task_id: str, arm_id: str, force: bool) -> dict[str, Any]:
                 errors.append("codex_final_output_invalid_json")
         errors.extend(validate_output(output, task, arm_id, plan))
         total_tokens = None
-        if usage and usage.get("input_tokens") is not None and usage.get("output_tokens") is not None:
+        if (
+            usage
+            and usage.get("input_tokens") is not None
+            and usage.get("output_tokens") is not None
+        ):
             total_tokens = usage["input_tokens"] + usage["output_tokens"]
             if total_tokens > matched["aggregate_budget"]["max_total_tokens"]:
                 errors.append("aggregate_token_budget_exceeded")
@@ -551,7 +610,11 @@ def run_one(task_id: str, arm_id: str, force: bool) -> dict[str, Any]:
         receipt = make_receipt(envelope, output, usage, wall_ms)
         write_json(result_path, result)
         write_json(receipt_path, receipt)
-        return {"status": result["status"], "reasons": result["reason_codes"], "result": str(result_path)}
+        return {
+            "status": result["status"],
+            "reasons": result["reason_codes"],
+            "result": str(result_path),
+        }
 
 
 def validate_all(require_runs: bool) -> dict[str, Any]:
@@ -586,7 +649,10 @@ def validate_all(require_runs: bool) -> dict[str, Any]:
                 result = load_json(result_path)
                 if result.get("status") not in {"PASS", "BUDGET_EXHAUSTED"}:
                     errors.append(f"{task['task_id']}:{arm_id}:run_failed")
-                if result.get("envelope", {}).get("identity", {}).get("input_digest") != task["input_digest"]:
+                if (
+                    result.get("envelope", {}).get("identity", {}).get("input_digest")
+                    != task["input_digest"]
+                ):
                     errors.append(f"{task['task_id']}:{arm_id}:run_input_mismatch")
                 codex_version = result.get("runtime", {}).get("codex_version")
                 if not codex_version:
@@ -598,7 +664,9 @@ def validate_all(require_runs: bool) -> dict[str, Any]:
                     receipt = load_json(receipt_path)
                     errors.extend(
                         f"{task['task_id']}:{arm_id}:{reason}"
-                        for reason in validate_output(result.get("output", {}), task, arm_id, expected_envelope["topology"])
+                        for reason in validate_output(
+                            result.get("output", {}), task, arm_id, expected_envelope["topology"]
+                        )
                     )
                     errors.extend(
                         f"{task['task_id']}:{arm_id}:{reason}"
@@ -616,7 +684,9 @@ def validate_all(require_runs: bool) -> dict[str, Any]:
                 candidate_identity = load_json(candidate_path)["envelope"]["identity"]
                 errors.extend(
                     f"{task['task_id']}:{arm_id}:{reason}"
-                    for reason in matched_identity_reason_codes(control_identity, candidate_identity)
+                    for reason in matched_identity_reason_codes(
+                        control_identity, candidate_identity
+                    )
                 )
     expected_runs = sum(len(task["arms"]) for task in cohort["tasks"])
     return {
@@ -638,9 +708,7 @@ def gold_ids(task: dict[str, Any]) -> tuple[set[str], set[str]]:
     manifest = load_json(SUITE_ROOT / held_out["source"])
     all_ids = {item["defect_id"] for item in manifest["defects"]}
     critical = {
-        item["defect_id"]
-        for item in manifest["defects"]
-        if item["expected_severity"] == "critical"
+        item["defect_id"] for item in manifest["defects"] if item["expected_severity"] == "critical"
     }
     return all_ids, critical
 
@@ -649,11 +717,7 @@ def score_run(
     task: dict[str, Any], arm_id: str, result: dict[str, Any], adjudication: dict[str, Any]
 ) -> dict[str, Any]:
     expected, critical = gold_ids(task)
-    matched = {
-        gold_id
-        for values in adjudication.get("matches", {}).values()
-        for gold_id in values
-    }
+    matched = {gold_id for values in adjudication.get("matches", {}).values() for gold_id in values}
     output = result["output"]
     synthesis = output["synthesis"]
     usage = result["runtime"].get("usage") or {}
@@ -671,9 +735,7 @@ def score_run(
         "unscored_extra_findings": len(adjudication.get("unscored_extra_concept_ids", [])),
         "decision": synthesis["decision"],
         "expected_action_correct": (
-            synthesis["decision"] == "block"
-            if task["workflow"] == "pipeline"
-            else None
+            synthesis["decision"] == "block" if task["workflow"] == "pipeline" else None
         ),
         "citation_faithfulness_eligible": citation_faithfulness_task,
         "citation_faithfulness_correct": (
@@ -699,7 +761,9 @@ def aggregate_arm(rows: list[dict[str, Any]]) -> dict[str, Any]:
     matched = sum(row["matched_gold_count"] for row in rows)
     critical = sum(row["critical_gold_count"] for row in rows)
     matched_critical = sum(row["matched_critical_count"] for row in rows)
-    decisions = [row["expected_action_correct"] for row in rows if row["expected_action_correct"] is not None]
+    decisions = [
+        row["expected_action_correct"] for row in rows if row["expected_action_correct"] is not None
+    ]
     citation_rows = [row for row in rows if row["citation_faithfulness_eligible"]]
     return {
         "task_count": len(rows),
@@ -873,12 +937,28 @@ def report_markdown(report: dict[str, Any]) -> str:
             f"{quality['correct_block_actions']}/{quality['action_total']} | {cost['input_tokens'] + cost['output_tokens']:,} | "
             f"{cost['wall_clock_ms']/1000:.1f} | {cost['reported_retries']} | {arm['duplicate_contributions']['reported_total']} |"
         )
-    lines.extend(["", "Verifier catches remain **unknown**, not zero, because the CLI event stream does not expose per-agent verifier events.", "", "## Local go/no-go", ""])
+    lines.extend(
+        [
+            "",
+            "Verifier catches remain **unknown**, not zero, because the CLI event stream does not expose per-agent verifier events.",
+            "",
+            "## Local go/no-go",
+            "",
+        ]
+    )
     for item in report["local_go_no_go"]["recommendations"]:
         lines.append(
             f"- **{item['action']}** `{item['arm']}` for {item['workflow']} / {item['risk']}: {item['reason']}"
         )
-    lines.extend(["", "Inline remains the default. This report does not mutate routing or learning state.", "", "## Limitations", ""])
+    lines.extend(
+        [
+            "",
+            "Inline remains the default. This report does not mutate routing or learning state.",
+            "",
+            "## Limitations",
+            "",
+        ]
+    )
     lines.extend(f"- {item}" for item in report["limitations"])
     lines.extend(["", f"Report digest: `{report['report_digest']}`", ""])
     return "\n".join(lines)
@@ -926,7 +1006,11 @@ def main() -> int:
         report = build_report()
         write_json(RESULTS_ROOT / "report.json", report)
         (RESULTS_ROOT / "REPORT.md").write_text(report_markdown(report), encoding="utf-8")
-        print(json.dumps({"status": report["status"], "report_digest": report["report_digest"]}, indent=2))
+        print(
+            json.dumps(
+                {"status": report["status"], "report_digest": report["report_digest"]}, indent=2
+            )
+        )
         return 0
     if args.command == "run":
         result = run_one(args.task, args.arm, args.force)
@@ -939,7 +1023,9 @@ def main() -> int:
             continue
         for arm_id in task["arms"]:
             result = run_one(task["task_id"], arm_id, force=False)
-            print(canonical_json({"task_id": task["task_id"], "arm_id": arm_id, **result}), flush=True)
+            print(
+                canonical_json({"task_id": task["task_id"], "arm_id": arm_id, **result}), flush=True
+            )
             failed = failed or result["status"] not in {"PASS", "BUDGET_EXHAUSTED", "skipped"}
     return 1 if failed else 0
 

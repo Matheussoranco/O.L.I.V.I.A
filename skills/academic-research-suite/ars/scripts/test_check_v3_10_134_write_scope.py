@@ -45,8 +45,10 @@ class MutationTest(unittest.TestCase):
         errs = lint.run_checks()
         self.assertTrue(errs, "mutation should have produced at least one error")
         if needle:
-            self.assertTrue(any(needle in e for e in errs),
-                            f"expected an error mentioning {needle!r}; got {errs}")
+            self.assertTrue(
+                any(needle in e for e in errs),
+                f"expected an error mentioning {needle!r}; got {errs}",
+            )
 
     def test_I1_roster_size_drift_fails(self):
         # Drop one Bucket A agent from the roster -> size != 23.
@@ -72,6 +74,7 @@ class MutationTest(unittest.TestCase):
             if rel.endswith("bibliography_agent.md"):
                 return "renamed_bibliography_agent"
             return self._real_name(rel)
+
         lint.read_frontmatter_name = fake_name
         self._assert_fails("I2")
 
@@ -80,12 +83,12 @@ class MutationTest(unittest.TestCase):
         real = self._real_keys()
         lint.load_manifest_keys = lambda: real | {"report_compiler_agent"}
         errs = lint.run_checks()
-        self.assertTrue(any("I3" in e for e in errs),
-                        f"expected an I3 leak error; got {errs}")
+        self.assertTrue(any("I3" in e for e in errs), f"expected an I3 leak error; got {errs}")
 
     def test_I4_empty_globs_fails(self):
         real = self._real_manifest()
         import copy
+
         mutated = copy.deepcopy(real)
         first = sorted(mutated["agents"])[0]
         mutated["agents"][first]["allowed_write_globs"] = []
@@ -95,6 +98,7 @@ class MutationTest(unittest.TestCase):
     def test_I4_wrong_bucket_fails(self):
         real = self._real_manifest()
         import copy
+
         mutated = copy.deepcopy(real)
         first = sorted(mutated["agents"])[0]
         mutated["agents"][first]["bucket"] = "B"
@@ -107,15 +111,17 @@ class MutationTest(unittest.TestCase):
         lint.BUCKET_A_AGENT_FILES = self._real_a[:-1]  # drop one Bucket A file from roster
         # (it still exists on disk, so I5's filesystem glob must flag it as undeclared)
         errs = lint.run_checks()
-        self.assertTrue(any("I5" in e for e in errs),
-                        f"expected an I5 undeclared-agent error; got {errs}")
+        self.assertTrue(
+            any("I5" in e for e in errs), f"expected an I5 undeclared-agent error; got {errs}"
+        )
 
     def test_I5_stale_roster_entry_fails(self):
         # A roster entry pointing at a non-existent file is a stale entry.
         lint.BUCKET_A_AGENT_FILES = self._real_a + ["deep-research/agents/ghost_agent.md"]
         errs = lint.run_checks()
-        self.assertTrue(any("I5" in e for e in errs),
-                        f"expected an I5 stale-entry error; got {errs}")
+        self.assertTrue(
+            any("I5" in e for e in errs), f"expected an I5 stale-entry error; got {errs}"
+        )
 
 
 class I5DepthAndSymlinkTest(unittest.TestCase):
@@ -155,8 +161,10 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         # Point every non-I5 invariant at consistent synthetic data so ONLY I5 can react.
         lint.BUCKET_A_AGENT_FILES = list(a_files)
         lint.BUCKET_BCD_AGENT_FILES = list(bcd_files)
-        agents = {k: {"bucket": "A", "phase": "1", "allowed_write_globs": ["phase1_*/**"]}
-                  for k in manifest_keys}
+        agents = {
+            k: {"bucket": "A", "phase": "1", "allowed_write_globs": ["phase1_*/**"]}
+            for k in manifest_keys
+        }
         lint.load_manifest = lambda: {"agents": agents}
         lint.load_manifest_keys = lambda: set(manifest_keys)
 
@@ -172,8 +180,10 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         (agg / "x_agent.md").write_bytes(real.read_bytes())
         self._stub_loaders_to(["deep-research/agents/x_agent.md"], [], ["x_agent"])
         errs = lint.run_checks()
-        self.assertFalse(any("I5" in e for e in errs),
-                         f"root agents/ mirror copy must NOT be I5-undeclared; got {errs}")
+        self.assertFalse(
+            any("I5" in e for e in errs),
+            f"root agents/ mirror copy must NOT be I5-undeclared; got {errs}",
+        )
 
     def test_root_agents_copy_without_rostered_source_is_flagged(self):
         # The name-mapping must not become a blanket allowlist: a file dropped
@@ -184,8 +194,10 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         self._stub_loaders_to(["deep-research/agents/x_agent.md"], [], ["x_agent"])
         errs = lint.run_checks()
         i5 = [e for e in errs if "I5" in e]
-        self.assertTrue(any("rogue_agent" in e for e in i5),
-                        f"unrostered root agents/ file must trigger I5; got {errs}")
+        self.assertTrue(
+            any("rogue_agent" in e for e in i5),
+            f"unrostered root agents/ file must trigger I5; got {errs}",
+        )
 
     def test_root_agents_copy_of_non_deep_research_source_fails_closed(self):
         # The by-name mapping points ONLY at deep-research/agents/ — it must
@@ -200,8 +212,10 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         self._stub_loaders_to(["academic-paper/agents/y_agent.md"], [], ["y_agent"])
         errs = lint.run_checks()
         i5 = [e for e in errs if "I5" in e]
-        self.assertTrue(any("agents/y_agent.md" in e for e in i5),
-                        f"non-deep-research mirror must fail closed; got {errs}")
+        self.assertTrue(
+            any("agents/y_agent.md" in e for e in i5),
+            f"non-deep-research mirror must fail closed; got {errs}",
+        )
 
     def test_nested_dir_under_root_agents_is_not_remapped(self):
         # codex review (#413 round, P2): the mirror remap applies ONLY to
@@ -214,8 +228,10 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         self._stub_loaders_to(["deep-research/agents/x_agent.md"], [], ["x_agent"])
         errs = lint.run_checks()
         i5 = [e for e in errs if "I5" in e]
-        self.assertTrue(any("agents/sub/agents/x_agent.md" in e for e in i5),
-                        f"nested file under root agents/ must not be remapped; got {errs}")
+        self.assertTrue(
+            any("agents/sub/agents/x_agent.md" in e for e in i5),
+            f"nested file under root agents/ must not be remapped; got {errs}",
+        )
 
     def test_root_agents_symlink_aggregate_not_flagged(self):
         # Legacy/transition pin (pre-#413 file kind): a symlink in root
@@ -231,8 +247,10 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         # possible, so just assert no I5 error specifically.
         self._stub_loaders_to(["deep-research/agents/x_agent.md"], [], ["x_agent"])
         errs = lint.run_checks()
-        self.assertFalse(any("I5" in e for e in errs),
-                         f"root agents/ symlink must NOT be I5-undeclared; got {errs}")
+        self.assertFalse(
+            any("I5" in e for e in errs),
+            f"root agents/ symlink must NOT be I5-undeclared; got {errs}",
+        )
 
     def test_nested_agents_dir_undeclared_is_caught(self):
         # A genuinely new standalone agent file nested two levels deep, absent from the
@@ -243,8 +261,9 @@ class I5DepthAndSymlinkTest(unittest.TestCase):
         errs = lint.run_checks()
         i5 = [e for e in errs if "I5" in e]
         self.assertTrue(i5, f"nested undeclared agent must trigger I5; got {errs}")
-        self.assertTrue(any("sneaky_agent" in e for e in i5),
-                        f"I5 error should name the nested file; got {i5}")
+        self.assertTrue(
+            any("sneaky_agent" in e for e in i5), f"I5 error should name the nested file; got {i5}"
+        )
 
 
 if __name__ == "__main__":

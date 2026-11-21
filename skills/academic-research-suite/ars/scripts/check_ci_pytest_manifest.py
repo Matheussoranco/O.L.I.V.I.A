@@ -42,13 +42,13 @@ except ModuleNotFoundError:  # pragma: no cover - Python < 3.11 compatibility
 # Line continuations (`pytest \<newline>scripts/...`) are handled by collapsing
 # backslash-newline sequences before scanning (see `_validate_workflow`).
 DIRECT_PYTEST_RE = re.compile(
-    r"\b(?:py\.test|pytest)\b"      # invocation token (pytest or py.test)
+    r"\b(?:py\.test|pytest)\b"  # invocation token (pytest or py.test)
     r"(?:\s+(?:-[^\s]+|--[^\s]+))*"  # zero or more flag args (short -x or long --x=y)
-    r"\s+"                           # whitespace before path
-    r"['\"]?"                        # optional quote
-    r"(?:\./)?"                      # optional ./ prefix
+    r"\s+"  # whitespace before path
+    r"['\"]?"  # optional quote
+    r"(?:\./)?"  # optional ./ prefix
     r"scripts/test_[A-Za-z0-9_]+\.py"
-    r"['\"]?"                        # optional closing quote
+    r"['\"]?"  # optional closing quote
 )
 
 
@@ -100,9 +100,7 @@ def _validate_entries(entries: list[dict], root: Path, errors: list[str]) -> Non
         if not isinstance(entry_path, str) or not entry_path:
             _fail(f"entry id={entry_id!r}: missing/invalid `path`", errors)
             continue
-        if not isinstance(entry_args, list) or not all(
-            isinstance(a, str) for a in entry_args
-        ):
+        if not isinstance(entry_args, list) or not all(isinstance(a, str) for a in entry_args):
             _fail(
                 f"entry id={entry_id!r}: `args` must be a list of strings "
                 f"(got {type(entry_args).__name__})",

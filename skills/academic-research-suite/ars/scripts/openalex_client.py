@@ -17,7 +17,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 # Dual-path import: sibling-first (so module identity matches when callers
 # import via the sibling path, e.g. tests), namespace-package fallback (for
@@ -60,9 +61,7 @@ def _require_api_url(url: str) -> None:
     if parsed.scheme != "https" or parsed.netloc != _API_HOST:
         # Strip the query from the message: it can carry api_key, which
         # must never land in logs / raised-exception text.
-        redacted = urllib.parse.urlunsplit(
-            (parsed.scheme, parsed.netloc, parsed.path, "", "")
-        )
+        redacted = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
         raise OpenAlexUnavailable(f"Refusing non-OpenAlex URL: {redacted}")
 
 
@@ -95,7 +94,9 @@ class OpenAlexClient:
     """
 
     def __init__(
-        self, polite_email: str | None = None, api_key: str | None = None,
+        self,
+        polite_email: str | None = None,
+        api_key: str | None = None,
     ):
         # api_key is the OpenAlex-documented auth mechanism (free key, 10×
         # the keyless daily budget). polite_email predates it: the polite
@@ -174,7 +175,7 @@ class OpenAlexClient:
                     if attempt < _MAX_RETRIES:
                         # Exponential backoff (2s → 4s → 8s) per OpenAlex's
                         # documented guidance for transient burst 429s.
-                        time.sleep(_BACKOFF_SECONDS * (2 ** attempt))
+                        time.sleep(_BACKOFF_SECONDS * (2**attempt))
                         # Refresh anchor after backoff so the next _throttle()
                         # paces against actual wake time, not entry time.
                         # Without this the next call may under-sleep (elapsed
@@ -188,7 +189,9 @@ class OpenAlexClient:
         raise OpenAlexUnavailable("OpenAlex rate limit exhausted after retries")
 
     def doi_lookup_with_title_check(
-        self, doi: str, expected_title: str,
+        self,
+        doi: str,
+        expected_title: str,
     ) -> dict[str, Any] | None:
         """DOI lookup with mandatory Levenshtein 0.70 title cross-check."""
         quoted_doi = urllib.parse.quote(doi, safe="")
@@ -209,11 +212,14 @@ class OpenAlexClient:
         title-keyed miss to `unresolvable`. See crossref_client.title_search."""
         if generic_title(title):
             return None
-        data = self._get("/works", {
-            "search": title,
-            "per-page": "5",
-            "select": _FIELDS,
-        })
+        data = self._get(
+            "/works",
+            {
+                "search": title,
+                "per-page": "5",
+                "select": _FIELDS,
+            },
+        )
         candidates = data.get("results", [])
         scored = []
         for cand in candidates:

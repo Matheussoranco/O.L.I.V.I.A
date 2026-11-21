@@ -36,7 +36,9 @@ def normalize_compat_verdict(raw: str) -> dict:
 
 
 def _main() -> int:
-    import sys, json
+    import json
+    import sys
+
     raw = sys.stdin.read()
     result = normalize_compat_verdict(raw)
     # Single-line JSON: the consumer reads .status; raw text lives JSON-escaped in .context
@@ -45,11 +47,16 @@ def _main() -> int:
     # Unicode line separators U+2028/U+2029 that some Unicode-aware consumers treat as line
     # breaks — so a model response cannot smuggle a second output line via those either. The
     # context is diagnostic text; ASCII-escaping it is fine.
-    print(json.dumps({
-        "status": result["status"],
-        "provider": "openai_compatible",
-        "context": result["context"],
-    }, ensure_ascii=True))
+    print(
+        json.dumps(
+            {
+                "status": result["status"],
+                "provider": "openai_compatible",
+                "context": result["context"],
+            },
+            ensure_ascii=True,
+        )
+    )
     return 0
 
 

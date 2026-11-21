@@ -68,9 +68,7 @@ def quote_slot(role: str, artifact_id: str, raw: bytes, text: str) -> dict[str, 
     }
 
 
-def checked_slot(
-    role: str, artifact_id: str, raw: bytes, text: str
-) -> dict[str, object]:
+def checked_slot(role: str, artifact_id: str, raw: bytes, text: str) -> dict[str, object]:
     return {
         "logical_role": role,
         "artifact_id": artifact_id,
@@ -164,9 +162,7 @@ def build_observations(accepted: bytes, prereg: bytes) -> list[dict[str, object]
             ]
         else:
             slots = [
-                quote_slot(
-                    "manuscript_report", ACCEPTED_ID, accepted, case["quotes"][0]
-                ),
+                quote_slot("manuscript_report", ACCEPTED_ID, accepted, case["quotes"][0]),
                 quote_slot("preregistration", PREREG_ID, prereg, case["quotes"][1]),
                 checked_slot(
                     "disclosure_scope",
@@ -189,13 +185,9 @@ def build_observations(accepted: bytes, prereg: bytes) -> list[dict[str, object]
         pair = case["pair_kind"]
         if pair == "manuscript_preregistration":
             slots = [
-                quote_slot(
-                    "manuscript_report", ACCEPTED_ID, accepted, case["quotes"][0]
-                ),
+                quote_slot("manuscript_report", ACCEPTED_ID, accepted, case["quotes"][0]),
                 quote_slot("preregistration", PREREG_ID, prereg, case["quotes"][1]),
-                quote_slot(
-                    "disclosure_scope", ACCEPTED_ID, accepted, case["quotes"][2]
-                ),
+                quote_slot("disclosure_scope", ACCEPTED_ID, accepted, case["quotes"][2]),
             ]
         else:
             slots = [
@@ -347,27 +339,11 @@ def finalizer_args(paths: dict[str, Path]) -> list[str]:
 
 def test_four_positives_and_three_negatives_finalize(bundle):
     report = bundle["report"]
-    observations = [
-        item for pair in report["pair_results"] for item in pair["observations"]
-    ]
+    observations = [item for pair in report["pair_results"] for item in pair["observations"]]
     assert len(observations) == 7
-    assert (
-        sum(
-            item["outcome"] == "POTENTIAL_INCONSISTENCY_LOCATED"
-            for item in observations
-        )
-        == 4
-    )
-    assert (
-        sum(
-            item["outcome"] == "NO_LISTED_INCONSISTENCY_LOCATED"
-            for item in observations
-        )
-        == 3
-    )
-    assert [pair["pair_kind"] for pair in report["pair_results"]] == list(
-        runtime.PAIR_ORDER
-    )
+    assert sum(item["outcome"] == "POTENTIAL_INCONSISTENCY_LOCATED" for item in observations) == 4
+    assert sum(item["outcome"] == "NO_LISTED_INCONSISTENCY_LOCATED" for item in observations) == 3
+    assert [pair["pair_kind"] for pair in report["pair_results"]] == list(runtime.PAIR_ORDER)
     assert [item["advisory_id"] for item in observations] == [
         f"ADV-XDOC-{index:06d}" for index in range(1, 8)
     ]
@@ -407,19 +383,14 @@ def test_report_and_input_digests_replay(bundle):
 
 def test_all_five_schemas_accept_runtime_outputs(bundle):
     schema_paths = {
-        "sidecar": REPO
-        / "shared/contracts/passport/preregistration_artifact.schema.json",
-        "manifest": REPO
-        / "shared/contracts/audit/cross_document_source_manifest.schema.json",
+        "sidecar": REPO / "shared/contracts/passport/preregistration_artifact.schema.json",
+        "manifest": REPO / "shared/contracts/audit/cross_document_source_manifest.schema.json",
         "draft": REPO
         / "shared/contracts/audit/cross_document_consistency_advisory_draft.schema.json",
         "row": REPO / "shared/contracts/evidence/evidence_row_v1_2.schema.json",
-        "final": REPO
-        / "shared/contracts/audit/cross_document_consistency_advisory.schema.json",
+        "final": REPO / "shared/contracts/audit/cross_document_consistency_advisory.schema.json",
     }
-    schemas = {
-        name: json.loads(path.read_text()) for name, path in schema_paths.items()
-    }
+    schemas = {name: json.loads(path.read_text()) for name, path in schema_paths.items()}
     for name in ("sidecar", "manifest", "draft", "row", "final"):
         Draft202012Validator.check_schema(schemas[name])
     Draft202012Validator(schemas["sidecar"]).validate(bundle["sidecar"])
@@ -431,9 +402,7 @@ def test_all_five_schemas_accept_runtime_outputs(bundle):
     for pair in bundle["report"]["pair_results"]:
         for item in pair["observations"]:
             Draft202012Validator(schemas["row"]).validate(item["evidence_row"])
-    Draft202012Validator(schemas["final"], registry=row_registry).validate(
-        bundle["report"]
-    )
+    Draft202012Validator(schemas["final"], registry=row_registry).validate(bundle["report"])
 
 
 @pytest.mark.parametrize(
@@ -454,9 +423,7 @@ def test_draft_kill_mutations_fail_closed(bundle, mutation):
     elif mutation == "quote_text":
         draft["observations"][0]["evidence_slots"][0]["anchor_value_encoded"] = "forged"
     elif mutation == "span":
-        draft["observations"][0]["evidence_slots"][0]["quote_source_span_utf8"][
-            "start"
-        ] += 1
+        draft["observations"][0]["evidence_slots"][0]["quote_source_span_utf8"]["start"] += 1
     elif mutation == "reason":
         target = draft["observations"][0]
         target.update(
@@ -466,9 +433,7 @@ def test_draft_kill_mutations_fail_closed(bundle, mutation):
             negative_basis=None,
             not_checked_reason="SOURCE_ACCESS_FAILED",
         )
-        target["evidence_slots"][0] = failure_slot(
-            "abstract", ACCEPTED_ID, "not_checked"
-        )
+        target["evidence_slots"][0] = failure_slot("abstract", ACCEPTED_ID, "not_checked")
     else:
         target = next(item for item in draft["observations"] if item["deviation_id"])
         target["deviation_domain"] = "unknown"
@@ -482,9 +447,7 @@ def test_draft_kill_mutations_fail_closed(bundle, mutation):
         )
 
 
-@pytest.mark.parametrize(
-    "mutation", ["record", "projection", "accepted_sha", "companion"]
-)
+@pytest.mark.parametrize("mutation", ["record", "projection", "accepted_sha", "companion"])
 def test_binding_kill_mutations_fail_before_semantics(bundle, mutation):
     sidecar = copy.deepcopy(bundle["sidecar"])
     manifest = copy.deepcopy(bundle["manifest"])
@@ -493,14 +456,10 @@ def test_binding_kill_mutations_fail_before_semantics(bundle, mutation):
         sidecar["record_digest"] = "0" * 64
     elif mutation == "projection":
         manifest["artifacts"][1]["artifact_provenance"] = "not_provided"
-        manifest["manifest_digest"] = runtime._digest_without(
-            manifest, "manifest_digest"
-        )
+        manifest["manifest_digest"] = runtime._digest_without(manifest, "manifest_digest")
     elif mutation == "accepted_sha":
         manifest["accepted_draft_sha256"] = "0" * 64
-        manifest["manifest_digest"] = runtime._digest_without(
-            manifest, "manifest_digest"
-        )
+        manifest["manifest_digest"] = runtime._digest_without(manifest, "manifest_digest")
     else:
         prereg = prereg + b"drift"
     with pytest.raises(runtime.AdvisoryError):
@@ -522,9 +481,7 @@ def test_missing_preregistration_is_not_checked_not_clean(bundle):
     manifest = make_manifest(bundle["accepted"], sidecar)
     draft = copy.deepcopy(bundle["draft"])
     draft["observations"] = [
-        item
-        for item in draft["observations"]
-        if item["pair_kind"] != "manuscript_preregistration"
+        item for item in draft["observations"] if item["pair_kind"] != "manuscript_preregistration"
     ]
     draft["observations"].append(
         observation(
@@ -555,9 +512,7 @@ def test_missing_preregistration_is_not_checked_not_clean(bundle):
 def test_missing_methods_scope_routes_to_scope_not_provided(bundle):
     draft = copy.deepcopy(bundle["draft"])
     draft["observations"] = [
-        item
-        for item in draft["observations"]
-        if item["pair_kind"] != "methods_reported_analyses"
+        item for item in draft["observations"] if item["pair_kind"] != "methods_reported_analyses"
     ]
     text = "We preregistered a linear regression adjusted for baseline score."
     draft["observations"].append(
@@ -586,14 +541,9 @@ def test_missing_methods_scope_routes_to_scope_not_provided(bundle):
 def test_cli_finalize_validate_render_and_atomic_failure(tmp_path, bundle, capsys):
     paths = write_bundle(tmp_path, bundle)
     output = tmp_path / "built.json"
-    assert (
-        runtime.main(["finalize", *finalizer_args(paths), "--output", str(output)]) == 0
-    )
+    assert runtime.main(["finalize", *finalizer_args(paths), "--output", str(output)]) == 0
     assert output.read_bytes() == canonical(bundle["report"])
-    assert (
-        runtime.main(["validate", *finalizer_args(paths), "--advisory", str(output)])
-        == 0
-    )
+    assert runtime.main(["validate", *finalizer_args(paths), "--advisory", str(output)]) == 0
     rendered = tmp_path / "page.md"
     assert (
         runtime.main(
@@ -618,9 +568,7 @@ def test_cli_finalize_validate_render_and_atomic_failure(tmp_path, bundle, capsy
 
     output.write_bytes(b"sentinel")
     paths["draft"].write_text("{}")
-    assert (
-        runtime.main(["finalize", *finalizer_args(paths), "--output", str(output)]) == 2
-    )
+    assert runtime.main(["finalize", *finalizer_args(paths), "--output", str(output)]) == 2
     assert output.read_bytes() == b"sentinel"
     assert capsys.readouterr().err.strip().splitlines()[-1] == (
         "ADVISORY_UNAVAILABLE:DRAFT_CONTRACT_INVALID"
@@ -631,17 +579,12 @@ def test_validate_rejects_noncanonical_final_bytes(tmp_path, bundle):
     paths = write_bundle(tmp_path, bundle)
     paths["report"].write_text(json.dumps(bundle["report"], indent=2) + "\n")
     assert (
-        runtime.main(
-            ["validate", *finalizer_args(paths), "--advisory", str(paths["report"])]
-        )
-        == 2
+        runtime.main(["validate", *finalizer_args(paths), "--advisory", str(paths["report"])]) == 2
     )
 
 
 def test_library_validate_rejects_noncanonical_final_bytes(bundle):
-    pretty = (
-        json.dumps(bundle["report"], indent=2, ensure_ascii=False) + "\n"
-    ).encode()
+    pretty = (json.dumps(bundle["report"], indent=2, ensure_ascii=False) + "\n").encode()
     with pytest.raises(runtime.AdvisoryError) as failure:
         runtime.validate_advisory(
             bundle["report"],
@@ -684,16 +627,12 @@ def test_malformed_list_field_fails_as_closed_contract_error(bundle):
     assert failure.value.code == "DRAFT_CONTRACT_INVALID"
 
 
-def test_invalid_source_preflight_precedes_semantic_draft_read(
-    tmp_path, bundle, capsys
-):
+def test_invalid_source_preflight_precedes_semantic_draft_read(tmp_path, bundle, capsys):
     paths = write_bundle(tmp_path, bundle)
     paths["accepted"].write_bytes(b"\xff")
     paths["draft"].unlink()
     assert runtime.main(["finalize", *finalizer_args(paths)]) == 2
-    assert capsys.readouterr().err.strip() == (
-        "ADVISORY_UNAVAILABLE:SOURCE_BINDING_INVALID"
-    )
+    assert capsys.readouterr().err.strip() == ("ADVISORY_UNAVAILABLE:SOURCE_BINDING_INVALID")
 
 
 @pytest.mark.parametrize("count", [0, 1, 25, 26, 1001])
@@ -711,9 +650,7 @@ def test_paginator_has_no_loss_duplication_or_reordering(count):
 
 def test_parser_has_no_all_escape_hatch(capsys):
     assert runtime.main(["render", "--all"]) == 2
-    assert capsys.readouterr().err.strip() == (
-        "ADVISORY_UNAVAILABLE:FINAL_ARTIFACT_INVALID"
-    )
+    assert capsys.readouterr().err.strip() == ("ADVISORY_UNAVAILABLE:FINAL_ARTIFACT_INVALID")
 
 
 def test_single_percent_decode_and_literal_plus():
@@ -768,9 +705,7 @@ def test_builder_cli_writes_canonical_sidecar(tmp_path, bundle):
 
 def test_report_tampering_fails_replay(bundle):
     report = copy.deepcopy(bundle["report"])
-    report["pair_results"][0]["observations"][0]["evidence_row"]["row_sha256"] = (
-        "0" * 64
-    )
+    report["pair_results"][0]["observations"][0]["evidence_row"]["row_sha256"] = "0" * 64
     report["report_digest"] = runtime._digest_without(report, "report_digest")
     with pytest.raises(runtime.AdvisoryError):
         runtime.validate_advisory(
@@ -805,15 +740,11 @@ def test_named_byte_limit_accepts_n_and_rejects_n_plus_one(tmp_path):
     assert failure.value.code == "RESOURCE_LIMIT"
 
 
-def test_provided_companion_later_unreadable_is_source_binding_failure(
-    tmp_path, bundle, capsys
-):
+def test_provided_companion_later_unreadable_is_source_binding_failure(tmp_path, bundle, capsys):
     paths = write_bundle(tmp_path, bundle)
     paths["prereg"].unlink()
     assert runtime.main(["finalize", *finalizer_args(paths)]) == 2
-    assert capsys.readouterr().err.strip() == (
-        "ADVISORY_UNAVAILABLE:SOURCE_BINDING_INVALID"
-    )
+    assert capsys.readouterr().err.strip() == ("ADVISORY_UNAVAILABLE:SOURCE_BINDING_INVALID")
 
 
 def test_cli_syntax_error_is_one_bounded_path_free_diagnostic(capsys):
@@ -844,9 +775,7 @@ def test_cli_syntax_error_is_one_bounded_path_free_diagnostic(capsys):
 def test_complete_role_matrix_preflight_precedes_semantic_outcomes(bundle):
     draft = copy.deepcopy(bundle["draft"])
     draft["observations"][0]["outcome"] = "BOGUS"
-    draft["observations"][-1]["evidence_slots"][0]["logical_role"] = (
-        "consent_protocol"
-    )
+    draft["observations"][-1]["evidence_slots"][0]["logical_role"] = "consent_protocol"
     with pytest.raises(runtime.AdvisoryError) as failure:
         runtime.finalize_advisory(
             draft,
@@ -862,9 +791,7 @@ def test_complete_role_matrix_preflight_precedes_semantic_outcomes(bundle):
 def test_renderer_includes_inert_locator(bundle):
     draft = copy.deepcopy(bundle["draft"])
     locator_value = "LOCATOR <img src=x> | [link](file:///secret)"
-    draft["observations"][0]["evidence_slots"][0]["document_locator"][
-        "value"
-    ] = locator_value
+    draft["observations"][0]["evidence_slots"][0]["document_locator"]["value"] = locator_value
     report = runtime.finalize_advisory(
         draft,
         bundle["manifest"],
@@ -923,9 +850,7 @@ def test_blank_accepted_draft_fails_before_semantic_slots(bundle):
         ("retrieval_failed", "retrieval_failed", "SOURCE_RETRIEVAL_FAILED"),
     ],
 )
-def test_unavailable_sidecar_status_matrix_is_not_checked(
-    bundle, status, state, reason
-):
+def test_unavailable_sidecar_status_matrix_is_not_checked(bundle, status, state, reason):
     sidecar = runtime.build_preregistration_artifact(
         status=status,
         artifact_id=PREREG_ID,
@@ -934,9 +859,7 @@ def test_unavailable_sidecar_status_matrix_is_not_checked(
     manifest = make_manifest(bundle["accepted"], sidecar)
     draft = copy.deepcopy(bundle["draft"])
     draft["observations"] = [
-        item
-        for item in draft["observations"]
-        if item["pair_kind"] != "manuscript_preregistration"
+        item for item in draft["observations"] if item["pair_kind"] != "manuscript_preregistration"
     ]
     draft["observations"].append(
         observation(
@@ -967,9 +890,7 @@ def test_unavailable_sidecar_status_matrix_is_not_checked(
 def test_reported_analysis_without_declared_method_uses_reverse_scope(bundle):
     draft = copy.deepcopy(bundle["draft"])
     draft["observations"] = [
-        item
-        for item in draft["observations"]
-        if item["pair_kind"] != "methods_reported_analyses"
+        item for item in draft["observations"] if item["pair_kind"] != "methods_reported_analyses"
     ]
     draft["observations"].append(
         observation(
@@ -1001,9 +922,10 @@ def test_reported_analysis_without_declared_method_uses_reverse_scope(bundle):
     )
     result = report["pair_results"][2]["observations"][0]
     assert result["finding_type"] == "reported_analysis_no_declared_counterpart"
-    assert [
-        slot["evidence_state"] for slot in result["evidence_row"]["evidence_slots"]
-    ] == ["checked_no_match", "agent_extracted"]
+    assert [slot["evidence_state"] for slot in result["evidence_row"]["evidence_slots"]] == [
+        "checked_no_match",
+        "agent_extracted",
+    ]
 
 
 def test_blank_checked_scope_is_not_absence_evidence(bundle):
@@ -1071,9 +993,7 @@ def test_json_depth_limit_accepts_n_and_rejects_n_plus_one(monkeypatch):
     )
     assert accepted == {"items": []}
     with pytest.raises(runtime.AdvisoryError) as failure:
-        runtime._strict_json_bytes(
-            b'{"items":[[]]}', code="DRAFT_CONTRACT_INVALID", path="draft"
-        )
+        runtime._strict_json_bytes(b'{"items":[[]]}', code="DRAFT_CONTRACT_INVALID", path="draft")
     assert failure.value.code == "DRAFT_CONTRACT_INVALID"
     assert "nesting exceeds 2" in str(failure.value)
 
@@ -1084,9 +1004,7 @@ def test_json_node_limit_accepts_n_and_rejects_n_plus_one(monkeypatch):
         b"[null,null]", code="DRAFT_CONTRACT_INVALID", path="draft"
     ) == [None, None]
     with pytest.raises(runtime.AdvisoryError) as failure:
-        runtime._strict_json_bytes(
-            b"[null,null,null]", code="DRAFT_CONTRACT_INVALID", path="draft"
-        )
+        runtime._strict_json_bytes(b"[null,null,null]", code="DRAFT_CONTRACT_INVALID", path="draft")
     assert failure.value.code == "DRAFT_CONTRACT_INVALID"
     assert "aggregate nodes exceed 3" in str(failure.value)
 
@@ -1119,9 +1037,7 @@ def test_page_size_limit_accepts_n_and_rejects_n_plus_one(monkeypatch):
     assert failure.value.code == "FINAL_ARTIFACT_INVALID"
 
 
-def test_aggregate_source_limit_accepts_n_and_rejects_n_plus_one(
-    monkeypatch, bundle
-):
+def test_aggregate_source_limit_accepts_n_and_rejects_n_plus_one(monkeypatch, bundle):
     total = len(bundle["accepted"]) + len(bundle["prereg"])
     monkeypatch.setattr(runtime, "MAX_TOTAL_SOURCE_BYTES", total)
     runtime._prepare_inputs(
@@ -1223,9 +1139,7 @@ def test_whitespace_only_preregistration_companion_is_not_evidence():
 
 def test_duplicate_observation_key_fails_in_role_preflight(bundle):
     draft = copy.deepcopy(bundle["draft"])
-    draft["observations"][1]["observation_key"] = draft["observations"][0][
-        "observation_key"
-    ]
+    draft["observations"][1]["observation_key"] = draft["observations"][0]["observation_key"]
     with pytest.raises(runtime.AdvisoryError) as failure:
         runtime.finalize_advisory(
             draft,
@@ -1238,9 +1152,7 @@ def test_duplicate_observation_key_fails_in_role_preflight(bundle):
 
 
 @pytest.mark.parametrize("alias_kind", ["hardlink", "symlink"])
-def test_finalize_output_alias_cannot_replace_named_input(
-    tmp_path, bundle, capsys, alias_kind
-):
+def test_finalize_output_alias_cannot_replace_named_input(tmp_path, bundle, capsys, alias_kind):
     paths = write_bundle(tmp_path, bundle)
     output = tmp_path / "aliased-output.json"
     if alias_kind == "hardlink":
@@ -1248,16 +1160,9 @@ def test_finalize_output_alias_cannot_replace_named_input(
     else:
         output.symlink_to(paths["draft"])
     original = paths["draft"].read_bytes()
-    assert (
-        runtime.main(
-            ["finalize", *finalizer_args(paths), "--output", str(output)]
-        )
-        == 2
-    )
+    assert runtime.main(["finalize", *finalizer_args(paths), "--output", str(output)]) == 2
     assert paths["draft"].read_bytes() == original
-    assert capsys.readouterr().err.strip() == (
-        "ADVISORY_UNAVAILABLE:NAMED_INPUT_UNREADABLE"
-    )
+    assert capsys.readouterr().err.strip() == ("ADVISORY_UNAVAILABLE:NAMED_INPUT_UNREADABLE")
 
 
 def test_symlink_named_input_is_rejected(tmp_path):

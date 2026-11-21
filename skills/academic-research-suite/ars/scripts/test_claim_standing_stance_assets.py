@@ -107,27 +107,25 @@ def test_registration_is_deferred_until_implementation(shipped_set):
             "unique",
         ),
         (
-            lambda v: v["items"][0]["candidate"].__setitem__(
-                "doi", "10.99999/csp-en-support-2"
-            ),
+            lambda v: v["items"][0]["candidate"].__setitem__("doi", "10.99999/csp-en-support-2"),
             "doi",
         ),
         (
-            lambda v: next(
-                item for item in v["items"] if item["language"] == "zh-TW"
-            ).update(claim_text="这项研究显示效果显著提升并可推广应用"),
+            lambda v: next(item for item in v["items"] if item["language"] == "zh-TW").update(
+                claim_text="这项研究显示效果显著提升并可推广应用"
+            ),
             "[Ss]implified",
         ),
         (
-            lambda v: next(
-                item for item in v["items"] if item["item_id"].endswith("absmiss-1")
-            )["design_target"].update(failure_state=None),
+            lambda v: next(item for item in v["items"] if item["item_id"].endswith("absmiss-1"))[
+                "design_target"
+            ].update(failure_state=None),
             "failure",
         ),
         (
-            lambda v: next(
-                item for item in v["items"] if item["item_id"].endswith("support-1")
-            )["design_target"].update(stance="contradict"),
+            lambda v: next(item for item in v["items"] if item["item_id"].endswith("support-1"))[
+                "design_target"
+            ].update(stance="contradict"),
             "design slot",
         ),
         (
@@ -170,9 +168,7 @@ def test_single_stance_swap_lands_in_the_right_cell(shipped_set):
     adjudicated = _adjudicated_from_design(shipped_set)
     subject = _subject_from_adjudicated(adjudicated)
     row = next(
-        r
-        for r in subject["rows"]
-        if r["item_id"] == "csp-en-support-1" and r["replicate"] == 1
+        r for r in subject["rows"] if r["item_id"] == "csp-en-support-1" and r["replicate"] == 1
     )
     row["stance"] = "contradict"
     report = scorer.score(shipped_set, adjudicated, subject)
@@ -186,9 +182,7 @@ def test_not_checked_where_gold_performed_counts_as_check_state_miss(shipped_set
     adjudicated = _adjudicated_from_design(shipped_set)
     subject = _subject_from_adjudicated(adjudicated)
     row = next(
-        r
-        for r in subject["rows"]
-        if r["item_id"] == "csp-zh-mixed-1" and r["replicate"] == 2
+        r for r in subject["rows"] if r["item_id"] == "csp-zh-mixed-1" and r["replicate"] == 2
     )
     row.update(check_state="not_checked", stance=None, failure_state="judge_error")
     report = scorer.score(shipped_set, adjudicated, subject)
@@ -204,9 +198,7 @@ def test_blocked_rows_break_decision_relevance_without_imputation(shipped_set):
     adjudicated = _adjudicated_from_design(shipped_set)
     subject = _subject_from_adjudicated(adjudicated)
     row = next(
-        r
-        for r in subject["rows"]
-        if r["item_id"] == "csp-en-ambig-2" and r["replicate"] == 2
+        r for r in subject["rows"] if r["item_id"] == "csp-en-ambig-2" and r["replicate"] == 2
     )
     row.update(
         row_state="blocked",
@@ -252,9 +244,7 @@ def test_evidence_scope_mismatch_breaks_full_row_accuracy(shipped_set):
     adjudicated = _adjudicated_from_design(shipped_set)
     subject = _subject_from_adjudicated(adjudicated)
     row = next(
-        r
-        for r in subject["rows"]
-        if r["item_id"] == "csp-en-fulltext-1" and r["replicate"] == 1
+        r for r in subject["rows"] if r["item_id"] == "csp-en-fulltext-1" and r["replicate"] == 1
     )
     row["evidence_scope"] = "abstract"
     report = scorer.score(shipped_set, adjudicated, subject)
@@ -341,9 +331,7 @@ def test_expert_file_validator_requires_complete_distinct_coverage(shipped_set):
     validator.validate_expert_file(expert_file, shipped_set)
     incomplete = copy.deepcopy(expert_file)
     incomplete["labels"][1]["item_id"] = incomplete["labels"][0]["item_id"]
-    with pytest.raises(
-        validator.AssetError, match="more than once|32 distinct|non-unique"
-    ):
+    with pytest.raises(validator.AssetError, match="more than once|32 distinct|non-unique"):
         validator.validate_expert_file(incomplete, shipped_set)
     reduced = copy.deepcopy(expert_file)
     reduced["labels"] = reduced["labels"][:-1]

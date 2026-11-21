@@ -15,14 +15,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 from scripts.audit_snapshot import render_prompt
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE_PATH = (
-    REPO_ROOT / "shared" / "templates" / "codex_audit_multifile_template.md"
-)
+TEMPLATE_PATH = REPO_ROOT / "shared" / "templates" / "codex_audit_multifile_template.md"
 
 
 def _render_minimal_prompt() -> bytes:
@@ -55,8 +51,7 @@ def test_render_prompt_emits_scope_report_codex_round_header() -> None:
     """The rendered prompt MUST contain the canonical Scope Report header."""
     rendered = _render_minimal_prompt()
     assert b"## Codex Audit Round N \xe2\x80\x94 Scope Report" in rendered, (
-        "render_prompt does not emit the canonical Scope Report header "
-        "literal (spec line 134)."
+        "render_prompt does not emit the canonical Scope Report header " "literal (spec line 134)."
     )
 
 
@@ -65,9 +60,9 @@ def test_render_prompt_section_0_appears_before_section_1() -> None:
     rendered = _render_minimal_prompt()
     section_0_pos = rendered.find(b"## Section 0 \xe2\x80\x94 Scope Report")
     section_1_pos = rendered.find(b"## Section 1 \xe2\x80\x94 Round metadata")
-    assert section_0_pos != -1 and section_1_pos != -1, (
-        "fixture assumption violated: both Section 0 and Section 1 must be present"
-    )
+    assert (
+        section_0_pos != -1 and section_1_pos != -1
+    ), "fixture assumption violated: both Section 0 and Section 1 must be present"
     assert section_0_pos < section_1_pos, (
         f"Scope Report (offset {section_0_pos}) does not appear before Section 1 "
         f"(offset {section_1_pos}); spec line 146 firm rule violated."
@@ -85,9 +80,7 @@ def test_render_prompt_emits_required_scope_report_fields() -> None:
         "**Audit scope warning:**",
     ]
     missing = [f for f in required_fields if f not in text]
-    assert not missing, (
-        f"render_prompt output missing required Scope Report fields: {missing}"
-    )
+    assert not missing, f"render_prompt output missing required Scope Report fields: {missing}"
 
 
 def test_render_prompt_emits_aggregate_status_splits() -> None:
@@ -100,6 +93,4 @@ def test_render_prompt_emits_aggregate_status_splits() -> None:
         "unaudited-due-to-missing-source",
     ]
     missing = [s for s in required_splits if s not in text]
-    assert not missing, (
-        f"render_prompt output missing aggregate-status splits: {missing}"
-    )
+    assert not missing, f"render_prompt output missing aggregate-status splits: {missing}"

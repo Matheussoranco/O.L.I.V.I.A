@@ -16,7 +16,6 @@ from typing import Any
 
 import jsonschema
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SUITE_ROOT = ROOT / "evals" / "heldout" / "role_topology_utility"
 PLAN_PATH = SUITE_ROOT / "study_plan.json"
@@ -45,9 +44,7 @@ EXPECTED_ARMS = {
         "writing_applicable_full_8": 8,
     },
 }
-EXPECTED_TASK_CLASSES_SHA256 = (
-    "5deed0c6a780219ff61e6a69739ecc4c2a2f16b8123cf412f739711313ddc7a9"
-)
+EXPECTED_TASK_CLASSES_SHA256 = "5deed0c6a780219ff61e6a69739ecc4c2a2f16b8123cf412f739711313ddc7a9"
 EXPECTED_SUBJECT_BLIND_FIELDS = [
     "arm_id",
     "paired_outputs",
@@ -110,8 +107,7 @@ def _sha256(raw: bytes) -> str:
 
 def _canonical_json(value: Any) -> bytes:
     return (
-        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode("utf-8")
 
 
@@ -178,12 +174,8 @@ def validate_assets(plan: dict[str, Any], heldout: dict[str, Any]) -> None:
                 raise TopologyError(f"{arm['arm_id']}: duplicate seat_id")
             if seats.count(arm["final_output_seat"]) != 1:
                 raise TopologyError(f"{arm['arm_id']}: exactly one final output seat required")
-            final_output_rows = [
-                role for role in roles if role["output_kind"] == "final_outcome"
-            ]
-            if [role["seat_id"] for role in final_output_rows] != [
-                arm["final_output_seat"]
-            ]:
+            final_output_rows = [role for role in roles if role["output_kind"] == "final_outcome"]
+            if [role["seat_id"] for role in final_output_rows] != [arm["final_output_seat"]]:
                 raise TopologyError(
                     f"{arm['arm_id']}: only final_output_seat may emit final outcome"
                 )
@@ -250,10 +242,7 @@ def validate_assets(plan: dict[str, Any], heldout: dict[str, Any]) -> None:
         raise TopologyError("held-out subject blind fields drifted")
     if plan["blinding"]["expert_blind_fields"] != EXPECTED_EXPERT_BLIND_FIELDS:
         raise TopologyError("expert blind fields drifted")
-    if (
-        plan["blinding"]["adjudicator_blind_fields"]
-        != EXPECTED_ADJUDICATOR_BLIND_FIELDS
-    ):
+    if plan["blinding"]["adjudicator_blind_fields"] != EXPECTED_ADJUDICATOR_BLIND_FIELDS:
         raise TopologyError("adjudicator blind fields drifted")
     if _safe_repo_file(plan["invocation_adapter_ref"]) != INVOCATION_ADAPTER_PATH.resolve():
         raise TopologyError("suite invocation adapter reference drifted")
@@ -286,20 +275,21 @@ def _render_prompt(
         raise TopologyError("role contract or invocation adapter is not strict UTF-8") from exc
     if "<source_role_contract" in role_contract or "</source_role_contract>" in role_contract:
         raise TopologyError(f"role contract collides with source delimiter: {role['role_ref']}")
-    if "<suite_invocation_adapter" in invocation_adapter or "</suite_invocation_adapter>" in invocation_adapter:
+    if (
+        "<suite_invocation_adapter" in invocation_adapter
+        or "</suite_invocation_adapter>" in invocation_adapter
+    ):
         raise TopologyError("invocation adapter collides with trusted delimiter")
     output_contract = role["study_output_contract"]
     if "<study_output_contract" in output_contract or "</study_output_contract>" in output_contract:
         raise TopologyError("study output contract collides with trusted delimiter")
     output_contract_digest = _sha256(output_contract.encode("utf-8"))
-    evidence = "\n".join(
-        f"- {row['evidence_id']}: {row['text']}" for row in scenario["evidence"]
-    )
+    evidence = "\n".join(f"- {row['evidence_id']}: {row['text']}" for row in scenario["evidence"])
     constraints = "\n".join(f"- {item}" for item in scenario["constraints"])
     dependencies = (
         "none"
         if not dependency_calls
-        else " ".join(f"<prior-output call=\"{call_id}\"/>" for call_id in dependency_calls)
+        else " ".join(f'<prior-output call="{call_id}"/>' for call_id in dependency_calls)
     )
     text = f"""# Repository-owned synthetic role-topology task
 
@@ -415,9 +405,7 @@ def validate_manifest_integrity(
                 raise TopologyError(f"{row['call_id']}: dependency must precede call")
             for key in ("task_class", "scenario_id", "arm_id", "replicate_id"):
                 if dependency[key] != row[key]:
-                    raise TopologyError(
-                        f"{row['call_id']}: dependency crosses {key} boundary"
-                    )
+                    raise TopologyError(f"{row['call_id']}: dependency crosses {key} boundary")
         seen[row["call_id"]] = row
     expected_manifest, expected_prompts = _build_manifest_unchecked(plan, heldout)
     if manifest != expected_manifest or prompts != expected_prompts:

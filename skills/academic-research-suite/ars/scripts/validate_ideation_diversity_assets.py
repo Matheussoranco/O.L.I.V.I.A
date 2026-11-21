@@ -17,15 +17,14 @@ from typing import Any
 
 import jsonschema
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 SUITE_ROOT = REPO_ROOT / "evals" / "heldout" / "within_session_ideation_diversity"
 SET_PATH = SUITE_ROOT / "heldout_set.json"
 SCHEMA_PATH = SUITE_ROOT / "heldout_set.schema.json"
 VARIANT_PATH = SUITE_ROOT / "nonproduction_variant.json"
 CODEBOOK_PATH = SUITE_ROOT / "codebook.md"
-DESIGN_PATH = REPO_ROOT / "docs" / "design" / (
-    "2026-08-13-659-within-session-ideation-diversity-design.md"
+DESIGN_PATH = (
+    REPO_ROOT / "docs" / "design" / ("2026-08-13-659-within-session-ideation-diversity-design.md")
 )
 SUITE = "within_session_ideation_diversity"
 PAIR_IDS = {"idi-edtech", "idi-quality-policy", "idi-public-health"}
@@ -115,9 +114,7 @@ def validate_assets(heldout: dict[str, Any], variant: dict[str, Any]) -> None:
     scenario_ids = [row.get("scenario_id") for row in scenarios]
     if len(set(scenario_ids)) != len(scenario_ids):
         raise AssetError("scenario_id values must be unique")
-    observed_pairs = {
-        (row.get("pair_id"), row.get("language")) for row in scenarios
-    }
+    observed_pairs = {(row.get("pair_id"), row.get("language")) for row in scenarios}
     expected_pairs = {(pair_id, language) for pair_id in PAIR_IDS for language in LANGUAGES}
     if observed_pairs != expected_pairs:
         raise AssetError("each canonical pair must contain one en and one zh-TW role card")
@@ -133,14 +130,10 @@ def validate_assets(heldout: dict[str, Any], variant: dict[str, Any]) -> None:
             if keys != FRAMING_KEYS:
                 raise AssetError(f"{row['scenario_id']}: framing keys must be F1,F2,F3")
             initially_expressed = [
-                framing["framing_key"]
-                for framing in framings
-                if framing["initially_expressed"]
+                framing["framing_key"] for framing in framings if framing["initially_expressed"]
             ]
             if initially_expressed != ["F1"]:
-                raise AssetError(
-                    f"{row['scenario_id']}: exactly F1 must be initially expressed"
-                )
+                raise AssetError(f"{row['scenario_id']}: exactly F1 must be initially expressed")
             signatures.append(
                 [(framing["framing_key"], framing["facet_kind"]) for framing in framings]
             )

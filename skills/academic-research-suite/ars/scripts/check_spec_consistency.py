@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import ast
-from fnmatch import fnmatch
 import json
 import re
 import sys
+from fnmatch import fnmatch
 from pathlib import Path
 
 if __package__:  # Package import in tests.
@@ -99,19 +99,13 @@ def codex_external_skill_names() -> frozenset[str]:
             continue
         source_name = source.get("name")
         if not isinstance(source_name, str) or not source_name.strip():
-            fail(
-                f"manifest.json: source_repositories[{index}].name "
-                "must be a non-empty string"
-            )
+            fail(f"manifest.json: source_repositories[{index}].name " "must be a non-empty string")
             continue
         if source_name == primary_name:
             primary_indexes.append(index)
         included_paths = source.get("included_paths")
         if not isinstance(included_paths, list):
-            fail(
-                f"manifest.json: source_repositories[{index}].included_paths "
-                "must be a list"
-            )
+            fail(f"manifest.json: source_repositories[{index}].included_paths " "must be a list")
             continue
         for path_index, raw_path in enumerate(included_paths):
             if not isinstance(raw_path, str):
@@ -246,6 +240,7 @@ def _skill_version_paths() -> tuple[str, ...]:
         if skill_md.parent.name not in external
     )
 
+
 # The single skill whose `version` tracks the suite version. The other three move independently,
 # so only this one's date is sanity-checked against the release (CHANGELOG) in #377(b).
 _SUITE_SKILL_PATH = "academic-pipeline/SKILL.md"
@@ -302,7 +297,9 @@ def _latest_changelog_date() -> str | None:
     dateless `## [Unreleased]` header — so the FIRST date-bearing
     `## [X.Y.Z] - YYYY-MM-DD` header is the latest release. `## [Unreleased]` carries no
     `- YYYY-MM-DD` suffix and so never matches this date-bearing pattern."""
-    match = re.search(rf"^## \[{_VERSION}\] - (\d{{4}}-\d{{2}}-\d{{2}})", read("CHANGELOG.md"), re.M)
+    match = re.search(
+        rf"^## \[{_VERSION}\] - (\d{{4}}-\d{{2}}-\d{{2}})", read("CHANGELOG.md"), re.M
+    )
     return match.group(1) if match else None
 
 
@@ -407,9 +404,7 @@ def check_architecture_component_version() -> None:
     text = read(rel_path)
 
     # 1. Mermaid orchestrator node: `academic-pipeline<br/>orchestrator<br/>vX.Y.Z`.
-    node_versions = re.findall(
-        rf"academic-pipeline<br/>orchestrator<br/>v({_VERSION})", text
-    )
+    node_versions = re.findall(rf"academic-pipeline<br/>orchestrator<br/>v({_VERSION})", text)
     if not node_versions:
         fail(f"{rel_path}: no mermaid `academic-pipeline<br/>orchestrator<br/>vX.Y.Z` node found")
     for found in node_versions:
@@ -425,9 +420,7 @@ def check_architecture_component_version() -> None:
     #    which is feature-history provenance and must NOT be policed against the suite version.
     #    The timeline `vX.Y.Z :` form never carries the `academic-pipeline` token, so it is already
     #    out of scope; the table-row anchor additionally excludes any narrative mention.
-    row_versions = re.findall(
-        rf"(?m)^\s*\|.*?`?academic-pipeline`?\s+v({_VERSION})", text
-    )
+    row_versions = re.findall(rf"(?m)^\s*\|.*?`?academic-pipeline`?\s+v({_VERSION})", text)
     if not row_versions:
         fail(f"{rel_path}: no `academic-pipeline vX.Y.Z` component/stage row found")
     for found in row_versions:
@@ -915,9 +908,7 @@ def check_ideation_diversity_no_call_contract() -> None:
     for field, expected in no_call_constants.items():
         if execution.get(field, {}).get("const") != expected:
             fail(f"{schema_paths['run_plan']}: no-call constant {field!r} drifted")
-    provenance = plan_properties.get("suite_commit_provenance", {}).get(
-        "properties", {}
-    )
+    provenance = plan_properties.get("suite_commit_provenance", {}).get("properties", {})
     if provenance.get("status", {}).get("const") != "operator_declared_unverified":
         fail(f"{schema_paths['run_plan']}: suite commit must remain unverified")
     cap_boundary = execution.get("token_cap_verification", {}).get("properties", {})
@@ -928,9 +919,7 @@ def check_ideation_diversity_no_call_contract() -> None:
         "provider_tokenizer_verified": False,
     }.items():
         if cap_boundary.get(field, {}).get("const") != expected:
-            fail(
-                f"{schema_paths['run_plan']}: token-cap boundary {field!r} drifted"
-            )
+            fail(f"{schema_paths['run_plan']}: token-cap boundary {field!r} drifted")
     judge = plan_properties.get("judge_requirements", {}).get("properties", {})
     for field, expected in {
         "first_round_assignment_ledger_required_before_delivery": True,
@@ -939,19 +928,17 @@ def check_ideation_diversity_no_call_contract() -> None:
     }.items():
         if judge.get(field, {}).get("const") != expected:
             fail(f"{schema_paths['run_plan']}: judge exposure boundary {field!r} drifted")
-    if plan_properties.get("cells", {}).get("minItems") != 48 or plan_properties.get(
-        "cells", {}
-    ).get("maxItems") != 48:
+    if (
+        plan_properties.get("cells", {}).get("minItems") != 48
+        or plan_properties.get("cells", {}).get("maxItems") != 48
+    ):
         fail(f"{schema_paths['run_plan']}: cells must remain exactly 48")
     assets = plan_properties.get("asset_bindings", {})
     if assets.get("minItems") != 18 or assets.get("maxItems") != 18:
         fail(f"{schema_paths['run_plan']}: asset bindings must remain exactly 18")
 
     stop_receipt = (
-        schemas.get("ingestion", {})
-        .get("$defs", {})
-        .get("stop_receipt", {})
-        .get("properties", {})
+        schemas.get("ingestion", {}).get("$defs", {}).get("stop_receipt", {}).get("properties", {})
     )
     if "pre_stop_inventory" not in stop_receipt:
         fail(f"{schema_paths['ingestion']}: compact pre-stop inventory binding missing")
@@ -970,10 +957,7 @@ def check_ideation_diversity_no_call_contract() -> None:
         "deliver_to_judges": False,
     }.items():
         if intent_protection.get(field, {}).get("const") != expected:
-            fail(
-                f"{schema_paths['blind_intent']}: "
-                f"protection boundary {field!r} drifted"
-            )
+            fail(f"{schema_paths['blind_intent']}: " f"protection boundary {field!r} drifted")
 
     runner_path = "scripts/run_ideation_diversity_no_call.py"
     runner_source = read(runner_path)
@@ -1102,11 +1086,7 @@ def check_ideation_diversity_no_call_contract() -> None:
                 direct_module_bindings[binding] = alias.name
         elif isinstance(node, ast.ImportFrom):
             module = node.module or "<relative>"
-            allowed_symbols = (
-                allowed_from_imports.get(module, set())
-                if node.level == 0
-                else set()
-            )
+            allowed_symbols = allowed_from_imports.get(module, set()) if node.level == 0 else set()
             forbidden_imports.update(
                 f"{module}.{alias.name}"
                 for alias in node.names
@@ -1160,11 +1140,7 @@ def check_ideation_diversity_no_call_contract() -> None:
             f"{sorted(shadowed_module_bindings)!r}"
         )
 
-    parents = {
-        child: parent
-        for parent in ast.walk(tree)
-        for child in ast.iter_child_nodes(parent)
-    }
+    parents = {child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)}
     module_reference_errors: set[str] = set()
     for node in ast.walk(tree):
         if not (
@@ -1188,17 +1164,13 @@ def check_ideation_diversity_no_call_contract() -> None:
         if allowed_hasattr:
             continue
         if not (isinstance(parent, ast.Attribute) and parent.value is node):
-            module_reference_errors.add(
-                f"{module} via {node.id}: bare module reference"
-            )
+            module_reference_errors.add(f"{module} via {node.id}: bare module reference")
             continue
         attributes = [parent.attr]
         outer = parent
         while True:
             ancestor = parents.get(outer)
-            if not (
-                isinstance(ancestor, ast.Attribute) and ancestor.value is outer
-            ):
+            if not (isinstance(ancestor, ast.Attribute) and ancestor.value is outer):
                 break
             attributes.append(ancestor.attr)
             outer = ancestor
@@ -1218,14 +1190,11 @@ def check_ideation_diversity_no_call_contract() -> None:
             and isinstance(parents[use_parent].func, ast.Name)
             and parents[use_parent].func.id == "print"
         )
-        allowed_constant = (
-            attribute_path in allowed_module_constants.get(module, set())
-            and isinstance(outer.ctx, ast.Load)
-        )
+        allowed_constant = attribute_path in allowed_module_constants.get(
+            module, set()
+        ) and isinstance(outer.ctx, ast.Load)
         if not (allowed_call or allowed_print_value or allowed_constant):
-            module_reference_errors.add(
-                f"{module} via {node.id}.{attribute_path}"
-            )
+            module_reference_errors.add(f"{module} via {node.id}.{attribute_path}")
     if module_reference_errors:
         fail(
             f"{runner_path}: direct module references must match exact "
@@ -1237,10 +1206,7 @@ def check_ideation_diversity_no_call_contract() -> None:
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and node.id in forbidden_dynamic_names:
             dynamic_references.add(node.id)
-        elif (
-            isinstance(node, ast.Attribute)
-            and node.attr in forbidden_dynamic_attributes
-        ):
+        elif isinstance(node, ast.Attribute) and node.attr in forbidden_dynamic_attributes:
             dynamic_references.add(node.attr)
     if dynamic_references:
         fail(
@@ -1300,6 +1266,8 @@ def check_ideation_diversity_no_call_contract() -> None:
         "CHANGELOG.md",
         "Within-session ideation-diversity Phase-2 no-call envelope (#659)",
     )
+
+
 def check_indirect_prompt_injection_no_call_envelope() -> None:
     """Pin #675 Phase-2's no-call surface and human-evidence boundary."""
     readme = "evals/heldout/indirect_prompt_injection_behavior/README.md"

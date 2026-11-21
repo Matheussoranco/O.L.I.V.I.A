@@ -30,8 +30,7 @@ try:
     from jsonschema import Draft202012Validator, FormatChecker
 except ImportError:
     sys.stderr.write(
-        "error: jsonschema (Draft 2020-12 support) not installed; "
-        "run `pip install jsonschema`\n"
+        "error: jsonschema (Draft 2020-12 support) not installed; " "run `pip install jsonschema`\n"
     )
     raise
 
@@ -39,10 +38,23 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURE_ROOT = REPO_ROOT / "tests" / "fixtures" / "v3_6_7_pattern_eval"
 
 PATTERN_IDS = (
-    "A1", "A2", "A3", "A4", "A5",
-    "B1", "B2", "B3", "B4", "B5",
-    "C1", "C2", "C3",
-    "D1", "D2", "D3", "D4",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "C1",
+    "C2",
+    "C3",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
 )
 
 AGENT_ENUM = (
@@ -197,15 +209,11 @@ def _validate_manifest(path: Path) -> list[str]:
     errors = []
     for err in sorted(_validator(schema).iter_errors(doc), key=lambda e: e.path):
         loc = "/".join(str(p) for p in err.absolute_path) or "<root>"
-        errors.append(
-            f"{path.relative_to(REPO_ROOT)}: schema violation at {loc}: {err.message}"
-        )
+        errors.append(f"{path.relative_to(REPO_ROOT)}: schema violation at {loc}: {err.message}")
     return errors
 
 
-def _validate_micro_directory_id_match(
-    manifest_path: Path, doc: dict
-) -> list[str]:
+def _validate_micro_directory_id_match(manifest_path: Path, doc: dict) -> list[str]:
     """Manifest's pattern_id must equal directory name AND directory name must
     be a known pattern ID. Closes codex F-803 — without the second clause, an
     extra `A1_copy/manifest.json` with `pattern_id: A1` would slip past coverage
@@ -252,8 +260,7 @@ def _validate_micro_paths_exist(manifest_path: Path, doc: dict) -> list[str]:
             continue
         for safety_err in _validate_fixture_path_safety(rel, base):
             errors.append(
-                f"{manifest_path.relative_to(REPO_ROOT)}: "
-                f"{parent_key}.{child_key} {safety_err}"
+                f"{manifest_path.relative_to(REPO_ROOT)}: " f"{parent_key}.{child_key} {safety_err}"
             )
         target = base / rel
         if not target.exists():
@@ -346,22 +353,17 @@ def _coverage_check(micro_manifests: dict[str, Path]) -> list[str]:
     missing = sorted(expected - seen)
     extra = sorted(seen - expected)
     if missing:
-        errors.append(
-            "coverage gap: pattern IDs missing micro-fixture: " + ", ".join(missing)
-        )
+        errors.append("coverage gap: pattern IDs missing micro-fixture: " + ", ".join(missing))
     if extra:
         errors.append(
-            "coverage drift: micro-fixture present for non-enumerated pattern: "
-            + ", ".join(extra)
+            "coverage drift: micro-fixture present for non-enumerated pattern: " + ", ".join(extra)
         )
     return errors
 
 
 def main() -> int:
     if not FIXTURE_ROOT.exists():
-        sys.stderr.write(
-            f"error: fixture root not found: {FIXTURE_ROOT.relative_to(REPO_ROOT)}\n"
-        )
+        sys.stderr.write(f"error: fixture root not found: {FIXTURE_ROOT.relative_to(REPO_ROOT)}\n")
         return 1
 
     all_errors: list[str] = []
@@ -372,9 +374,7 @@ def main() -> int:
             continue
         manifest = entry / "manifest.json"
         if not manifest.exists():
-            all_errors.append(
-                f"{entry.relative_to(REPO_ROOT)}: missing manifest.json"
-            )
+            all_errors.append(f"{entry.relative_to(REPO_ROOT)}: missing manifest.json")
             continue
         errors = _validate_manifest(manifest)
         if errors:
@@ -401,9 +401,7 @@ def main() -> int:
             all_errors.extend(errors)
         all_errors.extend(_validate_integration_verdict_files(integration_root))
     else:
-        all_errors.append(
-            f"{integration_manifest.relative_to(REPO_ROOT)}: missing"
-        )
+        all_errors.append(f"{integration_manifest.relative_to(REPO_ROOT)}: missing")
 
     all_errors.extend(_coverage_check(micro_manifests))
 

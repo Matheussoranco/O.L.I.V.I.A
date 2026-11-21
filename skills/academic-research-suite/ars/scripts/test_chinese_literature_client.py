@@ -26,7 +26,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -93,9 +92,9 @@ class FakeTransport:
         self.requests.append(url)
         parsed = urllib.parse.urlsplit(url)
         query = (
-            urllib.parse.parse_qs(
-                parsed.query, keep_blank_values=True, strict_parsing=True)
-            if parsed.query else {}
+            urllib.parse.parse_qs(parsed.query, keep_blank_values=True, strict_parsing=True)
+            if parsed.query
+            else {}
         )
         for predicate, action in self.routes:
             if predicate(parsed, query):
@@ -120,7 +119,11 @@ def _ok(body: bytes):
 def _http_error(code: int, body: bytes = b""):
     def action(url):
         raise urllib.error.HTTPError(
-            url=url, code=code, msg="synthetic", hdrs={}, fp=io.BytesIO(body),
+            url=url,
+            code=code,
+            msg="synthetic",
+            hdrs={},
+            fp=io.BytesIO(body),
         )
 
     return action
@@ -200,9 +203,7 @@ def _forbid_similarity(patcher):
         )
 
     patcher.setattr(_text_similarity, "_similarity", _detonate)
-    patcher.setattr(
-        chinese_literature_client, "_similarity", _detonate, raising=False
-    )
+    patcher.setattr(chinese_literature_client, "_similarity", _detonate, raising=False)
 
 
 def test_legitimate_variants_match_despite_a_sub_threshold_fuzzy_ratio(monkeypatch):
@@ -346,11 +347,13 @@ def test_resolve_skips_non_chinese_without_touching_the_network():
     one doi.org round-trip per English reference in every bibliography."""
     client = _client()
     with patch("chinese_literature_client._safe_urlopen", side_effect=AssertionError("no network")):
-        result = client.resolve({
-            "citation_key": "smith2020",
-            "title": "An English Paper",
-            "doi": "10.5555/english.2020.1",
-        })
+        result = client.resolve(
+            {
+                "citation_key": "smith2020",
+                "title": "An English Paper",
+                "doi": "10.5555/english.2020.1",
+            }
+        )
     assert result["status"] == "skipped"
     assert result["queried_by"] is None
     assert result["reason_code"] == "NOT_CHINESE_LITERATURE"
@@ -417,18 +420,22 @@ def test_crossref_registered_chinese_doi_is_not_claimed():
     """Division of labour: a Crossref-registered Chinese DOI belongs to the
     existing crossref resolver. It must stop without discarding the supplied
     DOI or attempting the DOI-less coordinate branch."""
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_crossref.json"))),
-        (_is_doi_resolve, _http_error(500)),  # must never be reached
-        (_is_handle, _http_error(500)),       # must never be reached
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_crossref.json"))),
+            (_is_doi_resolve, _http_error(500)),  # must never be reached
+            (_is_handle, _http_error(500)),  # must never be reached
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
-        result = _client(journal_map=TEST_JOURNAL_MAP).resolve({
-            "citation_key": "chen2026",
-            "title": CN_TITLE,
-            "container_title": CN_JOURNAL,
-            "doi": "10.5555/crossref.zh.2026.1",
-        })
+        result = _client(journal_map=TEST_JOURNAL_MAP).resolve(
+            {
+                "citation_key": "chen2026",
+                "title": CN_TITLE,
+                "container_title": CN_JOURNAL,
+                "doi": "10.5555/crossref.zh.2026.1",
+            }
+        )
     assert result["reason_code"] == "DOI_RA_OUT_OF_SCOPE"
     assert result["status"] == "skipped"
     assert result["checklist_item"]["priority"] == "P3"
@@ -436,10 +443,12 @@ def test_crossref_registered_chinese_doi_is_not_claimed():
 
 
 def test_unknown_doi_ra_does_not_fall_through_to_coordinates():
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_unknown_prefix.json"))),
-        (_is_esearch, _http_error(500)),  # must never be reached
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_unknown_prefix.json"))),
+            (_is_esearch, _http_error(500)),  # must never be reached
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client(journal_map=TEST_JOURNAL_MAP).resolve(
             _istic_entry(doi="10.99999/ars.cn.unknown.2026.1")
@@ -468,10 +477,12 @@ def _istic_entry(**overrides):
 
 
 def test_istic_doi_hit_with_matching_chinese_title_is_matched_by_id():
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry())
 
@@ -492,10 +503,12 @@ def test_istic_doi_hit_matches_a_typeset_variant_of_the_cited_title():
     interior spaces must MATCH, not land at P0. Typesetting differences between
     a reference list and a metadata record are ordinary, not evidence."""
     variant = "合成 引文核验闸 的确定性评估方法研究。"
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry(title=variant))
 
@@ -507,11 +520,13 @@ def test_istic_doi_hit_matches_a_typeset_variant_of_the_cited_title():
 def test_istic_doi_resolving_to_a_different_title_is_id_keyed_unmatched():
     """Chimeric citation (real identifier, someone else's title). ID-keyed
     unmatched is the C-V6(a) shape that licenses a `false`, and it is a P0 row."""
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(_body("istic_csl_other_title.json"))),
-        (_is_handle, _ok(_body("handle_exists.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _ok(_body("istic_csl_other_title.json"))),
+            (_is_handle, _ok(_body("handle_exists.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry())
 
@@ -531,12 +546,15 @@ def test_istic_english_shadow_title_is_unverifiable_never_false():
     Chinese articles. Without a translation oracle, a cross-script difference
     is not a machine-verifiable chimeric citation.
     """
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(
-            b'{"title":"Deterministic Evaluation of a Synthetic Citation Gate"}'
-        )),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (
+                _is_doi_resolve,
+                _ok(b'{"title":"Deterministic Evaluation of a Synthetic Citation Gate"}'),
+            ),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry())
 
@@ -552,12 +570,15 @@ def test_two_different_latin_titles_are_unverifiable_not_mismatch():
     """Matching script alone cannot make romanized titles comparable."""
     from chinese_literature_client import DoiTitleState
 
-    transport = FakeTransport([
-        (_is_doi_resolve, _ok(b'{"title":"Romanized title alpha"}')),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_doi_resolve, _ok(b'{"title":"Romanized title alpha"}')),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         outcome = _client().doi_lookup_with_title_check(
-            ISTIC_DOI, "Romanized title beta",
+            ISTIC_DOI,
+            "Romanized title beta",
         )
 
     assert outcome.state is DoiTitleState.UNVERIFIABLE
@@ -569,9 +590,11 @@ def test_lone_surrogate_doi_is_typed_unavailable_after_ra_lookup():
     from chinese_literature_client import ChineseLiteratureUnavailable
 
     entry = _istic_entry(doi="10.5555/" + chr(0xD800))
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         with pytest.raises(ChineseLiteratureUnavailable, match="invalid Unicode"):
             _client().resolve(entry)
@@ -582,11 +605,13 @@ def test_lone_surrogate_doi_is_typed_unavailable_after_ra_lookup():
 def test_fabricated_doi_is_refuted_by_404_plus_handle_100():
     """The fabrication canary: these prefixes carry no wildcard catch-all, so a
     404 + responseCode 100 is positive evidence the identifier does not exist."""
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _http_error(404)),
-        (_is_handle, _ok(_body("handle_absent.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _http_error(404)),
+            (_is_handle, _ok(_body("handle_absent.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry(doi=FABRICATED_DOI))
 
@@ -620,9 +645,11 @@ def test_doi_404_is_a_negative_not_a_degradation():
 def test_doi_keyed_editorial_title_verifies_end_to_end():
     from chinese_literature_client import DoiTitleState
 
-    transport = FakeTransport([
-        (_is_doi_resolve, _ok(b'{"title": "Editorial"}')),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_doi_resolve, _ok(b'{"title": "Editorial"}')),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         outcome = _client().doi_lookup_with_title_check(ISTIC_DOI, "Editorial")
     assert outcome.state is DoiTitleState.MATCH
@@ -630,11 +657,13 @@ def test_doi_keyed_editorial_title_verifies_end_to_end():
 
 
 def test_doi_404_plus_existing_handle_is_title_unverifiable_never_false():
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _http_error(404)),
-        (_is_handle, _ok(_body("handle_exists.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _http_error(404)),
+            (_is_handle, _ok(_body("handle_exists.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry())
 
@@ -647,18 +676,22 @@ def test_doi_404_plus_existing_handle_is_title_unverifiable_never_false():
 def test_empty_expected_title_is_unverifiable_never_mismatch_or_false():
     from chinese_literature_client import DoiTitleState
 
-    direct = FakeTransport([
-        (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
-    ])
+    direct = FakeTransport(
+        [
+            (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", direct):
         outcome = _client().doi_lookup_with_title_check(ISTIC_DOI, "")
     assert outcome.state is DoiTitleState.UNVERIFIABLE
     assert outcome.record["title"] == CN_TITLE
 
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry(title=""))
     assert result["reason_code"] == "DOI_EXISTS_TITLE_UNVERIFIABLE"
@@ -669,9 +702,11 @@ def test_empty_expected_title_is_unverifiable_never_mismatch_or_false():
 def test_normalized_empty_resolved_title_is_unverifiable_not_mismatch():
     from chinese_literature_client import DoiTitleState
 
-    transport = FakeTransport([
-        (_is_doi_resolve, _ok('{"title": "。"}'.encode())),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_doi_resolve, _ok('{"title": "。"}'.encode())),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         outcome = _client().doi_lookup_with_title_check(ISTIC_DOI, CN_TITLE)
     assert outcome.state is DoiTitleState.UNVERIFIABLE
@@ -684,11 +719,13 @@ def test_cnki_doi_that_exists_is_never_matched():
     """The CNKI RA serves no CSL-JSON and we refuse to parse its HTML, so
     existence alone must degrade to title-keyed unmatched (-> unresolvable),
     never `matched` — otherwise a real DOI with a fabricated title passes."""
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_cnki.json"))),
-        (_is_handle, _ok(_body("handle_exists.json"))),
-        (_is_doi_resolve, _http_error(500)),  # must never be reached
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_cnki.json"))),
+            (_is_handle, _ok(_body("handle_exists.json"))),
+            (_is_doi_resolve, _http_error(500)),  # must never be reached
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry(doi=CNKI_DOI))
 
@@ -704,10 +741,12 @@ def test_cnki_doi_that_exists_is_never_matched():
 
 
 def test_cnki_doi_that_does_not_exist_is_still_refuted():
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_cnki.json"))),
-        (_is_handle, _ok(_body("handle_absent.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_cnki.json"))),
+            (_is_handle, _ok(_body("handle_absent.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _client().resolve(_istic_entry(doi=CNKI_DOI))
 
@@ -720,10 +759,12 @@ def test_non_csl_200_body_is_typed_unavailable():
     not become routine human-check evidence."""
     from chinese_literature_client import ChineseLiteratureUnavailable
 
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(_body("cnki_landing_page.html"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _ok(_body("cnki_landing_page.html"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         with pytest.raises(ChineseLiteratureUnavailable):
             _client().resolve(_istic_entry())
@@ -782,8 +823,7 @@ def test_deeply_nested_json_is_typed_unavailable(endpoint):
         b'{"title": "x", "volume": {"value": "1"}}',
         b'{"title": "x", "DOI": ["10.5555/x"]}',
         (b'{"title": "' + CN_TITLE.encode() + b'", "DOI": ""}'),
-        (b'{"title": "' + CN_TITLE.encode()
-         + b'", "DOI": "10.5555/a.different.record"}'),
+        (b'{"title": "' + CN_TITLE.encode() + b'", "DOI": "10.5555/a.different.record"}'),
     ],
 )
 def test_parseable_csl_with_malformed_fields_is_typed_unavailable(body):
@@ -844,9 +884,7 @@ def test_missing_coordinate_tuple_is_p3_without_a_pubmed_request():
         "chinese_literature_client._safe_urlopen",
         side_effect=AssertionError("no PubMed request"),
     ):
-        result = _coordinate_client().resolve(
-            _coordinate_entry(volume=None, pages=None, year=None)
-        )
+        result = _coordinate_client().resolve(_coordinate_entry(volume=None, pages=None, year=None))
 
     assert result["status"] == "skipped"
     assert result["queried_by"] is None
@@ -873,9 +911,11 @@ def test_volume_page_zero_hit_never_falls_back_to_author_year():
         _body("esearch_coverage_hit.json"),
         _body("esearch_coordinate_zero.json"),
     ]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(
             _coordinate_entry(pages="9999", first_author_pinyin="Hecheng Ceshi")
@@ -891,10 +931,12 @@ def test_pubmed_candidate_page_conflict_cannot_be_promoted():
         _body("esearch_coverage_hit.json"),
         _body("esearch_coordinate_hit.json"),
     ]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_hit.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_hit.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry(pages="9999"))
 
@@ -910,10 +952,12 @@ def test_pubmed_candidate_volume_conflict_cannot_be_promoted():
         _body("esearch_coverage_hit.json"),
         _body("esearch_coordinate_hit.json"),
     ]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_hit.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_hit.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry(volume="99"))
 
@@ -926,14 +970,15 @@ def test_pubmed_candidate_volume_conflict_cannot_be_promoted():
 def test_pubmed_coordinate_candidate_is_matched_only_after_istic_title_binding():
     """Coordinates nominate a candidate; its ISTIC DOI and Chinese CSL title
     provide the evidence that upgrades it to a title-keyed match."""
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_hit.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_hit.json"))),
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_hit.json"))),
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
@@ -956,11 +1001,12 @@ def test_pubmed_coordinate_miss_is_p1_never_false():
     title-keyed (-> unresolvable). The strength goes into the P1 priority, not
     into the verdict — the journal bridge is heuristic and PubMed indexes
     Chinese journals selectively."""
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_zero.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_zero.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry(pages="9999"))
 
@@ -976,11 +1022,15 @@ def test_pubmed_coordinate_miss_is_p1_never_false():
 
 
 def test_pubmed_coordinate_ambiguity_never_picks_one():
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_ambiguous.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-    ])
+    esearch_bodies = [
+        _body("esearch_coverage_hit.json"),
+        _body("esearch_coordinate_ambiguous.json"),
+    ]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
@@ -991,12 +1041,13 @@ def test_pubmed_coordinate_ambiguity_never_picks_one():
 
 
 def test_pubmed_year_disagreement_demotes_the_hit():
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_hit.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_year_mismatch.json"))),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_year_mismatch.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
@@ -1009,12 +1060,13 @@ def test_pubmed_issn_disagreement_demotes_the_hit():
     """The coordinate hit's corroboration is structural, so the ISSN the record
     echoes must be the ISSN we bridged through — a disagreement means the
     journal-name mapping, not the citation, is likely at fault."""
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_hit.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_issn_mismatch.json"))),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_issn_mismatch.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
@@ -1026,14 +1078,15 @@ def test_pubmed_issn_disagreement_demotes_the_hit():
 
 def test_absent_year_does_not_block_doi_title_binding():
     """Absence is not mismatch: exact Chinese title binding still verifies."""
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_hit.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_hit.json"))),
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_hit.json"))),
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _ok(_body("istic_csl_hit.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry(year=None))
 
@@ -1041,12 +1094,13 @@ def test_absent_year_does_not_block_doi_title_binding():
 
 
 def test_pubmed_coordinate_candidate_without_doi_is_never_matched():
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_hit.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_no_doi.json"))),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_no_doi.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
@@ -1057,14 +1111,15 @@ def test_pubmed_coordinate_candidate_without_doi_is_never_matched():
 
 
 def test_pubmed_candidate_doi_title_mismatch_never_washes_fake_chinese_title():
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_hit.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_hit.json"))),
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_doi_resolve, _ok(_body("istic_csl_other_title.json"))),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_hit.json"))),
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_doi_resolve, _ok(_body("istic_csl_other_title.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
@@ -1082,15 +1137,17 @@ def test_pubmed_candidate_doi_title_mismatch_never_washes_fake_chinese_title():
     ],
 )
 def test_pubmed_candidate_out_of_scope_or_unknown_ra_is_never_matched(
-    esummary_fixture, ra_fixture,
+    esummary_fixture,
+    ra_fixture,
 ):
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_hit.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body(esummary_fixture))),
-        (_is_ra, _ok(_body(ra_fixture))),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body(esummary_fixture))),
+            (_is_ra, _ok(_body(ra_fixture))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
@@ -1100,22 +1157,22 @@ def test_pubmed_candidate_out_of_scope_or_unknown_ra_is_never_matched(
 
 
 def test_pubmed_candidate_cnki_handle_existence_is_never_matched():
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coordinate_hit.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-        (_is_esummary, _ok(_body("esummary_hit.json"))),
-        (_is_ra, _ok(_body("ra_cnki.json"))),
-        (_is_handle, _ok(_body("handle_exists.json"))),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coordinate_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+            (_is_esummary, _ok(_body("esummary_hit.json"))),
+            (_is_ra, _ok(_body("ra_cnki.json"))),
+            (_is_handle, _ok(_body("handle_exists.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
     assert result["status"] == "unmatched"
     assert result["reason_code"] == "PUBMED_COORDINATE_CANDIDATE_UNVERIFIED"
     assert any(
-        attempt["stage"] == "pubmed_candidate_handle"
-        and attempt["outcome"] == "exists"
+        attempt["stage"] == "pubmed_candidate_handle" and attempt["outcome"] == "exists"
         for attempt in result["checklist_item"]["attempts"]
     )
 
@@ -1124,9 +1181,11 @@ def test_journal_catalogued_but_not_indexed_is_skipped_not_unmatched():
     """'In the NLM Catalog' != 'indexed in PubMed' (中国全科医学 is catalogued
     with zero PubMed articles). A journal PubMed never indexed must produce
     `skipped` + a P3 row, because a coordinate miss against it says nothing."""
-    transport = FakeTransport([
-        (_is_esearch, _ok(_body("esearch_coverage_zero.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_esearch, _ok(_body("esearch_coverage_zero.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(_coordinate_entry())
 
@@ -1143,7 +1202,8 @@ def test_unmapped_journal_is_skipped_with_a_p3_row():
     transport = FakeTransport([])
     with patch("chinese_literature_client._safe_urlopen", transport):
         result = _coordinate_client().resolve(
-            _coordinate_entry(container_title="某本尚未映射的中文期刊"))
+            _coordinate_entry(container_title="某本尚未映射的中文期刊")
+        )
 
     assert result["status"] == "skipped"
     assert result["reason_code"] == "NO_ISSN_MAPPING"
@@ -1195,18 +1255,18 @@ def test_ncbi_email_is_required_before_any_eutils_request():
 
 def test_pubmed_author_fallback_uses_first_author_tag():
     bodies = [_body("esearch_coordinate_zero.json")]
-    transport = FakeTransport([
-        (_is_esearch, lambda url: _ok(bodies.pop(0))(url)),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_esearch, lambda url: _ok(bodies.pop(0))(url)),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         _client().pubmed_coordinate_lookup(
             nlm_ta="Hecheng Ceshi Yi Xue Za Zhi",
             first_author="Hecheng Ceshi",
             year=2026,
         )
-    term = urllib.parse.parse_qs(
-        urllib.parse.urlsplit(transport.requests[0]).query
-    )["term"][0]
+    term = urllib.parse.parse_qs(urllib.parse.urlsplit(transport.requests[0]).query)["term"][0]
     assert '"Hecheng Ceshi"[1au]' in term
     assert "[au]" not in term
 
@@ -1225,9 +1285,7 @@ def test_untrusted_pubmed_fields_cannot_inject_entrez_grammar(kwargs):
 
     with patch("chinese_literature_client._safe_urlopen", side_effect=AssertionError("no request")):
         with pytest.raises(ChineseLiteratureUnavailable):
-            _client().pubmed_coordinate_lookup(
-                nlm_ta="Hecheng Ceshi Yi Xue Za Zhi", **kwargs
-            )
+            _client().pubmed_coordinate_lookup(nlm_ta="Hecheng Ceshi Yi Xue Za Zhi", **kwargs)
 
 
 # -------------------------------------------------- URL hygiene / credentials
@@ -1241,9 +1299,11 @@ def test_malicious_doi_is_encoded_and_never_crashes():
     from chinese_literature_client import ChineseLiteratureUnavailable
 
     evil = "10.5555/evil\r\nHost: attacker?x=1#frag"
-    transport = FakeTransport([
-        (_is_handle, _ok(_body("handle_absent.json"))),
-    ])
+    transport = FakeTransport(
+        [
+            (_is_handle, _ok(_body("handle_absent.json"))),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         assert _client().handle_exists(evil) is False
 
@@ -1317,9 +1377,13 @@ def test_reflected_request_url_is_absent_from_full_exception_traceback(failure_k
         with pytest.raises(ChineseLiteratureUnavailable) as excinfo:
             _client(ncbi_api_key=key).journal_is_indexed("Hecheng Ceshi")
 
-    rendered = "".join(traceback.format_exception(
-        excinfo.type, excinfo.value, excinfo.tb,
-    ))
+    rendered = "".join(
+        traceback.format_exception(
+            excinfo.type,
+            excinfo.value,
+            excinfo.tb,
+        )
+    )
     assert key not in rendered
     assert f"api_key={key}" not in rendered
 
@@ -1343,9 +1407,13 @@ def test_rejected_http_error_url_does_not_retain_reflected_secret(error_url):
         with pytest.raises(ChineseLiteratureUnavailable) as excinfo:
             _client(ncbi_api_key=key).journal_is_indexed("Hecheng Ceshi")
 
-    rendered = "".join(traceback.format_exception(
-        excinfo.type, excinfo.value, excinfo.tb,
-    ))
+    rendered = "".join(
+        traceback.format_exception(
+            excinfo.type,
+            excinfo.value,
+            excinfo.tb,
+        )
+    )
     assert key not in rendered
 
 
@@ -1356,9 +1424,13 @@ def test_malformed_port_does_not_retain_secret_as_a_cause():
     with pytest.raises(ChineseLiteratureUnavailable) as excinfo:
         _require_api_url(f"https://doi.org:{key}/path?api_key={key}")
 
-    rendered = "".join(traceback.format_exception(
-        excinfo.type, excinfo.value, excinfo.tb,
-    ))
+    rendered = "".join(
+        traceback.format_exception(
+            excinfo.type,
+            excinfo.value,
+            excinfo.tb,
+        )
+    )
     assert key not in rendered
 
 
@@ -1371,15 +1443,15 @@ def test_host_allowlist_guard_refuses_and_redacts():
         _require_api_url,
     )
 
-    _require_api_url("https://doi.org/doiRA/10.5555")         # allowlisted: no raise
-    _require_api_url("https://eutils.ncbi.nlm.nih.gov/x")     # allowlisted: no raise
+    _require_api_url("https://doi.org/doiRA/10.5555")  # allowlisted: no raise
+    _require_api_url("https://eutils.ncbi.nlm.nih.gov/x")  # allowlisted: no raise
     for bad in (
-        "https://www.cnki.net/search?q=x",       # zero-scraping red line
-        "http://doi.org/doiRA/10.5555",          # https only
+        "https://www.cnki.net/search?q=x",  # zero-scraping red line
+        "http://doi.org/doiRA/10.5555",  # https only
         "https://evil.invalid/a?api_key=test-ncbi-key",
-        "https://127.0.0.1/doiRA/10.5555",       # no bare IPs
-        "https://user@doi.org/doiRA/10.5555",    # no userinfo
-        "https://doi.org:443/doiRA/10.5555",     # exact origin, no ports
+        "https://127.0.0.1/doiRA/10.5555",  # no bare IPs
+        "https://user@doi.org/doiRA/10.5555",  # no userinfo
+        "https://doi.org:443/doiRA/10.5555",  # exact origin, no ports
     ):
         with pytest.raises(ChineseLiteratureUnavailable) as excinfo:
             _require_api_url(bad)
@@ -1396,18 +1468,22 @@ def test_redirect_handler_revalidates_every_destination_before_following():
     handler = _SafeRedirectHandler()
     request = urllib.request.Request("https://doi.org/10.5555/example")
     for target in (
-        "http://doi.org/10.5555/example",          # downgrade
-        "https://127.0.0.1/10.5555/example",       # bare IP
-        "https://user@doi.org/10.5555/example",    # userinfo
-        "https://doi.org:443/10.5555/example",     # explicit port
-        "https://doi.org.evil.invalid/example",    # suffix confusion
-        "https://evil.invalid/example",            # external host
+        "http://doi.org/10.5555/example",  # downgrade
+        "https://127.0.0.1/10.5555/example",  # bare IP
+        "https://user@doi.org/10.5555/example",  # userinfo
+        "https://doi.org:443/10.5555/example",  # explicit port
+        "https://doi.org.evil.invalid/example",  # suffix confusion
+        "https://evil.invalid/example",  # external host
     ):
         with pytest.raises(ChineseLiteratureUnavailable):
             handler.redirect_request(request, None, 302, "Found", {}, target)
 
     redirected = handler.redirect_request(
-        request, None, 302, "Found", {},
+        request,
+        None,
+        302,
+        "Found",
+        {},
         "https://hdl.handle.net/api/handles/10.5555/example",
     )
     assert redirected.full_url.startswith("https://hdl.handle.net/")
@@ -1457,7 +1533,11 @@ def test_rejected_redirect_is_closed_without_reading(location):
 
     with pytest.raises(ChineseLiteratureUnavailable):
         handler.http_error_302(
-            request, response, 302, "Found", {"location": location},
+            request,
+            response,
+            302,
+            "Found",
+            {"location": location},
         )
 
     response.read.assert_not_called()
@@ -1504,9 +1584,12 @@ def test_istic_plaintext_redirect_stops_resolve_before_any_verdict():
         parsed = urllib.parse.urlsplit(url)
         query = (
             urllib.parse.parse_qs(
-                parsed.query, keep_blank_values=True, strict_parsing=True,
+                parsed.query,
+                keep_blank_values=True,
+                strict_parsing=True,
             )
-            if parsed.query else {}
+            if parsed.query
+            else {}
         )
         if _is_ra(parsed, query):
             return _ok(_body("ra_istic.json"))(url)
@@ -1621,7 +1704,7 @@ def test_returned_404_is_data_only_on_an_allow_404_path():
 
 
 def test_content_length_precheck_rejects_oversized_body_without_reading():
-    from chinese_literature_client import ChineseLiteratureUnavailable, MAX_BODY_BYTES
+    from chinese_literature_client import MAX_BODY_BYTES, ChineseLiteratureUnavailable
 
     response = MagicMock()
     response.status = 200
@@ -1657,7 +1740,7 @@ def test_malformed_content_length_is_rejected_before_read(value):
 
 
 def test_body_read_is_bounded_and_rejects_stream_over_limit():
-    from chinese_literature_client import ChineseLiteratureUnavailable, MAX_BODY_BYTES
+    from chinese_literature_client import MAX_BODY_BYTES, ChineseLiteratureUnavailable
 
     response = MagicMock()
     response.status = 200
@@ -1689,8 +1772,8 @@ def test_5xx_does_not_retry():
 
 
 def test_429_backs_off_then_raises_after_the_shared_retry_budget(monkeypatch):
-    from chinese_literature_client import ChineseLiteratureUnavailable
     from _text_similarity import _MAX_RETRIES
+    from chinese_literature_client import ChineseLiteratureUnavailable
 
     sleeps: list[float] = []
     monkeypatch.setattr("chinese_literature_client.time.sleep", sleeps.append)
@@ -1842,10 +1925,12 @@ def test_throttle_uses_monotonic_clock(monkeypatch):
     (#128 §6). Aligns with arxiv/crossref/openalex/S2."""
     monotonic_calls: list[int] = []
     time_calls: list[int] = []
-    monkeypatch.setattr("chinese_literature_client.time.monotonic",
-                        lambda: (monotonic_calls.append(1), 100.0)[1])
-    monkeypatch.setattr("chinese_literature_client.time.time",
-                        lambda: (time_calls.append(1), 100.0)[1])
+    monkeypatch.setattr(
+        "chinese_literature_client.time.monotonic", lambda: (monotonic_calls.append(1), 100.0)[1]
+    )
+    monkeypatch.setattr(
+        "chinese_literature_client.time.time", lambda: (time_calls.append(1), 100.0)[1]
+    )
 
     client = _client()
     client._throttle("_last_doi_at", 0.2)  # no prior request -> short-circuit
@@ -1864,12 +1949,13 @@ def test_doi_and_ncbi_have_independent_throttle_anchors(monkeypatch):
     clock = [1000.0]
     monkeypatch.setattr("chinese_literature_client.time.monotonic", lambda: clock[0])
 
-    esearch_bodies = [_body("esearch_coverage_hit.json"),
-                      _body("esearch_coverage_hit.json")]
-    transport = FakeTransport([
-        (_is_ra, _ok(_body("ra_istic.json"))),
-        (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
-    ])
+    esearch_bodies = [_body("esearch_coverage_hit.json"), _body("esearch_coverage_hit.json")]
+    transport = FakeTransport(
+        [
+            (_is_ra, _ok(_body("ra_istic.json"))),
+            (_is_esearch, lambda url: _ok(esearch_bodies.pop(0))(url)),
+        ]
+    )
     with patch("chinese_literature_client._safe_urlopen", transport):
         client = _client()
         client.ra_for(ISTIC_DOI)
@@ -1891,14 +1977,25 @@ def test_every_applicable_non_matched_scenario_emits_exactly_one_checklist_row()
     from chinese_literature_client import REASON_CODES
 
     scenarios = [
-        ([(_is_ra, _ok(_body("ra_istic.json"))),
-          (_is_doi_resolve, _http_error(404)),
-          (_is_handle, _ok(_body("handle_absent.json")))], _istic_entry(), {}),
-        ([(_is_ra, _ok(_body("ra_cnki.json"))),
-          (_is_handle, _ok(_body("handle_exists.json")))],
-         _istic_entry(doi=CNKI_DOI), {}),
-        ([(_is_esearch, _ok(_body("esearch_coverage_zero.json")))],
-         _coordinate_entry(), {"journal_map": TEST_JOURNAL_MAP}),
+        (
+            [
+                (_is_ra, _ok(_body("ra_istic.json"))),
+                (_is_doi_resolve, _http_error(404)),
+                (_is_handle, _ok(_body("handle_absent.json"))),
+            ],
+            _istic_entry(),
+            {},
+        ),
+        (
+            [(_is_ra, _ok(_body("ra_cnki.json"))), (_is_handle, _ok(_body("handle_exists.json")))],
+            _istic_entry(doi=CNKI_DOI),
+            {},
+        ),
+        (
+            [(_is_esearch, _ok(_body("esearch_coverage_zero.json")))],
+            _coordinate_entry(),
+            {"journal_map": TEST_JOURNAL_MAP},
+        ),
     ]
     for routes, entry, kwargs in scenarios:
         transport = FakeTransport(routes)
@@ -1922,8 +2019,7 @@ def test_priority_is_workload_ordering_not_a_suspicion_score():
     assert _PRIORITY_BY_REASON["DOI_TITLE_MISMATCH"] == "P0"
     assert _PRIORITY_BY_REASON["DOI_EXISTS_TITLE_UNVERIFIABLE"] == "P2"
     assert _PRIORITY_BY_REASON["NO_ISSN_MAPPING"] == "P3"
-    non_p0 = {code for code, priority in _PRIORITY_BY_REASON.items()
-              if priority != "P0"}
+    non_p0 = {code for code, priority in _PRIORITY_BY_REASON.items() if priority != "P0"}
     assert "DOI_REFUTED" not in non_p0
 
 
@@ -1952,22 +2048,25 @@ def test_no_forbidden_upstream_host_appears_in_client_code():
     someone to delete the warning in order to pass the test."""
     import ast
 
-    source = (REPO_ROOT / "scripts" / "chinese_literature_client.py").read_text(
-        encoding="utf-8")
+    source = (REPO_ROOT / "scripts" / "chinese_literature_client.py").read_text(encoding="utf-8")
     tree = ast.parse(source)
     docstrings = set()
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef,
-                             ast.AsyncFunctionDef)):
+        if isinstance(node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)):
             body = getattr(node, "body", None)
-            if (body and isinstance(body[0], ast.Expr)
-                    and isinstance(body[0].value, ast.Constant)
-                    and isinstance(body[0].value.value, str)):
+            if (
+                body
+                and isinstance(body[0], ast.Expr)
+                and isinstance(body[0].value, ast.Constant)
+                and isinstance(body[0].value.value, str)
+            ):
                 docstrings.add(id(body[0].value))
 
     literals = [
-        node.value for node in ast.walk(tree)
-        if isinstance(node, ast.Constant) and isinstance(node.value, str)
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Constant)
+        and isinstance(node.value, str)
         and id(node) not in docstrings
     ]
     # Sanity: the scan must actually see the real endpoint constants, otherwise

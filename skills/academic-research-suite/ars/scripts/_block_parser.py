@@ -298,7 +298,9 @@ def parse_document(text: str, *, fragment: bool = False) -> ParsedDocument:
             fence_str = fence_match.group(1)
             fence_char = fence_str[0]
             fence_len = len(fence_str)
-            close_re = re.compile(r"^ {0,3}(" + re.escape(fence_char) + r"{" + str(fence_len) + r",})\s*$")
+            close_re = re.compile(
+                r"^ {0,3}(" + re.escape(fence_char) + r"{" + str(fence_len) + r",})\s*$"
+            )
             i += 1
             while i < n and not close_re.match(_strip_eol(lines[i])):
                 i += 1

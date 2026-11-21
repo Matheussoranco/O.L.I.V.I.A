@@ -11,7 +11,6 @@ import argparse
 import json
 from pathlib import Path
 
-
 SCRIPT = Path(__file__).resolve()
 CODEX_ROOT = SCRIPT.parents[1]
 MANIFEST = CODEX_ROOT / "full-runtime-manifest.json"

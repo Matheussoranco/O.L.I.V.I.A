@@ -68,8 +68,7 @@ def _entry_has_v3_9_0_signals(entry: Any) -> bool:
     if not isinstance(sig, dict):
         return False
     return any(
-        k in sig
-        for k in ("semantic_scholar_unmatched", "openalex_unmatched", "crossref_unmatched")
+        k in sig for k in ("semantic_scholar_unmatched", "openalex_unmatched", "crossref_unmatched")
     )
 
 
@@ -117,9 +116,7 @@ def migrate_passport(
 
     if not _passport_in_v3_9_0_scope(doc):
         report["out_of_scope"] = True
-        _log(
-            "out of scope (pre-v3.9.0 — run migrate_literature_corpus_to_v3_9_0.py first)"
-        )
+        _log("out of scope (pre-v3.9.0 — run migrate_literature_corpus_to_v3_9_0.py first)")
         return report
 
     report["in_scope"] = True
@@ -197,21 +194,15 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         )
     )
     parser.add_argument("path", type=Path, help="Passport YAML file")
-    parser.add_argument(
-        "--dry-run", action="store_true", help="Show proposed seed, write nothing"
-    )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Per-key logging to stderr"
-    )
+    parser.add_argument("--dry-run", action="store_true", help="Show proposed seed, write nothing")
+    parser.add_argument("--verbose", action="store_true", help="Per-key logging to stderr")
     return parser.parse_args(argv)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = _parse_args(argv or sys.argv[1:])
     try:
-        report = migrate_passport(
-            args.path, dry_run=args.dry_run, verbose=args.verbose
-        )
+        report = migrate_passport(args.path, dry_run=args.dry_run, verbose=args.verbose)
     except PassportShapeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         return 2

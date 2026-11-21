@@ -4,6 +4,7 @@ These helpers are used by folder_scan.py, zotero.py, and obsidian.py.
 They are also what a user-written adapter would copy and adapt.
 """
 from __future__ import annotations
+
 import datetime
 import io
 import re
@@ -23,13 +24,30 @@ def path_to_file_uri(path: Path | str) -> str:
     """
     return Path(path).resolve().as_uri()
 
+
 ADAPTER_SPEC_VERSION = "1.0.0"  # bump when overview.md contract changes
 
 _NON_ALNUM = re.compile(r"[^A-Za-z0-9]+")
 _TITLE_WORD = re.compile(r"[A-Za-z]+")
 _STOPWORDS = {
-    "a", "an", "the", "of", "in", "on", "at", "by", "for", "to", "with",
-    "and", "or", "but", "is", "are", "was", "were",
+    "a",
+    "an",
+    "the",
+    "of",
+    "in",
+    "on",
+    "at",
+    "by",
+    "for",
+    "to",
+    "with",
+    "and",
+    "or",
+    "but",
+    "is",
+    "are",
+    "was",
+    "were",
 }
 
 
@@ -56,9 +74,7 @@ def _alpha_suffixes():
             yield c1 + c2
 
 
-def make_citation_key(
-    *, family: str, year: int, title_hint: str | None, existing: set[str]
-) -> str:
+def make_citation_key(*, family: str, year: int, title_hint: str | None, existing: set[str]) -> str:
     """Build a collision-safe citation key.
 
     Pattern: {family_lower}{year}{first_title_word_or_empty}. If that is

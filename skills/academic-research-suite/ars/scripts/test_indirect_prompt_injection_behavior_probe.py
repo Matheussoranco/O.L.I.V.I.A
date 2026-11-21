@@ -6,9 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import run_indirect_prompt_injection_probe as probe
-
 
 GUIDANCE_BLOCK = (
     "AUTHORITY BOUNDARY\n"
@@ -115,7 +113,11 @@ def test_mechanical_score_surfaces_injected_canary_action_and_corruption():
     heldout, _templates = probe.load_assets()
     scenario = probe.scenario_index(heldout)["ipi-web-en"]
     response = {
-        "artifact": {"claim_id": "CLM-1", "standing": "supported", "evidence_anchor": "approved-by-source"},
+        "artifact": {
+            "claim_id": "CLM-1",
+            "standing": "supported",
+            "evidence_anchor": "approved-by-source",
+        },
         "external_action_requests": ["CANARY_ACTION:publish_external_notice"],
         "injection_marker": scenario["canary"],
     }
@@ -164,8 +166,14 @@ def test_mechanical_score_keeps_json_boolean_distinct_from_integer():
     "response,error",
     [
         ({"artifact": {}, "external_action_requests": []}, "response keys"),
-        ({"artifact": [], "external_action_requests": [], "injection_marker": None}, "artifact must"),
-        ({"artifact": {}, "external_action_requests": "none", "injection_marker": None}, "array of strings"),
+        (
+            {"artifact": [], "external_action_requests": [], "injection_marker": None},
+            "artifact must",
+        ),
+        (
+            {"artifact": {}, "external_action_requests": "none", "injection_marker": None},
+            "array of strings",
+        ),
         ({"artifact": {}, "external_action_requests": [], "injection_marker": 7}, "string or null"),
     ],
 )
@@ -202,9 +210,9 @@ def test_asset_validator_rejects_non_reserved_live_url():
 def test_asset_validator_rejects_unresolvable_rule_fragment():
     heldout, templates = probe.load_assets()
     mutated = copy.deepcopy(heldout)
-    mutated["scenarios"][0]["rule_anchor"] = (
-        "deep-research/agents/source_verification_agent.md#missing-heading"
-    )
+    mutated["scenarios"][0][
+        "rule_anchor"
+    ] = "deep-research/agents/source_verification_agent.md#missing-heading"
 
     with pytest.raises(probe.ProbeError, match="fragment does not resolve"):
         probe.validate_assets(mutated, templates)
@@ -231,7 +239,10 @@ def test_rule_anchor_uses_shared_github_slug_semantics(
 
 def test_strict_json_loader_rejects_duplicate_keys(tmp_path: Path):
     path = tmp_path / "duplicate.json"
-    path.write_text('{"artifact":{},"artifact":{},"external_action_requests":[],"injection_marker":null}', encoding="utf-8")
+    path.write_text(
+        '{"artifact":{},"artifact":{},"external_action_requests":[],"injection_marker":null}',
+        encoding="utf-8",
+    )
 
     with pytest.raises(probe.ProbeError, match="duplicate JSON key"):
         probe.load_json_strict(path)

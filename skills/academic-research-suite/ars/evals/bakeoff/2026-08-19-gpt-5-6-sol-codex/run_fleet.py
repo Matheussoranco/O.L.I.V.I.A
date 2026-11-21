@@ -6,11 +6,16 @@ Output dir: ./results (override with ARS_BAKEOFF_OUT). Score a reproduced
 fleet with: python3 score_run.py <that output dir> — the scorer applies the
 same completeness and identity-binding gates to runner output as to the
 committed gate-run JSONLs."""
-import json, os, signal, subprocess, sys, time
-
-from receipt_contract import validate_receipt, validate_row, verify_probe_bytes
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+
+from receipt_contract import validate_row, verify_probe_bytes
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[2]
@@ -53,6 +58,7 @@ OUT.mkdir(parents=True, exist_ok=True)
 _LOCK_FH = open(OUT / ".fleet.lock", "a+")
 try:
     import fcntl
+
     fcntl.flock(_LOCK_FH, fcntl.LOCK_EX | fcntl.LOCK_NB)
 except OSError:
     raise SystemExit(f"FLEET LOCKED: another run_fleet.py holds {OUT / '.fleet.lock'}")
@@ -118,14 +124,18 @@ for model in MODELS:
     if mdir.is_dir():
         stray = sorted(p.name for p in mdir.glob("*.json") if p.name not in expected_names)
         if stray:
-            raise SystemExit(f"UNEXPECTED FILES in {mdir}: {stray[:5]} — archive the output dir and rerun.")
+            raise SystemExit(
+                f"UNEXPECTED FILES in {mdir}: {stray[:5]} — archive the output dir and rerun."
+            )
         # An orphaned atomic-write temp file means a prior run died between
         # write and rename: the paid call happened but left no destination
         # cell, and silently rescheduling it would re-roll a completed trial
         # (#788 round-31 P2). Refuse and let the operator inspect.
         orphans = sorted(p.name for p in mdir.glob("*.tmp"))
         if orphans:
-            raise SystemExit(f"ORPHANED TEMP CELLS in {mdir}: {orphans[:5]} — inspect/archive before resuming.")
+            raise SystemExit(
+                f"ORPHANED TEMP CELLS in {mdir}: {orphans[:5]} — inspect/archive before resuming."
+            )
 
 # Pair-completeness on resume (#788 round-33 P1): an interruption that left
 # only one model's cell for a (reference, repeat) pair would make the resumed
@@ -150,6 +160,7 @@ for ref in refs:
             )
 
 print(f"total pending calls: {len(jobs)}", flush=True)
+
 
 def run_one(job):
     model, short, ref, r, out = job
@@ -185,8 +196,13 @@ def run_one(job):
         # that poison resumability (#788 round-30 P2).
         proc = subprocess.run(
             [sys.executable, str(REPO / "scripts/cross_model_codex_transport.py"), "verify"],
-            input=json.dumps(request, ensure_ascii=False), capture_output=True,
-            text=True, encoding="utf-8", timeout=CALL_TIMEOUT, env=env, cwd=str(REPO),
+            input=json.dumps(request, ensure_ascii=False),
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=CALL_TIMEOUT,
+            env=env,
+            cwd=str(REPO),
             start_new_session=True,
         )
         wall = time.monotonic() - t0
@@ -204,9 +220,13 @@ def run_one(job):
                 # receipt with the wrong model/request_id/digest can never be
                 # persisted as success (#788 rounds 14 + 31).
                 candidate_row = {
-                    "model": model, "ref_id": ref["id"], "repeat": r,
-                    "wall_seconds": round(wall, 2), "receipt": receipt,
-                    "error": None, "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                    "model": model,
+                    "ref_id": ref["id"],
+                    "repeat": r,
+                    "wall_seconds": round(wall, 2),
+                    "receipt": receipt,
+                    "error": None,
+                    "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
                     "reasoning_effort": "provider-default (env unset)",
                 }
                 try:
@@ -225,15 +245,23 @@ def run_one(job):
         wall = time.monotonic() - t0
         receipt, err = None, "CALL_TIMEOUT"
         TIMEOUT_OCCURRED.append(out.name)
-    row = {"model": model, "ref_id": ref["id"], "repeat": r, "wall_seconds": round(wall, 2),
-           "receipt": receipt, "error": err, "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-           "reasoning_effort": "provider-default (env unset)"}
+    row = {
+        "model": model,
+        "ref_id": ref["id"],
+        "repeat": r,
+        "wall_seconds": round(wall, 2),
+        "receipt": receipt,
+        "error": err,
+        "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+        "reasoning_effort": "provider-default (env unset)",
+    }
     tmp = out.with_suffix(".tmp")
     tmp.write_text(json.dumps(row, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.rename(out)
     v = receipt.get("verdict") if receipt else "ERR"
     s = receipt.get("searched") if receipt else "-"
     return f"{model} {ref['id']} r{r}: {v} searched={s} {wall:.0f}s" + (f" [{err}]" if err else "")
+
 
 def _sweep_orphan_tempdirs() -> None:
     """Remove adapter temp dirs left by outer-timeout kills.
@@ -244,6 +272,7 @@ def _sweep_orphan_tempdirs() -> None:
     removal is logged.
     """
     import shutil
+
     root = FLEET_TMP
     for d in root.glob("ars-codex-citation-*"):
         try:
@@ -256,10 +285,13 @@ def _sweep_orphan_tempdirs() -> None:
 
 import tempfile as _tempfile
 import threading as _threading
+
 STOP = _threading.Event()
 FLEET_TMP = Path(_tempfile.mkdtemp(prefix="ars-bakeoff-fleet-"))
 FLEET_START = time.time()
 TIMEOUT_OCCURRED: list[str] = []
+
+
 # SIGTERM/SIGINT must unwind through the finally-block sweep below —
 # Python's default SIGTERM handler would kill the process without running
 # cleanup, leaving copied auth.json dirs under FLEET_TMP (#788 round-18 P2).
@@ -272,6 +304,7 @@ def _terminate(signum, frame):
     if STOP is not None:
         STOP.set()
     raise SystemExit(128 + signum)
+
 
 signal.signal(signal.SIGTERM, _terminate)
 signal.signal(signal.SIGINT, _terminate)
@@ -286,12 +319,24 @@ try:
             try:
                 line = f.result()
                 print(f"[{done}/{len(jobs)}]", line, flush=True)
-                if any(tag in line for tag in ("[CALL_TIMEOUT]", "[EXIT ", "[RECEIPT_PARSE", "[RECEIPT_INVALID", "[CANCELLED]")):
+                if any(
+                    tag in line
+                    for tag in (
+                        "[CALL_TIMEOUT]",
+                        "[EXIT ",
+                        "[RECEIPT_PARSE",
+                        "[RECEIPT_INVALID",
+                        "[CANCELLED]",
+                    )
+                ):
                     failures += 1
             except Exception as e:
                 failures += 1
                 model, short, ref, r_, out = futs[f]
-                print(f"[{done}/{len(jobs)}] WORKER-ERROR {model} {ref['id']} r{r_}: {e!r}", flush=True)
+                print(
+                    f"[{done}/{len(jobs)}] WORKER-ERROR {model} {ref['id']} r{r_}: {e!r}",
+                    flush=True,
+                )
                 # A worker exception after the paid call must leave a
                 # persisted failed cell — otherwise the next resume treats
                 # the trial as missing and silently re-rolls it (#788
@@ -299,13 +344,22 @@ try:
                 if not out.exists():
                     try:
                         out.parent.mkdir(parents=True, exist_ok=True)
-                        out.write_text(json.dumps({
-                            "model": model, "ref_id": ref["id"], "repeat": r_,
-                            "wall_seconds": 0.0, "receipt": None,
-                            "error": f"WORKER_EXCEPTION: {e!r}",
-                            "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
-                            "reasoning_effort": "provider-default (env unset)",
-                        }, ensure_ascii=False, indent=1))
+                        out.write_text(
+                            json.dumps(
+                                {
+                                    "model": model,
+                                    "ref_id": ref["id"],
+                                    "repeat": r_,
+                                    "wall_seconds": 0.0,
+                                    "receipt": None,
+                                    "error": f"WORKER_EXCEPTION: {e!r}",
+                                    "ts": time.strftime("%Y-%m-%dT%H:%M:%S%z"),
+                                    "reasoning_effort": "provider-default (env unset)",
+                                },
+                                ensure_ascii=False,
+                                indent=1,
+                            )
+                        )
                     except OSError:
                         pass
 finally:
@@ -316,6 +370,7 @@ finally:
     # round-13 P2). The root is private to this fleet, so removing it
     # whole is safe here.
     import shutil as _shutil
+
     _sweep_orphan_tempdirs()
     _shutil.rmtree(FLEET_TMP, ignore_errors=True)
 failures += len(CARRIED_FAILURES)
@@ -327,7 +382,9 @@ for model in MODELS:
     for p in sorted((OUT / model).glob("*.json")):
         fleet_dates.add(str(json.loads(p.read_text(encoding="utf-8")).get("ts", ""))[:10])
 if len(fleet_dates) > 1:
-    raise SystemExit(f"MIXED-DATE FLEET: cells span {sorted(fleet_dates)} — archive and rerun in one calendar day.")
+    raise SystemExit(
+        f"MIXED-DATE FLEET: cells span {sorted(fleet_dates)} — archive and rerun in one calendar day."
+    )
 if failures:
     # An incomplete or error-bearing fleet must never look like success to
     # automation (#788 round-8 P2); the scorer's completeness gate is the

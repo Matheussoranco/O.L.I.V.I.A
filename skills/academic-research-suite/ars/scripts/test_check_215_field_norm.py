@@ -12,7 +12,6 @@ import unittest
 
 from scripts import check_215_field_norm as cfn
 
-
 DOMAIN = "academic-paper-reviewer/agents/domain_reviewer_agent.md"
 DA = "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
 CAL = "academic-paper-reviewer/references/calibration_mode_protocol.md"
@@ -46,7 +45,10 @@ class TestMutations(unittest.TestCase):
 
     def test_domain_step5_removed_fails(self) -> None:
         errors = self._patch(
-            DOMAIN, lambda t: t.replace("### Step 5: Field-Norm Severity Discipline (#215)", "### Step 5: Removed")
+            DOMAIN,
+            lambda t: t.replace(
+                "### Step 5: Field-Norm Severity Discipline (#215)", "### Step 5: Removed"
+            ),
         )
         self.assertTrue(
             any("domain_reviewer_agent.md" in e and "Step 5" in e for e in errors),
@@ -55,7 +57,10 @@ class TestMutations(unittest.TestCase):
 
     def test_domain_broadened_evidence_removed_fails(self) -> None:
         errors = self._patch(
-            DOMAIN, lambda t: t.replace("not limited to a literature citation", "limited to a literature citation")
+            DOMAIN,
+            lambda t: t.replace(
+                "not limited to a literature citation", "limited to a literature citation"
+            ),
         )
         self.assertTrue(
             any("broadened-evidence" in e for e in errors),
@@ -78,7 +83,8 @@ class TestMutations(unittest.TestCase):
 
     def test_da_dimension9_removed_fails(self) -> None:
         errors = self._patch(
-            DA, lambda t: t.replace("### 9. Field-Norm Severity Calibration (#215)", "### 9. Removed")
+            DA,
+            lambda t: t.replace("### 9. Field-Norm Severity Calibration (#215)", "### 9. Removed"),
         )
         self.assertTrue(
             any("devils_advocate_reviewer_agent.md" in e and "dimension" in e for e in errors),
@@ -87,7 +93,10 @@ class TestMutations(unittest.TestCase):
 
     def test_da_field_removed_fails(self) -> None:
         errors = self._patch(
-            DA, lambda t: t.replace("field_norm_boundary", "xxx").replace("evidence_crossing_rationale", "yyy")
+            DA,
+            lambda t: t.replace("field_norm_boundary", "xxx").replace(
+                "evidence_crossing_rationale", "yyy"
+            ),
         )
         self.assertTrue(
             any("field_norm_boundary" in e for e in errors)
@@ -97,7 +106,11 @@ class TestMutations(unittest.TestCase):
 
     def test_calibration_phase35_removed_fails(self) -> None:
         errors = self._patch(
-            CAL, lambda t: t.replace("### Phase 3.5: Severity-miscalibration measurement (#215)", "### Phase 3.5: Removed")
+            CAL,
+            lambda t: t.replace(
+                "### Phase 3.5: Severity-miscalibration measurement (#215)",
+                "### Phase 3.5: Removed",
+            ),
         )
         self.assertTrue(
             any("calibration_mode_protocol.md" in e and "Phase 3.5" in e for e in errors),
@@ -117,7 +130,10 @@ class TestMutations(unittest.TestCase):
             ),
         )
         self.assertTrue(
-            any("calibration_mode_protocol.md Phase 3.5" in e and "anti-circularity" in e for e in errors),
+            any(
+                "calibration_mode_protocol.md Phase 3.5" in e and "anti-circularity" in e
+                for e in errors
+            ),
             msg=f"expected anti-circularity error: {errors!r}",
         )
 
@@ -134,7 +150,10 @@ class TestMutations(unittest.TestCase):
             ),
         )
         self.assertTrue(
-            any("domain_reviewer_agent.md Step 5" in e and "ground the norm in an external" in e for e in errors),
+            any(
+                "domain_reviewer_agent.md Step 5" in e and "ground the norm in an external" in e
+                for e in errors
+            ),
             msg=f"expected grounding-clause error: {errors!r}",
         )
 
@@ -145,7 +164,10 @@ class TestMutations(unittest.TestCase):
         errors = self._patch(
             DA,
             lambda t: self._strip_in_block(
-                t, "## Output Format", "Field-Norm Boundary", "Removed-Column",
+                t,
+                "## Output Format",
+                "Field-Norm Boundary",
+                "Removed-Column",
             ),
         )
         self.assertTrue(
@@ -157,6 +179,7 @@ class TestMutations(unittest.TestCase):
         """codex re-review P1: if ONLY the CRITICAL table loses its columns while MAJOR keeps
         them, a whole-block check would find the names in MAJOR and false-pass. Each severity
         subsection must be checked separately. Mutate only the CRITICAL table header row."""
+
         def drop_critical_columns(t: str) -> str:
             # Replace the column names on the CRITICAL table's header row only (first occurrence
             # after '#### CRITICAL'), leaving the MAJOR table intact.
@@ -218,7 +241,9 @@ class TestMutations(unittest.TestCase):
         This asserts the real columns (below the fence) are inside the captured block."""
         block = cfn._block(self._files[DA], r"^## Output Format")
         self.assertIsNotNone(block)
-        self.assertIn("Field-Norm Boundary", block, "fence-aware _block must reach the CRITICAL table")
+        self.assertIn(
+            "Field-Norm Boundary", block, "fence-aware _block must reach the CRITICAL table"
+        )
         self.assertIn("#### CRITICAL", block)
 
     @staticmethod
@@ -231,7 +256,7 @@ class TestMutations(unittest.TestCase):
         if block is None:
             return text
         start = text.index(block)
-        return text[:start] + block.replace(needle, replacement) + text[start + len(block):]
+        return text[:start] + block.replace(needle, replacement) + text[start + len(block) :]
 
 
 if __name__ == "__main__":

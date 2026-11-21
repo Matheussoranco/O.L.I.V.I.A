@@ -6,12 +6,17 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_decision_contract as lint
 
 REPO = Path(__file__).resolve().parents[1]
-MIRROR_FILES = lint.LIVE_FILES + lint.CONTRACTS + (
-    lint.QUALITY, lint.STANDARDS, lint.SKILL,
+MIRROR_FILES = (
+    lint.LIVE_FILES
+    + lint.CONTRACTS
+    + (
+        lint.QUALITY,
+        lint.STANDARDS,
+        lint.SKILL,
+    )
 )
 
 
@@ -43,7 +48,8 @@ def test_unmutated_mirror_passes(tmp_path):
 def test_schema_enum_mutation_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
-        root, lint.SCHEMA,
+        root,
+        lint.SCHEMA,
         '"editorial_decision=minor_revision"',
         '"editorial_decision=revise"',
     )
@@ -82,15 +88,12 @@ def test_schema6_enum_extra_value_mutation_fails(tmp_path):
         ("action", "editorial_decision=minor_revision"),
     ),
 )
-def test_shipped_condition_tuple_field_mutation_fails(
-    tmp_path, field, replacement
-):
+def test_shipped_condition_tuple_field_mutation_fails(tmp_path, field, replacement):
     root = mirror(tmp_path)
     path = root / lint.CONTRACTS[0]
     contract = json.loads(path.read_text(encoding="utf-8"))
     condition = next(
-        item for item in contract["failure_conditions"]
-        if item["condition_id"] == "F4"
+        item for item in contract["failure_conditions"] if item["condition_id"] == "F4"
     )
     condition[field] = replacement
     path.write_text(json.dumps(contract), encoding="utf-8")
@@ -101,7 +104,8 @@ def test_hybrid_token_on_live_agent_surface_fails(tmp_path):
     root = mirror(tmp_path)
     rel = "academic-paper-reviewer/agents/eic_agent.md"
     mutate(
-        root, rel,
+        root,
+        rel,
         "## Expertise Configuration",
         "reject_or_major_revision\n\n## Expertise Configuration",
     )
@@ -180,8 +184,7 @@ def test_retired_mapping_prose_is_prohibited_in_quality_rubric(tmp_path):
     root = mirror(tmp_path)
     path = root / lint.QUALITY
     path.write_text(
-        path.read_text(encoding="utf-8")
-        + "\nA rubric score of 80 or higher means Accept.\n",
+        path.read_text(encoding="utf-8") + "\nA rubric score of 80 or higher means Accept.\n",
         encoding="utf-8",
     )
     assert lint.check(root)
@@ -304,8 +307,7 @@ def test_decision_label_with_unrelated_count_does_not_false_positive(tmp_path):
         root,
         lint.STANDARDS,
         "## 0. Decision Authority by Mode",
-        "Accept reviewers examined 80 submissions.\n\n"
-        "## 0. Decision Authority by Mode",
+        "Accept reviewers examined 80 submissions.\n\n" "## 0. Decision Authority by Mode",
     )
     assert lint.check(root) == []
 
@@ -356,7 +358,8 @@ def test_decision_linked_numeric_range_fails(tmp_path, wording):
 def test_retired_one_to_five_threshold_in_standards_fails(tmp_path):
     root = mirror(tmp_path)
     mutate(
-        root, lint.STANDARDS,
+        root,
+        lint.STANDARDS,
         "Every applicable core criterion is positively verified",
         "Average score >= 4.0",
     )
@@ -369,7 +372,8 @@ def test_re_review_reintroduced_score_rule_still_fails(tmp_path):
     protocol from the 0-100 score-scale residency rule."""
     root = mirror(tmp_path)
     mutate(
-        root, lint.RE_REVIEW_PROTOCOL,
+        root,
+        lint.RE_REVIEW_PROTOCOL,
         "### Legacy Mode",
         "Accept requires a composite score of 80 or higher.\n\n### Legacy Mode",
     )

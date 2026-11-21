@@ -7,11 +7,9 @@ import os
 from pathlib import Path
 
 import pytest
-
 from scripts import dispatch_e4_panel as harness
 from scripts import resume_e4_record as recovery
 from scripts import test_dispatch_e4_panel as fixtures
-
 
 DATE = "2026-08-01"
 STEM = f"{DATE}-ms00_clean-post-r1"
@@ -20,9 +18,13 @@ STEM = f"{DATE}-ms00_clean-post-r1"
 def _panel(tmp_path: Path):
     work = tmp_path / "work"
     result, bundle = harness.dispatch_panel(
-        fixture="ms00_clean", condition="post", replicate=1,
-        work_dir=work, transport=fixtures.scripted(),
-        manuscript=fixtures.MANUSCRIPT, metadata=fixtures.METADATA,
+        fixture="ms00_clean",
+        condition="post",
+        replicate=1,
+        work_dir=work,
+        transport=fixtures.scripted(),
+        manuscript=fixtures.MANUSCRIPT,
+        metadata=fixtures.METADATA,
         contract_json=fixtures.CONTRACT_JSON,
     )
     assert result.abort is None
@@ -46,9 +48,14 @@ def _force_emission_failure(work, result, bundle, monkeypatch):
     monkeypatch.setattr(harness.os, "replace", fail_record_install)
     with pytest.raises(OSError, match="forced"):
         harness.emit(
-            result, bundle, work, model_id="test-model",
-            suite_commit="deadbeef", date=DATE,
-            dispatch_note="scripted", working_tree_dirty=False,
+            result,
+            bundle,
+            work,
+            model_id="test-model",
+            suite_commit="deadbeef",
+            date=DATE,
+            dispatch_note="scripted",
+            working_tree_dirty=False,
         )
     monkeypatch.setattr(harness.os, "replace", real_replace)
     assert bundle.root.exists()
@@ -56,7 +63,8 @@ def _force_emission_failure(work, result, bundle, monkeypatch):
 
 
 def test_a_forced_post_bundle_failure_resumes_without_a_model_call(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     work, bundle = _failed_emission(tmp_path, monkeypatch)
 
@@ -64,9 +72,14 @@ def test_a_forced_post_bundle_failure_resumes_without_a_model_call(
         raise AssertionError("resume must not construct a model transport")
 
     monkeypatch.setattr(harness, "ClaudeCliTransport", forbidden)
-    exit_code = recovery.main([
-        "--bundle", str(bundle.root), "--work-dir", str(work),
-    ])
+    exit_code = recovery.main(
+        [
+            "--bundle",
+            str(bundle.root),
+            "--work-dir",
+            str(work),
+        ]
+    )
     assert exit_code == harness.EXIT_OK
     path = work / "runs" / f"{STEM}.json"
     record = json.loads(path.read_text(encoding="utf-8"))
@@ -79,8 +92,14 @@ def test_a_forced_post_bundle_failure_resumes_without_a_model_call(
 def test_resume_refuses_to_overwrite_an_existing_identity(tmp_path):
     work, result, bundle = _panel(tmp_path)
     path, record = harness.emit(
-        result, bundle, work, model_id="test-model",
-        suite_commit="deadbeef", date=DATE, dispatch_note="scripted")
+        result,
+        bundle,
+        work,
+        model_id="test-model",
+        suite_commit="deadbeef",
+        date=DATE,
+        dispatch_note="scripted",
+    )
     installed = path.parent / record["raw_bundle"]
     with pytest.raises(recovery.RecoveryError, match="already recorded"):
         recovery.resume(installed, work)
@@ -130,8 +149,11 @@ def test_emission_refuses_a_redirected_existing_recovery_state(tmp_path):
 
     with pytest.raises(harness.PreconditionFailure, match="symlink"):
         harness.ensure_recovery_state(
-            result, bundle, model_id="test-model",
-            suite_commit="deadbeef", date=DATE,
+            result,
+            bundle,
+            model_id="test-model",
+            suite_commit="deadbeef",
+            date=DATE,
             dispatch_note="scripted",
         )
 
@@ -140,8 +162,7 @@ def test_emission_refuses_a_redirected_existing_recovery_state(tmp_path):
 
 def test_resume_refuses_a_changed_preserved_artifact(tmp_path, monkeypatch):
     work, bundle = _failed_emission(tmp_path, monkeypatch)
-    (bundle.root / "synthesis.a1.md").write_text(
-        "changed after dispatch\n", encoding="utf-8")
+    (bundle.root / "synthesis.a1.md").write_text("changed after dispatch\n", encoding="utf-8")
     with pytest.raises(recovery.RecoveryError, match="manifest"):
         recovery.resume(bundle.root, work)
 
@@ -149,13 +170,15 @@ def test_resume_refuses_a_changed_preserved_artifact(tmp_path, monkeypatch):
 def test_resume_refuses_an_inserted_artifact(tmp_path, monkeypatch):
     work, bundle = _failed_emission(tmp_path, monkeypatch)
     (bundle.root / "operator-note.txt").write_text(
-        "not part of the retained bundle\n", encoding="utf-8")
+        "not part of the retained bundle\n", encoding="utf-8"
+    )
     with pytest.raises(recovery.RecoveryError, match="manifest"):
         recovery.resume(bundle.root, work)
 
 
 def test_resume_refuses_an_inconsistent_completed_stage_ledger(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     work, bundle = _failed_emission(tmp_path, monkeypatch)
     state_path = bundle.root / harness.RECOVERY_STATE_FILE
@@ -169,14 +192,23 @@ def test_resume_refuses_an_inconsistent_completed_stage_ledger(
 def test_resume_refuses_an_omitted_retry_event(tmp_path, monkeypatch):
     work = tmp_path / "work"
     malformed = fixtures.phase_fixtures.phase1_text("methodology").replace(
-        "what_triggers_fatal: fatal evidence pattern for D3", "", 1)
+        "what_triggers_fatal: fatal evidence pattern for D3", "", 1
+    )
     result, bundle = harness.dispatch_panel(
-        fixture="ms00_clean", condition="post", replicate=1,
+        fixture="ms00_clean",
+        condition="post",
+        replicate=1,
         work_dir=work,
-        transport=fixtures.scripted({"methodology.phase1": [
-            malformed, fixtures.phase_fixtures.phase1_text("methodology"),
-        ]}),
-        manuscript=fixtures.MANUSCRIPT, metadata=fixtures.METADATA,
+        transport=fixtures.scripted(
+            {
+                "methodology.phase1": [
+                    malformed,
+                    fixtures.phase_fixtures.phase1_text("methodology"),
+                ]
+            }
+        ),
+        manuscript=fixtures.MANUSCRIPT,
+        metadata=fixtures.METADATA,
         contract_json=fixtures.CONTRACT_JSON,
     )
     assert len(result.retries) == 1
@@ -192,15 +224,19 @@ def test_resume_refuses_an_omitted_retry_event(tmp_path, monkeypatch):
 
 
 def test_resume_cannot_turn_a_terminal_synthesis_failure_into_completion(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     work = tmp_path / "work"
     broken = fixtures.synthesis_response().replace("D1=pass", "D1=warn")
     result, bundle = harness.dispatch_panel(
-        fixture="ms00_clean", condition="post", replicate=1,
+        fixture="ms00_clean",
+        condition="post",
+        replicate=1,
         work_dir=work,
         transport=fixtures.scripted({"synthesis": [broken, broken]}),
-        manuscript=fixtures.MANUSCRIPT, metadata=fixtures.METADATA,
+        manuscript=fixtures.MANUSCRIPT,
+        metadata=fixtures.METADATA,
         contract_json=fixtures.CONTRACT_JSON,
     )
     assert result.abort is not None
@@ -218,7 +254,8 @@ def test_resume_cannot_turn_a_terminal_synthesis_failure_into_completion(
 
 
 def test_resume_accepts_the_documented_installed_raw_state(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     work, bundle = _failed_emission(tmp_path, monkeypatch)
     installed = work / "runs" / "raw" / STEM
@@ -230,7 +267,8 @@ def test_resume_accepts_the_documented_installed_raw_state(
 
 
 def test_resume_refuses_a_bundle_at_an_undeclared_location(
-    tmp_path, monkeypatch,
+    tmp_path,
+    monkeypatch,
 ):
     work, bundle = _failed_emission(tmp_path, monkeypatch)
     elsewhere = work / "operator-moved" / "bundle"
@@ -246,22 +284,33 @@ def test_resume_accepts_an_extraction_retry_ledger(tmp_path, monkeypatch):
     work = tmp_path / "work"
     malformed = "Let me extract first.\n\n" + fixtures.EXTRACTION_TEXT
     result, bundle = harness.dispatch_panel(
-        fixture="ms00_clean", condition="post", replicate=1,
+        fixture="ms00_clean",
+        condition="post",
+        replicate=1,
         work_dir=work,
-        transport=fixtures.scripted({
-            "methodology.extraction": [malformed,
-                                       fixtures.EXTRACTION_TEXT],
-        }),
-        manuscript=fixtures.MANUSCRIPT, metadata=fixtures.METADATA,
+        transport=fixtures.scripted(
+            {
+                "methodology.extraction": [malformed, fixtures.EXTRACTION_TEXT],
+            }
+        ),
+        manuscript=fixtures.MANUSCRIPT,
+        metadata=fixtures.METADATA,
         contract_json=fixtures.CONTRACT_JSON,
     )
     assert result.abort is None
     _force_emission_failure(work, result, bundle, monkeypatch)
-    assert recovery.main([
-        "--bundle", str(bundle.root), "--work-dir", str(work),
-    ]) == harness.EXIT_OK
-    record = json.loads(
-        (work / "runs" / f"{STEM}.json").read_text(encoding="utf-8"))
+    assert (
+        recovery.main(
+            [
+                "--bundle",
+                str(bundle.root),
+                "--work-dir",
+                str(work),
+            ]
+        )
+        == harness.EXIT_OK
+    )
+    record = json.loads((work / "runs" / f"{STEM}.json").read_text(encoding="utf-8"))
     assert record["score_eligible"] is True
     events = record["extraction_retries"]
     assert len(events) == 1
@@ -284,12 +333,12 @@ def test_resume_refuses_a_tampered_receipts_artifact(tmp_path, monkeypatch):
     state_path = bundle.root / harness.RECOVERY_STATE_FILE
     state = json.loads(state_path.read_text(encoding="utf-8"))
     from scripts import _e4_evidence as e4_evidence
+
     state["bundle_manifest"] = e4_evidence.tree_manifest(
-        bundle.root, exclude={harness.RECOVERY_STATE_FILE})
-    state_path.write_text(
-        json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
-    with pytest.raises(recovery.RecoveryError,
-                       match="deterministic re-derivation"):
+        bundle.root, exclude={harness.RECOVERY_STATE_FILE}
+    )
+    state_path.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(recovery.RecoveryError, match="deterministic re-derivation"):
         recovery.resume(bundle.root, work)
 
 
@@ -301,15 +350,14 @@ def test_resume_requires_the_identity_gate_witness(tmp_path, monkeypatch):
     gate = bundle.root / "methodology.phase2.a1.gate.log"
     text = gate.read_text(encoding="utf-8")
     assert "RECEIPT-IDENTITY: PASS" in text
-    gate.write_text(
-        text.replace("RECEIPT-IDENTITY: PASS\n", ""), encoding="utf-8")
+    gate.write_text(text.replace("RECEIPT-IDENTITY: PASS\n", ""), encoding="utf-8")
     state_path = bundle.root / harness.RECOVERY_STATE_FILE
     state = json.loads(state_path.read_text(encoding="utf-8"))
     from scripts import _e4_evidence as e4_evidence
+
     state["bundle_manifest"] = e4_evidence.tree_manifest(
-        bundle.root, exclude={harness.RECOVERY_STATE_FILE})
-    state_path.write_text(
-        json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
-    with pytest.raises(recovery.RecoveryError,
-                       match="lack response/checker evidence"):
+        bundle.root, exclude={harness.RECOVERY_STATE_FILE}
+    )
+    state_path.write_text(json.dumps(state, indent=2, ensure_ascii=False), encoding="utf-8")
+    with pytest.raises(recovery.RecoveryError, match="lack response/checker evidence"):
         recovery.resume(bundle.root, work)

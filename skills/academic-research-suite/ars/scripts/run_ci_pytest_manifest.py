@@ -107,8 +107,7 @@ def main() -> int:
 
     if failed:
         print(
-            f"\nCI pytest manifest run FAILED on {len(failed)} entr(y/ies): "
-            + ", ".join(failed),
+            f"\nCI pytest manifest run FAILED on {len(failed)} entr(y/ies): " + ", ".join(failed),
             file=sys.stderr,
         )
         return 1

@@ -98,8 +98,10 @@ def _class_term(class_cell: str) -> str | None:
     """The vocabulary term the cell begins with — as a whole term, followed
     by end-of-cell, whitespace, or an opening parenthesis."""
     for term in sorted(CLASS_VOCABULARY, key=len, reverse=True):
-        if class_cell == term or class_cell.startswith(term + " ") or (
-            class_cell.startswith(term + "(")
+        if (
+            class_cell == term
+            or class_cell.startswith(term + " ")
+            or (class_cell.startswith(term + "("))
         ):
             return term
     return None
@@ -112,19 +114,13 @@ def run_all_checks(root: Path) -> list[str]:
     doc_text = doc_path.read_text(encoding="utf-8")
     section = heading_section(doc_text, SECTION_HEADING)
     if section is None:
-        return [
-            f"WC-1: section '{SECTION_HEADING}' not found in {DOC_RELPATH}"
-        ]
+        return [f"WC-1: section '{SECTION_HEADING}' not found in {DOC_RELPATH}"]
     rows, errors = _table_rows(section)
 
     on_disk = {
-        p.name
-        for pattern in ("*.yml", "*.yaml")
-        for p in (root / WORKFLOWS_DIR).glob(pattern)
+        p.name for pattern in ("*.yml", "*.yaml") for p in (root / WORKFLOWS_DIR).glob(pattern)
     }
-    in_table = [
-        _FILENAME_CELL_RE.fullmatch(cells[0]).group(1) for cells in rows
-    ]
+    in_table = [_FILENAME_CELL_RE.fullmatch(cells[0]).group(1) for cells in rows]
     for name in sorted(on_disk - set(in_table)):
         errors.append(
             f"WC-1: workflow '{name}' exists on disk but has no row in the "
@@ -143,9 +139,7 @@ def run_all_checks(root: Path) -> list[str]:
     for name, cells in zip(in_table, rows):
         # Cells: workflow | trigger | what it checks | class | bypass.
         if len(cells) != 5:
-            errors.append(
-                f"WC-1: row '{name}' has {len(cells)} cells, expected 5"
-            )
+            errors.append(f"WC-1: row '{name}' has {len(cells)} cells, expected 5")
             continue
         term = _class_term(cells[3])
         if term is None:
@@ -160,9 +154,7 @@ def run_all_checks(root: Path) -> list[str]:
             # comment must not satisfy WC-4.
             workflow_text = "\n".join(
                 line
-                for line in (root / WORKFLOWS_DIR / name)
-                .read_text(encoding="utf-8")
-                .split("\n")
+                for line in (root / WORKFLOWS_DIR / name).read_text(encoding="utf-8").split("\n")
                 if not line.lstrip().startswith("#")
             )
             for span in _ANY_BRACKET_RE.findall(cells[4]):

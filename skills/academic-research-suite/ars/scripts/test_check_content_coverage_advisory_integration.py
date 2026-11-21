@@ -8,9 +8,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_content_coverage_advisory_integration as guard
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 HELDOUT_SENTINEL = Path("evals/heldout/suite_registry.json")
@@ -71,9 +69,7 @@ def test_current_repository_passes_content_coverage_integration() -> None:
         ("schema_version", "content-coverage-advisory/2.0"),
     ],
 )
-def test_final_schema_marker_drift_fails(
-    tmp_path: Path, field: str, replacement: str
-) -> None:
+def test_final_schema_marker_drift_fails(tmp_path: Path, field: str, replacement: str) -> None:
     root = _tree(tmp_path)
     path = root / guard.ADVISORY_SCHEMA
     schema = json.loads(path.read_text(encoding="utf-8"))
@@ -87,9 +83,9 @@ def test_reason_synonym_or_boundary_weakening_fails(tmp_path: Path) -> None:
     path = root / guard.ADVISORY_SCHEMA
     schema = json.loads(path.read_text(encoding="utf-8"))
     schema["$defs"]["reason_code"]["enum"][0] = "COVERAGE_OK"
-    schema["properties"]["boundary"]["properties"][
-        "authorization_status_unchanged"
-    ] = {"type": "boolean"}
+    schema["properties"]["boundary"]["properties"]["authorization_status_unchanged"] = {
+        "type": "boolean"
+    }
     _write_json(path, schema)
     errors = guard.run_checks(root)
     assert any("reason vocabulary drifted" in error for error in errors)
@@ -118,17 +114,11 @@ def test_draft_schema_shape_and_conditionals_are_load_bearing(
     elif mutation == "open_judgment":
         judgment["additionalProperties"] = True
     elif mutation == "status_drift":
-        judgment["properties"]["advisory_coverage_status"]["oneOf"][0]["enum"][
-            0
-        ] = "COVERED"
+        judgment["properties"]["advisory_coverage_status"]["oneOf"][0]["enum"][0] = "COVERED"
     elif mutation == "failure_drift":
-        judgment["properties"]["failure_state"]["oneOf"][0]["enum"][0] = (
-            "model_failed"
-        )
+        judgment["properties"]["failure_state"]["oneOf"][0]["enum"][0] = "model_failed"
     else:
-        judgment["allOf"][2]["then"]["properties"]["captured_at"] = {
-            "type": ["string", "null"]
-        }
+        judgment["allOf"][2]["then"]["properties"]["captured_at"] = {"type": ["string", "null"]}
     _write_json(path, schema)
     errors = guard.run_checks(root)
     assert any("draft" in error for error in errors)
@@ -155,16 +145,12 @@ def test_draft_schema_shape_and_conditionals_are_load_bearing(
         ),
     ],
 )
-def test_manual_draft_validator_parity_is_load_bearing(
-    tmp_path: Path, old: str, new: str
-) -> None:
+def test_manual_draft_validator_parity_is_load_bearing(tmp_path: Path, old: str, new: str) -> None:
     root = _tree(tmp_path)
     _replace(root, guard.ADVISORY_RUNTIME, old, new)
     errors = guard.run_checks(root)
     assert any(
-        "manual draft" in error
-        or "PERFORMED_STATUSES" in error
-        or "FAILURE_STATES" in error
+        "manual draft" in error or "PERFORMED_STATUSES" in error or "FAILURE_STATES" in error
         for error in errors
     )
 
@@ -185,12 +171,8 @@ def test_evidence_state_or_cache_reuse_drift_fails(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     path = root / guard.EVIDENCE_SCHEMA
     schema = json.loads(path.read_text(encoding="utf-8"))
-    schema["$defs"]["excerpt"]["properties"]["state"]["enum"].append(
-        "probably_covered"
-    )
-    schema["properties"]["cache"]["properties"]["status"] = {
-        "enum": ["not_used", "hit"]
-    }
+    schema["$defs"]["excerpt"]["properties"]["state"]["enum"].append("probably_covered")
+    schema["properties"]["cache"]["properties"]["status"] = {"enum": ["not_used", "hit"]}
     _write_json(path, schema)
     errors = guard.run_checks(root)
     assert any("excerpt-state vocabulary drifted" in error for error in errors)
@@ -217,13 +199,13 @@ def test_duplicate_or_nonfinite_schema_json_fails_closed(tmp_path: Path) -> None
         "from openai import OpenAI\n",
     ],
 )
-def test_runtime_model_network_or_process_import_fails(
-    tmp_path: Path, statement: str
-) -> None:
+def test_runtime_model_network_or_process_import_fails(tmp_path: Path, statement: str) -> None:
     root = _tree(tmp_path)
     path = root / guard.ADVISORY_RUNTIME
     path.write_text(statement + path.read_text(encoding="utf-8"), encoding="utf-8")
-    assert any("forbidden model/network/process import" in error for error in guard.run_checks(root))
+    assert any(
+        "forbidden model/network/process import" in error for error in guard.run_checks(root)
+    )
 
 
 def test_runtime_ambient_scan_fails(tmp_path: Path) -> None:
@@ -275,8 +257,7 @@ def test_each_documented_integration_pointer_is_load_bearing(
     token = guard.REQUIRED_POINTERS[relative][0]
     _replace_all(root, relative, token, "removed-681-pointer")
     assert any(
-        str(relative) in error and "missing #681 token" in error
-        for error in guard.run_checks(root)
+        str(relative) in error and "missing #681 token" in error for error in guard.run_checks(root)
     )
 
 
@@ -299,7 +280,9 @@ def test_fictitious_unmeasured_measurement_row_fails(tmp_path: Path) -> None:
             "status": "UNMEASURED",
         },
     )
-    assert any("fictitious #681 held-out measurement row" in error for error in guard.run_checks(root))
+    assert any(
+        "fictitious #681 held-out measurement row" in error for error in guard.run_checks(root)
+    )
 
 
 def test_guard_cli_success_and_unknown_flag(tmp_path: Path) -> None:

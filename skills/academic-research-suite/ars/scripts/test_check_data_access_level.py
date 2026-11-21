@@ -17,10 +17,9 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import pytest
-
-from tests.test_helpers import run_skill_linter, write_skill as _write_skill
-
 from check_data_access_level import EXPECTED_LEVELS, run_all_checks
+from tests.test_helpers import run_skill_linter
+from tests.test_helpers import write_skill as _write_skill
 
 SCRIPT = Path(__file__).resolve().parent / "check_data_access_level.py"
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -186,31 +185,23 @@ def test_pipeline_reverting_to_verified_only_fires(fixture_repo: Path) -> None:
         "  data_access_level: verified_only\n  status: active\n",
     )
     errors = run_all_checks(fixture_repo)
-    assert any(
-        "academic-pipeline" in e and "pinned value is 'raw'" in e
-        for e in errors
-    )
+    assert any("academic-pipeline" in e and "pinned value is 'raw'" in e for e in errors)
 
 
 def test_unregistered_new_skill_fires(fixture_repo: Path) -> None:
     _write_skill(
         fixture_repo,
         "brand-new-skill",
-        "name: brand-new-skill\nmetadata:\n"
-        "  data_access_level: raw\n  status: active\n",
+        "name: brand-new-skill\nmetadata:\n" "  data_access_level: raw\n  status: active\n",
     )
     errors = run_all_checks(fixture_repo)
-    assert any(
-        "brand-new-skill" in e and "not registered" in e for e in errors
-    )
+    assert any("brand-new-skill" in e and "not registered" in e for e in errors)
 
 
 def test_pin_without_skill_dir_fires(fixture_repo: Path) -> None:
     shutil.rmtree(fixture_repo / "deep-research")
     errors = run_all_checks(fixture_repo)
-    assert any(
-        "deep-research" in e and "no top-level" in e for e in errors
-    )
+    assert any("deep-research" in e and "no top-level" in e for e in errors)
 
 
 def test_one_violation_per_problem(fixture_repo: Path) -> None:
@@ -219,8 +210,7 @@ def test_one_violation_per_problem(fixture_repo: Path) -> None:
     _write_skill(
         fixture_repo,
         "academic-pipeline",
-        "name: academic-pipeline\nmetadata:\n"
-        "  data_access_level: public\n  status: active\n",
+        "name: academic-pipeline\nmetadata:\n" "  data_access_level: public\n  status: active\n",
     )
     errors = run_all_checks(fixture_repo)
     assert len(errors) == 1

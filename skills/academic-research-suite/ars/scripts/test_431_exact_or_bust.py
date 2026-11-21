@@ -50,9 +50,7 @@ def _atom(*titles: str) -> bytes:
     )
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>'
-        '<feed xmlns="http://www.w3.org/2005/Atom">'
-        + entries
-        + "</feed>"
+        '<feed xmlns="http://www.w3.org/2005/Atom">' + entries + "</feed>"
     )
     return body.encode("utf-8")
 
@@ -90,13 +88,9 @@ class CrossrefExactOrBustTest(unittest.TestCase):
     def test_acronym_variant_matches(self):
         from crossref_client import CrossrefClient
 
-        payload = {"message": {"items": [
-            {"title": ["RAG: Retrieval Augmented Generation"]}
-        ]}}
+        payload = {"message": {"items": [{"title": ["RAG: Retrieval Augmented Generation"]}]}}
         with patch("urllib.request.urlopen", return_value=_json_resp(payload)):
-            result = CrossrefClient().title_search(
-                "R.A.G.: Retrieval Augmented Generation"
-            )
+            result = CrossrefClient().title_search("R.A.G.: Retrieval Augmented Generation")
         self.assertIsNotNone(result)  # dotted-acronym normalizes byte-equal
 
     def test_f3_ordering_reaches_exact_second_candidate(self):
@@ -168,8 +162,7 @@ class SemanticScholarExactOrBustTest(unittest.TestCase):
     def _search(self, *cand_titles, year=None):
         import semantic_scholar_client as ssc
 
-        payload = {"data": [{"title": t, "paperId": f"p{i}"}
-                            for i, t in enumerate(cand_titles)]}
+        payload = {"data": [{"title": t, "paperId": f"p{i}"} for i, t in enumerate(cand_titles)]}
         resp = _json_resp(payload)
         with patch("urllib.request.urlopen", return_value=resp):
             client = ssc.SemanticScholarClient(sleep=MagicMock())
@@ -203,9 +196,7 @@ class ExactNormalizedTitleHelperTest(unittest.TestCase):
         # form does not ('dh' vs 'd h') — must still be exact via base equality.
         self.assertTrue(exact_normalized_title("D.H. Lawrence", "D. H. Lawrence"))
         self.assertTrue(exact_normalized_title("U.S. policy", "U. S. policy"))
-        self.assertTrue(
-            exact_normalized_title("U.S.A. policy", "U. S. A. policy")
-        )
+        self.assertTrue(exact_normalized_title("U.S.A. policy", "U. S. A. policy"))
 
     def test_acronym_only_equal_variant_matches(self):
         from _text_similarity import exact_normalized_title
@@ -218,9 +209,7 @@ class ExactNormalizedTitleHelperTest(unittest.TestCase):
         from _text_similarity import exact_normalized_title
 
         # different initials are a different work — neither form equal.
-        self.assertFalse(
-            exact_normalized_title("D.H. Lawrence", "D.K. Lawrence")
-        )
+        self.assertFalse(exact_normalized_title("D.H. Lawrence", "D.K. Lawrence"))
 
 
 class ResolverVerdictNarrowingTest(unittest.TestCase):
@@ -243,9 +232,11 @@ class ResolverVerdictNarrowingTest(unittest.TestCase):
         self.assertEqual(queried_by, "title")
 
         # The reducer maps a title-keyed unmatched to `unresolvable`, not false.
-        verdict = reduce_lookup_verified({
-            "crossref": {"status": "unmatched", "queried_by": "title"},
-        })
+        verdict = reduce_lookup_verified(
+            {
+                "crossref": {"status": "unmatched", "queried_by": "title"},
+            }
+        )
         self.assertEqual(verdict, "unresolvable")
 
 

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator
-
 from scripts import build_claim_standing_candidate_ledger as ledger
 from scripts import claim_standing_discovery as discovery
 from scripts.test_build_claim_standing_candidate_ledger import _rehash_plan as _rehash
@@ -80,10 +79,7 @@ def test_v1_3_reuses_the_family_blocks_with_a_narrowed_state_vocabulary():
     # The excerpt block matches the family except its state vocabulary drops
     # the two anchor-derived states (this surface carries no anchor).
     for field in ("text", "excerpt_sha256", "source_span_utf8", "captured_at"):
-        assert (
-            v1_3["excerpt"]["properties"][field]
-            == v1_0["excerpt"]["properties"][field]
-        )
+        assert v1_3["excerpt"]["properties"][field] == v1_0["excerpt"]["properties"][field]
     family_states = set(v1_0["excerpt"]["properties"]["state"]["enum"])
     surface_states = set(v1_3["excerpt"]["properties"]["state"]["enum"])
     assert surface_states == family_states - {"unconfirmed_anchor", "anchorless"}
@@ -173,9 +169,7 @@ def test_stance_record_carries_no_scalar_score_field():
 
 def test_substrate_accepts_both_plan_versions():
     for plan in (_plan_v1_0(), _plan_v1_1(stance=True), _plan_v1_1(stance=False)):
-        ledger.validate_schema(
-            plan, ledger.plan_schema_filename(plan), "query plan"
-        )
+        ledger.validate_schema(plan, ledger.plan_schema_filename(plan), "query plan")
         ledger.validate_plan(plan)
 
 
@@ -197,15 +191,11 @@ def test_v1_1_projection_includes_the_stance_plan():
             "stance_plan",
         ),
         (
-            lambda plan: plan["consent"].__setitem__(
-                "stance_plan_sha256", "0" * 64
-            ),
+            lambda plan: plan["consent"].__setitem__("stance_plan_sha256", "0" * 64),
             "stance_plan_sha256|does not bind",
         ),
         (
-            lambda plan: plan.__setitem__(
-                "authorized_content_classes", ["accepted_search_query"]
-            ),
+            lambda plan: plan.__setitem__("authorized_content_classes", ["accepted_search_query"]),
             "authorized_content_classes",
         ),
     ],
@@ -233,39 +223,29 @@ def test_v1_0_plans_cannot_smuggle_stance_fields():
     plan = _plan_v1_0()
     plan["stance_plan"] = copy.deepcopy(STANCE_PLAN)
     with pytest.raises(ledger.LedgerError, match="schema"):
-        ledger.validate_schema(
-            plan, ledger.plan_schema_filename(plan), "query plan"
-        )
+        ledger.validate_schema(plan, ledger.plan_schema_filename(plan), "query plan")
 
 
 def test_builder_finalizes_under_a_v1_1_plan():
     plan = _plan_v1_1(stance=True)
-    retained = json.loads(
-        (FIXTURES / "retrieval_input.json").read_text(encoding="utf-8")
-    )
+    retained = json.loads((FIXTURES / "retrieval_input.json").read_text(encoding="utf-8"))
     retained["query_plan_sha256"] = plan["plan_sha256"]
     hits = {row["raw_hit_id"]: row for row in retained["raw_hits"]}
     for assessment in retained["relevance_assessments"]:
         hit = hits[assessment["canonical_raw_hit_id"]]
-        projection = ledger.relevance_assessment_input_projection(
-            plan, hit, assessment
-        )
+        projection = ledger.relevance_assessment_input_projection(plan, hit, assessment)
         prompt = ledger.render_relevance_prompt(projection)
         assessment["assessment_input_sha256"] = ledger.digest(projection)
         assessment["prompt_utf8"] = prompt
         assessment["prompt_sha256"] = ledger.text_digest(prompt)
-    retained["retrieval_input_sha256"] = ledger.bound_digest(
-        retained, "retrieval_input_sha256"
-    )
+    retained["retrieval_input_sha256"] = ledger.bound_digest(retained, "retrieval_input_sha256")
     result = ledger.build_ledger(plan, retained)
     assert result["query_plan_sha256"] == plan["plan_sha256"]
 
 
 def test_discovery_accepts_a_v1_1_plan(tmp_path):
     plan = _plan_v1_1(stance=True)
-    plan["provider_roster"] = [
-        discovery.provider_roster_defaults()["semantic_scholar"]
-    ]
+    plan["provider_roster"] = [discovery.provider_roster_defaults()["semantic_scholar"]]
     plan["queries"] = plan["queries"][:1]
     plan["queries"][0]["index_targets"] = ["semantic_scholar"]
     plan["queries"][0]["date_filter"] = {"from_year": None, "through_year": None}
@@ -369,9 +349,7 @@ def test_stance_record_schema_accepts_a_valid_record():
         lambda r: r.__setitem__("unmeasured_banner", "measured"),
         lambda r: r["rows"][0].__setitem__("evidence_row_refs", []),
         lambda r: r["rows"][0].__setitem__("stance", None),
-        lambda r: r["rows"][0].update(
-            evidence_scope="metadata_only"
-        ),
+        lambda r: r["rows"][0].update(evidence_scope="metadata_only"),
         lambda r: r["rows"][0].__setitem__("raw_output", None),
         lambda r: r.__setitem__("extra_score", 0.9),
     ],

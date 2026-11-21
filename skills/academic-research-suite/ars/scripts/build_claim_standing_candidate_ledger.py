@@ -27,7 +27,6 @@ from typing import Any
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import SchemaError, ValidationError
 
-
 PLAN_VERSION = "claim-standing-query-plan/1.0"
 PLAN_VERSION_1_1 = "claim-standing-query-plan/1.1"
 PLAN_SCHEMA_FILENAMES = {
@@ -188,9 +187,7 @@ def plan_schema_filename(plan: dict[str, Any]) -> str:
     version = plan.get("schema_version")
     filename = PLAN_SCHEMA_FILENAMES.get(version)
     if filename is None:
-        raise LedgerError(
-            f"schema_version: unknown query-plan version {version!r}"
-        )
+        raise LedgerError(f"schema_version: unknown query-plan version {version!r}")
     return filename
 
 
@@ -205,9 +202,7 @@ def consentable_plan_projection(plan: dict[str, Any]) -> dict[str, Any]:
         "provider_roster": copy.deepcopy(plan["provider_roster"]),
         "allowed_languages": copy.deepcopy(plan["allowed_languages"]),
         "allowed_document_types": copy.deepcopy(plan["allowed_document_types"]),
-        "authorized_content_classes": copy.deepcopy(
-            plan["authorized_content_classes"]
-        ),
+        "authorized_content_classes": copy.deepcopy(plan["authorized_content_classes"]),
         "caps": copy.deepcopy(plan["caps"]),
         "created_at": plan["created_at"],
     }
@@ -303,9 +298,7 @@ def _unique(rows: list[dict[str, Any]], field: str, path: str) -> dict[str, dict
     return result
 
 
-def _validate_stance_authorization(
-    plan: dict[str, Any], consent: dict[str, Any]
-) -> None:
+def _validate_stance_authorization(plan: dict[str, Any], consent: dict[str, Any]) -> None:
     stance_plan = plan.get("stance_plan")
     if consent["decision"] == "retrieval_plus_stance":
         _expect(
@@ -336,9 +329,7 @@ def _validate_stance_authorization(
             )
         if stance_plan["retention_state"] == "known":
             _expect(
-                has_visible_semantic_text(
-                    stance_plan["retention_reference"], allow_symbols=True
-                ),
+                has_visible_semantic_text(stance_plan["retention_reference"], allow_symbols=True),
                 "stance_plan.retention_reference",
                 "known retention requires a semantically visible reference",
             )
@@ -380,7 +371,11 @@ def validate_plan(plan: dict[str, Any]) -> None:
         "claim.claim_text",
         "must contain visible semantic text after NFKC normalization",
     )
-    _expect(text_digest(claim["claim_text"]) == claim["claim_sha256"], "claim.claim_sha256", "does not bind exact claim text")
+    _expect(
+        text_digest(claim["claim_text"]) == claim["claim_sha256"],
+        "claim.claim_sha256",
+        "does not bind exact claim text",
+    )
     checkpoint = claim["checkpoint"]
     tier = claim["registry_selection_tier"]
     _expect(
@@ -418,9 +413,7 @@ def validate_plan(plan: dict[str, Any]) -> None:
         _expect(
             (
                 retention_state == "known"
-                and has_visible_semantic_text(
-                    retention_reference, allow_symbols=True
-                )
+                and has_visible_semantic_text(retention_reference, allow_symbols=True)
             )
             or (retention_state == "unknown" and retention_reference is None),
             f"provider_roster.{index_id}.retention_reference",
@@ -429,32 +422,56 @@ def validate_plan(plan: dict[str, Any]) -> None:
     for query_id, query in query_map.items():
         for query_text_field in ("original_query_text", "accepted_query_text"):
             _expect(
-                has_visible_semantic_text(
-                    query[query_text_field], allow_symbols=True
-                ),
+                has_visible_semantic_text(query[query_text_field], allow_symbols=True),
                 f"queries.{query_id}.{query_text_field}",
                 "must contain visible semantic text after NFKC normalization",
             )
-        _expect(query["source_claim_sha256"] == claim["claim_sha256"], f"queries.{query_id}.source_claim_sha256", "claim binding drifted")
-        _expect(text_digest(query["accepted_query_text"]) == query["query_sha256"], f"queries.{query_id}.query_sha256", "does not bind accepted query text")
+        _expect(
+            query["source_claim_sha256"] == claim["claim_sha256"],
+            f"queries.{query_id}.source_claim_sha256",
+            "claim binding drifted",
+        )
+        _expect(
+            text_digest(query["accepted_query_text"]) == query["query_sha256"],
+            f"queries.{query_id}.query_sha256",
+            "does not bind accepted query text",
+        )
         if query["construction"] == "exact_claim":
             expected = exact_claim_query(claim["claim_text"])
-            _expect(query["accepted_query_text"] == expected, f"queries.{query_id}.accepted_query_text", "exact_claim may only strip ARS markers and collapse ASCII whitespace")
-        _expect(set(query["index_targets"]) <= set(provider_map), f"queries.{query_id}.index_targets", "names an index outside provider roster")
+            _expect(
+                query["accepted_query_text"] == expected,
+                f"queries.{query_id}.accepted_query_text",
+                "exact_claim may only strip ARS markers and collapse ASCII whitespace",
+            )
+        _expect(
+            set(query["index_targets"]) <= set(provider_map),
+            f"queries.{query_id}.index_targets",
+            "names an index outside provider roster",
+        )
         dates = query["date_filter"]
         if dates["from_year"] is not None and dates["through_year"] is not None:
-            _expect(dates["from_year"] <= dates["through_year"], f"queries.{query_id}.date_filter", "from_year exceeds through_year")
+            _expect(
+                dates["from_year"] <= dates["through_year"],
+                f"queries.{query_id}.date_filter",
+                "from_year exceeds through_year",
+            )
     consent = plan["consent"]
     if plan.get("schema_version") == PLAN_VERSION_1_1:
         _validate_stance_authorization(plan, consent)
     else:
-        _expect(consent["decision"] == "retrieval_only", "consent.decision", "Track A accepts retrieval_only")
-        _expect(consent["stance_classification_authorized"] is False, "consent.stance_classification_authorized", "must be false")
+        _expect(
+            consent["decision"] == "retrieval_only",
+            "consent.decision",
+            "Track A accepts retrieval_only",
+        )
+        _expect(
+            consent["stance_classification_authorized"] is False,
+            "consent.stance_classification_authorized",
+            "must be false",
+        )
     for disclosure_field in ("deletion_boundary", "export_boundary"):
         _expect(
-            has_visible_semantic_text(
-                consent[disclosure_field], allow_symbols=True
-            ),
+            has_visible_semantic_text(consent[disclosure_field], allow_symbols=True),
             f"consent.{disclosure_field}",
             "must contain visible semantic disclosure text after NFKC normalization",
         )
@@ -465,9 +482,7 @@ def validate_plan(plan: dict[str, Any]) -> None:
             "explicit_local_export requires the exact closed local-export authorization boundary",
         )
         _expect(
-            has_visible_semantic_text(
-                consent.get("authorized_output_path"), allow_symbols=True
-            ),
+            has_visible_semantic_text(consent.get("authorized_output_path"), allow_symbols=True),
             "consent.authorized_output_path",
             "explicit_local_export requires one hash-bound operator-named output path",
         )
@@ -496,13 +511,20 @@ def validate_plan(plan: dict[str, Any]) -> None:
     for field, expected in bindings.items():
         _expect(consent[field] == expected, f"consent.{field}", "consent binding drifted")
     _expect(
-        consent["consentable_plan_sha256"]
-        == digest(consentable_plan_projection(plan)),
+        consent["consentable_plan_sha256"] == digest(consentable_plan_projection(plan)),
         "consent.consentable_plan_sha256",
         "does not bind the complete consentable plan projection",
     )
-    _expect(consent["receipt_sha256"] == bound_digest(consent, "receipt_sha256"), "consent.receipt_sha256", "does not bind receipt")
-    _expect(plan["plan_sha256"] == bound_digest(plan, "plan_sha256"), "plan_sha256", "does not bind plan")
+    _expect(
+        consent["receipt_sha256"] == bound_digest(consent, "receipt_sha256"),
+        "consent.receipt_sha256",
+        "does not bind receipt",
+    )
+    _expect(
+        plan["plan_sha256"] == bound_digest(plan, "plan_sha256"),
+        "plan_sha256",
+        "does not bind plan",
+    )
     _expect(
         parse_rfc3339(plan["created_at"], "created_at")
         <= parse_rfc3339(consent["accepted_at"], "consent.accepted_at"),
@@ -512,8 +534,16 @@ def validate_plan(plan: dict[str, Any]) -> None:
 
 
 def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
-    _expect(retained.get("schema_version") == INPUT_VERSION, "retrieval_input.schema_version", f"must equal {INPUT_VERSION}")
-    _expect(retained["query_plan_sha256"] == plan["plan_sha256"], "retrieval_input.query_plan_sha256", "plan binding drifted")
+    _expect(
+        retained.get("schema_version") == INPUT_VERSION,
+        "retrieval_input.schema_version",
+        f"must equal {INPUT_VERSION}",
+    )
+    _expect(
+        retained["query_plan_sha256"] == plan["plan_sha256"],
+        "retrieval_input.query_plan_sha256",
+        "plan binding drifted",
+    )
     _expect(len(retained["raw_hits"]) <= MAX_RAW_HITS, "raw_hits", "exceeds 240")
     query_map = {row["query_id"]: row for row in plan["queries"]}
     provider_ids = {row["index_id"] for row in plan["provider_roster"]}
@@ -526,9 +556,7 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
     )
     consent_id = plan["consent"]["consent_receipt_id"]
     plan_completed = parse_rfc3339(retained["completed_at"], "completed_at")
-    consent_accepted = parse_rfc3339(
-        plan["consent"]["accepted_at"], "consent.accepted_at"
-    )
+    consent_accepted = parse_rfc3339(plan["consent"]["accepted_at"], "consent.accepted_at")
     root_attempts: Counter[tuple[str, str]] = Counter()
     retry_authorizations: set[str] = set()
     hits_by_attempt: Counter[str] = Counter()
@@ -536,16 +564,24 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
     attempt_times: dict[str, tuple[datetime, datetime]] = {}
     hit_returned_times: dict[str, datetime] = {}
     for attempt_id, attempt in attempts.items():
-        _expect(attempt["query_id"] in query_map, f"attempts.{attempt_id}.query_id", "unknown query")
-        _expect(attempt["index_id"] in query_map[attempt["query_id"]]["index_targets"], f"attempts.{attempt_id}.index_id", "not targeted by query")
-        _expect(attempt["index_id"] in provider_ids, f"attempts.{attempt_id}.index_id", "outside roster")
-        _expect(attempt["consent_receipt_id"] == consent_id, f"attempts.{attempt_id}.consent_receipt_id", "consent drifted")
-        started = parse_rfc3339(
-            attempt["started_at"], f"attempts.{attempt_id}.started_at"
+        _expect(
+            attempt["query_id"] in query_map, f"attempts.{attempt_id}.query_id", "unknown query"
         )
-        completed = parse_rfc3339(
-            attempt["completed_at"], f"attempts.{attempt_id}.completed_at"
+        _expect(
+            attempt["index_id"] in query_map[attempt["query_id"]]["index_targets"],
+            f"attempts.{attempt_id}.index_id",
+            "not targeted by query",
         )
+        _expect(
+            attempt["index_id"] in provider_ids, f"attempts.{attempt_id}.index_id", "outside roster"
+        )
+        _expect(
+            attempt["consent_receipt_id"] == consent_id,
+            f"attempts.{attempt_id}.consent_receipt_id",
+            "consent drifted",
+        )
+        started = parse_rfc3339(attempt["started_at"], f"attempts.{attempt_id}.started_at")
+        completed = parse_rfc3339(attempt["completed_at"], f"attempts.{attempt_id}.completed_at")
         _expect(
             consent_accepted <= started <= completed <= plan_completed,
             f"attempts.{attempt_id}",
@@ -562,11 +598,23 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
                 f"attempts.{attempt_id}",
                 "a query/index pair may have only one initial attempt; later attempts must name a retry",
             )
-        _expect((retry is None) == (authorization is None), f"attempts.{attempt_id}", "retry and its fresh authorization must appear together")
+        _expect(
+            (retry is None) == (authorization is None),
+            f"attempts.{attempt_id}",
+            "retry and its fresh authorization must appear together",
+        )
         if retry is not None:
-            _expect(retry in attempts and retry != attempt_id, f"attempts.{attempt_id}.retry_of_attempt_id", "must name another retained attempt")
+            _expect(
+                retry in attempts and retry != attempt_id,
+                f"attempts.{attempt_id}.retry_of_attempt_id",
+                "must name another retained attempt",
+            )
             previous = attempts[retry]
-            _expect(previous["outcome"] != "success", f"attempts.{attempt_id}.retry_of_attempt_id", "must name a failed attempt")
+            _expect(
+                previous["outcome"] != "success",
+                f"attempts.{attempt_id}.retry_of_attempt_id",
+                "must name a failed attempt",
+            )
             _expect(
                 (attempt["query_id"], attempt["index_id"])
                 == (previous["query_id"], previous["index_id"]),
@@ -585,8 +633,19 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
             )
             retry_authorizations.add(authorization)
         if attempt["outcome"] != "success":
-            _expect(attempt["outcome"] in FAILURE_OUTCOMES, f"attempts.{attempt_id}.outcome", "unknown failure")
-            _expect(attempt["returned_count"] == attempt["retained_hit_count"] == attempt["truncated_count"] == 0, f"attempts.{attempt_id}", "failed attempts carry zero hits and no fabricated source row")
+            _expect(
+                attempt["outcome"] in FAILURE_OUTCOMES,
+                f"attempts.{attempt_id}.outcome",
+                "unknown failure",
+            )
+            _expect(
+                attempt["returned_count"]
+                == attempt["retained_hit_count"]
+                == attempt["truncated_count"]
+                == 0,
+                f"attempts.{attempt_id}",
+                "failed attempts carry zero hits and no fabricated source row",
+            )
     expected_root_pairs = {
         (query["query_id"], index_id)
         for query in plan["queries"]
@@ -626,8 +685,7 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
         )
         failed = attempts[failed_id]
         _expect(
-            (receipt["query_id"], receipt["index_id"])
-            == (failed["query_id"], failed["index_id"]),
+            (receipt["query_id"], receipt["index_id"]) == (failed["query_id"], failed["index_id"]),
             f"retry_authorizations.{receipt_id}",
             "query/index pair differs from failed attempt",
         )
@@ -640,16 +698,18 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
         seen = {attempt_id}
         cursor = attempts[attempt_id]["retry_of_attempt_id"]
         while cursor is not None:
-            _expect(cursor not in seen, f"attempts.{attempt_id}.retry_of_attempt_id", "retry graph contains a cycle")
+            _expect(
+                cursor not in seen,
+                f"attempts.{attempt_id}.retry_of_attempt_id",
+                "retry graph contains a cycle",
+            )
             seen.add(cursor)
             cursor = attempts[cursor]["retry_of_attempt_id"]
     for hit_id, hit in hits.items():
         provider_record_id = hit["provider_record_id"]
         _expect(
             provider_record_id is None
-            or has_visible_semantic_text(
-                provider_record_id, allow_symbols=False
-            ),
+            or has_visible_semantic_text(provider_record_id, allow_symbols=False),
             f"raw_hits.{hit_id}.provider_record_id",
             "must be null or contain a visible letter or number after NFKC normalization",
         )
@@ -661,8 +721,7 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
         )
         title = hit["title"]
         _expect(
-            title is None
-            or has_visible_semantic_text(title, allow_symbols=True),
+            title is None or has_visible_semantic_text(title, allow_symbols=True),
             f"raw_hits.{hit_id}.title",
             "must be null or contain visible semantic text after NFKC normalization",
         )
@@ -671,38 +730,56 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
                 author_value = author[author_field]
                 _expect(
                     author_value is None
-                    or has_visible_semantic_text(
-                        author_value, allow_symbols=False
-                    ),
+                    or has_visible_semantic_text(author_value, allow_symbols=False),
                     f"raw_hits.{hit_id}.authors[{author_index}].{author_field}",
                     "must be null or contain a visible letter or number after NFKC normalization",
                 )
         _expect(hit["probe_id"] == plan["probe_id"], f"raw_hits.{hit_id}.probe_id", "probe drifted")
         _expect(hit["attempt_id"] in attempts, f"raw_hits.{hit_id}.attempt_id", "unknown attempt")
         attempt = attempts[hit["attempt_id"]]
-        _expect(attempt["outcome"] == "success", f"raw_hits.{hit_id}.attempt_id", "failed attempts cannot own source rows")
-        _expect((hit["query_id"], hit["index_id"]) == (attempt["query_id"], attempt["index_id"]), f"raw_hits.{hit_id}", "query/index differ from attempt")
+        _expect(
+            attempt["outcome"] == "success",
+            f"raw_hits.{hit_id}.attempt_id",
+            "failed attempts cannot own source rows",
+        )
+        _expect(
+            (hit["query_id"], hit["index_id"]) == (attempt["query_id"], attempt["index_id"]),
+            f"raw_hits.{hit_id}",
+            "query/index differ from attempt",
+        )
         ranks = ranks_by_attempt.setdefault(hit["attempt_id"], set())
-        _expect(hit["provider_rank"] not in ranks, f"raw_hits.{hit_id}.provider_rank", "duplicate within attempt")
+        _expect(
+            hit["provider_rank"] not in ranks,
+            f"raw_hits.{hit_id}.provider_rank",
+            "duplicate within attempt",
+        )
         ranks.add(hit["provider_rank"])
         hits_by_attempt[hit["attempt_id"]] += 1
         if hit["abstract_state"] == "available":
             _expect(
-                has_visible_semantic_text(
-                    hit["abstract_text"], allow_symbols=True
-                ),
+                has_visible_semantic_text(hit["abstract_text"], allow_symbols=True),
                 f"raw_hits.{hit_id}.abstract_text",
                 "available abstract must contain visible semantic text after NFKC normalization",
             )
-            _expect(hit["abstract_sha256"] == text_digest(hit["abstract_text"]), f"raw_hits.{hit_id}.abstract_sha256", "does not bind abstract")
+            _expect(
+                hit["abstract_sha256"] == text_digest(hit["abstract_text"]),
+                f"raw_hits.{hit_id}.abstract_sha256",
+                "does not bind abstract",
+            )
         else:
-            _expect(hit["abstract_text"] is None and hit["abstract_sha256"] is None, f"raw_hits.{hit_id}.abstract", "missing/not-returned abstract must be null")
+            _expect(
+                hit["abstract_text"] is None and hit["abstract_sha256"] is None,
+                f"raw_hits.{hit_id}.abstract",
+                "missing/not-returned abstract must be null",
+            )
         relation = hit["explicit_version_of_raw_hit_id"]
         if relation is not None:
-            _expect(relation in hits and relation != hit_id, f"raw_hits.{hit_id}.explicit_version_of_raw_hit_id", "must name another hit")
-        returned = parse_rfc3339(
-            hit["returned_at"], f"raw_hits.{hit_id}.returned_at"
-        )
+            _expect(
+                relation in hits and relation != hit_id,
+                f"raw_hits.{hit_id}.explicit_version_of_raw_hit_id",
+                "must name another hit",
+            )
+        returned = parse_rfc3339(hit["returned_at"], f"raw_hits.{hit_id}.returned_at")
         hit_returned_times[hit_id] = returned
         started, completed = attempt_times[hit["attempt_id"]]
         _expect(
@@ -711,11 +788,27 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
             "must fall within its owning attempt",
         )
     for attempt_id, attempt in attempts.items():
-        _expect(hits_by_attempt[attempt_id] == attempt["retained_hit_count"], f"attempts.{attempt_id}.retained_hit_count", "does not equal retained source rows")
-        _expect(attempt["retained_hit_count"] <= MAX_HITS_PER_QUERY_INDEX, f"attempts.{attempt_id}.retained_hit_count", "exceeds 20")
-        _expect(attempt["returned_count"] == attempt["retained_hit_count"] + attempt["truncated_count"], f"attempts.{attempt_id}", "returned count must partition retained and truncated")
+        _expect(
+            hits_by_attempt[attempt_id] == attempt["retained_hit_count"],
+            f"attempts.{attempt_id}.retained_hit_count",
+            "does not equal retained source rows",
+        )
+        _expect(
+            attempt["retained_hit_count"] <= MAX_HITS_PER_QUERY_INDEX,
+            f"attempts.{attempt_id}.retained_hit_count",
+            "exceeds 20",
+        )
+        _expect(
+            attempt["returned_count"] == attempt["retained_hit_count"] + attempt["truncated_count"],
+            f"attempts.{attempt_id}",
+            "returned count must partition retained and truncated",
+        )
         if attempt["provider_reported_count"] is not None:
-            _expect(attempt["provider_reported_count"] >= attempt["returned_count"], f"attempts.{attempt_id}.provider_reported_count", "cannot be below returned count")
+            _expect(
+                attempt["provider_reported_count"] >= attempt["returned_count"],
+                f"attempts.{attempt_id}.provider_reported_count",
+                "cannot be below returned count",
+            )
     pair_counts = Counter((hit["query_id"], hit["index_id"]) for hit in hits.values())
     for (query_id, index_id), count in pair_counts.items():
         _expect(
@@ -725,7 +818,11 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
         )
     for index, relation in enumerate(retained["researcher_confirmed_version_relations"]):
         left, right = relation["left_raw_hit_id"], relation["right_raw_hit_id"]
-        _expect(left in hits and right in hits and left != right, f"researcher_confirmed_version_relations[{index}]", "must name two distinct retained hits")
+        _expect(
+            left in hits and right in hits and left != right,
+            f"researcher_confirmed_version_relations[{index}]",
+            "must name two distinct retained hits",
+        )
     for attempt_id, attempt in attempts.items():
         receipt_id = attempt["retry_authorization_receipt_id"]
         if receipt_id is None:
@@ -813,15 +910,12 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
                 "successful assessment must retain visible semantic raw output after NFKC normalization",
             )
             _expect(
-                has_visible_semantic_text(
-                    assessment["rationale"], allow_symbols=True
-                ),
+                has_visible_semantic_text(assessment["rationale"], allow_symbols=True),
                 f"relevance_assessments[{index}].rationale",
                 "successful assessment must retain visible semantic rationale text after NFKC normalization",
             )
             _expect(
-                assessment["failure_code"] is None
-                and assessment["failure_detail"] is None,
+                assessment["failure_code"] is None and assessment["failure_detail"] is None,
                 f"relevance_assessments[{index}].failure",
                 "successful assessment cannot carry failure fields",
             )
@@ -832,20 +926,21 @@ def validate_input(plan: dict[str, Any], retained: dict[str, Any]) -> None:
                 "failed assessment must finalize as not_checked",
             )
             _expect(
-                assessment["reason_code"] is None
-                and assessment["rationale"] is None,
+                assessment["reason_code"] is None and assessment["rationale"] is None,
                 f"relevance_assessments[{index}]",
                 "failed assessment cannot invent relevance rationale",
             )
             _expect(
                 assessment["failure_code"] is not None
-                and has_visible_semantic_text(
-                    assessment["failure_detail"], allow_symbols=True
-                ),
+                and has_visible_semantic_text(assessment["failure_detail"], allow_symbols=True),
                 f"relevance_assessments[{index}].failure",
                 "failed assessment must retain a failure code and visible semantic detail after NFKC normalization",
             )
-    _expect(retained["retrieval_input_sha256"] == bound_digest(retained, "retrieval_input_sha256"), "retrieval_input_sha256", "does not bind input")
+    _expect(
+        retained["retrieval_input_sha256"] == bound_digest(retained, "retrieval_input_sha256"),
+        "retrieval_input_sha256",
+        "does not bind input",
+    )
 
 
 def normalize_doi(value: str | None) -> str | None:
@@ -862,8 +957,7 @@ def normalize_doi(value: str | None) -> str | None:
     except (TypeError, UnicodeError):
         return None
     if any(
-        category[0] in {"C", "Z"} or char.isspace()
-        for char, category in zip(suffix, categories)
+        category[0] in {"C", "Z"} or char.isspace() for char, category in zip(suffix, categories)
     ):
         return None
     if not any(category[0] in {"L", "N"} for category in categories):
@@ -889,8 +983,7 @@ def normalize_title(value: str | None) -> str | None:
         return None
     text = unicodedata.normalize("NFKC", value).casefold()
     text = "".join(
-        " " if unicodedata.category(char)[0] in {"C", "P", "Z"} else char
-        for char in text
+        " " if unicodedata.category(char)[0] in {"C", "P", "Z"} else char for char in text
     )
     return _ASCII_WS_RE.sub(" ", text).strip() or None
 
@@ -938,8 +1031,7 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
     for row in final_rows:
         row.update(terminal_state=None, work_family_id=None, retained_raw_hit_id=None)
         stable = bool(
-            normalize_provider_record_id(row["provider_record_id"])
-            or normalize_doi(row["doi"])
+            normalize_provider_record_id(row["provider_record_id"]) or normalize_doi(row["doi"])
         )
         if normalize_title(row["title"]) is None and not stable:
             row["terminal_state"] = "missing_title_and_stable_id"
@@ -979,9 +1071,7 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
     def weak_key(row: dict[str, Any]) -> tuple[str, int, str] | None:
         title = normalize_title(row["title"])
         first_family = (
-            normalize_author_family(row["authors"][0]["family"])
-            if row["authors"]
-            else None
+            normalize_author_family(row["authors"][0]["family"]) if row["authors"] else None
         )
         if title is None or row["year"] is None or first_family is None:
             return None
@@ -1027,17 +1117,31 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
     grouped: dict[str, list[dict[str, Any]]] = {}
     for row in eligible:
         grouped.setdefault(find(row["raw_hit_id"]), []).append(row)
-    assessments = _unique(retained["relevance_assessments"], "canonical_raw_hit_id", "relevance_assessments")
+    assessments = _unique(
+        retained["relevance_assessments"], "canonical_raw_hit_id", "relevance_assessments"
+    )
     families: list[dict[str, Any]] = []
     for members in grouped.values():
         members.sort(key=_canonical_key)
         canonical = members[0]
         assessment = assessments.get(canonical["raw_hit_id"])
-        _expect(assessment is not None, f"relevance_assessments.{canonical['raw_hit_id']}", "one explicit assessment is required per canonical family")
+        _expect(
+            assessment is not None,
+            f"relevance_assessments.{canonical['raw_hit_id']}",
+            "one explicit assessment is required per canonical family",
+        )
         if assessment["state"] == "not_relevant":
-            _expect(assessment["reason_code"] is not None, f"relevance_assessments.{canonical['raw_hit_id']}.reason_code", "not_relevant requires a mismatch reason")
+            _expect(
+                assessment["reason_code"] is not None,
+                f"relevance_assessments.{canonical['raw_hit_id']}.reason_code",
+                "not_relevant requires a mismatch reason",
+            )
         else:
-            _expect(assessment["reason_code"] is None, f"relevance_assessments.{canonical['raw_hit_id']}.reason_code", "relevant/ambiguous reason_code must be null")
+            _expect(
+                assessment["reason_code"] is None,
+                f"relevance_assessments.{canonical['raw_hit_id']}.reason_code",
+                "relevant/ambiguous reason_code must be null",
+            )
         member_ids = sorted(row["raw_hit_id"] for row in members)
         family_id = "CSF-" + digest(member_ids)[:16]
         for row in members:
@@ -1052,7 +1156,9 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
                 "work_family_id": family_id,
                 "member_raw_hit_ids": member_ids,
                 "canonical_raw_hit_id": canonical["raw_hit_id"],
-                "query_ids": sorted({row["query_id"] for row in members}, key=query_order.__getitem__),
+                "query_ids": sorted(
+                    {row["query_id"] for row in members}, key=query_order.__getitem__
+                ),
                 "index_ids": sorted({row["index_id"] for row in members}),
                 "relevance": copy.deepcopy(assessment),
                 "selection_state": None,
@@ -1063,7 +1169,11 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
                 "rights_basis": "not_assessed",
             }
         )
-    _expect(set(assessments) == {row["canonical_raw_hit_id"] for row in families}, "relevance_assessments", "must contain exactly one row per computed canonical family")
+    _expect(
+        set(assessments) == {row["canonical_raw_hit_id"] for row in families},
+        "relevance_assessments",
+        "must contain exactly one row per computed canonical family",
+    )
     candidates = [row for row in families if row["relevance"]["state"] in {"relevant", "ambiguous"}]
     candidates.sort(
         key=lambda family: (
@@ -1088,7 +1198,9 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
             family["selection_state"] = canonical["terminal_state"] = "candidate_cap_exceeded"
     families.sort(key=lambda row: row["work_family_id"])
     state_counts = Counter(row["terminal_state"] for row in final_rows)
-    failure_counts = Counter(row["outcome"] for row in retained["attempts"] if row["outcome"] != "success")
+    failure_counts = Counter(
+        row["outcome"] for row in retained["attempts"] if row["outcome"] != "success"
+    )
     ledger = {
         "schema_version": LEDGER_VERSION,
         "probe_id": plan["probe_id"],
@@ -1102,7 +1214,9 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
         "attempts": copy.deepcopy(retained["attempts"]),
         "retry_authorizations": copy.deepcopy(retained["retry_authorizations"]),
         "raw_hits": final_rows,
-        "researcher_confirmed_version_relations": copy.deepcopy(retained["researcher_confirmed_version_relations"]),
+        "researcher_confirmed_version_relations": copy.deepcopy(
+            retained["researcher_confirmed_version_relations"]
+        ),
         "work_families": families,
         "counts": {
             "attempts": len(retained["attempts"]),
@@ -1112,7 +1226,9 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
             "work_families": len(families),
             "selected_work_families": len(selected_ids),
             "raw_hit_state_counts": {state: state_counts[state] for state in RAW_TERMINAL_STATES},
-            "attempt_failure_counts": {state: failure_counts[state] for state in sorted(FAILURE_OUTCOMES)},
+            "attempt_failure_counts": {
+                state: failure_counts[state] for state in sorted(FAILURE_OUTCOMES)
+            },
         },
         "completed_at": retained["completed_at"],
         "candidate_ledger_sha256": "",
@@ -1124,7 +1240,11 @@ def build_ledger(plan: dict[str, Any], retained: dict[str, Any]) -> dict[str, An
 
 def validate_ledger(plan: dict[str, Any], retained: dict[str, Any], ledger: dict[str, Any]) -> None:
     expected = build_ledger(plan, retained)
-    _expect(ledger == expected, "candidate_ledger", "does not exactly replay from named plan and retrieval input")
+    _expect(
+        ledger == expected,
+        "candidate_ledger",
+        "does not exactly replay from named plan and retrieval input",
+    )
 
 
 def write_new_ledger(path: Path, value: dict[str, Any]) -> None:
@@ -1171,20 +1291,16 @@ def authorized_export_path(plan: dict[str, Any], suffix: str) -> Path:
     return Path(authorized + suffix)
 
 
-def require_export_consent(
-    plan: dict[str, Any], output: Path, suffix: str
-) -> Path:
+def require_export_consent(plan: dict[str, Any], output: Path, suffix: str) -> Path:
     """Fail closed unless the hash-bound consent authorizes exactly `output`."""
     if plan["consent"]["local_persistence"] != "explicit_local_export":
         raise LedgerError(
-            "consent does not say explicit_local_export: refusing to create "
-            "any output path"
+            "consent does not say explicit_local_export: refusing to create " "any output path"
         )
     authorized = authorized_export_path(plan, suffix)
     if str(output) != str(authorized):
         raise LedgerError(
-            "output path must exactly match the consent-derived path "
-            f"{str(authorized)!r}"
+            "output path must exactly match the consent-derived path " f"{str(authorized)!r}"
         )
     return authorized
 
@@ -1210,15 +1326,13 @@ def main(argv: list[str] | None = None) -> int:
         retained = load_json(args.retrieval_input)
         if args.command == "build":
             _expect(
-                plan.get("consent", {}).get("local_persistence")
-                == "explicit_local_export",
+                plan.get("consent", {}).get("local_persistence") == "explicit_local_export",
                 "output",
                 "local_persistence=session_only forbids writing a ledger; "
                 "a separately consented explicit_local_export plan is required",
             )
             _expect(
-                plan.get("consent", {}).get("authorized_output_path")
-                == str(args.output),
+                plan.get("consent", {}).get("authorized_output_path") == str(args.output),
                 "output",
                 "does not exactly match the hash-bound authorized_output_path",
             )

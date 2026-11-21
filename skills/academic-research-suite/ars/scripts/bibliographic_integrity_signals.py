@@ -22,12 +22,8 @@ from typing import Any
 import yaml
 from jsonschema import Draft202012Validator
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SCHEMA_PATH = (
-    REPO_ROOT
-    / "shared/contracts/passport/bibliographic_integrity_signal.schema.json"
-)
+SCHEMA_PATH = REPO_ROOT / "shared/contracts/passport/bibliographic_integrity_signal.schema.json"
 SCHEMA_VERSION = "bibliographic-integrity-signal/1.0"
 
 _RESOLVERS = {
@@ -71,9 +67,7 @@ def _empty_tortured_phrase_counts() -> dict[str, Any]:
         "unique_instance_count": 0,
         "segments_total": 0,
         "unknown_segments": 0,
-        "matches_by_context": {
-            context: 0 for context in _TORTURED_PHRASE_CONTEXTS
-        },
+        "matches_by_context": {context: 0 for context in _TORTURED_PHRASE_CONTEXTS},
     }
 
 
@@ -122,9 +116,7 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
         or not isinstance(content_utf8_bytes, int)
         or content_utf8_bytes < 1
     ):
-        raise ValueError(
-            "present tortured-phrase surface requires positive content_utf8_bytes"
-        )
+        raise ValueError("present tortured-phrase surface requires positive content_utf8_bytes")
     citation_key = signal["subject"]["citation_key"]
     payload = {
         "citation_key": citation_key,
@@ -155,18 +147,15 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
     )
     for index, match in enumerate(matches):
         if match["segment_id"] != "SEG-000001":
-            raise ValueError(
-                f"tortured-phrase matches[{index}] segment_id mismatch"
-            )
+            raise ValueError(f"tortured-phrase matches[{index}] segment_id mismatch")
         if match["context"] != expected_context:
             raise ValueError(f"tortured-phrase matches[{index}] context mismatch")
         if match["disposition"] != expected_disposition:
-            raise ValueError(
-                f"tortured-phrase matches[{index}] disposition mismatch"
-            )
-        if hashlib.sha256(match["matched_text"].encode("utf-8")).hexdigest() != match[
-            "matched_text_sha256"
-        ]:
+            raise ValueError(f"tortured-phrase matches[{index}] disposition mismatch")
+        if (
+            hashlib.sha256(match["matched_text"].encode("utf-8")).hexdigest()
+            != match["matched_text_sha256"]
+        ):
             raise ValueError(f"tortured-phrase matches[{index}] text hash mismatch")
         span = match["source_span"]
         codepoint_start = span["codepoint_start"]
@@ -177,13 +166,9 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
         if not codepoint_start < codepoint_end or not utf8_start < utf8_end:
             raise ValueError(f"tortured-phrase matches[{index}] has an empty/reversed span")
         if codepoint_end - codepoint_start != len(matched_text):
-            raise ValueError(
-                f"tortured-phrase matches[{index}] codepoint span length mismatch"
-            )
+            raise ValueError(f"tortured-phrase matches[{index}] codepoint span length mismatch")
         if utf8_end - utf8_start != len(matched_text.encode("utf-8")):
-            raise ValueError(
-                f"tortured-phrase matches[{index}] UTF-8 span length mismatch"
-            )
+            raise ValueError(f"tortured-phrase matches[{index}] UTF-8 span length mismatch")
         if not (
             codepoint_start <= utf8_start <= 4 * codepoint_start
             and codepoint_end <= utf8_end <= 4 * codepoint_end
@@ -196,9 +181,7 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
             or codepoint_end > content_utf8_bytes
             or utf8_end > content_utf8_bytes
         ):
-            raise ValueError(
-                f"tortured-phrase matches[{index}] exceeds the bound surface bytes"
-            )
+            raise ValueError(f"tortured-phrase matches[{index}] exceeds the bound surface bytes")
         if len(matched_text) > 1000 or len(matched_text.split()) > 25:
             raise ValueError(f"tortured-phrase matches[{index}] exceeds evidence bounds")
         match_payload = {
@@ -211,9 +194,9 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
             "codepoint_start": span["codepoint_start"],
             "codepoint_end": span["codepoint_end"],
         }
-        expected_match_id = "tpm-" + hashlib.sha256(
-            _canonical_json(match_payload).encode("utf-8")
-        ).hexdigest()[:24]
+        expected_match_id = (
+            "tpm-" + hashlib.sha256(_canonical_json(match_payload).encode("utf-8")).hexdigest()[:24]
+        )
         if match["match_id"] != expected_match_id:
             raise ValueError(f"tortured-phrase matches[{index}] match_id mismatch")
         if match["match_id"] in seen_match_ids:
@@ -237,8 +220,7 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
         raise ValueError("tortured-phrase matched_rule_count exceeds rules_evaluated")
     matches_by_context = counts["matches_by_context"]
     if any(
-        matches_by_context[name]
-        != (len(matches) if name == expected_context else 0)
+        matches_by_context[name] != (len(matches) if name == expected_context else 0)
         for name in _TORTURED_PHRASE_CONTEXTS
     ):
         raise ValueError("tortured-phrase matches_by_context mismatch")
@@ -254,9 +236,7 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
             or matches
             or counts != _empty_tortured_phrase_counts()
         ):
-            raise ValueError(
-                "unbound cited surface must be an explicit missing/empty abstract"
-            )
+            raise ValueError("unbound cited surface must be an explicit missing/empty abstract")
     elif status == "checked":
         if (
             reason_code != "CHECK_COMPLETED"
@@ -266,14 +246,10 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
             or counts["segments_total"] != 1
             or counts["unknown_segments"] != 0
         ):
-            raise ValueError(
-                "checked cited surface lacks complete loaded-snapshot coverage"
-            )
+            raise ValueError("checked cited surface lacks complete loaded-snapshot coverage")
     else:
         if matches or counts != _empty_tortured_phrase_counts():
-            raise ValueError(
-                "not-checked/degraded cited surface must discard partial match state"
-            )
+            raise ValueError("not-checked/degraded cited surface must discard partial match state")
         if reason_code == "MATCH_RESOURCE_LIMIT":
             if (
                 status != "degraded"
@@ -289,9 +265,7 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
             or status != snapshot["status"]
             or signal["finding"] != "unresolved"
         ):
-            raise ValueError(
-                "cited surface status/reason does not replay snapshot availability"
-            )
+            raise ValueError("cited surface status/reason does not replay snapshot availability")
 
     evidence = signal["evidence"]
     if len(evidence) != 1:
@@ -311,9 +285,7 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
     evidence_row = evidence[0]
     if evidence_row["evidence_type"] != expected_type:
         raise ValueError("tortured-phrase evidence_type mismatch")
-    if evidence_row.get("record_locator") != (
-        "title" if surface == "cited_title" else "abstract"
-    ):
+    if evidence_row.get("record_locator") != ("title" if surface == "cited_title" else "abstract"):
         raise ValueError("tortured-phrase evidence locator mismatch")
     if signal["check_status"] == "checked" and (
         isinstance(evidence_row["observed_value"], bool)
@@ -357,15 +329,9 @@ def _validate_tortured_phrase_projection(signal: dict[str, Any]) -> None:
             raise ValueError(
                 "tortured-phrase timestamps require RFC 3339 with at most 6 fraction digits"
             )
-        checked_value = (
-            checked_at[:-1] + "+00:00"
-            if checked_at[-1] in {"Z", "z"}
-            else checked_at
-        )
+        checked_value = checked_at[:-1] + "+00:00" if checked_at[-1] in {"Z", "z"} else checked_at
         recorded_value = (
-            recorded_at[:-1] + "+00:00"
-            if recorded_at[-1] in {"Z", "z"}
-            else recorded_at
+            recorded_at[:-1] + "+00:00" if recorded_at[-1] in {"Z", "z"} else recorded_at
         )
         checked = dt.datetime.fromisoformat(checked_value)
         recorded = dt.datetime.fromisoformat(recorded_value)
@@ -430,9 +396,7 @@ def _signal(
     }
 
 
-def migrate_legacy_entry(
-    entry: dict[str, Any], *, recorded_at: str
-) -> list[dict[str, Any]]:
+def migrate_legacy_entry(entry: dict[str, Any], *, recorded_at: str) -> list[dict[str, Any]]:
     """Project declared legacy fields into canonical v1 records.
 
     No missing value is synthesized as ``not_detected``. Existing canonical
@@ -444,9 +408,7 @@ def migrate_legacy_entry(
     source_pointer = entry.get("source_pointer")
     if not isinstance(source_pointer, str):
         source_pointer = None
-    checked_at = entry.get("contamination_signals_backfilled_at") or entry.get(
-        "obtained_at"
-    )
+    checked_at = entry.get("contamination_signals_backfilled_at") or entry.get("obtained_at")
     if not isinstance(checked_at, str):
         checked_at = None
 
@@ -465,22 +427,16 @@ def migrate_legacy_entry(
                 continue
             heuristic = signal_type == "preprint_post_llm_inflection"
             source_name = (
-                "publication-year and preprint-venue rule"
-                if heuristic
-                else _RESOLVERS[signal_type]
+                "publication-year and preprint-venue rule" if heuristic else _RESOLVERS[signal_type]
             )
             projected.append(
                 _signal(
                     citation_key=citation_key,
                     source_pointer=source_pointer,
                     signal_type=signal_type,
-                    epistemic_class=(
-                        "heuristic_advisory" if heuristic else "deterministic_fact"
-                    ),
+                    epistemic_class=("heuristic_advisory" if heuristic else "deterministic_fact"),
                     epistemic_label=(
-                        "HEURISTIC-INDICATOR"
-                        if heuristic
-                        else "RESOLVER-OR-LIST-OBSERVATION"
+                        "HEURISTIC-INDICATOR" if heuristic else "RESOLVER-OR-LIST-OBSERVATION"
                     ),
                     check_status="checked",
                     finding="detected" if observed else "not_detected",
@@ -569,15 +525,11 @@ def migrate_legacy_entry(
     if isinstance(existing, list):
         for index, signal in enumerate(existing):
             if not isinstance(signal, dict):
-                raise ValueError(
-                    "bibliographic_integrity_signals"
-                    f"[{index}] must be an object"
-                )
+                raise ValueError("bibliographic_integrity_signals" f"[{index}] must be an object")
             signal_id = signal.get("signal_id")
             if not isinstance(signal_id, str) or not signal_id.strip():
                 raise ValueError(
-                    "bibliographic_integrity_signals"
-                    f"[{index}] is missing a non-empty signal_id"
+                    "bibliographic_integrity_signals" f"[{index}] is missing a non-empty signal_id"
                 )
             if signal_id in by_id:
                 raise ValueError(
@@ -690,9 +642,7 @@ def render_advisory_section(signals: list[dict[str, Any]]) -> str:
             omitted = len(phrase.get("matches", [])) - len(projected)
             if omitted > 0:
                 projected.append(f"+{omitted} more machine rows")
-            evidence_projection = "; ".join(projected) or phrase.get(
-                "reason_code", "—"
-            )
+            evidence_projection = "; ".join(projected) or phrase.get("reason_code", "—")
             if finding == "detected":
                 outcome = "phrase-list match requiring review"
             elif finding == "not_detected":

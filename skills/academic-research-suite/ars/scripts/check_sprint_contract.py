@@ -22,8 +22,7 @@ ROLE_SETS = {
     "reviewer_full": frozenset({"eic", "methodology", "domain", "perspective", "da"}),
     "reviewer_methodology_focus": frozenset({"eic", "methodology"}),
 }
-_FATAL_PRIORITY_RE = re.compile(
-    r"^any (?P<priority>[a-z]+) dimension has a fatal block$")
+_FATAL_PRIORITY_RE = re.compile(r"^any (?P<priority>[a-z]+) dimension has a fatal block$")
 _FATAL_DIM_RE = re.compile(r"^(?P<dim>D\d+) has a fatal block$")
 
 
@@ -74,9 +73,7 @@ def check_structural_invariants(contract: dict) -> list[str]:
     reviewer_mode = mode.startswith("reviewer_")
     role_set = ROLE_SETS.get(mode)
     if reviewer_mode and role_set is None:
-        errors.append(
-            f"reviewer mode '{mode}' has no published ROLE_SETS mapping"
-        )
+        errors.append(f"reviewer mode '{mode}' has no published ROLE_SETS mapping")
     if reviewer_mode and role_set is not None:
         covered_roles: set[str] = set()
         priorities = {d.get("id"): d.get("priority") for d in dims}
@@ -85,21 +82,17 @@ def check_structural_invariants(contract: dict) -> list[str]:
             eligible = set(dim.get("eligible_roles", []))
             owner = dim.get("owner_role")
             if owner not in eligible:
-                errors.append(
-                    f"{did}: owner_role '{owner}' must be in eligible_roles"
-                )
+                errors.append(f"{did}: owner_role '{owner}' must be in eligible_roles")
             outside = eligible - role_set
             if outside:
                 errors.append(
-                    f"{did}: eligible_roles {sorted(outside)} are outside "
-                    f"ROLE_SETS[{mode}]"
+                    f"{did}: eligible_roles {sorted(outside)} are outside " f"ROLE_SETS[{mode}]"
                 )
             covered_roles.update(eligible)
         missing_roles = role_set - covered_roles
         if missing_roles:
             errors.append(
-                f"ROLE_SETS[{mode}] roles with no eligible dimension: "
-                f"{sorted(missing_roles)}"
+                f"ROLE_SETS[{mode}] roles with no eligible dimension: " f"{sorted(missing_roles)}"
             )
 
         for cond in conds:
@@ -108,19 +101,14 @@ def check_structural_invariants(contract: dict) -> list[str]:
             for atom in expr.split(" AND "):
                 if match := _FATAL_PRIORITY_RE.fullmatch(atom):
                     if match.group("priority") != "mandatory":
-                        errors.append(
-                            f"{cid}: fatal atom priority must be mandatory"
-                        )
+                        errors.append(f"{cid}: fatal atom priority must be mandatory")
                 elif match := _FATAL_DIM_RE.fullmatch(atom):
                     did = match.group("dim")
                     if priorities.get(did) != "mandatory":
-                        errors.append(
-                            f"{cid}: fatal atom dimension {did} must be mandatory"
-                        )
+                        errors.append(f"{cid}: fatal atom dimension {did} must be mandatory")
     elif not reviewer_mode:
         for dim in dims:
-            leaked = [field for field in ("eligible_roles", "owner_role")
-                      if field in dim]
+            leaked = [field for field in ("eligible_roles", "owner_role") if field in dim]
             if leaked:
                 errors.append(
                     f"{dim.get('id')}: reviewer-only fields {leaked} are "
@@ -249,9 +237,11 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
         pmd_source = "measurement_procedure.paraphrase_minimum_dimensions"
         phase_label = "Phase 1"
     elif mode == "writer_full":
-        pmd = (contract.get("pre_commitment_artifacts", {})
-               .get("acceptance_criteria_paraphrase", {})
-               .get("minimum_dimensions"))
+        pmd = (
+            contract.get("pre_commitment_artifacts", {})
+            .get("acceptance_criteria_paraphrase", {})
+            .get("minimum_dimensions")
+        )
         pmd_source = "pre_commitment_artifacts.acceptance_criteria_paraphrase.minimum_dimensions"
         phase_label = "Phase 4a"
     elif mode == "evaluator_full":
@@ -287,8 +277,7 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
             continue
         pkw = priority_keywords[prio]
         priority_covered = any(
-            pkw in fc.get("expression", "").lower()
-            for fc in contract.get("failure_conditions", [])
+            pkw in fc.get("expression", "").lower() for fc in contract.get("failure_conditions", [])
         )
         if priority_covered:
             continue
@@ -316,8 +305,7 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
             )
 
         for dim in dims:
-            if (dim.get("priority") == "mandatory"
-                    and len(dim.get("eligible_roles", [])) == 1):
+            if dim.get("priority") == "mandatory" and len(dim.get("eligible_roles", [])) == 1:
                 warnings.append(
                     f"SC-12 WARNING: mandatory dimension {dim.get('id')} has "
                     "one eligible role (single-judge mandatory gate)"
@@ -329,8 +317,12 @@ def warn_suspicious(contract: dict, ars_current_version: str | None) -> list[str
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("contract", type=Path, help="Path to the sprint contract JSON")
-    parser.add_argument("--ars-version", type=str, default=None,
-                        help="Current ARS version (e.g. v3.6.2) for SC-1 baseline lag check")
+    parser.add_argument(
+        "--ars-version",
+        type=str,
+        default=None,
+        help="Current ARS version (e.g. v3.6.2) for SC-1 baseline lag check",
+    )
     args = parser.parse_args()
 
     try:

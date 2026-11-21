@@ -19,10 +19,10 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 import re
 import sys
 import unicodedata
+from pathlib import Path
 from typing import Any
 
 try:
@@ -30,8 +30,8 @@ try:
     from scripts import claim_standing_stance_runner as stance_runner
 except ImportError:  # direct script execution
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import build_claim_standing_candidate_ledger as substrate  # noqa: E402
-    import claim_standing_stance_runner as stance_runner  # noqa: E402
+    import build_claim_standing_candidate_ledger as substrate
+    import claim_standing_stance_runner as stance_runner
 
 VIEW_SUFFIX = ".view.md"
 COVERAGE_LABELS = {
@@ -86,15 +86,11 @@ def render_view(
     stance_record: dict[str, Any] | None,
     evidence_rows: list[dict[str, Any]],
 ) -> str:
-    substrate.validate_schema(
-        plan, substrate.plan_schema_filename(plan), "query plan"
-    )
+    substrate.validate_schema(plan, substrate.plan_schema_filename(plan), "query plan")
     substrate.validate_plan(plan)
     stance_runner._require_bound_ledger(plan, ledger_value)
     if stance_record is not None:
-        stance_runner.validate_stance_record(
-            plan, ledger_value, stance_record, evidence_rows
-        )
+        stance_runner.validate_stance_record(plan, ledger_value, stance_record, evidence_rows)
 
     consent = plan["consent"]
     out: list[str] = []
@@ -112,8 +108,7 @@ def render_view(
     out.append("## Consent and recorded search")
     out.append("")
     out.append(
-        f"- Claim `{_inert(plan['claim']['claim_id'])}`: "
-        f"{_inert(plan['claim']['claim_text'])}"
+        f"- Claim `{_inert(plan['claim']['claim_id'])}`: " f"{_inert(plan['claim']['claim_text'])}"
     )
     out.append(
         f"- Consent receipt `{_inert(consent['consent_receipt_id'])}` — "
@@ -191,15 +186,10 @@ def render_view(
         out.append("")
         return "\n".join(out)
 
-    families_by_id = {
-        family["work_family_id"]: family
-        for family in ledger_value["work_families"]
-    }
+    families_by_id = {family["work_family_id"]: family for family in ledger_value["work_families"]}
     distribution = stance_record["distribution"]
     selected_total = distribution["selected_total"]
-    indexes = ", ".join(
-        sorted({provider["index_id"] for provider in plan["provider_roster"]})
-    )
+    indexes = ", ".join(sorted({provider["index_id"] for provider in plan["provider_roster"]}))
     queries = ", ".join(query["query_id"] for query in plan["queries"])
     out.append(
         f"Denominator: all {selected_total} selected work families "
@@ -242,16 +232,13 @@ def render_view(
         family = families_by_id.get(row["work_family_id"])
         if hit is None or family is None:
             _fail(
-                f"stance row {row['work_family_id']!r} names a candidate "
-                "absent from the ledger"
+                f"stance row {row['work_family_id']!r} names a candidate " "absent from the ledger"
             )
-        authors = ", ".join(
-            _inert(author.get("family"))
-            for author in hit["authors"][:3]
-        ) or "(no authors returned)"
-        outcome = (
-            row["stance"] if row["check_state"] == "performed" else row["failure_state"]
+        authors = (
+            ", ".join(_inert(author.get("family")) for author in hit["authors"][:3])
+            or "(no authors returned)"
         )
+        outcome = row["stance"] if row["check_state"] == "performed" else row["failure_state"]
         line = (
             f"- {_inert(hit['title'])} — {authors}"
             f" ({_inert(hit.get('year'))}); found by "
@@ -274,9 +261,7 @@ def render_view(
         if row["conditions_noted"]:
             line += f" Conditions noted: {_inert(row['conditions_noted'])}."
         if row["evidence_row_refs"]:
-            refs = ", ".join(
-                f"`{_inert(ref['row_id'])}`" for ref in row["evidence_row_refs"]
-            )
+            refs = ", ".join(f"`{_inert(ref['row_id'])}`" for ref in row["evidence_row_refs"])
             line += f" Evidence rows: {refs}."
         other_versions = [
             hits_by_id[member]
@@ -284,11 +269,15 @@ def render_view(
             if member != family["canonical_raw_hit_id"]
         ]
         if other_versions:
-            line += " Other versions: " + "; ".join(
-                f"`{_inert(v['raw_hit_id'])}` ({_inert(v['index_id'])} rank "
-                f"{v['provider_rank']})"
-                for v in other_versions
-            ) + "."
+            line += (
+                " Other versions: "
+                + "; ".join(
+                    f"`{_inert(v['raw_hit_id'])}` ({_inert(v['index_id'])} rank "
+                    f"{v['provider_rank']})"
+                    for v in other_versions
+                )
+                + "."
+            )
         if hit.get("landing_url"):
             line += f" Source: {_inert(hit['landing_url'])}"
         out.append(line)
@@ -331,13 +320,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         plan = substrate.load_json(args.query_plan)
         ledger_value = substrate.load_json(args.candidate_ledger)
-        stance_record = (
-            substrate.load_json(args.stance_record) if args.stance_record else None
-        )
+        stance_record = substrate.load_json(args.stance_record) if args.stance_record else None
         evidence_rows = (
-            substrate.load_json(args.evidence_rows)["rows"]
-            if args.evidence_rows
-            else []
+            substrate.load_json(args.evidence_rows)["rows"] if args.evidence_rows else []
         )
         text = render_view(plan, ledger_value, stance_record, evidence_rows)
         if args.output:

@@ -228,7 +228,11 @@ def check() -> list[str]:
     # The DA section additionally must carry the verdict-time framing (distinct from #215's
     # severity gate). The synthesizer section is inherently arbitration-time, framed in the header.
     da_section = _section(_read(DA_AGENT), SURFACES[DA_AGENT]["section_header_re"])
-    if da_section is not None and "verdict-assignment time" not in da_section and "verdict time" not in da_section:
+    if (
+        da_section is not None
+        and "verdict-assignment time" not in da_section
+        and "verdict time" not in da_section
+    ):
         errors.append(
             f"{DA_AGENT} #216 section: missing the 'verdict' time-of-application framing "
             f"(the parity gate runs at verdict time, distinct from #215's severity gate)"

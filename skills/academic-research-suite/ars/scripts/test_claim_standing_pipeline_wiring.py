@@ -98,8 +98,7 @@ def _imported_names(tree: ast.Module) -> set[str]:
             names.update(
                 alias.name.split(".")[0]
                 for alias in node.names
-                if node.module is not None
-                and node.module.split(".")[0] == "scripts"
+                if node.module is not None and node.module.split(".")[0] == "scripts"
             )
     return names
 
@@ -122,9 +121,7 @@ def _discovery_aliases(tree: ast.Module) -> set[str]:
 
 
 def test_wiring_modules_import_only_the_declared_allowlist() -> None:
-    assert not ALLOWED_IMPORTS & (
-        FORBIDDEN_CAPABILITY_MODULES | PHASE_E_AND_READ_LEDGER_MODULES
-    )
+    assert not ALLOWED_IMPORTS & (FORBIDDEN_CAPABILITY_MODULES | PHASE_E_AND_READ_LEDGER_MODULES)
     for path in WIRING_MODULES:
         names = _imported_names(_module_ast(path))
         assert names <= ALLOWED_IMPORTS, (
@@ -154,9 +151,7 @@ def test_discovery_reach_is_limited_to_the_pure_roster_constant() -> None:
                 and isinstance(node.value, ast.Name)
                 and node.value.id in aliases
             ):
-                raise AssertionError(
-                    f"{path.name} rebinds a discovery alias"
-                )
+                raise AssertionError(f"{path.name} rebinds a discovery alias")
             if (
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Name)
@@ -178,10 +173,7 @@ def test_wiring_modules_perform_no_direct_writes_or_read_ledger_access() -> None
                 and node.func.id == "open"
             ):
                 raise AssertionError(f"{path.name} calls open() directly")
-            if (
-                isinstance(node, ast.Attribute)
-                and node.attr in WRITE_CAPABLE_ATTRIBUTES
-            ):
+            if isinstance(node, ast.Attribute) and node.attr in WRITE_CAPABLE_ATTRIBUTES:
                 raise AssertionError(
                     f"{path.name} uses write-capable attribute {node.attr!r}; "
                     "all persistence must flow through the substrate writer"
@@ -216,16 +208,12 @@ def test_end_to_end_wiring_creates_no_files_and_mutates_no_inputs(
     substrate.validate_plan(built_plan)
 
     stance_plan = _plan_v1_1(stance=True)
-    stance_plan["stance_plan"]["prompt_contract_version"] = (
-        runner.PROMPT_CONTRACT_VERSION
-    )
+    stance_plan["stance_plan"]["prompt_contract_version"] = runner.PROMPT_CONTRACT_VERSION
     _rehash_plan(stance_plan)
     retained = _retained()
     _rehash_input(retained, stance_plan)
     ledger_value = substrate.build_ledger(stance_plan, retained)
-    record, _, events = runner.run_stance(
-        stance_plan, ledger_value, transport=FakeTransport()
-    )
+    record, _, events = runner.run_stance(stance_plan, ledger_value, transport=FakeTransport())
     inputs_before = copy.deepcopy((stance_plan, retained, ledger_value, record))
 
     transmissions.build_transmission_ledger(
@@ -245,32 +233,50 @@ def test_end_to_end_wiring_creates_no_files_and_mutates_no_inputs(
     events_file = _write_json(inputs / "events.json", events)
     record_file = _write_json(inputs / "record.json", record)
     claim_file = inputs / "claim.txt"
-    claim_file.write_text(
-        stance_plan["claim"]["claim_text"], encoding="utf-8"
+    claim_file.write_text(stance_plan["claim"]["claim_text"], encoding="utf-8")
+    assert (
+        plan_builder.main(
+            ["propose", "--registry-claim", str(row_file), "--decisions", str(decisions_file)]
+        )
+        == 0
     )
-    assert plan_builder.main(
-        ["propose", "--registry-claim", str(row_file), "--decisions", str(decisions_file)]
-    ) == 0
-    assert plan_builder.main(
-        ["bind", "--registry-claim", str(row_file), "--decisions", str(decisions_file)]
-    ) == 0
-    assert transmissions.main(
-        [
-            "build",
-            "--query-plan", str(plan_file),
-            "--retrieval-input", str(input_file),
-            "--stance-transmissions", str(events_file),
-            "--stance-record", str(record_file),
-        ]
-    ) == 0
-    assert freshness.main(
-        [
-            "--current-claim-file", str(claim_file),
-            "--query-plan", str(plan_file),
-            "--candidate-ledger", str(_write_json(inputs / "ledger.json", ledger_value)),
-            "--stance-record", str(record_file),
-        ]
-    ) == 0
+    assert (
+        plan_builder.main(
+            ["bind", "--registry-claim", str(row_file), "--decisions", str(decisions_file)]
+        )
+        == 0
+    )
+    assert (
+        transmissions.main(
+            [
+                "build",
+                "--query-plan",
+                str(plan_file),
+                "--retrieval-input",
+                str(input_file),
+                "--stance-transmissions",
+                str(events_file),
+                "--stance-record",
+                str(record_file),
+            ]
+        )
+        == 0
+    )
+    assert (
+        freshness.main(
+            [
+                "--current-claim-file",
+                str(claim_file),
+                "--query-plan",
+                str(plan_file),
+                "--candidate-ledger",
+                str(_write_json(inputs / "ledger.json", ledger_value)),
+                "--stance-record",
+                str(record_file),
+            ]
+        )
+        == 0
+    )
     capsys.readouterr()
 
     assert row == row_before

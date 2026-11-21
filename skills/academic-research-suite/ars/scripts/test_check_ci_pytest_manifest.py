@@ -24,7 +24,6 @@ from pathlib import Path
 
 import pytest
 
-
 SCRIPT = Path(__file__).resolve().parent / "check_ci_pytest_manifest.py"
 
 
@@ -66,7 +65,9 @@ def workdir(tmp_path: Path) -> Path:
 
 def test_clean_manifest_passes(workdir: Path) -> None:
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
@@ -75,9 +76,12 @@ def test_clean_manifest_passes(workdir: Path) -> None:
     id = "real-b"
     path = "scripts/test_real_b.py"
     args = ["-k", "fast"]
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
-    _write(workflow, """
+    _write(
+        workflow,
+        """
     name: Spec Consistency
     on: [pull_request]
     jobs:
@@ -85,7 +89,8 @@ def test_clean_manifest_passes(workdir: Path) -> None:
         runs-on: ubuntu-latest
         steps:
           - run: python scripts/run_ci_pytest_manifest.py
-    """)
+    """,
+    )
 
     result = _run(manifest, workflow, root=workdir)
 
@@ -95,19 +100,25 @@ def test_clean_manifest_passes(workdir: Path) -> None:
 
 def test_missing_path_fails(workdir: Path) -> None:
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "ghost"
     path = "scripts/test_does_not_exist.py"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
-    _write(workflow, """
+    _write(
+        workflow,
+        """
     jobs:
       spec:
         runs-on: ubuntu-latest
         steps:
           - run: python scripts/run_ci_pytest_manifest.py
-    """)
+    """,
+    )
 
     result = _run(manifest, workflow, root=workdir)
 
@@ -119,7 +130,9 @@ def test_missing_path_fails(workdir: Path) -> None:
 
 def test_duplicate_id_fails(workdir: Path) -> None:
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
@@ -127,7 +140,8 @@ def test_duplicate_id_fails(workdir: Path) -> None:
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_b.py"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
     _write(workflow, "jobs: {}\n")
 
@@ -141,7 +155,9 @@ def test_duplicate_id_fails(workdir: Path) -> None:
 def test_duplicate_invocation_fails(workdir: Path) -> None:
     """Two distinct ids pointing at the same (path, args) is bypass-prone."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a-1"
     path = "scripts/test_real_a.py"
@@ -149,7 +165,8 @@ def test_duplicate_invocation_fails(workdir: Path) -> None:
     [[pytest]]
     id = "real-a-2"
     path = "scripts/test_real_a.py"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
     _write(workflow, "jobs: {}\n")
 
@@ -164,7 +181,9 @@ def test_duplicate_invocation_fails(workdir: Path) -> None:
 def test_duplicate_invocation_with_distinct_args_passes(workdir: Path) -> None:
     """Same path with DIFFERENT -k filters is the legitimate use case."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a-unit"
     path = "scripts/test_real_a.py"
@@ -174,15 +193,19 @@ def test_duplicate_invocation_with_distinct_args_passes(workdir: Path) -> None:
     id = "real-a-integration"
     path = "scripts/test_real_a.py"
     args = ["-k", "integration"]
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
-    _write(workflow, """
+    _write(
+        workflow,
+        """
     jobs:
       spec:
         runs-on: ubuntu-latest
         steps:
           - run: python scripts/run_ci_pytest_manifest.py
-    """)
+    """,
+    )
 
     result = _run(manifest, workflow, root=workdir)
 
@@ -191,12 +214,15 @@ def test_duplicate_invocation_with_distinct_args_passes(workdir: Path) -> None:
 
 def test_malformed_args_fails(workdir: Path) -> None:
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
     args = "this should be a list, not a string"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
     _write(workflow, "jobs: {}\n")
 
@@ -210,13 +236,18 @@ def test_malformed_args_fails(workdir: Path) -> None:
 def test_direct_pytest_invocation_in_workflow_fails(workdir: Path) -> None:
     """Drift guard: spec-consistency.yml must NOT have `pytest scripts/test_*.py` outside runner."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
-    _write(workflow, """
+    _write(
+        workflow,
+        """
     name: Spec Consistency
     jobs:
       spec:
@@ -224,7 +255,8 @@ def test_direct_pytest_invocation_in_workflow_fails(workdir: Path) -> None:
         steps:
           - run: python scripts/run_ci_pytest_manifest.py
           - run: pytest scripts/test_real_a.py -v
-    """)
+    """,
+    )
 
     result = _run(manifest, workflow, root=workdir)
 
@@ -237,20 +269,26 @@ def test_direct_pytest_invocation_in_workflow_fails(workdir: Path) -> None:
 def test_unittest_invocations_in_workflow_pass(workdir: Path) -> None:
     """`python3 -m unittest scripts.test_X` is out of scope for #156 — should NOT trigger drift guard."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
-    _write(workflow, """
+    _write(
+        workflow,
+        """
     jobs:
       spec:
         runs-on: ubuntu-latest
         steps:
           - run: python scripts/run_ci_pytest_manifest.py
           - run: python3 -m unittest scripts.test_real_b -v
-    """)
+    """,
+    )
 
     result = _run(manifest, workflow, root=workdir)
 
@@ -266,11 +304,14 @@ def test_missing_manifest_fails(workdir: Path) -> None:
 
 def test_missing_workflow_fails(workdir: Path) -> None:
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
-    """)
+    """,
+    )
     result = _run(manifest, workdir / ".github" / "workflows" / "missing.yml", root=workdir)
     assert result.returncode != 0
 
@@ -280,20 +321,26 @@ def test_unknown_entry_key_fails(workdir: Path) -> None:
     otherwise the runner would skip the intended -k filter and run the full
     test set."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
     arg = ["-k", "this-should-be-args"]
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
-    _write(workflow, """
+    _write(
+        workflow,
+        """
     jobs:
       spec:
         runs-on: ubuntu-latest
         steps:
           - run: python scripts/run_ci_pytest_manifest.py
-    """)
+    """,
+    )
 
     result = _run(manifest, workflow, root=workdir)
 
@@ -344,11 +391,14 @@ def test_direct_pytest_bypass_variants_fail(workdir: Path, bypass_invocation: st
     pytest`, `py.test`, `uv run pytest`. (Dual-track review: gemini P1.1-P1.2
     + codex empirical probe.)"""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
     workflow_body = (
         "jobs:\n"
@@ -374,11 +424,14 @@ def test_line_continuation_bypass_fails(workdir: Path) -> None:
     """Backslash-newline line continuations must be normalized so the regex
     sees one logical command. (Dual-track review: gemini P1.3.)"""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
     workflow.write_text(
         "jobs:\n"
@@ -404,13 +457,18 @@ def test_pytest_path_substring_in_comment_does_not_match(workdir: Path) -> None:
     inside a `#` comment must NOT trip the lint. This test pins that
     behavior so the comment-strip can't be regressed accidentally."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "real-a"
     path = "scripts/test_real_a.py"
-    """)
+    """,
+    )
     workflow = workdir / ".github" / "workflows" / "spec-consistency.yml"
-    _write(workflow, """
+    _write(
+        workflow,
+        """
     # The drift guard rejects direct `pytest scripts/test_real_a.py` calls
     # outside the runner — this comment must not trip it.
     jobs:
@@ -418,7 +476,8 @@ def test_pytest_path_substring_in_comment_does_not_match(workdir: Path) -> None:
         runs-on: ubuntu-latest
         steps:
           - run: python scripts/run_ci_pytest_manifest.py
-    """)
+    """,
+    )
 
     result = _run(manifest, workflow, root=workdir)
 

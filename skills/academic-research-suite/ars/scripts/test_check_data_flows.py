@@ -10,7 +10,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from check_data_flows import (
     DOC_RELPATH,
     run_all_checks,
@@ -41,8 +40,7 @@ def fixture_repo(tmp_path: Path) -> Path:
     _write(
         tmp_path,
         "scripts/net_client.py",
-        "import urllib.request\n\n\ndef go(url):\n"
-        "    return urllib.request.urlopen(url)\n",
+        "import urllib.request\n\n\ndef go(url):\n" "    return urllib.request.urlopen(url)\n",
     )
     _write(
         tmp_path,
@@ -95,8 +93,7 @@ def test_df1_unnamed_network_script_fires(fixture_repo: Path) -> None:
     _write(
         fixture_repo,
         "scripts/new_resolver.py",
-        "from urllib import request\n\n\ndef go(url):\n"
-        "    return request.urlopen(url)\n",
+        "from urllib import request\n\n\ndef go(url):\n" "    return request.urlopen(url)\n",
     )
     errors = run_all_checks(fixture_repo)
     assert any("DF-1" in e and "new_resolver.py" in e for e in errors)
@@ -119,9 +116,7 @@ def test_df1_exemption_is_name_based(fixture_repo: Path) -> None:
     # The same network-importing body fires under a non-test_ name and stays
     # quiet under the test_ name — proving the exemption is name-based, not
     # content-based.
-    body = (fixture_repo / "scripts/test_net_helper.py").read_text(
-        encoding="utf-8"
-    )
+    body = (fixture_repo / "scripts/test_net_helper.py").read_text(encoding="utf-8")
     assert run_all_checks(fixture_repo) == []  # test_ name: exempt
     _write(fixture_repo, "scripts/net_helper.py", body)
     errors = run_all_checks(fixture_repo)
@@ -153,8 +148,7 @@ def test_df1_from_urllib_import_request_fires(fixture_repo: Path) -> None:
     _write(
         fixture_repo,
         "scripts/idiom_resolver.py",
-        "from urllib import request\n\n\ndef go(url):\n"
-        "    return request.urlopen(url)\n",
+        "from urllib import request\n\n\ndef go(url):\n" "    return request.urlopen(url)\n",
     )
     errors = run_all_checks(fixture_repo)
     assert any("DF-1" in e and "idiom_resolver.py" in e for e in errors)
@@ -279,8 +273,7 @@ def test_df2_argument_position_curl_not_flagged(fixture_repo: Path) -> None:
     _write(
         fixture_repo,
         "scripts/preflight.sh",
-        "#!/bin/sh\nif ! command -v curl >/dev/null; then\n"
-        "  echo curl missing\nfi\n",
+        "#!/bin/sh\nif ! command -v curl >/dev/null; then\n" "  echo curl missing\nfi\n",
     )
     assert run_all_checks(fixture_repo) == []
 
@@ -302,8 +295,7 @@ def test_df2_curl_behind_control_keywords_fires(fixture_repo: Path) -> None:
     _write(
         fixture_repo,
         "scripts/cond_fetch.sh",
-        "#!/bin/sh\nif curl -s https://example.invalid/c; then\n"
-        "  echo ok\nfi\n",
+        "#!/bin/sh\nif curl -s https://example.invalid/c; then\n" "  echo ok\nfi\n",
     )
     errors = run_all_checks(fixture_repo)
     assert any("DF-2" in e and "cond_fetch.sh" in e for e in errors)
@@ -364,8 +356,7 @@ def test_df3_link_inside_fence_fires(fixture_repo: Path) -> None:
     _write(
         fixture_repo,
         "THIRD_PARTY.md",
-        "# Third party\n\n```text\n"
-        "[docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)\n```\n",
+        "# Third party\n\n```text\n" "[docs/DATA_FLOWS.md](docs/DATA_FLOWS.md)\n```\n",
     )
     errors = run_all_checks(fixture_repo)
     assert any("DF-3" in e and "THIRD_PARTY.md" in e for e in errors)
@@ -375,8 +366,7 @@ def test_df3_commented_out_link_fires(fixture_repo: Path) -> None:
     _write(
         fixture_repo,
         "THIRD_PARTY.md",
-        "# Third party\n\n"
-        "<!-- [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md) -->\n",
+        "# Third party\n\n" "<!-- [docs/DATA_FLOWS.md](docs/DATA_FLOWS.md) -->\n",
     )
     errors = run_all_checks(fixture_repo)
     assert any("DF-3" in e and "THIRD_PARTY.md" in e for e in errors)

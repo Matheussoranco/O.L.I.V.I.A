@@ -9,7 +9,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-
 from _markdown_lint_util import (
     RelativeLinkFailure,
     anchor_resolves,
@@ -86,9 +85,7 @@ def link_repo(tmp_path: Path) -> tuple[Path, Path]:
     source = tmp_path / "docs" / "SOURCE.md"
     source.parent.mkdir()
     source.write_text("# Source Heading\n", encoding="utf-8")
-    (tmp_path / "docs" / "TARGET.md").write_text(
-        "# Mixed Case\n", encoding="utf-8"
-    )
+    (tmp_path / "docs" / "TARGET.md").write_text("# Mixed Case\n", encoding="utf-8")
     (tmp_path / "docs" / "data.json").write_text("{}\n", encoding="utf-8")
     return tmp_path, source
 
@@ -124,6 +121,7 @@ def test_relative_link_fragment_is_an_exact_id_not_slug_input(
     root, source = link_repo
     # Slugifying this fragment would turn it into the real `mixed-case` id
     # and silently accept a link whose authored fragment is case-wrong.
-    assert relative_link_failure(
-        root, source, "TARGET.md#Mixed-Case"
-    ) is RelativeLinkFailure.ANCHOR_NOT_FOUND
+    assert (
+        relative_link_failure(root, source, "TARGET.md#Mixed-Case")
+        is RelativeLinkFailure.ANCHOR_NOT_FOUND
+    )

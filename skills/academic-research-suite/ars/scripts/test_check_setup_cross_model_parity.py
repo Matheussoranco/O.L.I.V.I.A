@@ -23,7 +23,6 @@ def _load_module():
 
 
 class SetupCrossModelParityTests(unittest.TestCase):
-
     def test_repo_baseline_passes(self) -> None:
         """The committed SETUP + canonical doc state must pass."""
         result = run_script(SCRIPT)
@@ -57,9 +56,7 @@ class SetupCrossModelParityTests(unittest.TestCase):
         """No 'API ID' table in the canonical doc = parser stale = error."""
         module = _load_module()
         errors = module.check(EN_OK, ZH_OK, "prose only, `gpt-5.5` backticked")
-        self.assertTrue(
-            any("parser went stale" in e for e in errors), msg=f"errors: {errors}"
-        )
+        self.assertTrue(any("parser went stale" in e for e in errors), msg=f"errors: {errors}")
 
     def test_compat_table_column_counts(self) -> None:
         """Ids in the compat table's 'Example API ID(s)' column are members."""
@@ -106,9 +103,7 @@ class SetupCrossModelParityTests(unittest.TestCase):
         """Regex-went-stale / block-removed must be an error, not a pass."""
         module = _load_module()
         errors = module.check("no examples here", ZH_OK, CANONICAL_OK)
-        self.assertTrue(
-            any("Fail-closed" in e for e in errors), msg=f"errors: {errors}"
-        )
+        self.assertTrue(any("Fail-closed" in e for e in errors), msg=f"errors: {errors}")
 
     def test_commented_example_lines_are_extracted(self) -> None:
         """`# or:` alternates count — they are user-pasteable examples too."""

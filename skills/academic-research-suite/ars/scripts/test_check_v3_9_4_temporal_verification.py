@@ -192,28 +192,86 @@ def test_citation_provenance_high_rejects_absent_sources():
         jsonschema.validate(bad, schema)
 
 
-@pytest.mark.parametrize("finding_kind,mode,severity,bound_refs,bound_event,bound_dates,matched_span", [
-    ("TEMPORAL-ARITHMETIC-IMPOSSIBLE", 1, "HIGH", [], None,
-     {"left": {"role": "anchor", "value": "2025-03", "source": "draft_capture", "ref_slug": None},
-      "right": {"role": "event", "value": "2025-06", "source": "draft_capture", "ref_slug": None}},
-     None),
-    ("TEMPORAL-ANACHRONISTIC-CITATION", 2, "HIGH",
-     [{"ref_slug": "h2026", "timeline_entry": "h2026"}],
-     {"event_id": "e2022", "date": "2022-04-01..2022-12-31"}, None, None),
-    ("TEMPORAL-COMPARATOR-UNMATERIALIZED", 3, "MEDIUM",
-     [{"ref_slug": "s2020", "timeline_entry": "s2020"}], None, None,
-     {"text": "1998 edition", "char_start": 100, "char_end": 112}),
-    ("TEMPORAL-CAUSAL-INVERSION", 4, "MEDIUM",
-     [{"ref_slug": "a", "timeline_entry": "a"}, {"ref_slug": "b", "timeline_entry": "b"}],
-     None,
-     {"left": {"role": "left_arg", "value": "2026-03-01", "source": "timeline_ref", "ref_slug": "a"},
-      "right": {"role": "right_arg", "value": "2020-05-15", "source": "timeline_ref", "ref_slug": "b"}},
-     {"text": "A enabled B", "char_start": 0, "char_end": 11}),
-    ("TEMPORAL-DEICTIC", 5, "LOW", [], None, None,
-     {"text": "currently", "char_start": 0, "char_end": 9}),
-    ("TEMPORAL-METADATA-MISSING", None, "LOW", [], None, None, None),
-])
-def test_temporal_audit_schema_accepts_6_finding_kinds(finding_kind, mode, severity, bound_refs, bound_event, bound_dates, matched_span):
+@pytest.mark.parametrize(
+    "finding_kind,mode,severity,bound_refs,bound_event,bound_dates,matched_span",
+    [
+        (
+            "TEMPORAL-ARITHMETIC-IMPOSSIBLE",
+            1,
+            "HIGH",
+            [],
+            None,
+            {
+                "left": {
+                    "role": "anchor",
+                    "value": "2025-03",
+                    "source": "draft_capture",
+                    "ref_slug": None,
+                },
+                "right": {
+                    "role": "event",
+                    "value": "2025-06",
+                    "source": "draft_capture",
+                    "ref_slug": None,
+                },
+            },
+            None,
+        ),
+        (
+            "TEMPORAL-ANACHRONISTIC-CITATION",
+            2,
+            "HIGH",
+            [{"ref_slug": "h2026", "timeline_entry": "h2026"}],
+            {"event_id": "e2022", "date": "2022-04-01..2022-12-31"},
+            None,
+            None,
+        ),
+        (
+            "TEMPORAL-COMPARATOR-UNMATERIALIZED",
+            3,
+            "MEDIUM",
+            [{"ref_slug": "s2020", "timeline_entry": "s2020"}],
+            None,
+            None,
+            {"text": "1998 edition", "char_start": 100, "char_end": 112},
+        ),
+        (
+            "TEMPORAL-CAUSAL-INVERSION",
+            4,
+            "MEDIUM",
+            [{"ref_slug": "a", "timeline_entry": "a"}, {"ref_slug": "b", "timeline_entry": "b"}],
+            None,
+            {
+                "left": {
+                    "role": "left_arg",
+                    "value": "2026-03-01",
+                    "source": "timeline_ref",
+                    "ref_slug": "a",
+                },
+                "right": {
+                    "role": "right_arg",
+                    "value": "2020-05-15",
+                    "source": "timeline_ref",
+                    "ref_slug": "b",
+                },
+            },
+            {"text": "A enabled B", "char_start": 0, "char_end": 11},
+        ),
+        (
+            "TEMPORAL-DEICTIC",
+            5,
+            "LOW",
+            [],
+            None,
+            None,
+            {"text": "currently", "char_start": 0, "char_end": 9},
+        ),
+        ("TEMPORAL-METADATA-MISSING", None, "LOW", [], None, None, None),
+    ],
+)
+def test_temporal_audit_schema_accepts_6_finding_kinds(
+    finding_kind, mode, severity, bound_refs, bound_event, bound_dates, matched_span
+):
     schema = _load_schema("temporal_audit_results.schema.json")
     example = {
         "schema_version": "1.0",
@@ -226,7 +284,11 @@ def test_temporal_audit_schema_accepts_6_finding_kinds(finding_kind, mode, sever
                 "severity": severity,
                 "mode": mode,
                 "block_eligible": False,
-                "draft_locator": {"file": "phase4_composition/draft.md", "line": 1, "sentence": "x"},
+                "draft_locator": {
+                    "file": "phase4_composition/draft.md",
+                    "line": 1,
+                    "sentence": "x",
+                },
                 "matched_span": matched_span,
                 "bound_refs": bound_refs,
                 "bound_event": bound_event,
@@ -304,31 +366,50 @@ SCRIPT = REPO_ROOT / "scripts/check_v3_9_4_temporal_verification.py"
 def test_lint_exits_zero_on_clean_fixture(tmp_path):
     """Lint should exit 0 when validating valid sample fixtures."""
     timeline = tmp_path / "timeline.yaml"
-    timeline.write_text(yaml.safe_dump({
-        "schema_version": "1.0",
-        "sources": [],
-        "events": [],
-    }))
+    timeline.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "1.0",
+                "sources": [],
+                "events": [],
+            }
+        )
+    )
     provenance = tmp_path / "citation_provenance.yaml"
-    provenance.write_text(yaml.safe_dump({
-        "schema_version": "1.0",
-        "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
-        "entries": [],
-    }))
+    provenance.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "1.0",
+                "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
+                "entries": [],
+            }
+        )
+    )
     audit = tmp_path / "temporal_audit_results.yaml"
-    audit.write_text(yaml.safe_dump({
-        "schema_version": "1.0",
-        "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
-        "report_reference_date": "2026-05-18",
-        "findings": [],
-    }))
+    audit.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "1.0",
+                "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
+                "report_reference_date": "2026-05-18",
+                "findings": [],
+            }
+        )
+    )
 
     result = subprocess.run(
-        [_sys.executable, str(SCRIPT),
-         "--timeline", str(timeline),
-         "--citation-provenance", str(provenance),
-         "--temporal-audit", str(audit)],
-        capture_output=True, text=True,
+        [
+            _sys.executable,
+            str(SCRIPT),
+            "--timeline",
+            str(timeline),
+            "--citation-provenance",
+            str(provenance),
+            "--temporal-audit",
+            str(audit),
+        ],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
 
@@ -336,36 +417,57 @@ def test_lint_exits_zero_on_clean_fixture(tmp_path):
 def test_lint_detects_supersession_cycle(tmp_path):
     """Invariant 2 — supersession chain must have no cycles."""
     timeline = tmp_path / "timeline.yaml"
-    timeline.write_text(yaml.safe_dump({
-        "schema_version": "1.0",
-        "sources": [
-            {"citation_key": "a", "type": "doc", "supersedes": "b", "superseded_by": None},
-            {"citation_key": "b", "type": "doc", "supersedes": "a", "superseded_by": None},
-        ],
-        "events": [],
-    }))
+    timeline.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "1.0",
+                "sources": [
+                    {"citation_key": "a", "type": "doc", "supersedes": "b", "superseded_by": None},
+                    {"citation_key": "b", "type": "doc", "supersedes": "a", "superseded_by": None},
+                ],
+                "events": [],
+            }
+        )
+    )
     provenance = tmp_path / "citation_provenance.yaml"
-    provenance.write_text(yaml.safe_dump({
-        "schema_version": "1.0",
-        "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
-        "entries": [],
-    }))
+    provenance.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "1.0",
+                "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
+                "entries": [],
+            }
+        )
+    )
     audit = tmp_path / "temporal_audit_results.yaml"
-    audit.write_text(yaml.safe_dump({
-        "schema_version": "1.0",
-        "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
-        "report_reference_date": "2026-05-18",
-        "findings": [],
-    }))
+    audit.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "1.0",
+                "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
+                "report_reference_date": "2026-05-18",
+                "findings": [],
+            }
+        )
+    )
 
     result = subprocess.run(
-        [_sys.executable, str(SCRIPT),
-         "--timeline", str(timeline),
-         "--citation-provenance", str(provenance),
-         "--temporal-audit", str(audit)],
-        capture_output=True, text=True,
+        [
+            _sys.executable,
+            str(SCRIPT),
+            "--timeline",
+            str(timeline),
+            "--citation-provenance",
+            str(provenance),
+            "--temporal-audit",
+            str(audit),
+        ],
+        capture_output=True,
+        text=True,
     )
-    assert result.returncode == 1, f"expected exit 1 for cycle, got {result.returncode}; stderr={result.stderr!r}"
+    assert (
+        result.returncode == 1
+    ), f"expected exit 1 for cycle, got {result.returncode}; stderr={result.stderr!r}"
     assert "cycle" in result.stderr.lower(), f"expected 'cycle' in stderr, got: {result.stderr!r}"
 
 
@@ -374,23 +476,40 @@ def test_lint_bibliography_agent_unchanged(tmp_path):
     timeline = tmp_path / "timeline.yaml"
     timeline.write_text(yaml.safe_dump({"schema_version": "1.0", "sources": [], "events": []}))
     provenance = tmp_path / "citation_provenance.yaml"
-    provenance.write_text(yaml.safe_dump({
-        "schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2", "entries": []
-    }))
+    provenance.write_text(
+        yaml.safe_dump(
+            {"schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2", "entries": []}
+        )
+    )
     audit = tmp_path / "temporal_audit_results.yaml"
-    audit.write_text(yaml.safe_dump({
-        "schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
-        "report_reference_date": "2026-05-18", "findings": []
-    }))
+    audit.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "1.0",
+                "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
+                "report_reference_date": "2026-05-18",
+                "findings": [],
+            }
+        )
+    )
 
     result = subprocess.run(
-        [_sys.executable, str(SCRIPT),
-         "--timeline", str(timeline),
-         "--citation-provenance", str(provenance),
-         "--temporal-audit", str(audit)],
-        capture_output=True, text=True,
+        [
+            _sys.executable,
+            str(SCRIPT),
+            "--timeline",
+            str(timeline),
+            "--citation-provenance",
+            str(provenance),
+            "--temporal-audit",
+            str(audit),
+        ],
+        capture_output=True,
+        text=True,
     )
-    assert result.returncode == 0, f"baseline mismatch — bibliography_agent.md was modified? stderr={result.stderr}"
+    assert (
+        result.returncode == 0
+    ), f"baseline mismatch — bibliography_agent.md was modified? stderr={result.stderr}"
 
 
 def test_lint_bibliography_agent_modified_fails(tmp_path, monkeypatch):
@@ -402,27 +521,41 @@ def test_lint_bibliography_agent_modified_fails(tmp_path, monkeypatch):
     timeline = tmp_path / "timeline.yaml"
     timeline.write_text(yaml.safe_dump({"schema_version": "1.0", "sources": [], "events": []}))
     provenance = tmp_path / "citation_provenance.yaml"
-    provenance.write_text(yaml.safe_dump({
-        "schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2", "entries": []
-    }))
+    provenance.write_text(
+        yaml.safe_dump(
+            {"schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2", "entries": []}
+        )
+    )
     audit = tmp_path / "temporal_audit_results.yaml"
-    audit.write_text(yaml.safe_dump({
-        "schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
-        "report_reference_date": "2026-05-18", "findings": []
-    }))
+    audit.write_text(
+        yaml.safe_dump(
+            {
+                "schema_version": "1.0",
+                "audit_run_id": "2026-05-18T12:34:56Z-a1b2",
+                "report_reference_date": "2026-05-18",
+                "findings": [],
+            }
+        )
+    )
 
     # Import the lint module and monkeypatch the expected sha256 to a bogus value
     import importlib.util
+
     spec_loader = importlib.util.spec_from_file_location("v3_9_4_lint", SCRIPT)
     lint_mod = importlib.util.module_from_spec(spec_loader)
     spec_loader.loader.exec_module(lint_mod)
     monkeypatch.setattr(lint_mod, "BIBLIOGRAPHY_AGENT_SHA256", "0" * 64)
 
-    exit_code = lint_mod.main([
-        "--timeline", str(timeline),
-        "--citation-provenance", str(provenance),
-        "--temporal-audit", str(audit),
-    ])
+    exit_code = lint_mod.main(
+        [
+            "--timeline",
+            str(timeline),
+            "--citation-provenance",
+            str(provenance),
+            "--temporal-audit",
+            str(audit),
+        ]
+    )
     assert exit_code == 1, "expected exit 1 when sha256 baseline mismatches"
 
 

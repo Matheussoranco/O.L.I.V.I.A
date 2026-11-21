@@ -54,6 +54,7 @@ class TaskExecutionError(RuntimeError):
     Phase-2 task (no native measurer) is still a legitimate ``pending``.
     """
 
+
 # Resolver-outcome status enum (mirrors #182 Delta 4 / check_evals_gold_set).
 STATUS_MATCHED = "matched"
 STATUS_UNMATCHED = "unmatched"
@@ -96,11 +97,7 @@ def discover_tasks(gold_root: Path = GOLD_ROOT) -> list[str]:
     """
     discovered: set[str] = set()
     if gold_root.is_dir():
-        discovered = {
-            p.parent.name
-            for p in gold_root.glob("*/manifest.yaml")
-            if p.is_file()
-        }
+        discovered = {p.parent.name for p in gold_root.glob("*/manifest.yaml") if p.is_file()}
     return sorted(discovered | set(_NATIVE_MEASURERS))
 
 
@@ -202,12 +199,14 @@ def measure_citation_extraction(task_dir: Path, manifest: dict[str, Any]) -> dic
         labeled = concordance_total[cls]
         if labeled == 0:
             continue
-        concordance.append({
-            "class_name": cls,
-            "agreement_rate": concordance_agree[cls] / labeled,
-            "labeled_count": labeled,
-            "agreements": concordance_agree[cls],
-        })
+        concordance.append(
+            {
+                "class_name": cls,
+                "agreement_rate": concordance_agree[cls] / labeled,
+                "labeled_count": labeled,
+                "agreements": concordance_agree[cls],
+            }
+        )
 
     result: dict[str, Any] = {
         "task_name": manifest.get("task_name", task_dir.name),
@@ -357,11 +356,16 @@ def run_task(task_name: str, gold_root: Path = GOLD_ROOT) -> dict[str, Any]:
     # (A not-yet-shipped Phase-2 task takes the measurer-is-None branch above.)
     try:
         return measurer(task_dir, manifest)
-    except (ModuleNotFoundError, FileNotFoundError, json.JSONDecodeError,
-            yaml.YAMLError, KeyError, ValueError) as exc:
+    except (
+        ModuleNotFoundError,
+        FileNotFoundError,
+        json.JSONDecodeError,
+        yaml.YAMLError,
+        KeyError,
+        ValueError,
+    ) as exc:
         raise TaskExecutionError(
-            f"implemented task {task_name!r} failed to measure "
-            f"({type(exc).__name__}: {exc})"
+            f"implemented task {task_name!r} failed to measure " f"({type(exc).__name__}: {exc})"
         ) from exc
 
 
@@ -387,19 +391,23 @@ def _metric_entries(task_result: dict[str, Any]) -> list[dict[str, Any]]:
     entries: list[dict[str, Any]] = []
     agg = task_result.get("aggregate_metric")
     if agg:
-        entries.append({
-            "class_name": "aggregate",
-            "metric": agg["metric"],
-            "value": agg["value"],
-            "direction": agg.get("direction", "higher_is_better"),
-        })
+        entries.append(
+            {
+                "class_name": "aggregate",
+                "metric": agg["metric"],
+                "value": agg["value"],
+                "direction": agg.get("direction", "higher_is_better"),
+            }
+        )
     for pc in task_result.get("per_class", []):
-        entries.append({
-            "class_name": pc["class_name"],
-            "metric": pc["metric"],
-            "value": pc["value"],
-            "direction": pc.get("direction", "higher_is_better"),
-        })
+        entries.append(
+            {
+                "class_name": pc["class_name"],
+                "metric": pc["metric"],
+                "value": pc["value"],
+                "direction": pc.get("direction", "higher_is_better"),
+            }
+        )
     return entries
 
 
@@ -481,10 +489,18 @@ def build_compare_report(baseline: dict[str, Any], compare: dict[str, Any]) -> d
 # ---------------------------------------------------------------------------
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="ARS multi-task eval harness (#184).")
-    parser.add_argument("--task", default=None, help="Run only this task (default: all discovered).")
-    parser.add_argument("--baseline", default=None, type=Path, help="Baseline report JSON for compare mode.")
-    parser.add_argument("--compare", default=None, type=Path, help="Compare report JSON for compare mode.")
-    parser.add_argument("--output", default=None, type=Path, help="Write report JSON here (default: stdout).")
+    parser.add_argument(
+        "--task", default=None, help="Run only this task (default: all discovered)."
+    )
+    parser.add_argument(
+        "--baseline", default=None, type=Path, help="Baseline report JSON for compare mode."
+    )
+    parser.add_argument(
+        "--compare", default=None, type=Path, help="Compare report JSON for compare mode."
+    )
+    parser.add_argument(
+        "--output", default=None, type=Path, help="Write report JSON here (default: stdout)."
+    )
     args = parser.parse_args(argv)
 
     if bool(args.baseline) ^ bool(args.compare):

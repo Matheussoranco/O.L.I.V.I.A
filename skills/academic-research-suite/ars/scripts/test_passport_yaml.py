@@ -16,7 +16,6 @@ verified across multiple v3.7.3 / v3.9.0 review rounds.
 """
 from __future__ import annotations
 
-import io
 import os
 import sys
 import tempfile

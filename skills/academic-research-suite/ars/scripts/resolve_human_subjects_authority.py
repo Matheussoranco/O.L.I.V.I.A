@@ -19,7 +19,6 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, NoReturn
 
-
 AXES = ("review_ethics", "data_protection")
 TRI = ("true", "false", "unknown")
 OPS = ("fact_equals", "fact_in", "fact_contains", "all", "any", "not")
@@ -238,8 +237,7 @@ def _validate_fact_value(value_type: str, value: Any, path: str) -> None:
     if value_type == "string_set":
         rows = _array(value, path, maximum=128)
         normalized = [
-            _text(item, f"{path}[{index}]", maximum=256)
-            for index, item in enumerate(rows)
+            _text(item, f"{path}[{index}]", maximum=256) for index, item in enumerate(rows)
         ]
         if len(normalized) != len(set(normalized)):
             _fail(path, "must not contain duplicate values")
@@ -371,11 +369,23 @@ def evaluate_predicate(
                     if op == "fact_equals":
                         if isinstance(actual, list):
                             _fail(display_pointer, "fact_equals cannot compare a string_set")
-                        result = "true" if type(actual) is type(node.get("value")) and actual == node.get("value") else "false"
+                        result = (
+                            "true"
+                            if type(actual) is type(node.get("value"))
+                            and actual == node.get("value")
+                            else "false"
+                        )
                     elif op == "fact_in":
                         if isinstance(actual, list):
                             _fail(display_pointer, "fact_in cannot inspect a string_set")
-                        result = "true" if any(type(actual) is type(v) and actual == v for v in node.get("values", [])) else "false"
+                        result = (
+                            "true"
+                            if any(
+                                type(actual) is type(v) and actual == v
+                                for v in node.get("values", [])
+                            )
+                            else "false"
+                        )
                     elif isinstance(actual, list):
                         result = "true" if node.get("value") in actual else "false"
                     else:
@@ -386,11 +396,21 @@ def evaluate_predicate(
                 if op == "fact_equals":
                     if isinstance(actual, list):
                         _fail(display_pointer, "fact_equals cannot compare a string_set")
-                    result = "true" if type(actual) is type(node.get("value")) and actual == node.get("value") else "false"
+                    result = (
+                        "true"
+                        if type(actual) is type(node.get("value")) and actual == node.get("value")
+                        else "false"
+                    )
                 elif op == "fact_in":
                     if isinstance(actual, list):
                         _fail(display_pointer, "fact_in cannot inspect a string_set")
-                    result = "true" if any(type(actual) is type(v) and actual == v for v in node.get("values", [])) else "false"
+                    result = (
+                        "true"
+                        if any(
+                            type(actual) is type(v) and actual == v for v in node.get("values", [])
+                        )
+                        else "false"
+                    )
                 elif isinstance(actual, list):
                     result = "true" if node.get("value") in actual else "false"
                 else:
@@ -401,9 +421,17 @@ def evaluate_predicate(
                 for index, child in enumerate(node.get("operands", []))
             ]
             if op == "all":
-                result = "false" if "false" in children else ("unknown" if "unknown" in children else "true")
+                result = (
+                    "false"
+                    if "false" in children
+                    else ("unknown" if "unknown" in children else "true")
+                )
             else:
-                result = "true" if "true" in children else ("unknown" if "unknown" in children else "false")
+                result = (
+                    "true"
+                    if "true" in children
+                    else ("unknown" if "unknown" in children else "false")
+                )
         else:
             child = walk(node.get("operand"), f"{pointer}/operand", depth + 1)
             result = {"true": "false", "false": "true", "unknown": "unknown"}[child]
@@ -425,17 +453,42 @@ def evaluate_predicate(
 
 
 SOURCE_FIELDS = {
-    "source_id", "title", "publisher", "canonical_url", "snapshot_url",
-    "provision_locator", "allowed_provisions", "effective_from", "effective_until",
-    "source_amended_or_published_date", "retrieved_at", "verified_at",
-    "source_language", "controlling_language", "authenticity_status",
-    "content_digest", "digest_scope", "rights_status", "freshness",
+    "source_id",
+    "title",
+    "publisher",
+    "canonical_url",
+    "snapshot_url",
+    "provision_locator",
+    "allowed_provisions",
+    "effective_from",
+    "effective_until",
+    "source_amended_or_published_date",
+    "retrieved_at",
+    "verified_at",
+    "source_language",
+    "controlling_language",
+    "authenticity_status",
+    "content_digest",
+    "digest_scope",
+    "rights_status",
+    "freshness",
 }
 ANCHOR_FIELDS = {
-    "source_id", "authority_url", "snapshot_url", "provision", "effective_date",
-    "effective_until", "source_amended_or_published_date", "retrieved_at",
-    "verified_at", "source_language", "controlling_language",
-    "authenticity_status", "content_digest", "digest_scope", "rights_status",
+    "source_id",
+    "authority_url",
+    "snapshot_url",
+    "provision",
+    "effective_date",
+    "effective_until",
+    "source_amended_or_published_date",
+    "retrieved_at",
+    "verified_at",
+    "source_language",
+    "controlling_language",
+    "authenticity_status",
+    "content_digest",
+    "digest_scope",
+    "rights_status",
 }
 
 
@@ -450,7 +503,11 @@ def _validate_source(row: Any, path: str, registry_as_of: date) -> None:
     _unique_texts(obj["allowed_provisions"], f"{path}.allowed_provisions", minimum=1, maximum=128)
     start = _date(obj["effective_from"], f"{path}.effective_from")
     end = _date(obj["effective_until"], f"{path}.effective_until", nullable=True)
-    _date(obj["source_amended_or_published_date"], f"{path}.source_amended_or_published_date", nullable=True)
+    _date(
+        obj["source_amended_or_published_date"],
+        f"{path}.source_amended_or_published_date",
+        nullable=True,
+    )
     retrieved = _date(obj["retrieved_at"], f"{path}.retrieved_at")
     verified = _date(obj["verified_at"], f"{path}.verified_at")
     assert start is not None and retrieved is not None and verified is not None
@@ -465,18 +522,28 @@ def _validate_source(row: Any, path: str, registry_as_of: date) -> None:
         obj["authenticity_status"],
         f"{path}.authenticity_status",
         {
-            "authentic_official", "official_controlling_language",
-            "authoritative_unofficial", "official_consolidated",
+            "authentic_official",
+            "official_controlling_language",
+            "authoritative_unofficial",
+            "official_consolidated",
             "official_reference_translation",
         },
     )
     if authenticity == "official_reference_translation" and obj["controlling_language"]:
         _fail(path, "a reference translation cannot be controlling")
     _sha(obj["content_digest"], f"{path}.content_digest", nullable=True)
-    digest_scope = _enum(obj["digest_scope"], f"{path}.digest_scope", {"official_representation", "metadata_only", "not_recorded"})
+    digest_scope = _enum(
+        obj["digest_scope"],
+        f"{path}.digest_scope",
+        {"official_representation", "metadata_only", "not_recorded"},
+    )
     if (obj["content_digest"] is None) != (digest_scope == "not_recorded"):
         _fail(path, "content_digest and digest_scope are inconsistent")
-    _enum(obj["rights_status"], f"{path}.rights_status", {"link_only", "curator_summary_only", "redistribution_recorded"})
+    _enum(
+        obj["rights_status"],
+        f"{path}.rights_status",
+        {"link_only", "curator_summary_only", "redistribution_recorded"},
+    )
     _enum(obj["freshness"], f"{path}.freshness", {"current", "stale", "unverified", "superseded"})
 
 
@@ -488,7 +555,11 @@ def _validate_anchor(anchor: Any, source: dict[str, Any], path: str) -> None:
     _text(obj["provision"], f"{path}.provision")
     effective = _date(obj["effective_date"], f"{path}.effective_date")
     end = _date(obj["effective_until"], f"{path}.effective_until", nullable=True)
-    _date(obj["source_amended_or_published_date"], f"{path}.source_amended_or_published_date", nullable=True)
+    _date(
+        obj["source_amended_or_published_date"],
+        f"{path}.source_amended_or_published_date",
+        nullable=True,
+    )
     _date(obj["retrieved_at"], f"{path}.retrieved_at")
     _date(obj["verified_at"], f"{path}.verified_at")
     _text(obj["source_language"], f"{path}.source_language")
@@ -496,25 +567,44 @@ def _validate_anchor(anchor: Any, source: dict[str, Any], path: str) -> None:
         _fail(f"{path}.controlling_language", "must be boolean")
     _text(obj["authenticity_status"], f"{path}.authenticity_status")
     _sha(obj["content_digest"], f"{path}.content_digest", nullable=True)
-    _enum(obj["digest_scope"], f"{path}.digest_scope", {"official_representation", "metadata_only", "not_recorded"})
-    _enum(obj["rights_status"], f"{path}.rights_status", {"link_only", "curator_summary_only", "redistribution_recorded"})
+    _enum(
+        obj["digest_scope"],
+        f"{path}.digest_scope",
+        {"official_representation", "metadata_only", "not_recorded"},
+    )
+    _enum(
+        obj["rights_status"],
+        f"{path}.rights_status",
+        {"link_only", "curator_summary_only", "redistribution_recorded"},
+    )
     joins = {
-        "source_id": "source_id", "authority_url": "canonical_url",
-        "snapshot_url": "snapshot_url", "effective_until": "effective_until",
+        "source_id": "source_id",
+        "authority_url": "canonical_url",
+        "snapshot_url": "snapshot_url",
+        "effective_until": "effective_until",
         "source_amended_or_published_date": "source_amended_or_published_date",
-        "retrieved_at": "retrieved_at", "verified_at": "verified_at",
-        "source_language": "source_language", "controlling_language": "controlling_language",
-        "authenticity_status": "authenticity_status", "content_digest": "content_digest",
-        "digest_scope": "digest_scope", "rights_status": "rights_status",
+        "retrieved_at": "retrieved_at",
+        "verified_at": "verified_at",
+        "source_language": "source_language",
+        "controlling_language": "controlling_language",
+        "authenticity_status": "authenticity_status",
+        "content_digest": "content_digest",
+        "digest_scope": "digest_scope",
+        "rights_status": "rights_status",
     }
     for anchor_key, source_key in joins.items():
         if obj[anchor_key] != source[source_key]:
             _fail(f"{path}.{anchor_key}", f"does not match source {source['source_id']}")
     start = date.fromisoformat(source["effective_from"])
-    source_end = date.fromisoformat(source["effective_until"]) if source["effective_until"] else None
+    source_end = (
+        date.fromisoformat(source["effective_until"]) if source["effective_until"] else None
+    )
     assert effective is not None
     if effective != start:
-        _fail(f"{path}.effective_date", "must equal the provision source's verified effective_from date")
+        _fail(
+            f"{path}.effective_date",
+            "must equal the provision source's verified effective_from date",
+        )
     if obj["provision"] not in source["allowed_provisions"]:
         _fail(f"{path}.provision", "is not an allowed provision locator for the selected source")
     if end is not None and end < effective:
@@ -530,10 +620,20 @@ def _validate_requirement(
     authority_source_ids: set[str],
 ) -> str:
     fields = {
-        "requirement_id", "axis", "title", "summary", "obligation_kind",
-        "obligated_actor", "consumer_scopes", "applies_if",
-        "structured_expectations", "evidence_expected", "waiver_or_exception_route",
-        "authoritative_decision_maker", "interaction", "authority_anchor",
+        "requirement_id",
+        "axis",
+        "title",
+        "summary",
+        "obligation_kind",
+        "obligated_actor",
+        "consumer_scopes",
+        "applies_if",
+        "structured_expectations",
+        "evidence_expected",
+        "waiver_or_exception_route",
+        "authoritative_decision_maker",
+        "interaction",
+        "authority_anchor",
     }
     obj = _closed(row, path, fields)
     requirement_id = _identifier(obj["requirement_id"], f"{path}.requirement_id")
@@ -541,22 +641,48 @@ def _validate_requirement(
         _fail(f"{path}.axis", "must match its profile or overlay axis")
     _text(obj["title"], f"{path}.title")
     _text(obj["summary"], f"{path}.summary")
-    _enum(obj["obligation_kind"], f"{path}.obligation_kind", {"require", "prohibit", "condition", "information", "safeguard", "route"})
+    _enum(
+        obj["obligation_kind"],
+        f"{path}.obligation_kind",
+        {"require", "prohibit", "condition", "information", "safeguard", "route"},
+    )
     _identifier(obj["obligated_actor"], f"{path}.obligated_actor")
     _unique_texts(obj["consumer_scopes"], f"{path}.consumer_scopes", identifiers=True, minimum=1)
     _validate_predicate(obj["applies_if"], definitions, f"{path}.applies_if")
-    for index, expectation in enumerate(_array(obj["structured_expectations"], f"{path}.structured_expectations")):
-        exp = _closed(expectation, f"{path}.structured_expectations[{index}]", {"field_id", "operator", "value"})
+    for index, expectation in enumerate(
+        _array(obj["structured_expectations"], f"{path}.structured_expectations")
+    ):
+        exp = _closed(
+            expectation,
+            f"{path}.structured_expectations[{index}]",
+            {"field_id", "operator", "value"},
+        )
         _identifier(exp["field_id"], f"{path}.structured_expectations[{index}].field_id")
-        _enum(exp["operator"], f"{path}.structured_expectations[{index}].operator", {"equals", "includes", "gte", "lte", "present"})
+        _enum(
+            exp["operator"],
+            f"{path}.structured_expectations[{index}].operator",
+            {"equals", "includes", "gte", "lte", "present"},
+        )
         value = exp["value"]
         if isinstance(value, float) and not math.isfinite(value):
             _fail(f"{path}.structured_expectations[{index}].value", "must be finite")
         if isinstance(value, dict):
-            frac = _closed(value, f"{path}.structured_expectations[{index}].value", {"numerator", "denominator"})
-            if isinstance(frac["numerator"], bool) or not isinstance(frac["numerator"], int) or frac["numerator"] < 0:
+            frac = _closed(
+                value,
+                f"{path}.structured_expectations[{index}].value",
+                {"numerator", "denominator"},
+            )
+            if (
+                isinstance(frac["numerator"], bool)
+                or not isinstance(frac["numerator"], int)
+                or frac["numerator"] < 0
+            ):
                 _fail(path, "fraction numerator must be a non-negative integer")
-            if isinstance(frac["denominator"], bool) or not isinstance(frac["denominator"], int) or frac["denominator"] < 1:
+            if (
+                isinstance(frac["denominator"], bool)
+                or not isinstance(frac["denominator"], int)
+                or frac["denominator"] < 1
+            ):
                 _fail(path, "fraction denominator must be a positive integer")
         elif not isinstance(value, (bool, int, float, str)):
             _fail(path, "structured expectation has an unsupported value")
@@ -565,25 +691,57 @@ def _validate_requirement(
     if not evidence:
         _fail(f"{path}.evidence_expected", "must not be empty")
     for index, item in enumerate(evidence):
-        ev = _closed(item, f"{path}.evidence_expected[{index}]", {"evidence_id", "held_by", "artifact_type", "description"})
-        evidence_ids.append(_identifier(ev["evidence_id"], f"{path}.evidence_expected[{index}].evidence_id"))
+        ev = _closed(
+            item,
+            f"{path}.evidence_expected[{index}]",
+            {"evidence_id", "held_by", "artifact_type", "description"},
+        )
+        evidence_ids.append(
+            _identifier(ev["evidence_id"], f"{path}.evidence_expected[{index}].evidence_id")
+        )
         _identifier(ev["held_by"], f"{path}.evidence_expected[{index}].held_by")
         _identifier(ev["artifact_type"], f"{path}.evidence_expected[{index}].artifact_type")
         _text(ev["description"], f"{path}.evidence_expected[{index}].description")
     _unique(evidence_ids, f"{path}.evidence_expected")
-    route = _closed(obj["waiver_or_exception_route"], f"{path}.waiver_or_exception_route", {"state", "requirement_ids", "decision_maker_role"})
-    state = _enum(route["state"], f"{path}.waiver_or_exception_route.state", {"profiled", "external_authority_required", "not_profiled_in_bounded_profile", "not_applicable"})
-    route_ids = _unique_texts(route["requirement_ids"], f"{path}.waiver_or_exception_route.requirement_ids", identifiers=True)
+    route = _closed(
+        obj["waiver_or_exception_route"],
+        f"{path}.waiver_or_exception_route",
+        {"state", "requirement_ids", "decision_maker_role"},
+    )
+    state = _enum(
+        route["state"],
+        f"{path}.waiver_or_exception_route.state",
+        {
+            "profiled",
+            "external_authority_required",
+            "not_profiled_in_bounded_profile",
+            "not_applicable",
+        },
+    )
+    route_ids = _unique_texts(
+        route["requirement_ids"],
+        f"{path}.waiver_or_exception_route.requirement_ids",
+        identifiers=True,
+    )
     if state == "profiled" and not route_ids:
         _fail(f"{path}.waiver_or_exception_route", "profiled routes require requirement_ids")
     if state != "profiled" and route_ids:
         _fail(f"{path}.waiver_or_exception_route", "only profiled routes may carry requirement_ids")
     if route["decision_maker_role"] is not None:
-        _identifier(route["decision_maker_role"], f"{path}.waiver_or_exception_route.decision_maker_role")
-    decision = _closed(obj["authoritative_decision_maker"], f"{path}.authoritative_decision_maker", {"role_id", "description"})
+        _identifier(
+            route["decision_maker_role"], f"{path}.waiver_or_exception_route.decision_maker_role"
+        )
+    decision = _closed(
+        obj["authoritative_decision_maker"],
+        f"{path}.authoritative_decision_maker",
+        {"role_id", "description"},
+    )
     _identifier(decision["role_id"], f"{path}.authoritative_decision_maker.role_id")
     if decision["role_id"] in {"ars", "model", "user"}:
-        _fail(f"{path}.authoritative_decision_maker.role_id", "cannot assign authority to ARS, a model, or the user")
+        _fail(
+            f"{path}.authoritative_decision_maker.role_id",
+            "cannot assign authority to ARS, a model, or the user",
+        )
     _text(decision["description"], f"{path}.authoritative_decision_maker.description")
     interaction = _closed(obj["interaction"], f"{path}.interaction", {"collision_key", "policy"})
     if interaction["collision_key"] is not None:
@@ -594,13 +752,29 @@ def _validate_requirement(
     if not isinstance(anchor, dict) or anchor.get("source_id") not in sources:
         _fail(f"{path}.authority_anchor.source_id", "must resolve to a registry source")
     if anchor["source_id"] not in authority_source_ids:
-        _fail(f"{path}.authority_anchor.source_id", "must be declared by its profile or overlay source_ids")
+        _fail(
+            f"{path}.authority_anchor.source_id",
+            "must be declared by its profile or overlay source_ids",
+        )
     _validate_anchor(anchor, sources[anchor["source_id"]], f"{path}.authority_anchor")
     return requirement_id
 
 
 def validate_registry(registry: dict[str, Any]) -> None:
-    top = _closed(registry, "registry", {"schema_version", "registry_id", "registry_version", "as_of", "fact_definitions", "sources", "profiles", "overlays"})
+    top = _closed(
+        registry,
+        "registry",
+        {
+            "schema_version",
+            "registry_id",
+            "registry_version",
+            "as_of",
+            "fact_definitions",
+            "sources",
+            "profiles",
+            "overlays",
+        },
+    )
     if top["schema_version"] != "human-subjects-authority-registry/1.0":
         _fail("registry.schema_version", "must equal human-subjects-authority-registry/1.0")
     _identifier(top["registry_id"], "registry.registry_id")
@@ -608,13 +782,19 @@ def validate_registry(registry: dict[str, Any]) -> None:
     registry_as_of = _date(top["as_of"], "registry.as_of")
     assert registry_as_of is not None
     definitions: dict[str, dict[str, Any]] = {}
-    for index, row in enumerate(_array(top["fact_definitions"], "registry.fact_definitions", maximum=512)):
+    for index, row in enumerate(
+        _array(top["fact_definitions"], "registry.fact_definitions", maximum=512)
+    ):
         path = f"registry.fact_definitions[{index}]"
         obj = _closed(row, path, {"fact_id", "value_type", "allowed_values", "description"})
         fact_id = _identifier(obj["fact_id"], f"{path}.fact_id")
         if fact_id in definitions:
             _fail(f"{path}.fact_id", "duplicate fact id")
-        value_type = _enum(obj["value_type"], f"{path}.value_type", {"boolean", "string", "string_enum", "string_set", "date"})
+        value_type = _enum(
+            obj["value_type"],
+            f"{path}.value_type",
+            {"boolean", "string", "string_enum", "string_set", "date"},
+        )
         allowed = obj["allowed_values"]
         if allowed is not None:
             allowed = _unique_texts(allowed, f"{path}.allowed_values", minimum=1, maximum=128)
@@ -637,7 +817,23 @@ def validate_registry(registry: dict[str, Any]) -> None:
     profiles = _array(top["profiles"], "registry.profiles", maximum=128)
     for index, row in enumerate(profiles):
         path = f"registry.profiles[{index}]"
-        fields = {"profile_id", "profile_version", "profile_digest", "axis", "authority_scope_ids", "title", "authority_level", "coverage_status", "covered_provisions", "known_exclusions", "known_gaps", "no_completeness_claim", "source_ids", "applies_if", "requirements"}
+        fields = {
+            "profile_id",
+            "profile_version",
+            "profile_digest",
+            "axis",
+            "authority_scope_ids",
+            "title",
+            "authority_level",
+            "coverage_status",
+            "covered_provisions",
+            "known_exclusions",
+            "known_gaps",
+            "no_completeness_claim",
+            "source_ids",
+            "applies_if",
+            "requirements",
+        }
         obj = _closed(row, path, fields)
         profile_id = _identifier(obj["profile_id"], f"{path}.profile_id")
         profile_version = _version(obj["profile_version"], f"{path}.profile_version")
@@ -650,14 +846,22 @@ def validate_registry(registry: dict[str, Any]) -> None:
         declared_digest = unsigned.pop("profile_digest")
         if declared_digest != digest(unsigned):
             _fail(f"{path}.profile_digest", "does not match the canonical profile digest")
-        _unique_texts(obj["authority_scope_ids"], f"{path}.authority_scope_ids", identifiers=True, minimum=1)
+        _unique_texts(
+            obj["authority_scope_ids"], f"{path}.authority_scope_ids", identifiers=True, minimum=1
+        )
         _text(obj["title"], f"{path}.title")
-        _enum(obj["authority_level"], f"{path}.authority_level", {"supranational", "national", "subnational", "tribal", "institutional"})
+        _enum(
+            obj["authority_level"],
+            f"{path}.authority_level",
+            {"supranational", "national", "subnational", "tribal", "institutional"},
+        )
         if obj["coverage_status"] != "bounded_subset" or obj["no_completeness_claim"] is not True:
             _fail(path, "profiles must be bounded subsets with no_completeness_claim=true")
         for name in ("covered_provisions", "known_exclusions", "known_gaps"):
             _unique_texts(obj[name], f"{path}.{name}", minimum=1)
-        for source_id in _unique_texts(obj["source_ids"], f"{path}.source_ids", identifiers=True, minimum=1):
+        for source_id in _unique_texts(
+            obj["source_ids"], f"{path}.source_ids", identifiers=True, minimum=1
+        ):
             if source_id not in sources:
                 _fail(f"{path}.source_ids", f"unknown source id: {source_id}")
         _validate_predicate(obj["applies_if"], definitions, f"{path}.applies_if")
@@ -682,7 +886,21 @@ def validate_registry(registry: dict[str, Any]) -> None:
     overlay_ids: set[str] = set()
     for index, row in enumerate(overlays):
         path = f"registry.overlays[{index}]"
-        fields = {"overlay_id", "overlay_version", "overlay_digest", "overlay_kind", "axis", "issuer", "title", "authority_scope_ids", "target_profiles", "source_ids", "operation", "requirements_removed", "requirements"}
+        fields = {
+            "overlay_id",
+            "overlay_version",
+            "overlay_digest",
+            "overlay_kind",
+            "axis",
+            "issuer",
+            "title",
+            "authority_scope_ids",
+            "target_profiles",
+            "source_ids",
+            "operation",
+            "requirements_removed",
+            "requirements",
+        }
         obj = _closed(row, path, fields)
         overlay_id = _identifier(obj["overlay_id"], f"{path}.overlay_id")
         if overlay_id in overlay_ids:
@@ -698,25 +916,37 @@ def validate_registry(registry: dict[str, Any]) -> None:
         axis = _enum(obj["axis"], f"{path}.axis", set(AXES))
         _text(obj["issuer"], f"{path}.issuer")
         _text(obj["title"], f"{path}.title")
-        _unique_texts(obj["authority_scope_ids"], f"{path}.authority_scope_ids", identifiers=True, minimum=1)
+        _unique_texts(
+            obj["authority_scope_ids"], f"{path}.authority_scope_ids", identifiers=True, minimum=1
+        )
         targets = _array(obj["target_profiles"], f"{path}.target_profiles")
         if not targets:
             _fail(f"{path}.target_profiles", "must not be empty")
         target_keys: list[tuple[str, str]] = []
         for target_index, target in enumerate(targets):
             target_path = f"{path}.target_profiles[{target_index}]"
-            target_obj = _closed(target, target_path, {"axis", "profile_id", "profile_version", "profile_digest"})
+            target_obj = _closed(
+                target, target_path, {"axis", "profile_id", "profile_version", "profile_digest"}
+            )
             if target_obj["axis"] != axis:
                 _fail(f"{target_path}.axis", "must match overlay axis")
-            key = (_identifier(target_obj["profile_id"], f"{target_path}.profile_id"), _version(target_obj["profile_version"], f"{target_path}.profile_version"))
+            key = (
+                _identifier(target_obj["profile_id"], f"{target_path}.profile_id"),
+                _version(target_obj["profile_version"], f"{target_path}.profile_version"),
+            )
             if key not in profile_index:
                 _fail(target_path, "target profile does not exist")
             profile = profile_index[key]
-            if target_obj["profile_digest"] != profile["profile_digest"] or target_obj["axis"] != profile["axis"]:
+            if (
+                target_obj["profile_digest"] != profile["profile_digest"]
+                or target_obj["axis"] != profile["axis"]
+            ):
                 _fail(target_path, "target profile pin does not match exactly")
             target_keys.append(key)
         _unique(target_keys, f"{path}.target_profiles")
-        for source_id in _unique_texts(obj["source_ids"], f"{path}.source_ids", identifiers=True, minimum=1):
+        for source_id in _unique_texts(
+            obj["source_ids"], f"{path}.source_ids", identifiers=True, minimum=1
+        ):
             if source_id not in sources:
                 _fail(f"{path}.source_ids", f"unknown source id: {source_id}")
         _enum(obj["operation"], f"{path}.operation", {"add", "supplement", "conflict"})
@@ -743,10 +973,26 @@ def validate_registry(registry: dict[str, Any]) -> None:
             route = requirement["waiver_or_exception_route"]
             for target_id in route["requirement_ids"]:
                 if target_id not in known_requirements:
-                    _fail(f"requirement {requirement['requirement_id']}", f"unknown profiled route requirement: {target_id}")
+                    _fail(
+                        f"requirement {requirement['requirement_id']}",
+                        f"unknown profiled route requirement: {target_id}",
+                    )
 
 
-CONTEXT_FIELDS = {"schema_version", "context_record_id", "confirmed_by", "confirmed_at", "applicability_as_of", "scope_dimensions", "declared_facts", "profile_selection_state", "selected_profiles", "overlay_selection_state", "selected_overlays", "display_precedence"}
+CONTEXT_FIELDS = {
+    "schema_version",
+    "context_record_id",
+    "confirmed_by",
+    "confirmed_at",
+    "applicability_as_of",
+    "scope_dimensions",
+    "declared_facts",
+    "profile_selection_state",
+    "selected_profiles",
+    "overlay_selection_state",
+    "selected_overlays",
+    "display_precedence",
+}
 
 
 def validate_context(context: dict[str, Any], registry: dict[str, Any] | None = None) -> None:
@@ -758,19 +1004,42 @@ def validate_context(context: dict[str, Any], registry: dict[str, Any] | None = 
         _fail("context.confirmed_by", "must equal author")
     _datetime(obj["confirmed_at"], "context.confirmed_at")
     _date(obj["applicability_as_of"], "context.applicability_as_of")
-    scope_names = {"review_jurisdictions", "institutions", "data_protection_regimes", "funders", "study_types", "populations", "data_locations", "cross_border_transfers"}
+    scope_names = {
+        "review_jurisdictions",
+        "institutions",
+        "data_protection_regimes",
+        "funders",
+        "study_types",
+        "populations",
+        "data_locations",
+        "cross_border_transfers",
+    }
     scopes = _closed(obj["scope_dimensions"], "context.scope_dimensions", scope_names)
     scoped_fact_ids: set[str] = set()
     for name in sorted(scope_names):
-        scoped_fact_ids.update(_unique_texts(scopes[name], f"context.scope_dimensions.{name}", identifiers=True, maximum=256))
-    definition_index = {row["fact_id"]: row for row in registry["fact_definitions"]} if registry is not None else None
+        scoped_fact_ids.update(
+            _unique_texts(
+                scopes[name], f"context.scope_dimensions.{name}", identifiers=True, maximum=256
+            )
+        )
+    definition_index = (
+        {row["fact_id"]: row for row in registry["fact_definitions"]}
+        if registry is not None
+        else None
+    )
     declared_ids: list[str] = []
-    for index, row in enumerate(_array(obj["declared_facts"], "context.declared_facts", maximum=512)):
+    for index, row in enumerate(
+        _array(obj["declared_facts"], "context.declared_facts", maximum=512)
+    ):
         path = f"context.declared_facts[{index}]"
         fact = _closed(row, path, {"fact_id", "value_type", "state", "value", "provenance"})
         fact_id = _identifier(fact["fact_id"], f"{path}.fact_id")
         declared_ids.append(fact_id)
-        value_type = _enum(fact["value_type"], f"{path}.value_type", {"boolean", "string", "string_enum", "string_set", "date"})
+        value_type = _enum(
+            fact["value_type"],
+            f"{path}.value_type",
+            {"boolean", "string", "string_enum", "string_set", "date"},
+        )
         state = _enum(fact["state"], f"{path}.state", {"declared", "unknown"})
         if fact["provenance"] != "author_declared":
             _fail(f"{path}.provenance", "must equal author_declared")
@@ -793,7 +1062,10 @@ def validate_context(context: dict[str, Any], registry: dict[str, Any] | None = 
     if registry is not None:
         unknown_scoped = scoped_fact_ids - set(declared_ids)
         if unknown_scoped:
-            _fail("context.scope_dimensions", f"references undeclared fact(s): {', '.join(sorted(unknown_scoped))}")
+            _fail(
+                "context.scope_dimensions",
+                f"references undeclared fact(s): {', '.join(sorted(unknown_scoped))}",
+            )
     states = _closed(obj["profile_selection_state"], "context.profile_selection_state", set(AXES))
     for axis in AXES:
         _enum(states[axis], f"context.profile_selection_state.{axis}", {"selected", "unresolved"})
@@ -801,12 +1073,21 @@ def validate_context(context: dict[str, Any], registry: dict[str, Any] | None = 
     selections = _array(obj["selected_profiles"], "context.selected_profiles", maximum=64)
     for index, row in enumerate(selections):
         path = f"context.selected_profiles[{index}]"
-        selection = _closed(row, path, {"axis", "profile_id", "profile_version", "profile_digest", "authority_scope_ids"})
+        selection = _closed(
+            row,
+            path,
+            {"axis", "profile_id", "profile_version", "profile_digest", "authority_scope_ids"},
+        )
         axis = _enum(selection["axis"], f"{path}.axis", set(AXES))
         profile_id = _identifier(selection["profile_id"], f"{path}.profile_id")
         version = _version(selection["profile_version"], f"{path}.profile_version")
         _sha(selection["profile_digest"], f"{path}.profile_digest")
-        _unique_texts(selection["authority_scope_ids"], f"{path}.authority_scope_ids", identifiers=True, minimum=1)
+        _unique_texts(
+            selection["authority_scope_ids"],
+            f"{path}.authority_scope_ids",
+            identifiers=True,
+            minimum=1,
+        )
         profile_keys.append((axis, profile_id, version))
     _unique(profile_keys, "context.selected_profiles")
     for axis in AXES:
@@ -815,14 +1096,24 @@ def validate_context(context: dict[str, Any], registry: dict[str, Any] | None = 
             _fail("context.profile_selection_state", f"{axis}=selected requires a selected profile")
         if states[axis] == "unresolved" and count != 0:
             _fail("context.profile_selection_state", f"{axis}=unresolved forbids selected profiles")
-    overlay_states = _closed(obj["overlay_selection_state"], "context.overlay_selection_state", {"institutional", "funder"})
+    overlay_states = _closed(
+        obj["overlay_selection_state"],
+        "context.overlay_selection_state",
+        {"institutional", "funder"},
+    )
     for kind in ("institutional", "funder"):
-        _enum(overlay_states[kind], f"context.overlay_selection_state.{kind}", {"selected", "not_provided", "none_declared_by_author"})
+        _enum(
+            overlay_states[kind],
+            f"context.overlay_selection_state.{kind}",
+            {"selected", "not_provided", "none_declared_by_author"},
+        )
     overlay_keys: list[tuple[str, str, str]] = []
     overlay_selections = _array(obj["selected_overlays"], "context.selected_overlays", maximum=64)
     for index, row in enumerate(overlay_selections):
         path = f"context.selected_overlays[{index}]"
-        selection = _closed(row, path, {"overlay_kind", "axis", "overlay_id", "overlay_version", "overlay_digest"})
+        selection = _closed(
+            row, path, {"overlay_kind", "axis", "overlay_id", "overlay_version", "overlay_digest"}
+        )
         kind = _enum(selection["overlay_kind"], f"{path}.overlay_kind", {"institutional", "funder"})
         axis = _enum(selection["axis"], f"{path}.axis", set(AXES))
         overlay_id = _identifier(selection["overlay_id"], f"{path}.overlay_id")
@@ -841,9 +1132,25 @@ def validate_context(context: dict[str, Any], registry: dict[str, Any] | None = 
         _fail("context.display_precedence", "must contain both axes exactly once")
     expected: dict[str, set[tuple[str, str, str, str, str]]] = {axis: set() for axis in AXES}
     for row in selections:
-        expected[row["axis"]].add(("profile", row["axis"], row["profile_id"], row["profile_version"], row["profile_digest"]))
+        expected[row["axis"]].add(
+            (
+                "profile",
+                row["axis"],
+                row["profile_id"],
+                row["profile_version"],
+                row["profile_digest"],
+            )
+        )
     for row in overlay_selections:
-        expected[row["axis"]].add((f"{row['overlay_kind']}_overlay", row["axis"], row["overlay_id"], row["overlay_version"], row["overlay_digest"]))
+        expected[row["axis"]].add(
+            (
+                f"{row['overlay_kind']}_overlay",
+                row["axis"],
+                row["overlay_id"],
+                row["overlay_version"],
+                row["overlay_digest"],
+            )
+        )
     seen_axes: set[str] = set()
     for index, row in enumerate(precedence):
         path = f"context.display_precedence[{index}]"
@@ -855,18 +1162,33 @@ def validate_context(context: dict[str, Any], registry: dict[str, Any] | None = 
         if entry["purpose"] != "display_only_no_suppression":
             _fail(f"{path}.purpose", "must equal display_only_no_suppression")
         actual: list[tuple[str, str, str, str, str]] = []
-        for auth_index, authority in enumerate(_array(entry["ordered_authorities"], f"{path}.ordered_authorities", maximum=128)):
+        for auth_index, authority in enumerate(
+            _array(entry["ordered_authorities"], f"{path}.ordered_authorities", maximum=128)
+        ):
             auth_path = f"{path}.ordered_authorities[{auth_index}]"
-            ref = _closed(authority, auth_path, {"authority_kind", "axis", "authority_id", "authority_version", "authority_digest"})
-            kind = _enum(ref["authority_kind"], f"{auth_path}.authority_kind", {"profile", "institutional_overlay", "funder_overlay"})
+            ref = _closed(
+                authority,
+                auth_path,
+                {"authority_kind", "axis", "authority_id", "authority_version", "authority_digest"},
+            )
+            kind = _enum(
+                ref["authority_kind"],
+                f"{auth_path}.authority_kind",
+                {"profile", "institutional_overlay", "funder_overlay"},
+            )
             if ref["axis"] != axis:
                 _fail(f"{auth_path}.axis", "must match display axis")
             _identifier(ref["authority_id"], f"{auth_path}.authority_id")
             _version(ref["authority_version"], f"{auth_path}.authority_version")
             _sha(ref["authority_digest"], f"{auth_path}.authority_digest")
-            actual.append((kind, axis, ref["authority_id"], ref["authority_version"], ref["authority_digest"]))
+            actual.append(
+                (kind, axis, ref["authority_id"], ref["authority_version"], ref["authority_digest"])
+            )
         if len(actual) != len(set(actual)) or set(actual) != expected[axis]:
-            _fail(f"{path}.ordered_authorities", "must list every selected authority on this axis exactly once")
+            _fail(
+                f"{path}.ordered_authorities",
+                "must list every selected authority on this axis exactly once",
+            )
 
 
 def _semantic_context(context: dict[str, Any]) -> dict[str, Any]:
@@ -880,8 +1202,23 @@ def _semantic_context(context: dict[str, Any]) -> dict[str, Any]:
         rows.sort()
     for row in value["selected_profiles"]:
         row["authority_scope_ids"].sort()
-    value["selected_profiles"].sort(key=lambda row: (row["axis"], row["profile_id"], row["profile_version"], row["profile_digest"]))
-    value["selected_overlays"].sort(key=lambda row: (row["axis"], row["overlay_kind"], row["overlay_id"], row["overlay_version"], row["overlay_digest"]))
+    value["selected_profiles"].sort(
+        key=lambda row: (
+            row["axis"],
+            row["profile_id"],
+            row["profile_version"],
+            row["profile_digest"],
+        )
+    )
+    value["selected_overlays"].sort(
+        key=lambda row: (
+            row["axis"],
+            row["overlay_kind"],
+            row["overlay_id"],
+            row["overlay_version"],
+            row["overlay_digest"],
+        )
+    )
     return value
 
 
@@ -916,28 +1253,52 @@ def resolve(context: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]
     facts = {row["fact_id"]: row for row in context["declared_facts"]}
     definitions = {row["fact_id"]: row for row in registry["fact_definitions"]}
     sources = {row["source_id"]: row for row in registry["sources"]}
-    profile_index = {(row["profile_id"], row["profile_version"]): (index, row) for index, row in enumerate(registry["profiles"])}
-    overlay_index = {(row["overlay_id"], row["overlay_version"]): (index, row) for index, row in enumerate(registry["overlays"])}
+    profile_index = {
+        (row["profile_id"], row["profile_version"]): (index, row)
+        for index, row in enumerate(registry["profiles"])
+    }
+    overlay_index = {
+        (row["overlay_id"], row["overlay_version"]): (index, row)
+        for index, row in enumerate(registry["overlays"])
+    }
     unresolved: list[dict[str, Any]] = []
     selected_profiles: list[dict[str, Any]] = []
     selected_profile_rows: list[tuple[int, dict[str, Any], str, list[dict[str, Any]], str]] = []
     selected_profile_applicability: dict[tuple[str, str, str, str], str] = {}
-    for selection in sorted(context["selected_profiles"], key=lambda row: (row["axis"], row["profile_id"], row["profile_version"])):
+    for selection in sorted(
+        context["selected_profiles"],
+        key=lambda row: (row["axis"], row["profile_id"], row["profile_version"]),
+    ):
         key = (selection["profile_id"], selection["profile_version"])
         if key not in profile_index:
             _fail("context.selected_profiles", f"unknown exact profile pin: {key[0]}@{key[1]}")
         index, profile = profile_index[key]
-        if selection["axis"] != profile["axis"] or selection["profile_digest"] != profile["profile_digest"] or set(selection["authority_scope_ids"]) != set(profile["authority_scope_ids"]):
+        if (
+            selection["axis"] != profile["axis"]
+            or selection["profile_digest"] != profile["profile_digest"]
+            or set(selection["authority_scope_ids"]) != set(profile["authority_scope_ids"])
+        ):
             _fail("context.selected_profiles", f"exact profile pin mismatch: {key[0]}@{key[1]}")
         applicability, trace = evaluate_predicate(profile["applies_if"], facts, definitions)
-        anchored_sources = [sources[req["authority_anchor"]["source_id"]] for req in profile["requirements"]]
-        source_state = "current" if anchored_sources and all(_source_current(source, context_as_of) for source in anchored_sources) else "unresolved"
+        anchored_sources = [
+            sources[req["authority_anchor"]["source_id"]] for req in profile["requirements"]
+        ]
+        source_state = (
+            "current"
+            if anchored_sources
+            and all(_source_current(source, context_as_of) for source in anchored_sources)
+            else "unresolved"
+        )
         result = {
-            "axis": profile["axis"], "profile_id": profile["profile_id"],
-            "profile_version": profile["profile_version"], "profile_digest": profile["profile_digest"],
+            "axis": profile["axis"],
+            "profile_id": profile["profile_id"],
+            "profile_version": profile["profile_version"],
+            "profile_digest": profile["profile_digest"],
             "authority_scope_ids": sorted(profile["authority_scope_ids"]),
-            "profile_pointer": f"/profiles/{index}", "applicability": applicability,
-            "predicate_trace": trace, "source_state": source_state,
+            "profile_pointer": f"/profiles/{index}",
+            "applicability": applicability,
+            "predicate_trace": trace,
+            "source_state": source_state,
         }
         selected_profiles.append(result)
         selected_profile_rows.append((index, profile, applicability, trace, source_state))
@@ -950,54 +1311,129 @@ def resolve(context: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]
             )
         ] = applicability
         if applicability == "unknown":
-            unresolved.append({"code": "APPLICABILITY_UNRESOLVED", "axis": profile["axis"], "authority_id": profile["profile_id"], "requirement_id": None})
+            unresolved.append(
+                {
+                    "code": "APPLICABILITY_UNRESOLVED",
+                    "axis": profile["axis"],
+                    "authority_id": profile["profile_id"],
+                    "requirement_id": None,
+                }
+            )
         elif applicability == "false":
-            unresolved.append({"code": "PROFILE_SCOPE_CONFLICT", "axis": profile["axis"], "authority_id": profile["profile_id"], "requirement_id": None})
+            unresolved.append(
+                {
+                    "code": "PROFILE_SCOPE_CONFLICT",
+                    "axis": profile["axis"],
+                    "authority_id": profile["profile_id"],
+                    "requirement_id": None,
+                }
+            )
         if source_state != "current":
-            unresolved.append({"code": "AUTHORITY_SOURCE_NOT_CURRENT", "axis": profile["axis"], "authority_id": profile["profile_id"], "requirement_id": None})
-    both_axes = all(context["profile_selection_state"][axis] == "selected" and any(row["axis"] == axis for row in context["selected_profiles"]) for axis in AXES)
+            unresolved.append(
+                {
+                    "code": "AUTHORITY_SOURCE_NOT_CURRENT",
+                    "axis": profile["axis"],
+                    "authority_id": profile["profile_id"],
+                    "requirement_id": None,
+                }
+            )
+    both_axes = all(
+        context["profile_selection_state"][axis] == "selected"
+        and any(row["axis"] == axis for row in context["selected_profiles"])
+        for axis in AXES
+    )
     if not both_axes:
         for axis in AXES:
             if not any(row["axis"] == axis for row in context["selected_profiles"]):
-                unresolved.append({"code": "JURISDICTION_UNRESOLVED", "axis": axis, "authority_id": None, "requirement_id": None})
-    selected_profile_pins = {(row["profile_id"], row["profile_version"], row["profile_digest"], row["axis"]) for row in context["selected_profiles"]}
+                unresolved.append(
+                    {
+                        "code": "JURISDICTION_UNRESOLVED",
+                        "axis": axis,
+                        "authority_id": None,
+                        "requirement_id": None,
+                    }
+                )
+    selected_profile_pins = {
+        (row["profile_id"], row["profile_version"], row["profile_digest"], row["axis"])
+        for row in context["selected_profiles"]
+    }
     selected_overlays: list[dict[str, Any]] = []
     selected_overlay_rows: list[tuple[int, dict[str, Any], str]] = []
-    for selection in sorted(context["selected_overlays"], key=lambda row: (row["axis"], row["overlay_kind"], row["overlay_id"], row["overlay_version"])):
+    for selection in sorted(
+        context["selected_overlays"],
+        key=lambda row: (
+            row["axis"],
+            row["overlay_kind"],
+            row["overlay_id"],
+            row["overlay_version"],
+        ),
+    ):
         key = (selection["overlay_id"], selection["overlay_version"])
         if key not in overlay_index:
             _fail("context.selected_overlays", f"unknown exact overlay pin: {key[0]}@{key[1]}")
         index, overlay = overlay_index[key]
-        if selection["overlay_kind"] != overlay["overlay_kind"] or selection["axis"] != overlay["axis"] or selection["overlay_digest"] != overlay["overlay_digest"]:
+        if (
+            selection["overlay_kind"] != overlay["overlay_kind"]
+            or selection["axis"] != overlay["axis"]
+            or selection["overlay_digest"] != overlay["overlay_digest"]
+        ):
             _fail("context.selected_overlays", f"exact overlay pin mismatch: {key[0]}@{key[1]}")
-        targets = {(row["profile_id"], row["profile_version"], row["profile_digest"], row["axis"]) for row in overlay["target_profiles"]}
+        targets = {
+            (row["profile_id"], row["profile_version"], row["profile_digest"], row["axis"])
+            for row in overlay["target_profiles"]
+        }
         matched = targets & selected_profile_pins
         if matched != targets:
-            _fail("context.selected_overlays", f"overlay does not have every exact base target selected: {overlay['overlay_id']}")
+            _fail(
+                "context.selected_overlays",
+                f"overlay does not have every exact base target selected: {overlay['overlay_id']}",
+            )
         base_applicability = "true"
         for target in sorted(targets):
             base_applicability = _combine_all(
                 base_applicability, selected_profile_applicability[target]
             )
         if base_applicability != "true":
-            unresolved.append({"code": "OVERLAY_BASE_UNRESOLVED", "axis": overlay["axis"], "authority_id": overlay["overlay_id"], "requirement_id": None})
-        selected_overlays.append({
-            "overlay_kind": overlay["overlay_kind"], "axis": overlay["axis"],
-            "overlay_id": overlay["overlay_id"], "overlay_version": overlay["overlay_version"],
-            "overlay_digest": overlay["overlay_digest"], "overlay_pointer": f"/overlays/{index}",
-            "target_profile_ids": sorted({row[0] for row in matched}), "requirements_removed": False,
-        })
+            unresolved.append(
+                {
+                    "code": "OVERLAY_BASE_UNRESOLVED",
+                    "axis": overlay["axis"],
+                    "authority_id": overlay["overlay_id"],
+                    "requirement_id": None,
+                }
+            )
+        selected_overlays.append(
+            {
+                "overlay_kind": overlay["overlay_kind"],
+                "axis": overlay["axis"],
+                "overlay_id": overlay["overlay_id"],
+                "overlay_version": overlay["overlay_version"],
+                "overlay_digest": overlay["overlay_digest"],
+                "overlay_pointer": f"/overlays/{index}",
+                "target_profile_ids": sorted({row[0] for row in matched}),
+                "requirements_removed": False,
+            }
+        )
         selected_overlay_rows.append((index, overlay, base_applicability))
     requirement_results: list[dict[str, Any]] = []
     collision_members: dict[str, list[str]] = {}
     authority_requirements: dict[tuple[str, str], list[str]] = {}
 
-    def add_requirements(authority_kind: str, index: int, authority: dict[str, Any], parent_applicability: str = "true") -> None:
+    def add_requirements(
+        authority_kind: str,
+        index: int,
+        authority: dict[str, Any],
+        parent_applicability: str = "true",
+    ) -> None:
         identity_key = "profile_id" if authority_kind == "profile" else "overlay_id"
         version_key = "profile_version" if authority_kind == "profile" else "overlay_version"
         digest_key = "profile_digest" if authority_kind == "profile" else "overlay_digest"
         base_pointer = "profiles" if authority_kind == "profile" else "overlays"
-        public_kind = authority_kind if authority_kind == "profile" else f"{authority['overlay_kind']}_overlay"
+        public_kind = (
+            authority_kind
+            if authority_kind == "profile"
+            else f"{authority['overlay_kind']}_overlay"
+        )
         authority_id = authority[identity_key]
         authority_requirements[(public_kind, authority_id)] = []
         for req_index, requirement in enumerate(authority["requirements"]):
@@ -1005,25 +1441,46 @@ def resolve(context: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]
             applicability = _combine_all(parent_applicability, req_result)
             pointer = f"/{base_pointer}/{index}/requirements/{req_index}"
             result = {
-                "requirement_id": requirement["requirement_id"], "authority_kind": public_kind,
-                "authority_id": authority_id, "authority_version": authority[version_key],
-                "authority_digest": authority[digest_key], "axis": authority["axis"],
+                "requirement_id": requirement["requirement_id"],
+                "authority_kind": public_kind,
+                "authority_id": authority_id,
+                "authority_version": authority[version_key],
+                "authority_digest": authority[digest_key],
+                "axis": authority["axis"],
                 "obligated_actor": requirement["obligated_actor"],
                 "consumer_scopes": sorted(requirement["consumer_scopes"]),
-                "applicability": applicability, "predicate_trace": trace,
-                "requirement_digest": digest(requirement), "requirement_pointer": pointer,
+                "applicability": applicability,
+                "predicate_trace": trace,
+                "requirement_digest": digest(requirement),
+                "requirement_pointer": pointer,
                 "authority_anchor_pointer": f"{pointer}/authority_anchor",
             }
             requirement_results.append(result)
-            authority_requirements[(public_kind, authority_id)].append(requirement["requirement_id"])
+            authority_requirements[(public_kind, authority_id)].append(
+                requirement["requirement_id"]
+            )
             collision_key = requirement["interaction"]["collision_key"]
             if collision_key is not None:
-                collision_members.setdefault(collision_key, []).append(requirement["requirement_id"])
+                collision_members.setdefault(collision_key, []).append(
+                    requirement["requirement_id"]
+                )
             if applicability == "unknown":
-                unresolved.append({"code": "APPLICABILITY_UNRESOLVED", "axis": authority["axis"], "authority_id": authority_id, "requirement_id": requirement["requirement_id"]})
+                unresolved.append(
+                    {
+                        "code": "APPLICABILITY_UNRESOLVED",
+                        "axis": authority["axis"],
+                        "authority_id": authority_id,
+                        "requirement_id": requirement["requirement_id"],
+                    }
+                )
             anchor_source = sources[requirement["authority_anchor"]["source_id"]]
             if not _source_current(anchor_source, context_as_of):
-                reason = {"code": "AUTHORITY_SOURCE_NOT_CURRENT", "axis": authority["axis"], "authority_id": authority_id, "requirement_id": requirement["requirement_id"]}
+                reason = {
+                    "code": "AUTHORITY_SOURCE_NOT_CURRENT",
+                    "axis": authority["axis"],
+                    "authority_id": authority_id,
+                    "requirement_id": requirement["requirement_id"],
+                }
                 if reason not in unresolved:
                     unresolved.append(reason)
 
@@ -1031,10 +1488,23 @@ def resolve(context: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]
         add_requirements("profile", index, profile, applicability)
     for index, overlay, base_applicability in selected_overlay_rows:
         add_requirements("overlay", index, overlay, base_applicability)
-    requirement_results.sort(key=lambda row: (row["axis"], row["authority_kind"], row["authority_id"], row["requirement_id"]))
+    requirement_results.sort(
+        key=lambda row: (
+            row["axis"],
+            row["authority_kind"],
+            row["authority_id"],
+            row["requirement_id"],
+        )
+    )
     collisions = [
-        {"collision_key": key, "requirement_ids": sorted(ids), "resolution": "parallel_authorities_require_human_resolution", "requirements_removed": False}
-        for key, ids in sorted(collision_members.items()) if len(set(ids)) >= 2
+        {
+            "collision_key": key,
+            "requirement_ids": sorted(ids),
+            "resolution": "parallel_authorities_require_human_resolution",
+            "requirements_removed": False,
+        }
+        for key, ids in sorted(collision_members.items())
+        if len(set(ids)) >= 2
     ]
     precedence_keys: list[tuple[str, str]] = []
     for axis_entry in context["display_precedence"]:
@@ -1043,21 +1513,58 @@ def resolve(context: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]
     trace_ids: list[tuple[str, str]] = []
     for key in precedence_keys:
         trace_ids.extend((key[1], req_id) for req_id in authority_requirements.get(key, []))
-    if {req_id for _, req_id in trace_ids} != {row["requirement_id"] for row in requirement_results} or len(trace_ids) != len(requirement_results):
+    if {req_id for _, req_id in trace_ids} != {
+        row["requirement_id"] for row in requirement_results
+    } or len(trace_ids) != len(requirement_results):
         _fail("context.display_precedence", "did not preserve every requirement exactly once")
     trace_order = [
-        {"position": index + 1, "requirement_id": req_id, "authority_id": authority_id, "purpose": "display_only_no_suppression"}
+        {
+            "position": index + 1,
+            "requirement_id": req_id,
+            "authority_id": authority_id,
+            "purpose": "display_only_no_suppression",
+        }
         for index, (authority_id, req_id) in enumerate(trace_ids)
     ]
-    unique_unresolved = {(row["code"], row["axis"], row["authority_id"], row["requirement_id"]): row for row in unresolved}
-    unresolved_rows = [unique_unresolved[key] for key in sorted(unique_unresolved, key=lambda item: tuple("" if part is None else part for part in item))]
-    applicability_resolved = both_axes and not any(row["code"] in {"APPLICABILITY_UNRESOLVED", "PROFILE_SCOPE_CONFLICT", "AUTHORITY_SOURCE_NOT_CURRENT", "OVERLAY_BASE_UNRESOLVED"} for row in unresolved_rows)
+    unique_unresolved = {
+        (row["code"], row["axis"], row["authority_id"], row["requirement_id"]): row
+        for row in unresolved
+    }
+    unresolved_rows = [
+        unique_unresolved[key]
+        for key in sorted(
+            unique_unresolved, key=lambda item: tuple("" if part is None else part for part in item)
+        )
+    ]
+    applicability_resolved = both_axes and not any(
+        row["code"]
+        in {
+            "APPLICABILITY_UNRESOLVED",
+            "PROFILE_SCOPE_CONFLICT",
+            "AUTHORITY_SOURCE_NOT_CURRENT",
+            "OVERLAY_BASE_UNRESOLVED",
+        }
+        for row in unresolved_rows
+    )
     allowed = both_axes and applicability_resolved
-    resolution_state = "resolved" if allowed else ("jurisdiction_unresolved" if not both_axes else "applicability_unresolved")
+    resolution_state = (
+        "resolved"
+        if allowed
+        else ("jurisdiction_unresolved" if not both_axes else "applicability_unresolved")
+    )
     output: dict[str, Any] = {
         "schema_version": "resolved-human-subjects-authority-context/1.0",
-        "context_pointer": {"context_record_id": context["context_record_id"], "schema_version": context["schema_version"], "context_digest": digest(_semantic_context(context))},
-        "registry_pointer": {"registry_id": registry["registry_id"], "registry_version": registry["registry_version"], "as_of": registry["as_of"], "registry_digest": digest(registry)},
+        "context_pointer": {
+            "context_record_id": context["context_record_id"],
+            "schema_version": context["schema_version"],
+            "context_digest": digest(_semantic_context(context)),
+        },
+        "registry_pointer": {
+            "registry_id": registry["registry_id"],
+            "registry_version": registry["registry_version"],
+            "as_of": registry["as_of"],
+            "registry_digest": digest(registry),
+        },
         "selected_profiles": selected_profiles,
         "selected_overlays": selected_overlays,
         "requirement_results": requirement_results,
@@ -1065,7 +1572,12 @@ def resolve(context: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]
         "trace_order": trace_order,
         "resolution_state": resolution_state,
         "unresolved_reasons": unresolved_rows,
-        "downstream_gate": {"both_axes_selected": both_axes, "exact_selection_resolved": True, "all_applicability_resolved": applicability_resolved, "profile_dependent_result_allowed": allowed},
+        "downstream_gate": {
+            "both_axes_selected": both_axes,
+            "exact_selection_resolved": True,
+            "all_applicability_resolved": applicability_resolved,
+            "profile_dependent_result_allowed": allowed,
+        },
     }
     output["resolved_digest"] = digest(output)
     return output

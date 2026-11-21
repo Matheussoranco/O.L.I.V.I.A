@@ -84,9 +84,7 @@ class TestDetectUncited(unittest.TestCase):
         """
         sentences = [
             {
-                "sentence_text": (
-                    "Two-thirds of respondents agreed with the policy proposal."
-                ),
+                "sentence_text": ("Two-thirds of respondents agreed with the policy proposal."),
                 "section_path": "3. Results > 3.1 Survey Outcomes",
                 "manifest_claim_id": "C-007",
                 "scoped_manifest_id": "M-2026-05-16T00:00:00Z-abcd",
@@ -106,9 +104,7 @@ class TestDetectUncited(unittest.TestCase):
         # carried through so the finding can be cross-referenced against the
         # active manifest. The detector preserves any caller-provided values.
         self.assertEqual(finding["manifest_claim_id"], "C-007")
-        self.assertEqual(
-            finding["scoped_manifest_id"], "M-2026-05-16T00:00:00Z-abcd"
-        )
+        self.assertEqual(finding["scoped_manifest_id"], "M-2026-05-16T00:00:00Z-abcd")
 
     def test_t_u6_adjacent_text_with_ref_marker_filters_candidate(self) -> None:
         """T-U6 — Step 9 closure (DEFERRED-CROSS-SENTENCE).
@@ -168,14 +164,9 @@ class TestDetectUncited(unittest.TestCase):
         twin. Without this test the detector could silently flag every cited
         sentence and ride T-U1..T-U5 green.
         """
-        cited = (
-            "Roughly 50% of participants withdrew before week four "
-            "<!--ref:smith2026-->."
-        )
+        cited = "Roughly 50% of participants withdrew before week four " "<!--ref:smith2026-->."
         is_candidate, _ = detect_uncited(cited)
-        self.assertFalse(
-            is_candidate, msg="ref marker present must short-circuit candidate"
-        )
+        self.assertFalse(is_candidate, msg="ref marker present must short-circuit candidate")
 
     def test_ref_marker_accepts_malformed_shapes(self) -> None:
         """Any `<!--ref:...-->` shape short-circuits the candidate check.
@@ -191,10 +182,7 @@ class TestDetectUncited(unittest.TestCase):
         """
         malformed_but_intentioned = [
             "Roughly 50% improved <!--ref:123bad-->.",
-            (
-                "Roughly 50% improved "
-                "<!--ref:smith2026 ok CONTAMINATED-PREPRINT EXTRA-->."
-            ),
+            ("Roughly 50% improved " "<!--ref:smith2026 ok CONTAMINATED-PREPRINT EXTRA-->."),
             "Roughly 50% improved <!--ref:smith+bad-->.",
         ]
         for sentence in malformed_but_intentioned:
@@ -324,8 +312,7 @@ class TestDetectUncited(unittest.TestCase):
                 self.assertFalse(
                     is_candidate,
                     msg=(
-                        "line-wrapped dotted version reference must be "
-                        f"rejected; got {tokens!r}"
+                        "line-wrapped dotted version reference must be " f"rejected; got {tokens!r}"
                     ),
                 )
 
@@ -345,10 +332,7 @@ class TestDetectUncited(unittest.TestCase):
             "Roughly 50% of cases improved <!--ref:smith-et-al-2026-->.",
             "Roughly 50% of cases improved <!--ref:smith-et-al-2026 ok-->.",
             "Roughly 50% of cases improved <!--ref:smith-2026 LOW-WARN-->.",
-            (
-                "Roughly 50% of cases improved "
-                "<!--ref:smith-2026 ok CONTAMINATED-PREPRINT-->."
-            ),
+            ("Roughly 50% of cases improved " "<!--ref:smith-2026 ok CONTAMINATED-PREPRINT-->."),
         ]
         for cited in cited_shapes:
             with self.subTest(cited=cited):
@@ -429,9 +413,7 @@ class TestDetectUncited(unittest.TestCase):
         for sentence, expected in quantifier_examples:
             with self.subTest(sentence=sentence):
                 is_candidate, tokens = detect_uncited(sentence)
-                self.assertTrue(
-                    is_candidate, msg=f"expected candidate for {sentence!r}"
-                )
+                self.assertTrue(is_candidate, msg=f"expected candidate for {sentence!r}")
                 self.assertIn(
                     expected,
                     tokens,
@@ -483,9 +465,7 @@ class TestDetectUncited(unittest.TestCase):
         and still pass a pure `assertRaises(ValueError)` check.
         """
         # Missing key: error must mention the index and the missing field.
-        with self.assertRaisesRegex(
-            ValueError, r"sentences\[0\] missing required 'sentence_text'"
-        ):
+        with self.assertRaisesRegex(ValueError, r"sentences\[0\] missing required 'sentence_text'"):
             detect_uncited_assertions([{"section_path": "1. Intro"}])
 
         # Non-string scalar: error must mention the index AND the type.
@@ -508,9 +488,7 @@ class TestDetectUncited(unittest.TestCase):
             yield {"sentence_text": "Roughly 50% improved."}
             yield {"section_path": "missing-key"}
 
-        with self.assertRaisesRegex(
-            ValueError, r"sentences\[1\] missing required 'sentence_text'"
-        ):
+        with self.assertRaisesRegex(ValueError, r"sentences\[1\] missing required 'sentence_text'"):
             detect_uncited_assertions(gen())
 
     def test_uncited_assertion_entry_raises_on_missing_trigger_tokens(

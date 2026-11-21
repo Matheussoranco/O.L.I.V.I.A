@@ -27,8 +27,10 @@ try:  # Direct execution puts scripts/ on sys.path.
         DOCUMENT_LOCATOR_PROVENANCE,
         EvidenceRowError,
         build_advisory,
-        render_markdown as render_evidence_rows_markdown,
         strict_percent_decode,
+    )
+    from evidence_rows import (
+        render_markdown as render_evidence_rows_markdown,
     )
     from resolve_human_subjects_authority import ContractError, digest, load_json
 except ModuleNotFoundError:  # Package-style imports used by some test runners.
@@ -41,8 +43,10 @@ except ModuleNotFoundError:  # Package-style imports used by some test runners.
         DOCUMENT_LOCATOR_PROVENANCE,
         EvidenceRowError,
         build_advisory,
-        render_markdown as render_evidence_rows_markdown,
         strict_percent_decode,
+    )
+    from scripts.evidence_rows import (
+        render_markdown as render_evidence_rows_markdown,
     )
     from scripts.resolve_human_subjects_authority import (  # type: ignore[no-redef]
         ContractError,
@@ -71,9 +75,7 @@ ADVISORY_STATUSES = frozenset(
         "ACCEPTANCE_UNVERIFIED",
     }
 )
-FAILURE_STATES = frozenset(
-    {"not_checked", "source_missing", "access_failed", "retrieval_failed"}
-)
+FAILURE_STATES = frozenset({"not_checked", "source_missing", "access_failed", "retrieval_failed"})
 LOCATOR_KINDS = frozenset({"document", "page", "section", "paragraph", "other"})
 REASON_CODES = frozenset(
     {
@@ -159,10 +161,14 @@ def _text(value: Any, path: str, *, maximum: int = 1000, empty: bool = False) ->
 
 def _identifier(value: Any, path: str) -> str:
     text = _text(value, path, maximum=200)
-    if not text[0].isalnum() or not text[0].isascii() or not all(
-        character.isascii()
-        and (character.islower() or character.isdigit() or character in "._-")
-        for character in text
+    if (
+        not text[0].isalnum()
+        or not text[0].isascii()
+        or not all(
+            character.isascii()
+            and (character.islower() or character.isdigit() or character in "._-")
+            for character in text
+        )
     ):
         _fail(path, "must use lowercase ASCII letters, digits, dot, underscore, or hyphen")
     return text
@@ -326,16 +332,16 @@ def _validate_draft(draft: dict[str, Any]) -> list[dict[str, Any]]:
             if captured_at is not None:
                 _fail(f"{path}.captured_at", "not_checked requires null")
         normalized = {
-                "requirement_id": requirement_id,
-                "expectation_pointer": expectation_pointer,
-                "artifact_id": artifact_id,
-                "coverage_check_state": check_state,
-                "advisory_coverage_status": status,
-                "document_locator": normalized_locator,
-                "quoted_anchor_encoded": encoded,
-                "failure_state": failure,
-                "captured_at": captured_at,
-            }
+            "requirement_id": requirement_id,
+            "expectation_pointer": expectation_pointer,
+            "artifact_id": artifact_id,
+            "coverage_check_state": check_state,
+            "advisory_coverage_status": status,
+            "document_locator": normalized_locator,
+            "quoted_anchor_encoded": encoded,
+            "failure_state": failure,
+            "captured_at": captured_at,
+        }
         identity = (
             requirement_id,
             expectation_pointer,
@@ -404,7 +410,10 @@ def _evidence_row(
             f"draft judgment {artifact_id}",
             "performed coverage requires explicit session-held content",
         )
-    if failure in {"source_missing", "access_failed", "retrieval_failed"} and source_text is not None:
+    if (
+        failure in {"source_missing", "access_failed", "retrieval_failed"}
+        and source_text is not None
+    ):
         _fail(
             f"draft judgment {artifact_id}.failure_state",
             "contradicts explicitly supplied session content",
@@ -482,7 +491,9 @@ def _finding_from_judgments(
         if len(judgments) < 2:
             _fail(expectation_pointer, "CONFLICTING requires two distinct positive passages")
     elif status == "NOT_LOCATED":
-        if {row["artifact_id"] for row in judgments} != allowed_artifacts or len(judgments) != len(allowed_artifacts):
+        if {row["artifact_id"] for row in judgments} != allowed_artifacts or len(judgments) != len(
+            allowed_artifacts
+        ):
             _fail(
                 expectation_pointer,
                 "NOT_LOCATED must account exactly once for every eligible artifact",
@@ -537,9 +548,7 @@ def _finding_from_judgments(
             )
             for row in evidence
         }
-        replay_passage_identities = {
-            identity[:4] for identity in replay_row_identities
-        }
+        replay_passage_identities = {identity[:4] for identity in replay_row_identities}
         if len(replay_row_identities) < 2 or len(replay_passage_identities) < 2:
             _fail(
                 expectation_pointer,
@@ -702,19 +711,13 @@ def finalize_advisory(
 ) -> dict[str, Any]:
     """Finalize explicit evaluator judgments after exact #667 replay."""
 
-    binding = _preflight(
-        manifest, inventory, packet_root, context, registry, resolved
-    )
+    binding = _preflight(manifest, inventory, packet_root, context, registry, resolved)
     judgments = _validate_draft(draft)
     applicability_unresolved = _overlay_applicability_unresolved(manifest)
     # Do not inspect supplied content when authority applicability is unresolved.
     # Draft observations are still parsed so any attempt to target such a
     # requirement fails as an explicit ineligible judgment below.
-    contents = (
-        {}
-        if applicability_unresolved
-        else _validate_session_contents(session_sources)
-    )
+    contents = {} if applicability_unresolved else _validate_session_contents(session_sources)
     artifacts, observations = _artifact_indexes(inventory, manifest)
     unknown_sources = set(contents) - set(artifacts)
     if unknown_sources:
@@ -901,11 +904,7 @@ def _md(value: Any) -> str:
         return "not checked"
     return "".join(
         f"&#{ord(character)};"
-        if (
-            character.isascii()
-            and not character.isalnum()
-            and not character.isspace()
-        )
+        if (character.isascii() and not character.isalnum() and not character.isspace())
         or unicodedata.category(character) in {"Cc", "Cf", "Zl", "Zp"}
         else character
         for character in str(value)
@@ -1120,9 +1119,7 @@ def main(argv: list[str] | None = None) -> int:
         # authority gate is open.  In that state #681 reports applicability as
         # unresolved and must not even open the named content map.
         session_sources = (
-            {}
-            if _overlay_applicability_unresolved(manifest)
-            else _session_map(args.source_map)
+            {} if _overlay_applicability_unresolved(manifest) else _session_map(args.source_map)
         )
         if args.command == "build":
             advisory = finalize_advisory(

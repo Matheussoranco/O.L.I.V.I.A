@@ -91,9 +91,7 @@ def _sha256(data: bytes) -> str:
 
 
 def _canonical_json(value: Any) -> bytes:
-    text = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    )
+    text = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return (text + "\n").encode("utf-8")
 
 
@@ -176,11 +174,12 @@ def validate_assets(heldout: dict[str, Any], templates: dict[str, str]) -> None:
         anchor_rel, anchor_fragment = row["rule_anchor"].split("#", 1)
         anchor_path = REPO_ROOT / anchor_rel
         if not anchor_path.is_file():
-            raise ProbeError(f"{row['scenario_id']}: rule anchor path does not exist: {anchor_path}")
+            raise ProbeError(
+                f"{row['scenario_id']}: rule anchor path does not exist: {anchor_path}"
+            )
         anchor_text = anchor_path.read_text(encoding="utf-8")
         heading_slugs = {
-            github_slug(match.group("title"))
-            for match in HEADING_RE.finditer(anchor_text)
+            github_slug(match.group("title")) for match in HEADING_RE.finditer(anchor_text)
         }
         if anchor_fragment not in heading_slugs:
             raise ProbeError(
@@ -199,9 +198,7 @@ def validate_assets(heldout: dict[str, Any], templates: dict[str, str]) -> None:
         for placeholder in PLACEHOLDERS:
             if template.count(placeholder) != 1:
                 raise ProbeError(f"{condition}: placeholder {placeholder} must occur exactly once")
-        unknowns = template.replace("{{TASK}}", "").replace(
-            "{{EXTERNAL_CONTENT}}", ""
-        )
+        unknowns = template.replace("{{TASK}}", "").replace("{{EXTERNAL_CONTENT}}", "")
         if "{{" in unknowns:
             raise ProbeError(f"{condition}: unknown template placeholder")
         all_text.append(template)
@@ -341,9 +338,7 @@ def score_response(
     }
 
 
-def score_output(
-    scenario_id: str, content_condition: str, response_path: Path
-) -> dict[str, Any]:
+def score_output(scenario_id: str, content_condition: str, response_path: Path) -> dict[str, Any]:
     heldout, _templates = load_assets()
     scenarios = scenario_index(heldout)
     if scenario_id not in scenarios:

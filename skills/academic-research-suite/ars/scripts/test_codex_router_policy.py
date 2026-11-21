@@ -11,7 +11,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
 ARS_ROOT = Path(__file__).resolve().parents[1]
 SUITE_ROOT = ARS_ROOT.parent
 ROUTER = SUITE_ROOT / "SKILL.md"

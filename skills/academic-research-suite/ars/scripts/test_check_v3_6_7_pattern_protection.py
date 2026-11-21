@@ -25,13 +25,9 @@ LINT_SCRIPT_REL = "scripts/check_v3_6_7_pattern_protection.py"
 
 def _archive_repo(dest: Path) -> None:
     """Materialise current `HEAD` into `dest` via git archive | tar."""
-    archive = subprocess.Popen(
-        ["git", "archive", "HEAD"], cwd=REPO_ROOT, stdout=subprocess.PIPE
-    )
+    archive = subprocess.Popen(["git", "archive", "HEAD"], cwd=REPO_ROOT, stdout=subprocess.PIPE)
     try:
-        subprocess.run(
-            ["tar", "-x", "-C", str(dest)], stdin=archive.stdout, check=True
-        )
+        subprocess.run(["tar", "-x", "-C", str(dest)], stdin=archive.stdout, check=True)
     finally:
         if archive.stdout is not None:
             archive.stdout.close()
@@ -59,10 +55,7 @@ def _mutate(repo_dir: Path, rel_path: str, old: str, new: str) -> None:
     path = repo_dir / rel_path
     text = path.read_text(encoding="utf-8")
     if old not in text:
-        raise AssertionError(
-            f"Mutation source string not found in {rel_path}: "
-            f"{old[:80]!r}..."
-        )
+        raise AssertionError(f"Mutation source string not found in {rel_path}: " f"{old[:80]!r}...")
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
@@ -500,6 +493,7 @@ class INV3MutationTests(_MutationTestBase):
         # must be flagged.
         manifest_path = self._repo_dir / "scripts/v3_6_7_inversion_manifest.json"
         import json
+
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
         self.assertEqual(len(data["files"]), 3)
         data["files"] = data["files"][:2]
@@ -513,6 +507,7 @@ class INV3MutationTests(_MutationTestBase):
         # widens the manifest without doing the corresponding prompt edit.
         manifest_path = self._repo_dir / "scripts/v3_6_7_inversion_manifest.json"
         import json
+
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
         data["files"].append("deep-research/agents/bibliography_agent.md")
         manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
@@ -576,14 +571,12 @@ class CodexR1MutationTests(_MutationTestBase):
         bibliography = self._repo_dir / "deep-research/agents/bibliography_agent.md"
         original = bibliography.read_text(encoding="utf-8")
         bibliography.write_text(
-            original
-            + "\n\n## PATTERN PROTECTION (v3.6.7)\n\n"
-            + self.CANONICAL_BULLET
-            + "\n",
+            original + "\n\n## PATTERN PROTECTION (v3.6.7)\n\n" + self.CANONICAL_BULLET + "\n",
             encoding="utf-8",
         )
         manifest_path = self._repo_dir / "scripts/v3_6_7_inversion_manifest.json"
         import json
+
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
         data["files"].append("deep-research/agents/bibliography_agent.md")
         manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
@@ -595,6 +588,7 @@ class CodexR1MutationTests(_MutationTestBase):
         # R1 fix), even if the path is otherwise valid.
         manifest_path = self._repo_dir / "scripts/v3_6_7_inversion_manifest.json"
         import json
+
         data = json.loads(manifest_path.read_text(encoding="utf-8"))
         data["files"].append(data["files"][0])  # duplicate first entry
         manifest_path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")

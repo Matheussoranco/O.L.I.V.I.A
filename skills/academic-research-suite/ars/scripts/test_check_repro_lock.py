@@ -1,9 +1,9 @@
 """Unit tests for check_repro_lock.py."""
 import subprocess
+import textwrap
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import textwrap
 
 from tests.test_helpers import run_script
 
@@ -15,7 +15,8 @@ def _run(path: Path) -> subprocess.CompletedProcess:
 
 
 def _valid_passport_yaml() -> str:
-    return textwrap.dedent("""\
+    return textwrap.dedent(
+        """\
         origin_skill: deep-research
         origin_mode: full
         origin_date: "2026-04-15T10:00:00Z"
@@ -42,7 +43,8 @@ def _valid_passport_yaml() -> str:
           cross_model:
             enabled: false
             secondary_model_id: null
-        """)
+        """
+    )
 
 
 class TestReproLock(unittest.TestCase):
@@ -76,7 +78,7 @@ class TestReproLock(unittest.TestCase):
     def test_missing_subfield_fails(self) -> None:
         with TemporaryDirectory() as tmp:
             p = Path(tmp) / "passport.yaml"
-            y = _valid_passport_yaml().replace('ars_version: "3.3.5"\n  ', '')
+            y = _valid_passport_yaml().replace('ars_version: "3.3.5"\n  ', "")
             p.write_text(y)
             result = _run(p)
             self.assertEqual(result.returncode, 1)

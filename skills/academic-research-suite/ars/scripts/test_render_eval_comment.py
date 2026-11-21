@@ -14,8 +14,9 @@ from scripts._eval_threshold_gate import failed_tasks
 from scripts.render_eval_comment import _task_failures, main, render_comment
 
 
-def _measured(name, metric="accuracy", value=1.0, threshold=0.9,
-              comparison=">=", passed=True, per_class=None):
+def _measured(
+    name, metric="accuracy", value=1.0, threshold=0.9, comparison=">=", passed=True, per_class=None
+):
     task = {
         "task_name": name,
         "status": "measured",
@@ -53,11 +54,14 @@ def _render(tasks):
 
 
 def test_all_passed_verdict_line():
-    out = _render([_measured("citation_extraction"),
-                   _measured("rq_framing_patterns", metric="balanced_accuracy",
-                             threshold=0.75),
-                   _pending("field_norm_severity"),
-                   _pending("surface_form_parity")])
+    out = _render(
+        [
+            _measured("citation_extraction"),
+            _measured("rq_framing_patterns", metric="balanced_accuracy", threshold=0.75),
+            _pending("field_norm_severity"),
+            _pending("surface_form_parity"),
+        ]
+    )
     assert "✅ 2/2 measured tasks passed · 2 pending (not wired)" in out
 
 
@@ -67,8 +71,7 @@ def test_measured_row_renders_metric_value_threshold():
 
 
 def test_pending_row_uses_placeholder_columns():
-    out = _render([_measured("citation_extraction"),
-                   _pending("field_norm_severity")])
+    out = _render([_measured("citation_extraction"), _pending("field_norm_severity")])
     assert "| field_norm_severity | — | — | — | ⏸️ pending |" in out
 
 
@@ -81,25 +84,35 @@ def test_aggregate_failure_marks_row_and_verdict():
 def test_per_class_only_failure_still_fails_row():
     # Aggregate passes but a per-class metric fails: the gate blocks (#328),
     # so the row and the verdict must not read as a clean pass.
-    per_class = [{"class_name": "high", "metric": "accuracy",
-                  "value": 0.70, "threshold_value": 0.85,
-                  "comparison": ">=", "passed": False}]
+    per_class = [
+        {
+            "class_name": "high",
+            "metric": "accuracy",
+            "value": 0.70,
+            "threshold_value": 0.85,
+            "comparison": ">=",
+            "passed": False,
+        }
+    ]
     out = _render([_measured("citation_extraction", per_class=per_class)])
     assert "❌ (per-class)" in out
     assert "❌ 0/1 measured tasks passed" in out
 
 
 def test_lower_is_better_comparison_passes_through():
-    out = _render([_measured("field_norm_severity", metric="fnr", value=0.10,
-                             threshold=0.30, comparison="<=")])
+    out = _render(
+        [
+            _measured(
+                "field_norm_severity", metric="fnr", value=0.10, threshold=0.30, comparison="<="
+            )
+        ]
+    )
     assert "| field_norm_severity | fnr | 0.10 | ≤ 0.30 | ✅ |" in out
 
 
 def test_measured_rows_sort_before_pending():
-    out = _render([_pending("surface_form_parity"),
-                   _measured("citation_extraction")])
-    assert out.index("| citation_extraction |") < out.index(
-        "| surface_form_parity |")
+    out = _render([_pending("surface_form_parity"), _measured("citation_extraction")])
+    assert out.index("| citation_extraction |") < out.index("| surface_form_parity |")
 
 
 def test_no_pending_omits_pending_suffix():
@@ -116,8 +129,7 @@ def test_raw_json_folded_in_details():
 
 
 def test_cli_main_writes_markdown(tmp_path, capsys):
-    report = {"per_task": [_measured("citation_extraction"),
-                           _pending("surface_form_parity")]}
+    report = {"per_task": [_measured("citation_extraction"), _pending("surface_form_parity")]}
     path = tmp_path / "eval_report.json"
     path.write_text(json.dumps(report, indent=2), encoding="utf-8")
     assert main([str(path)]) == 0
@@ -136,19 +148,23 @@ def test_failure_signal_agrees_with_threshold_gate():
     # This pin makes the mirror loud instead of silent: if a future gated axis
     # lands in _eval_threshold_gate but not here, this fails in CI rather than
     # the comment rendering green on a run the gate blocks.
-    report = {"per_task": [
-        _measured("agg_fail", value=0.5, passed=False),
-        _measured("pc_fail", per_class=[{"class_name": "high",
-                                         "metric": "accuracy",
-                                         "passed": False}]),
-        _measured("both_fail", value=0.5, passed=False,
-                  per_class=[{"class_name": "low", "metric": "accuracy",
-                              "passed": False}]),
-        _measured("clean"),
-        _pending("pending_task"),
-    ]}
-    renderer_failed = {t["task_name"] for t in report["per_task"]
-                       if any(_task_failures(t))}
+    report = {
+        "per_task": [
+            _measured("agg_fail", value=0.5, passed=False),
+            _measured(
+                "pc_fail", per_class=[{"class_name": "high", "metric": "accuracy", "passed": False}]
+            ),
+            _measured(
+                "both_fail",
+                value=0.5,
+                passed=False,
+                per_class=[{"class_name": "low", "metric": "accuracy", "passed": False}],
+            ),
+            _measured("clean"),
+            _pending("pending_task"),
+        ]
+    }
+    renderer_failed = {t["task_name"] for t in report["per_task"] if any(_task_failures(t))}
     gate_failed = {key.split(".")[0] for key in failed_tasks(report)}
     assert renderer_failed == gate_failed == {"agg_fail", "pc_fail", "both_fail"}
 

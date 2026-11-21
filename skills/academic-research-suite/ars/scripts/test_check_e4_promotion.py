@@ -8,9 +8,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_e4_promotion as promotion
-
 
 STEM = "2026-08-01-ms00_clean-post-r1"
 
@@ -18,14 +16,11 @@ STEM = "2026-08-01-ms00_clean-post-r1"
 def _write_run(root: Path, *, blocked: bool = False) -> Path:
     runs = root / "runs"
     record_dir = runs / "blocked" if blocked else runs
-    raw = (runs / "raw" / "blocked" / STEM if blocked
-           else runs / "raw" / STEM)
+    raw = runs / "raw" / "blocked" / STEM if blocked else runs / "raw" / STEM
     record_dir.mkdir(parents=True, exist_ok=True)
     raw.mkdir(parents=True, exist_ok=True)
-    (raw / "dispatch.log").write_text(
-        "[PHASE1-GRAMMAR: synthetic diagnostic]\n", encoding="utf-8")
-    (raw / "methodology.phase1.a1.md").write_text(
-        "rejected response\n", encoding="utf-8")
+    (raw / "dispatch.log").write_text("[PHASE1-GRAMMAR: synthetic diagnostic]\n", encoding="utf-8")
+    (raw / "methodology.phase1.a1.md").write_text("rejected response\n", encoding="utf-8")
     prefix = os.path.relpath(raw, record_dir).replace(os.sep, "/") + "/"
     record = {
         "measurement_status": "blocked" if blocked else "completed",
@@ -34,20 +29,20 @@ def _write_run(root: Path, *, blocked: bool = False) -> Path:
         "score_eligible": not blocked,
         "evidence_contract": "reviewer-e4/2026-07-27",
         "raw_bundle": prefix,
-        "phase1_retries": [{
-            "role": "methodology",
-            "diagnostic": "[PHASE1-GRAMMAR: synthetic diagnostic]",
-            "diagnostic_form": "verbatim",
-            "rejected_response_preserved": True,
-            "rejected_response_location": (
-                prefix + "methodology.phase1.a1.md"),
-            "checker_output_preserved": True,
-            "checker_output_location": prefix + "dispatch.log",
-        }],
+        "phase1_retries": [
+            {
+                "role": "methodology",
+                "diagnostic": "[PHASE1-GRAMMAR: synthetic diagnostic]",
+                "diagnostic_form": "verbatim",
+                "rejected_response_preserved": True,
+                "rejected_response_location": (prefix + "methodology.phase1.a1.md"),
+                "checker_output_preserved": True,
+                "checker_output_location": prefix + "dispatch.log",
+            }
+        ],
     }
     record_path = record_dir / f"{STEM}.json"
-    record_path.write_text(
-        json.dumps(record, indent=1) + "\n", encoding="utf-8")
+    record_path.write_text(json.dumps(record, indent=1) + "\n", encoding="utf-8")
     return record_path
 
 
@@ -69,16 +64,14 @@ def test_a_pristine_promoted_copy_passes(tmp_path, blocked):
 
 def test_a_changed_file_fails(tmp_path):
     source, destination = _pair(tmp_path)
-    (destination / "runs" / "raw" / STEM / "dispatch.log").write_text(
-        "changed\n", encoding="utf-8")
+    (destination / "runs" / "raw" / STEM / "dispatch.log").write_text("changed\n", encoding="utf-8")
     with pytest.raises(promotion.PromotionError, match="changed"):
         promotion.verify_promotion(source, destination, STEM)
 
 
 def test_an_omitted_file_fails(tmp_path):
     source, destination = _pair(tmp_path)
-    (destination / "runs" / "raw" / STEM
-     / "methodology.phase1.a1.md").unlink()
+    (destination / "runs" / "raw" / STEM / "methodology.phase1.a1.md").unlink()
     with pytest.raises(promotion.PromotionError, match="missing|path set"):
         promotion.verify_promotion(source, destination, STEM)
 
@@ -86,7 +79,8 @@ def test_an_omitted_file_fails(tmp_path):
 def test_an_inserted_file_fails(tmp_path):
     source, destination = _pair(tmp_path)
     (destination / "runs" / "raw" / STEM / "extra.txt").write_text(
-        "not in source\n", encoding="utf-8")
+        "not in source\n", encoding="utf-8"
+    )
     with pytest.raises(promotion.PromotionError, match="extra|path set"):
         promotion.verify_promotion(source, destination, STEM)
 
@@ -128,7 +122,8 @@ def test_a_lexically_aliased_raw_bundle_fails_canonical_layout(tmp_path):
         loaded["raw_bundle"] = f"raw/../raw/{STEM}/"
         for retry in loaded["phase1_retries"]:
             for key in (
-                "rejected_response_location", "checker_output_location",
+                "rejected_response_location",
+                "checker_output_location",
             ):
                 retry[key] = retry[key].replace("raw/", "raw/../raw/", 1)
         record.write_text(json.dumps(loaded) + "\n", encoding="utf-8")
@@ -141,8 +136,7 @@ def test_an_unresolved_declared_location_fails_even_when_both_copies_match(
 ):
     source, destination = _pair(tmp_path)
     for root in (source, destination):
-        (root / "runs" / "raw" / STEM
-         / "methodology.phase1.a1.md").unlink()
+        (root / "runs" / "raw" / STEM / "methodology.phase1.a1.md").unlink()
     with pytest.raises(promotion.PromotionError, match="does not resolve"):
         promotion.verify_promotion(source, destination, STEM)
 

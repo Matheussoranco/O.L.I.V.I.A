@@ -20,24 +20,17 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 EVIDENCE_SCHEMA = Path("shared/contracts/evidence/evidence_row_v1_1.schema.json")
-ADVISORY_SCHEMA = Path(
-    "shared/contracts/human_subjects/content_coverage_advisory.schema.json"
-)
+ADVISORY_SCHEMA = Path("shared/contracts/human_subjects/content_coverage_advisory.schema.json")
 EVIDENCE_RUNTIME = Path("scripts/evidence_rows.py")
 ADVISORY_RUNTIME = Path("scripts/build_content_coverage_advisory.py")
 CONTRACT_README = Path("shared/contracts/README.md")
 EVIDENCE_PROTOCOL = Path("shared/references/evidence_row_protocol.md")
 PACKET_PROTOCOL = Path("shared/references/submission_packet_manifest_protocol.md")
-ADVISORY_PROTOCOL = Path(
-    "shared/references/authority_content_coverage_advisory_protocol.md"
-)
-DESIGN_SPEC = Path(
-    "docs/design/2026-08-09-681-authority-content-coverage-advisory-spec.md"
-)
+ADVISORY_PROTOCOL = Path("shared/references/authority_content_coverage_advisory_protocol.md")
+DESIGN_SPEC = Path("docs/design/2026-08-09-681-authority-content-coverage-advisory-spec.md")
 HELDOUT_ROOT = Path("evals/heldout")
 HELDOUT_STATUS = HELDOUT_ROOT / "authority_content_coverage" / "README.md"
 DEEP_SKILL = Path("deep-research/WORKFLOW.md")
@@ -185,7 +178,7 @@ REQUIRED_POINTERS = {
         str(ADVISORY_RUNTIME),
         "validate_submission_packet_manifest",
         "evaluation_status=UNMEASURED",
-        "never synthesize an \"unmeasured\" measurement JSON file",
+        'never synthesize an "unmeasured" measurement JSON file',
     ),
     DESIGN_SPEC: (
         "evidence-row/1.1",
@@ -210,7 +203,7 @@ REQUIRED_POINTERS = {
         str(ADVISORY_PROTOCOL),
         str(ADVISORY_SCHEMA),
         str(ADVISORY_RUNTIME),
-        "validate_advisory(...)" ,
+        "validate_advisory(...)",
         "LLM-ADVISORY",
         "evaluation_status=UNMEASURED",
     ),
@@ -218,7 +211,7 @@ REQUIRED_POINTERS = {
         str(ADVISORY_PROTOCOL),
         str(ADVISORY_SCHEMA),
         str(ADVISORY_RUNTIME),
-        "validate_advisory(...)" ,
+        "validate_advisory(...)",
         "LLM-ADVISORY",
         "evaluation_status=UNMEASURED",
     ),
@@ -226,7 +219,7 @@ REQUIRED_POINTERS = {
         str(ADVISORY_PROTOCOL),
         str(ADVISORY_SCHEMA),
         str(ADVISORY_RUNTIME),
-        "validate_advisory(...)" ,
+        "validate_advisory(...)",
         "LLM-ADVISORY",
         "evaluation_status=UNMEASURED",
     ),
@@ -292,14 +285,10 @@ def _schema_errors(root: Path) -> list[str]:
     row_properties = row_schema.get("properties", {})
     if row_properties.get("schema_version", {}).get("const") != "evidence-row/1.1":
         errors.append(f"{EVIDENCE_SCHEMA}: schema version drifted")
-    if row_properties.get("surface", {}).get("const") != (
-        "authority_profile_content_coverage"
-    ):
+    if row_properties.get("surface", {}).get("const") != ("authority_profile_content_coverage"):
         errors.append(f"{EVIDENCE_SCHEMA}: advisory surface drifted")
     try:
-        states = set(
-            row_schema["$defs"]["excerpt"]["properties"]["state"]["enum"]
-        )
+        states = set(row_schema["$defs"]["excerpt"]["properties"]["state"]["enum"])
     except (KeyError, TypeError):
         states = set()
     if states != ADVISORY_STATES:
@@ -311,9 +300,7 @@ def _schema_errors(root: Path) -> list[str]:
         errors.append(f"{EVIDENCE_SCHEMA}: advisory cache must stay not_used/null")
     forbidden = _property_names(row_schema) & FORBIDDEN_SCHEMA_FIELDS
     if forbidden:
-        errors.append(
-            f"{EVIDENCE_SCHEMA}: forbidden determination fields: {sorted(forbidden)}"
-        )
+        errors.append(f"{EVIDENCE_SCHEMA}: forbidden determination fields: {sorted(forbidden)}")
 
     if advisory_schema.get("additionalProperties") is not False:
         errors.append(f"{ADVISORY_SCHEMA}: root must be closed")
@@ -342,9 +329,7 @@ def _schema_errors(root: Path) -> list[str]:
             errors.append(f"{ADVISORY_SCHEMA}: boundary.{key} must remain true")
     forbidden = _property_names(advisory_schema) & FORBIDDEN_SCHEMA_FIELDS
     if forbidden:
-        errors.append(
-            f"{ADVISORY_SCHEMA}: forbidden determination fields: {sorted(forbidden)}"
-        )
+        errors.append(f"{ADVISORY_SCHEMA}: forbidden determination fields: {sorted(forbidden)}")
 
     try:
         draft = advisory_schema["$defs"]["advisory_draft"]
@@ -354,9 +339,10 @@ def _schema_errors(root: Path) -> list[str]:
         return errors
     if draft.get("additionalProperties") is not False:
         errors.append(f"{ADVISORY_SCHEMA}: advisory draft root must be closed")
-    if set(draft.get("required", ())) != DRAFT_ROOT_KEYS or set(
-        draft.get("properties", {})
-    ) != DRAFT_ROOT_KEYS:
+    if (
+        set(draft.get("required", ())) != DRAFT_ROOT_KEYS
+        or set(draft.get("properties", {})) != DRAFT_ROOT_KEYS
+    ):
         errors.append(f"{ADVISORY_SCHEMA}: advisory draft root fields drifted")
     if draft.get("properties", {}).get("schema_version", {}).get("const") != (
         "content-coverage-advisory-draft/1.0"
@@ -366,15 +352,15 @@ def _schema_errors(root: Path) -> list[str]:
         errors.append(f"{ADVISORY_SCHEMA}: advisory draft layer drifted")
     if judgment.get("additionalProperties") is not False:
         errors.append(f"{ADVISORY_SCHEMA}: draft judgment must be closed")
-    if set(judgment.get("required", ())) != DRAFT_JUDGMENT_KEYS or set(
-        judgment.get("properties", {})
-    ) != DRAFT_JUDGMENT_KEYS:
+    if (
+        set(judgment.get("required", ())) != DRAFT_JUDGMENT_KEYS
+        or set(judgment.get("properties", {})) != DRAFT_JUDGMENT_KEYS
+    ):
         errors.append(f"{ADVISORY_SCHEMA}: draft judgment fields drifted")
-    if set(
-        judgment.get("properties", {})
-        .get("coverage_check_state", {})
-        .get("enum", ())
-    ) != {"performed", "not_checked"}:
+    if set(judgment.get("properties", {}).get("coverage_check_state", {}).get("enum", ())) != {
+        "performed",
+        "not_checked",
+    }:
         errors.append(f"{ADVISORY_SCHEMA}: draft check-state vocabulary drifted")
     status_choices = {
         token
@@ -387,20 +373,21 @@ def _schema_errors(root: Path) -> list[str]:
         errors.append(f"{ADVISORY_SCHEMA}: draft status vocabulary drifted")
     failure_choices = {
         token
-        for branch in judgment.get("properties", {})
-        .get("failure_state", {})
-        .get("oneOf", ())
+        for branch in judgment.get("properties", {}).get("failure_state", {}).get("oneOf", ())
         for token in branch.get("enum", ())
     }
     if failure_choices != FAILURE_STATES:
         errors.append(f"{ADVISORY_SCHEMA}: draft failure vocabulary drifted")
-    if set(
-        judgment.get("properties", {})
-        .get("document_locator", {})
-        .get("properties", {})
-        .get("kind", {})
-        .get("enum", ())
-    ) != LOCATOR_KINDS:
+    if (
+        set(
+            judgment.get("properties", {})
+            .get("document_locator", {})
+            .get("properties", {})
+            .get("kind", {})
+            .get("enum", ())
+        )
+        != LOCATOR_KINDS
+    ):
         errors.append(f"{ADVISORY_SCHEMA}: document-locator vocabulary drifted")
 
     validator = Draft202012Validator(
@@ -561,9 +548,9 @@ def _import_errors(path: Path, tree: ast.Module) -> list[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             names = [node.module]
         for name in names:
-            if (
-                name.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS
-                or any(name == prefix or name.startswith(prefix + ".") for prefix in FORBIDDEN_IMPORT_PREFIXES)
+            if name.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS or any(
+                name == prefix or name.startswith(prefix + ".")
+                for prefix in FORBIDDEN_IMPORT_PREFIXES
             ):
                 errors.append(f"{path}: forbidden model/network/process import {name}")
     return errors
@@ -633,8 +620,7 @@ def _runtime_ast_errors(root: Path) -> list[str]:
         fields: set[Any] | None = None
         for node in ast.walk(draft_validator):
             if isinstance(node, ast.Assign) and any(
-                isinstance(target, ast.Name) and target.id == "fields"
-                for target in node.targets
+                isinstance(target, ast.Name) and target.id == "fields" for target in node.targets
             ):
                 fields = _literal_set(node.value)
                 break
@@ -654,9 +640,7 @@ def _runtime_ast_errors(root: Path) -> list[str]:
             "'not_checked requires null'",
         )
         if any(marker not in manual for marker in conditional_markers):
-            errors.append(
-                f"{ADVISORY_RUNTIME}: manual draft conditional matrix drifted"
-            )
+            errors.append(f"{ADVISORY_RUNTIME}: manual draft conditional matrix drifted")
 
     for name in ("finalize_advisory", "validate_advisory"):
         parameters = {
@@ -681,9 +665,7 @@ def _runtime_ast_errors(root: Path) -> list[str]:
                     f"{ADVISORY_RUNTIME}.{name}: missing {required_parameter} replay input"
                 )
 
-    replay_nodes = _reachable_nodes(
-        functions, {"finalize_advisory", "validate_advisory"}
-    )
+    replay_nodes = _reachable_nodes(functions, {"finalize_advisory", "validate_advisory"})
     replay_calls = {
         called
         for node in replay_nodes
@@ -692,9 +674,7 @@ def _runtime_ast_errors(root: Path) -> list[str]:
         if (called := _call_name(child)) is not None
     }
     if "validate_submission_packet_manifest" not in replay_calls:
-        errors.append(
-            f"{ADVISORY_RUNTIME}: finalize/validate do not reach exact #667 replay"
-        )
+        errors.append(f"{ADVISORY_RUNTIME}: finalize/validate do not reach exact #667 replay")
 
     pure_nodes = _reachable_nodes(
         functions, {"finalize_advisory", "validate_advisory", "render_advisory"}
@@ -709,9 +689,7 @@ def _runtime_ast_errors(root: Path) -> list[str]:
                     )
     for child in ast.walk(runtime_tree):
         if isinstance(child, ast.Call) and _call_name(child) in FORBIDDEN_SCAN_CALLS:
-            errors.append(
-                f"{ADVISORY_RUNTIME}: forbidden ambient scan {_call_name(child)}()"
-            )
+            errors.append(f"{ADVISORY_RUNTIME}: forbidden ambient scan {_call_name(child)}()")
     return errors
 
 

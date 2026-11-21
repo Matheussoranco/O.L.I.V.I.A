@@ -61,6 +61,7 @@ def stale_advisory_days() -> int:
         return _STALE_ADVISORY_DEFAULT_DAYS
     return value
 
+
 _DEFAULT_PATH = Path.home() / ".cache" / "ars" / "verification.db"
 _ENV_PATH = "ARS_VERIFICATION_CACHE_PATH"
 
@@ -124,7 +125,10 @@ class VerificationCache:
         return conn
 
     def get(
-        self, citation_key: str, resolver_name: str, query_form: str,
+        self,
+        citation_key: str,
+        resolver_name: str,
+        query_form: str,
     ) -> dict[str, Any] | None:
         """Return the cached response, or None on miss / expired entry.
 
@@ -202,8 +206,7 @@ class VerificationCache:
         """
         with closing(self._connect()) as conn:
             rows = conn.execute(
-                "SELECT verification_timestamp FROM verification_cache "
-                "WHERE citation_key = ?",
+                "SELECT verification_timestamp FROM verification_cache " "WHERE citation_key = ?",
                 (citation_key,),
             ).fetchall()
         ages = []
@@ -218,7 +221,10 @@ class VerificationCache:
         return max(ages) if ages else None
 
     def row_age_days(
-        self, citation_key: str, resolver_name: str, query_form: str,
+        self,
+        citation_key: str,
+        resolver_name: str,
+        query_form: str,
     ) -> float | None:
         """Age in days of ONE live cached row (#541 per-row form — backs the
         stale-revalidate bypass, which must judge exactly the row it would
@@ -235,12 +241,11 @@ class VerificationCache:
         stored = _parse_ts(row[0])
         if stored is None:
             return None
-        return max(
-            0.0, (datetime.now(timezone.utc) - stored).total_seconds() / 86400.0
-        )
+        return max(0.0, (datetime.now(timezone.utc) - stored).total_seconds() / 86400.0)
 
     def stale_report(
-        self, citation_keys: list[str],
+        self,
+        citation_keys: list[str],
     ) -> dict[str, dict[str, Any]]:
         """Per-citation #541 staleness report for the integrity gate.
 

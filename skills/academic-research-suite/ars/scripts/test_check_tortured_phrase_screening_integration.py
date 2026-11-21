@@ -6,18 +6,17 @@ import hashlib
 import json
 import shutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
-
 
 SCRIPTS = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
 
 import check_tortured_phrase_screening_integration as integration  # noqa: E402
-
 
 COPIED_FILES = (
     integration.SNAPSHOT_SCHEMA,
@@ -69,9 +68,7 @@ def _copy_repo(tmp_path: Path) -> Path:
     return root
 
 
-def _rewrite_json(
-    root: Path, relative: Path, mutation: Callable[[dict[str, Any]], None]
-) -> None:
+def _rewrite_json(root: Path, relative: Path, mutation: Callable[[dict[str, Any]], None]) -> None:
     path = root / relative
     value = json.loads(path.read_text(encoding="utf-8"))
     mutation(value)
@@ -100,9 +97,7 @@ def _rewrite_canonical_json(
     )
 
 
-def _set_json_path(
-    value: dict[str, Any], path: tuple[str | int, ...], replacement: Any
-) -> None:
+def _set_json_path(value: dict[str, Any], path: tuple[str | int, ...], replacement: Any) -> None:
     target: Any = value
     for component in path[:-1]:
         target = target[component]
@@ -116,9 +111,7 @@ def _replace(root: Path, relative: Path, old: str, new: str) -> None:
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
-def _replace_nth(
-    root: Path, relative: Path, old: str, new: str, occurrence: int
-) -> None:
+def _replace_nth(root: Path, relative: Path, old: str, new: str, occurrence: int) -> None:
     path = root / relative
     text = path.read_text(encoding="utf-8")
     start = -len(old)
@@ -158,9 +151,7 @@ def test_closed_snapshot_schema_operator_drift_fails(tmp_path: Path) -> None:
     def mutate(schema: dict[str, Any]) -> None:
         all_expression = schema["$defs"]["all_expression"]
         all_expression["required"][1] = "operands"
-        all_expression["properties"]["operands"] = all_expression["properties"].pop(
-            "terms"
-        )
+        all_expression["properties"]["operands"] = all_expression["properties"].pop("terms")
 
     _rewrite_json(root, integration.SNAPSHOT_SCHEMA, mutate)
     _assert_error(root, "$defs.all_expression properties drifted")
@@ -192,9 +183,7 @@ def test_manifest_shape_drift_fails(tmp_path: Path) -> None:
     ("field", "value"),
     [("layer", "DETERMINISTIC"), ("evaluation_status", "MEASURED")],
 )
-def test_own_advisory_claim_const_drift_fails(
-    tmp_path: Path, field: str, value: str
-) -> None:
+def test_own_advisory_claim_const_drift_fails(tmp_path: Path, field: str, value: str) -> None:
     root = _copy_repo(tmp_path)
 
     def mutate(schema: dict[str, Any]) -> None:
@@ -218,9 +207,9 @@ def test_cited_schema_requires_abstract_empty(tmp_path: Path) -> None:
     root = _copy_repo(tmp_path)
 
     def mutate(schema: dict[str, Any]) -> None:
-        schema["properties"]["tortured_phrase_context"]["properties"]["reason_code"][
-            "enum"
-        ].remove("ABSTRACT_EMPTY")
+        schema["properties"]["tortured_phrase_context"]["properties"]["reason_code"]["enum"].remove(
+            "ABSTRACT_EMPTY"
+        )
 
     _rewrite_json(root, integration.SIGNAL_SCHEMA, mutate)
     _assert_error(root, "reason_code must include ABSTRACT_EMPTY")
@@ -241,9 +230,9 @@ def test_abstract_empty_must_remain_not_checked_unresolved(tmp_path: Path) -> No
             .get("reason_code", {})
             .get("enum", ())
         )
-        branch["if"]["properties"]["tortured_phrase_context"]["properties"][
-            "reason_code"
-        ]["enum"].remove("ABSTRACT_EMPTY")
+        branch["if"]["properties"]["tortured_phrase_context"]["properties"]["reason_code"][
+            "enum"
+        ].remove("ABSTRACT_EMPTY")
 
     _rewrite_json(root, integration.SIGNAL_SCHEMA, mutate)
     _assert_error(root, "ABSTRACT_EMPTY must map to not_checked/unresolved")
@@ -256,15 +245,10 @@ def test_v12_signal_epistemic_profile_drift_fails(tmp_path: Path) -> None:
         branch = next(
             item
             for item in schema["allOf"]
-            if item.get("if", {})
-            .get("properties", {})
-            .get("schema_version", {})
-            .get("const")
+            if item.get("if", {}).get("properties", {}).get("schema_version", {}).get("const")
             == integration.SIGNAL_VERSION
         )
-        branch["then"]["properties"]["epistemic_label"]["const"] = (
-            "RESOLVER-OR-LIST-OBSERVATION"
-        )
+        branch["then"]["properties"]["epistemic_label"]["const"] = "RESOLVER-OR-LIST-OBSERVATION"
 
     _rewrite_json(root, integration.SIGNAL_SCHEMA, mutate)
     _assert_error(root, "v1.2 tortured-phrase profile drifted")
@@ -277,10 +261,7 @@ def test_v12_signal_neutral_label_drift_fails(tmp_path: Path) -> None:
         branch = next(
             item
             for item in schema["allOf"]
-            if item.get("if", {})
-            .get("properties", {})
-            .get("schema_version", {})
-            .get("const")
+            if item.get("if", {}).get("properties", {}).get("schema_version", {}).get("const")
             == integration.SIGNAL_VERSION
         )
         branch["then"]["properties"]["display"]["properties"]["summary_label"][
@@ -298,15 +279,10 @@ def test_signal_terminal_promotion_fails(tmp_path: Path) -> None:
         branch = next(
             item
             for item in schema["allOf"]
-            if item.get("if", {})
-            .get("properties", {})
-            .get("signal_type", {})
-            .get("const")
+            if item.get("if", {}).get("properties", {}).get("signal_type", {}).get("const")
             == "tortured_phrase_match"
         )
-        branch["then"]["properties"]["terminal_policy"]["properties"]["eligible"] = {
-            "const": True
-        }
+        branch["then"]["properties"]["terminal_policy"]["properties"]["eligible"] = {"const": True}
 
     _rewrite_json(root, integration.SIGNAL_SCHEMA, mutate)
     _assert_error(root, "heuristic/advisory-only policy boundary drifted")
@@ -372,12 +348,8 @@ def test_seed_cannot_claim_contextual_measurement(tmp_path: Path, field: str) ->
     _assert_error(root, "synthetic UNMEASURED claim ceiling drifted")
 
 
-@pytest.mark.parametrize(
-    "module", ("requests", "openai", "subprocess", "urllib.request")
-)
-def test_runtime_forbids_network_model_and_process_imports(
-    tmp_path: Path, module: str
-) -> None:
+@pytest.mark.parametrize("module", ("requests", "openai", "subprocess", "urllib.request"))
+def test_runtime_forbids_network_model_and_process_imports(tmp_path: Path, module: str) -> None:
     root = _copy_repo(tmp_path)
     path = root / integration.RUNTIME
     path.write_text(
@@ -458,13 +430,11 @@ def test_runtime_forbids_ambient_file_discovery(tmp_path: Path) -> None:
             "forbidden transitive ambient clock call",
         ),
         (
-            "\nimport os\n\ndef _environment_mutation():\n"
-            "    return os.environ.get('TOKEN')\n",
+            "\nimport os\n\ndef _environment_mutation():\n" "    return os.environ.get('TOKEN')\n",
             "transitive ambient environment access is forbidden",
         ),
         (
-            "\nimport subprocess\n\ndef _process_mutation():\n"
-            "    return subprocess.run([])\n",
+            "\nimport subprocess\n\ndef _process_mutation():\n" "    return subprocess.run([])\n",
             "forbidden transitive model/network/process import",
         ),
     ),
@@ -702,9 +672,7 @@ def test_segment_document_retains_its_aggregate_interval_cap(tmp_path: Path) -> 
         ),
     ),
 )
-def test_structure_guard_call_cannot_be_removed(
-    tmp_path: Path, old: str, expected: str
-) -> None:
+def test_structure_guard_call_cannot_be_removed(tmp_path: Path, old: str, expected: str) -> None:
     root = _copy_repo(tmp_path)
     _replace(root, integration.RUNTIME, old, "")
     _assert_error(root, expected)
@@ -858,7 +826,7 @@ def test_consumer_binding_drift_fails(tmp_path: Path) -> None:
 def test_runtime_manifest_entry_is_required(tmp_path: Path) -> None:
     root = _copy_repo(tmp_path)
     block = (
-        '[[pytest]]\n'
+        "[[pytest]]\n"
         'id = "660-tortured-phrase-screening"\n'
         'path = "scripts/test_tortured_phrase_screening.py"\n\n'
     )
@@ -869,7 +837,7 @@ def test_runtime_manifest_entry_is_required(tmp_path: Path) -> None:
 def test_integration_manifest_entry_is_required(tmp_path: Path) -> None:
     root = _copy_repo(tmp_path)
     block = (
-        '[[pytest]]\n'
+        "[[pytest]]\n"
         'id = "660-tortured-phrase-integration"\n'
         'path = "scripts/test_check_tortured_phrase_screening_integration.py"\n\n'
     )
@@ -927,9 +895,7 @@ def test_measurement_contract_registry_mirror_is_required(tmp_path: Path) -> Non
         ("A passing row may say only", "A passing row may broadly claim"),
     ),
 )
-def test_frozen_measurement_plan_token_drift_fails(
-    tmp_path: Path, old: str, new: str
-) -> None:
+def test_frozen_measurement_plan_token_drift_fails(tmp_path: Path, old: str, new: str) -> None:
     root = _copy_repo(tmp_path)
     _replace(root, integration.MEASUREMENT_PLAN, old, new)
     _assert_error(root, "frozen plan tokens drifted")
@@ -945,9 +911,7 @@ def test_frozen_measurement_plan_token_drift_fails(
         ),
     ),
 )
-def test_conformance_readme_claim_ceiling_drift_fails(
-    tmp_path: Path, old: str, new: str
-) -> None:
+def test_conformance_readme_claim_ceiling_drift_fails(tmp_path: Path, old: str, new: str) -> None:
     root = _copy_repo(tmp_path)
     _replace(root, integration.CONFORMANCE_README, old, new)
     _assert_error(root, "UNMEASURED/contextual claim ceiling drifted")
@@ -967,17 +931,10 @@ def test_second_tortured_phrase_measurement_row_is_forbidden(tmp_path: Path) -> 
 
 def test_escaped_measurement_contract_cannot_hide_second_row(tmp_path: Path) -> None:
     root = _copy_repo(tmp_path)
-    second = (
-        root
-        / integration.HELDOUT_ROOT
-        / "other_suite"
-        / "measurement-2026-08-10.json"
-    )
+    second = root / integration.HELDOUT_ROOT / "other_suite" / "measurement-2026-08-10.json"
     second.parent.mkdir(parents=True)
     raw = (root / integration.MEASUREMENT_REPORT).read_bytes()
-    second.write_bytes(
-        raw.replace(b'"measurement_contract"', b'"measurement\\u005fcontract"')
-    )
+    second.write_bytes(raw.replace(b'"measurement_contract"', b'"measurement\\u005fcontract"'))
     _assert_error(root, "second #660 measurement row is forbidden")
 
 
@@ -997,9 +954,7 @@ def test_internal_symlinked_directory_cannot_hide_second_row(tmp_path: Path) -> 
     root = _copy_repo(tmp_path)
     source = root / "internal_measurement_alias"
     source.mkdir()
-    (source / "measurement.json").write_bytes(
-        (root / integration.MEASUREMENT_REPORT).read_bytes()
-    )
+    (source / "measurement.json").write_bytes((root / integration.MEASUREMENT_REPORT).read_bytes())
     link = root / integration.HELDOUT_ROOT / "linked_suite"
     link.symlink_to(source, target_is_directory=True)
     _assert_error(root, "second #660 measurement row is forbidden")
@@ -1013,9 +968,7 @@ def test_internal_symlinked_directory_cannot_hide_second_row(tmp_path: Path) -> 
         integration.MEASUREMENT_EXECUTION_MANIFEST,
     ),
 )
-def test_each_canonical_measurement_artifact_is_required(
-    tmp_path: Path, relative: Path
-) -> None:
+def test_each_canonical_measurement_artifact_is_required(tmp_path: Path, relative: Path) -> None:
     root = _copy_repo(tmp_path)
     (root / relative).unlink()
     _assert_error(root, "cannot load canonical #660 measurement artifact")
@@ -1044,7 +997,11 @@ def test_registered_measurement_command_hash_is_frozen(
     ("path", "replacement", "expected"),
     (
         (("schema_version",), "tortured-phrase-conformance-transcript/1.1", "schema_version"),
-        (("command_utf8",), "python -m pytest scripts/test_tortured_phrase_screening.py", "command_utf8"),
+        (
+            ("command_utf8",),
+            "python -m pytest scripts/test_tortured_phrase_screening.py",
+            "command_utf8",
+        ),
         (("started_at",), integration.MEASUREMENT_COMPLETED_AT, "started_at"),
         (("completed_at",), integration.MEASUREMENT_STARTED_AT, "completed_at"),
         (("exit_code",), 1, "exit_code"),
@@ -1133,9 +1090,7 @@ def test_transcript_tamper_cannot_be_hidden_by_rehashing_chain(tmp_path: Path) -
     _rewrite_canonical_json(
         root,
         integration.MEASUREMENT_EXECUTION_MANIFEST,
-        lambda value: _set_json_path(
-            value, ("calls", 0, "output_sha256"), transcript_sha
-        ),
+        lambda value: _set_json_path(value, ("calls", 0, "output_sha256"), transcript_sha),
     )
     manifest_sha = hashlib.sha256(
         (root / integration.MEASUREMENT_EXECUTION_MANIFEST).read_bytes()
@@ -1143,9 +1098,7 @@ def test_transcript_tamper_cannot_be_hidden_by_rehashing_chain(tmp_path: Path) -
     _rewrite_canonical_json(
         root,
         integration.MEASUREMENT_REPORT,
-        lambda value: _set_json_path(
-            value, ("execution_manifest", "sha256"), manifest_sha
-        ),
+        lambda value: _set_json_path(value, ("execution_manifest", "sha256"), manifest_sha),
     )
     _assert_error(root, "frozen transcript sha256 drifted")
 
@@ -1216,9 +1169,7 @@ def test_manifest_reserialization_and_report_rehash_cannot_rewrite_evidence(
     _rewrite_canonical_json(
         root,
         integration.MEASUREMENT_REPORT,
-        lambda value: _set_json_path(
-            value, ("execution_manifest", "sha256"), rewritten_sha
-        ),
+        lambda value: _set_json_path(value, ("execution_manifest", "sha256"), rewritten_sha),
     )
     _assert_error(root, "frozen manifest sha256 drifted")
     _assert_error(root, "frozen report sha256 drifted")
@@ -1274,9 +1225,7 @@ def test_measurement_row_semantic_drift_fails_closed(
         lambda value: _set_json_path(value, path, replacement),
     )
     message = (
-        f"frozen field '{expected}' drifted"
-        if expected != "closed field set drifted"
-        else expected
+        f"frozen field '{expected}' drifted" if expected != "closed field set drifted" else expected
     )
     _assert_error(root, message)
 

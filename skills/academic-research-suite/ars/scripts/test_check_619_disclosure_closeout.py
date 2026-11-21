@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECKER = REPO_ROOT / "scripts" / "check_619_disclosure_closeout.py"
 PROTOCOL = "academic-paper/references/disclosure_mode_protocol.md"

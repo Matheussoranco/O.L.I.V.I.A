@@ -1,6 +1,7 @@
 """Validates rejection_log.schema.json self-consistency and example round-trip."""
-from pathlib import Path
 import json
+from pathlib import Path
+
 import pytest
 from jsonschema import Draft202012Validator
 from jsonschema.exceptions import ValidationError
@@ -18,9 +19,7 @@ def _validator(schema):
     """Validator with format_checker so format keywords (date-time on
     generated_at) are actually enforced. Same pattern as T2's
     test_literature_corpus_entry_schema._validator."""
-    return Draft202012Validator(
-        schema, format_checker=Draft202012Validator.FORMAT_CHECKER
-    )
+    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 
 def test_schema_exists():
@@ -122,9 +121,7 @@ def test_additional_properties_false_on_rejection():
         "adapter_name": "x",
         "adapter_version": "1",
         "generated_at": "2026-04-23T00:00:00Z",
-        "rejected": [
-            {"source": "s", "reason": "other", "detail": "d", "bogus": 1}
-        ],
+        "rejected": [{"source": "s", "reason": "other", "detail": "d", "bogus": 1}],
     }
     with pytest.raises(ValidationError):
         _validator(schema).validate(log)
@@ -135,6 +132,7 @@ def test_additional_properties_false_on_rejection():
 # Following the T2 lesson (codex review caught the same prose-only
 # conditional pattern for adapter_name), we enforce this via allOf
 # at schema-write time and test it here.
+
 
 def test_reason_other_without_detail_fails():
     schema = _load_schema()
@@ -154,9 +152,7 @@ def test_reason_other_with_detail_passes():
         "adapter_name": "x",
         "adapter_version": "1",
         "generated_at": "2026-04-23T00:00:00Z",
-        "rejected": [
-            {"source": "s", "reason": "other", "detail": "explained why"}
-        ],
+        "rejected": [{"source": "s", "reason": "other", "detail": "explained why"}],
     }
     _validator(schema).validate(log)
 
@@ -176,6 +172,7 @@ def test_reason_known_value_does_not_require_detail():
 
 # --- format enforcement (T2 lesson) ---
 
+
 def test_invalid_generated_at_format_fails():
     schema = _load_schema()
     log = {
@@ -189,6 +186,7 @@ def test_invalid_generated_at_format_fails():
 
 
 # --- T3-review P2 + test gaps (codex 2026-04-25) ---
+
 
 def test_reason_other_with_empty_detail_fails():
     """detail must be non-empty when present. Spec calls it a

@@ -132,8 +132,7 @@ def github_slug(heading: str) -> str:
 def heading_slugs(md_text: str) -> set[str]:
     """GitHub anchor slugs of every rendered heading in `md_text`."""
     return {
-        github_slug(match.group(1))
-        for match in _HEADING_RE.finditer(strip_non_rendering(md_text))
+        github_slug(match.group(1)) for match in _HEADING_RE.finditer(strip_non_rendering(md_text))
     }
 
 
@@ -201,9 +200,7 @@ def relative_link_failure(
     root_abs = repo_root.resolve()
     path_part, separator, fragment = target.partition("#")
     resolved = (
-        source_path.resolve()
-        if not path_part
-        else (source_path.parent / path_part).resolve()
+        source_path.resolve() if not path_part else (source_path.parent / path_part).resolve()
     )
 
     if not resolved.is_relative_to(root_abs):

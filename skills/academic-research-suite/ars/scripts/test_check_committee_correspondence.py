@@ -11,14 +11,12 @@ import sys
 from pathlib import Path
 
 import pytest
-from jsonschema import Draft202012Validator, FormatChecker
-
 from check_committee_correspondence import (
     BOUNDARY_LINE,
     DEFAULT_SCHEMA,
     validate_bundle,
 )
-
+from jsonschema import Draft202012Validator, FormatChecker
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = REPO_ROOT / "scripts" / "fixtures" / "committee_correspondence" / "16fd83f6aec7"
@@ -109,7 +107,12 @@ def test_source_segments_cover_every_byte_and_preserve_noncomments() -> None:
     segments = tracker["source_artifact"]["segments"]  # type: ignore[index]
     assert segments[0]["byte_start"] == 0  # type: ignore[index]
     assert segments[-1]["byte_end"] == tracker["source_artifact"]["byte_length"]  # type: ignore[index]
-    assert [item["kind"] for item in segments] == ["non_comment", "comment", "comment", "non_comment"]  # type: ignore[index]
+    assert [item["kind"] for item in segments] == [
+        "non_comment",
+        "comment",
+        "comment",
+        "non_comment",
+    ]  # type: ignore[index]
 
 
 def test_dropped_concern_fails_complete_accounting(tmp_path: Path) -> None:
@@ -186,7 +189,9 @@ def test_missing_response_marker_fails_even_when_hash_is_updated(tmp_path: Path)
 def test_duplicate_response_marker_fails_even_when_hash_is_updated(tmp_path: Path) -> None:
     path, tracker = _bundle(tmp_path)
     skeleton = (path.parent / "response_skeleton.md").read_text(encoding="utf-8")
-    skeleton = skeleton.replace("<!-- concern:CC-002 -->", "<!-- concern:CC-001 -->\n<!-- concern:CC-002 -->")
+    skeleton = skeleton.replace(
+        "<!-- concern:CC-002 -->", "<!-- concern:CC-001 -->\n<!-- concern:CC-002 -->"
+    )
     _save_skeleton(path, tracker, skeleton)
     assert any("markers must cover" in item for item in validate_bundle(path))
 

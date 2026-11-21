@@ -38,17 +38,13 @@ import yaml
 from jsonschema import Draft202012Validator
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ENTRY_SCHEMA = (
-    REPO_ROOT / "shared/contracts/passport/experiment_provenance_entry.schema.json"
-)
+ENTRY_SCHEMA = REPO_ROOT / "shared/contracts/passport/experiment_provenance_entry.schema.json"
 
 
 def _validator() -> Draft202012Validator:
     schema = json.loads(ENTRY_SCHEMA.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(schema)
-    return Draft202012Validator(
-        schema, format_checker=Draft202012Validator.FORMAT_CHECKER
-    )
+    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 
 def validate_provenance(entries: object) -> list[str]:
@@ -67,7 +63,9 @@ def validate_provenance(entries: object) -> list[str]:
     validator = _validator()
     for i, entry in enumerate(entries):
         if not isinstance(entry, dict):
-            errors.append(f"experiment_provenance[{i}]: entry must be a mapping; got {type(entry).__name__}")
+            errors.append(
+                f"experiment_provenance[{i}]: entry must be a mapping; got {type(entry).__name__}"
+            )
             continue
         for err in sorted(validator.iter_errors(entry), key=lambda e: list(e.absolute_path)):
             loc = ".".join(str(p) for p in err.absolute_path) or "<root>"

@@ -41,10 +41,9 @@ Exit codes: 0 on pass, 1 on any failure.
 """
 from __future__ import annotations
 
+import hashlib
 import sys
 from pathlib import Path
-
-import hashlib
 
 from _skill_lint import check_section_literals
 
@@ -141,9 +140,13 @@ S6_AUTHORITY_LITERALS = {
 # classification itself cannot flip to FULL while staying green (codex
 # round-4 P1: the previous pins started after the type keyword).
 S5_ENTRY_GATE_TABLE_CELL = "| MANDATORY | Integrity FAIL; Review decision; Stage 5 entry gate (before finalization) | Cannot be skipped; requires explicit user input |"
-S5_CANON_RULE5 = "always MANDATORY — this is the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch"
+S5_CANON_RULE5 = (
+    "always MANDATORY — this is the checkpoint between Stage 4.5 PASS and the Stage 5 dispatch"
+)
 S5_CANON_GATE_SCOPE = "makes the finalization-format decision (citation style); the in-stage LaTeX question and content confirmation stay inside Stage 5 execution"
-S5_CANON_COMPLETION = "The Stage 5 completion checkpoint (Final Paper delivered, before Stage 6) is FULL — never SLIM"
+S5_CANON_COMPLETION = (
+    "The Stage 5 completion checkpoint (Final Paper delivered, before Stage 6) is FULL — never SLIM"
+)
 
 # Non-acknowledgement classification of change requests, per mirror surface.
 SKILL_CHANGE_REQUESTS_NOT_ACK = "keep Stage 6 `in_progress` and are not acknowledgements"
@@ -158,7 +161,9 @@ FULL_ROW = "| FULL | First checkpoint; after integrity boundaries; Stage 5 compl
 # execution contract Step 1; codex round-3 P1).
 SKILL_STEP1_CONSUME = "Consume the citation-style decision recorded at the Stage 5 entry gate; ask which academic formatting style (APA 7.0 / Chicago / IEEE, etc.) only when no gate decision exists (direct format-convert / mid-entry invocation)"
 # The overview summary's terminal ordering (codex round-12 P1).
-SKILL_OVERVIEW_ORDERING = "delivered before the terminal acknowledgement that completes the pipeline"
+SKILL_OVERVIEW_ORDERING = (
+    "delivered before the terminal acknowledgement that completes the pipeline"
+)
 # The reset-boundary iron rule scopes MANDATORY to the entry gate (codex
 # round-12 P1: the round-11 prose fix had no pin).
 ORCH_RESET_IRON_RULE = "MANDATORY checkpoints (Stage 2.5 / 4.5, review decisions, the Stage 5 entry gate) remain MANDATORY even when reset co-occurs"
@@ -175,11 +180,15 @@ SKILL_STAGE6_LITERALS = {
 PROTO_ACK_OUTCOME = "On acknowledgement: state_tracker marks Stage 6 completed and sets the pipeline global state to completed"
 SKILL_RULE9_PIN = "completion checkpoint (FULL) -> Stage 6 (user may decline Stage 6: marked `skipped`, pipeline goes directly to `completed`)"
 SKILL_RULE10_PIN = "terminal acknowledgement (`finish` / `end` / `done` / `confirm`, or an unambiguous natural-language equivalent) -> pipeline global state `completed`"
-ORCH_DECLINE_HANDOFF_PIN = "User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`"
+ORCH_DECLINE_HANDOFF_PIN = (
+    "User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`"
+)
 PROTO_DECLINE_PIN = "Stage 6 is non-mandatory — the user may decline it at that checkpoint; it is then marked `skipped` and the pipeline still terminates `completed`"
 # Type-bearing completion-checkpoint triggers on the mirrors (codex round-6
 # P1: a (FULL)->(MANDATORY) flip on either mirror stayed green).
-ORCH_STAGE56_TRIGGER_PIN = "Dispatched only after the user confirms the Stage 5 completion checkpoint (FULL)"
+ORCH_STAGE56_TRIGGER_PIN = (
+    "Dispatched only after the user confirms the Stage 5 completion checkpoint (FULL)"
+)
 ORCH_STAGE56_HANDOFF_ROW = "| Stage 5 -> 6 | Final deliverables list + Process-Summary projection of pipeline state history and agent logs, explicitly omitting the #673 activity projection of terminal root `run_id`, pending/sealed activity fields, selected-store data, renderer output, and diagnostics | — (Process Record; no numbered schema) | Dispatched only after the user confirms the Stage 5 completion checkpoint (FULL). User may decline Stage 6 there: mark it `skipped`, set pipeline state `completed`. Protocol: `../references/process_summary_protocol.md`; terminal semantics: `../references/pipeline_state_machine.md` § Stage 6 terminal semantics |"
 PROTO_TRIGGER_PIN = "After the user confirms the Stage 5 completion checkpoint (FULL)"
 # Delivery-before-acknowledgement sequencing (codex round-6 P1: on->before /
@@ -233,7 +242,7 @@ TRACKER_STAGE_ID_ENUM = '"1", "2", "2.5", "3", "4", "3p", "4p", "4.5", "5", "6"'
 # The complete Stage 6 SSOT block — pinning only the key would let a
 # load-bearing field (approval_gate) flip while staying green (codex
 # round-9 P1).
-TRACKER_STAGE6_ENTRY = '''"6": {
+TRACKER_STAGE6_ENTRY = """"6": {
       "name": "PROCESS SUMMARY",
       "skill": "academic-pipeline",
       "status": "pending",
@@ -247,7 +256,7 @@ TRACKER_STAGE6_ENTRY = '''"6": {
       "assigned_to": null,
       "approval_gate": true,
       "team_notes": null
-    }'''
+    }"""
 # check_prerequisites drives the automatic material-gap warnings — its Stage 2
 # row must carry the Methodology Blueprint like every other Stage 1→2 surface
 # (codex round-8 P1), and Stage 6 must be a known target stage.
@@ -267,7 +276,9 @@ ORCH_SKIPPABLE_PIN = "- Skippable: Stage 1 (deep-research, if user provides own 
 ORCH_NON_SKIPPABLE_LINE = "- Non-Skippable: Stage 2 (writing), Stage 2.5 (pre-review integrity), Stage 3 (initial review), Stage 4.5 (final integrity), Stage 5 (finalize)"
 # The SLIM engagement downgrade must not swallow the FULL-pinned Stage 5
 # completion checkpoint (codex round-9 P1).
-ORCH_ENGAGEMENT_FULL_EXCEPTION = "the Stage 5 completion checkpoint is FULL — never SLIM, regardless of the continue count"
+ORCH_ENGAGEMENT_FULL_EXCEPTION = (
+    "the Stage 5 completion checkpoint is FULL — never SLIM, regardless of the continue count"
+)
 TRACKER_WIRING = {
     "acknowledgement-outcome": 'on the terminal acknowledgement, `update_stage("6", "completed", outputs)` then `update_pipeline_state("completed")`',
     "decline-outcome": 'if the user declines Stage 6 at the Stage 5 completion checkpoint, `update_stage("6", "skipped", {reason: "user declined Stage 6"})` then `update_pipeline_state("completed")`',
@@ -316,26 +327,28 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
                 f"drifted from the pinned form: {fragment!r}"
             )
     errors.extend(
-        check_section_literals(2, sm, TRANSITIONS_HEADING,
-                               f"{SM} legal-transitions",
-                               {"stage3p-minor-routing-row": INV2_SM_ROUTING_ROW})
+        check_section_literals(
+            2,
+            sm,
+            TRANSITIONS_HEADING,
+            f"{SM} legal-transitions",
+            {"stage3p-minor-routing-row": INV2_SM_ROUTING_ROW},
+        )
     )
     errors.extend(
-        check_section_literals(2, sm, DIAGRAM_HEADING,
-                               f"{SM} transition-diagram",
-                               DIAGRAM_EDGES)
+        check_section_literals(2, sm, DIAGRAM_HEADING, f"{SM} transition-diagram", DIAGRAM_EDGES)
     )
 
     # Invariant 3 — authority section + transition rows (both H2-scoped)
     errors.extend(
-        check_section_literals(3, sm, AUTHORITY_HEADING,
-                               f"{SM} Stage-5/6 authority",
-                               S5_AUTHORITY_LITERALS)
+        check_section_literals(
+            3, sm, AUTHORITY_HEADING, f"{SM} Stage-5/6 authority", S5_AUTHORITY_LITERALS
+        )
     )
     errors.extend(
-        check_section_literals(3, sm, TRANSITIONS_HEADING,
-                               f"{SM} legal-transitions",
-                               S5_TRANSITION_ROWS)
+        check_section_literals(
+            3, sm, TRANSITIONS_HEADING, f"{SM} legal-transitions", S5_TRANSITION_ROWS
+        )
     )
     # Invariant 3 — mirrors (file-unique canonical sentences, pinned file-wide)
     for path in (SKILL, ORCH):
@@ -388,21 +401,21 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
 
     # Invariant 4 — authority section + transition rows (both H2-scoped)
     errors.extend(
-        check_section_literals(4, sm, AUTHORITY_HEADING,
-                               f"{SM} Stage-5/6 authority",
-                               S6_AUTHORITY_LITERALS)
+        check_section_literals(
+            4, sm, AUTHORITY_HEADING, f"{SM} Stage-5/6 authority", S6_AUTHORITY_LITERALS
+        )
     )
     errors.extend(
-        check_section_literals(4, sm, TRANSITIONS_HEADING,
-                               f"{SM} legal-transitions",
-                               S6_TRANSITION_ROWS)
+        check_section_literals(
+            4, sm, TRANSITIONS_HEADING, f"{SM} legal-transitions", S6_TRANSITION_ROWS
+        )
     )
     # Invariant 4 — SKILL mirror: section-scoped Stage 6 protocol block (the
     # operative copy) + the rule-10 state-machine-list copy (file-unique pin)
     errors.extend(
-        check_section_literals(4, skill, SKILL_STAGE6_HEADING,
-                               f"{SKILL} Stage-6 protocol",
-                               SKILL_STAGE6_LITERALS)
+        check_section_literals(
+            4, skill, SKILL_STAGE6_HEADING, f"{SKILL} Stage-6 protocol", SKILL_STAGE6_LITERALS
+        )
     )
     if not _line_pinned(skill, SKILL_STEP4_HANDOFF):
         errors.append(
@@ -461,8 +474,7 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
     for name, fragment in ORCH_TERMINAL_WIRING.items():
         if fragment not in orch:
             errors.append(
-                f"invariant 4 ({ORCH}): state_tracker {name} pair missing: "
-                f"{fragment!r}"
+                f"invariant 4 ({ORCH}): state_tracker {name} pair missing: " f"{fragment!r}"
             )
     # Invariant 4 — protocol mirror: vocabulary + decline + non-ack rule
     for fragment in (VOCAB_PROTO, VOCAB_PROTO_NL_CLAUSE):
@@ -503,15 +515,14 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
         )
     if PROTO_NO_NEXT_STAGE not in proto:
         errors.append(
-            f"invariant 4 ({PROTO}): terminal-outcome sentence missing: "
-            f"{PROTO_NO_NEXT_STAGE!r}"
+            f"invariant 4 ({PROTO}): terminal-outcome sentence missing: " f"{PROTO_NO_NEXT_STAGE!r}"
         )
     # Invariant 4 — state_tracker contract accepts Stage 6 + outcome pairs
     if tracker:
         if TRACKER_STAGE_ID_ENUM not in tracker:
             errors.append(
                 f"invariant 4 ({TRACKER}): update_stage stage_id enum no "
-                f"longer includes \"6\": {TRACKER_STAGE_ID_ENUM!r}"
+                f'longer includes "6": {TRACKER_STAGE_ID_ENUM!r}'
             )
         if TRACKER_STAGE6_ENTRY not in tracker:
             errors.append(
@@ -520,10 +531,7 @@ def check(skill: str, orch: str, sm: str, proto: str, tracker: str = "") -> list
             )
         for name, fragment in TRACKER_WIRING.items():
             if fragment not in tracker:
-                errors.append(
-                    f"invariant 4 ({TRACKER}): {name} pair missing: "
-                    f"{fragment!r}"
-                )
+                errors.append(f"invariant 4 ({TRACKER}): {name} pair missing: " f"{fragment!r}")
         if TRACKER_PREREQ_STAGE2_ROW not in tracker:
             errors.append(
                 f"invariant 1 ({TRACKER}): check_prerequisites Stage 2 row "
@@ -578,8 +586,9 @@ def main() -> int:
             print(f"FAILED: surface file missing: {path}", file=sys.stderr)
             return 1
         contents[path] = full.read_text(encoding="utf-8")
-    errors = check(contents[SKILL], contents[ORCH], contents[SM],
-                   contents[PROTO], contents[TRACKER])
+    errors = check(
+        contents[SKILL], contents[ORCH], contents[SM], contents[PROTO], contents[TRACKER]
+    )
     errors.extend(check_content_locks())
     if errors:
         for e in errors:

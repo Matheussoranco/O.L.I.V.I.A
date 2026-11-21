@@ -22,6 +22,7 @@ import migrate_literature_corpus_to_v3_10 as mig  # noqa: E402
 
 def _yaml():
     from ruamel.yaml import YAML
+
     y = YAML()
     y.preserve_quotes = True
     y.indent(mapping=2, sequence=4, offset=2)
@@ -75,10 +76,13 @@ class DeepMergeTest(unittest.TestCase):
         missing temporal_integrity key seeded advisory (deep-merge, R1 P1)."""
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
-            p = _write_passport(tmp, {
-                "terminal_policies": {"contamination_triangulation": "strict"},
-                "literature_corpus": [_v3_9_0_entry()],
-            })
+            p = _write_passport(
+                tmp,
+                {
+                    "terminal_policies": {"contamination_triangulation": "strict"},
+                    "literature_corpus": [_v3_9_0_entry()],
+                },
+            )
             report = mig.migrate_passport(p, dry_run=False)
             self.assertEqual(report["seeded_keys"], ["temporal_integrity"])
             self.assertEqual(report["preserved_keys"], ["contamination_triangulation"])
@@ -89,10 +93,13 @@ class DeepMergeTest(unittest.TestCase):
     def test_strict_articles_only_preserved(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
-            p = _write_passport(tmp, {
-                "terminal_policies": {"contamination_triangulation": "strict_articles_only"},
-                "literature_corpus": [_v3_9_0_entry()],
-            })
+            p = _write_passport(
+                tmp,
+                {
+                    "terminal_policies": {"contamination_triangulation": "strict_articles_only"},
+                    "literature_corpus": [_v3_9_0_entry()],
+                },
+            )
             mig.migrate_passport(p, dry_run=False)
             doc = _read_passport(p)
             self.assertEqual(
@@ -189,17 +196,22 @@ class MalformedShapeTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
             p = tmp / "passport.yaml"
-            p.write_text("terminal_policies: null\nliterature_corpus:\n  - citation_key: smith2024\n    title: S\n    authors:\n      - family: Smith\n    year: 2024\n    source_pointer: file:///x.pdf\n    contamination_signals:\n      semantic_scholar_unmatched: false\n")
+            p.write_text(
+                "terminal_policies: null\nliterature_corpus:\n  - citation_key: smith2024\n    title: S\n    authors:\n      - family: Smith\n    year: 2024\n    source_pointer: file:///x.pdf\n    contamination_signals:\n      semantic_scholar_unmatched: false\n"
+            )
             with self.assertRaises(mig.PassportShapeError):
                 mig.migrate_passport(p, dry_run=False)
 
     def test_terminal_policies_scalar_errors(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
-            p = _write_passport(tmp, {
-                "terminal_policies": "strict",  # scalar, not a mapping
-                "literature_corpus": [_v3_9_0_entry()],
-            })
+            p = _write_passport(
+                tmp,
+                {
+                    "terminal_policies": "strict",  # scalar, not a mapping
+                    "literature_corpus": [_v3_9_0_entry()],
+                },
+            )
             with self.assertRaises(mig.PassportShapeError):
                 mig.migrate_passport(p, dry_run=False)
 
@@ -234,10 +246,13 @@ class CommentPreservationTest(unittest.TestCase):
         (the seed only ADDS the two known default keys)."""
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
-            p = _write_passport(tmp, {
-                "terminal_policies": {"future_key": "some_value"},
-                "literature_corpus": [_v3_9_0_entry()],
-            })
+            p = _write_passport(
+                tmp,
+                {
+                    "terminal_policies": {"future_key": "some_value"},
+                    "literature_corpus": [_v3_9_0_entry()],
+                },
+            )
             mig.migrate_passport(p, dry_run=False)
             doc = _read_passport(p)
             self.assertEqual(doc["terminal_policies"]["future_key"], "some_value")

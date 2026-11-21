@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 REPO = Path(__file__).resolve().parent.parent
 GUARD_PATH = REPO / "scripts" / "check_630_codex_subscription_transport.py"
 
@@ -37,9 +36,19 @@ def test_guard_passes_real_tree() -> None:
 @pytest.mark.parametrize(
     "name,old,new,expected",
     [
-        ("open-root", '"additionalProperties": false', '"additionalProperties": true', "not closed"),
+        (
+            "open-root",
+            '"additionalProperties": false',
+            '"additionalProperties": true',
+            "not closed",
+        ),
         ("prompt-field", '"citation_context": {', '"prompt": {', "four-field"),
-        ("wrong-version", "ars-codex-citation-request/1.0", "ars-codex-citation-request/2.0", "version"),
+        (
+            "wrong-version",
+            "ars-codex-citation-request/1.0",
+            "ars-codex-citation-request/2.0",
+            "version",
+        ),
     ],
 )
 def test_schema_mutations_fail(tmp_path: Path, monkeypatch, name, old, new, expected) -> None:
@@ -177,10 +186,7 @@ def test_reader_helper_construction_must_remain_process_owned(
 ) -> None:
     guard = _load_guard()
     original = guard.RUNTIME.read_text(encoding="utf-8")
-    owner_anchor = (
-        "        try:\n"
-        "            if proc.stdout is None or proc.stderr is None:\n"
-    )
+    owner_anchor = "        try:\n" "            if proc.stdout is None or proc.stderr is None:\n"
     mutated = original.replace(
         owner_anchor,
         f"        {helper} = {constructor}\n" + owner_anchor,
@@ -200,11 +206,36 @@ def test_reader_helper_construction_must_remain_process_owned(
 @pytest.mark.parametrize(
     "attribute,old,new,expected",
     [
-        ("SPEC", "Source implementation: PR #567 by `dcs-scd`", "Source implementation: internal", "PR #567"),
-        ("PROTOCOL", "**Recommendation policy (2026-08-19):**", "**GPT-5.6 is recommended:**", "recommendation-policy"),
-        ("PROTOCOL", "a lifecycle decision, not a measurement claim", "a measured upgrade over GPT-5.5", "recommendation-policy"),
-        ("PROTOCOL", "`validated` is earned only there", "`validated` is granted on release", "recommendation-policy"),
-        ("PRODUCER", "This adapter is not available to DA, reviewer, calibration", "This adapter is available to every path", "non-citation"),
+        (
+            "SPEC",
+            "Source implementation: PR #567 by `dcs-scd`",
+            "Source implementation: internal",
+            "PR #567",
+        ),
+        (
+            "PROTOCOL",
+            "**Recommendation policy (2026-08-19):**",
+            "**GPT-5.6 is recommended:**",
+            "recommendation-policy",
+        ),
+        (
+            "PROTOCOL",
+            "a lifecycle decision, not a measurement claim",
+            "a measured upgrade over GPT-5.5",
+            "recommendation-policy",
+        ),
+        (
+            "PROTOCOL",
+            "`validated` is earned only there",
+            "`validated` is granted on release",
+            "recommendation-policy",
+        ),
+        (
+            "PRODUCER",
+            "This adapter is not available to DA, reviewer, calibration",
+            "This adapter is available to every path",
+            "non-citation",
+        ),
         ("CHANGELOG", "@dcs-scd", "@someone-else", "@dcs-scd"),
     ],
 )

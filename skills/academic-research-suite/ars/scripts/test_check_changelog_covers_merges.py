@@ -11,8 +11,10 @@ from tests.test_helpers import run_script
 
 SCRIPT = Path(__file__).resolve().parent / "check_changelog_covers_merges.py"
 import sys
+
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from check_changelog_covers_merges import (  # noqa: E402
+    Uncovered,
     all_refs,
     audit,
     extract_coverage_text,
@@ -20,7 +22,6 @@ from check_changelog_covers_merges import (  # noqa: E402
     is_covered,
     is_exempt,
     pr_number,
-    Uncovered,
 )
 
 
@@ -30,9 +31,7 @@ class PrNumberTest(unittest.TestCase):
 
     def test_mid_subject_ref_ignored_when_trailing_present(self):
         # #89 is a tracking issue mid-subject; #429 is the PR (trailing).
-        self.assertEqual(
-            pr_number("route integrity-FAIL (#89 Item 8) (#429)"), 429
-        )
+        self.assertEqual(pr_number("route integrity-FAIL (#89 Item 8) (#429)"), 429)
 
     def test_no_trailing_pr_returns_none(self):
         self.assertIsNone(pr_number("Harden title-fallback, no suffix"))
@@ -51,14 +50,10 @@ class AllRefsTest(unittest.TestCase):
 
     def test_collects_issue_and_pr(self):
         # mid-subject issue ref + trailing PR are both refs
-        self.assertEqual(
-            all_refs("feat(socratic): probes (#393) (#400)"), [393, 400]
-        )
+        self.assertEqual(all_refs("feat(socratic): probes (#393) (#400)"), [393, 400])
 
     def test_umbrella_and_pr(self):
-        self.assertEqual(
-            all_refs("fix: route correction (#89 Item 8) (#429)"), [89, 429]
-        )
+        self.assertEqual(all_refs("fix: route correction (#89 Item 8) (#429)"), [89, 429])
 
     def test_single_trailing(self):
         self.assertEqual(all_refs("Harden title-fallback (#432)"), [432])
@@ -101,11 +96,11 @@ class IsExemptTest(unittest.TestCase):
         for subj in [
             "feat: thing (#8)",
             "fix: bug (#9)",
-            "docs: user-facing (#10)",          # bare docs REQUIRED
+            "docs: user-facing (#10)",  # bare docs REQUIRED
             "docs(contributing): guide (#11)",  # other docs scope REQUIRED
             "refactor: cleanup (#12)",
             "perf: speed (#13)",
-            "Harden title-fallback (#14)",      # no-prefix REQUIRED
+            "Harden title-fallback (#14)",  # no-prefix REQUIRED
         ]:
             self.assertFalse(is_exempt(subj), subj)
 
@@ -193,11 +188,11 @@ class AuditTest(unittest.TestCase):
 
     def test_mixed_list_accumulates_in_order(self):
         subjects = [
-            "chore: x (#7)",                      # exempt -> skip
-            "feat: covered (#100)",               # required, covered -> pass
-            "feat: uncovered (#200)",             # required -> fail
-            "Harden thing no ref",                # no #N -> fail
-            'Revert "feat: old (#432)" (#433)',   # revert, neither ref covered -> fail
+            "chore: x (#7)",  # exempt -> skip
+            "feat: covered (#100)",  # required, covered -> pass
+            "feat: uncovered (#200)",  # required -> fail
+            "Harden thing no ref",  # no #N -> fail
+            'Revert "feat: old (#432)" (#433)',  # revert, neither ref covered -> fail
         ]
         result = audit(subjects, "- covered (#100)\n")
         self.assertEqual(
@@ -211,7 +206,8 @@ class AuditTest(unittest.TestCase):
 
 
 class ExtractUnreleasedTest(unittest.TestCase):
-    CHANGELOG = textwrap.dedent("""\
+    CHANGELOG = textwrap.dedent(
+        """\
         # Changelog
 
         ## [Unreleased]
@@ -221,7 +217,8 @@ class ExtractUnreleasedTest(unittest.TestCase):
 
         ## [3.12.0] - 2026-06-08
         - old thing (#300)
-        """)
+        """
+    )
 
     def test_extracts_only_unreleased_body(self):
         body = extract_unreleased(self.CHANGELOG)
@@ -233,23 +230,29 @@ class ExtractUnreleasedTest(unittest.TestCase):
 
 
 from check_changelog_covers_merges import (  # noqa: E402
-    previous_release_tag,
     merged_commit_subjects,
+    previous_release_tag,
 )
 
 _GIT_ENV = {
-    "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t",
-    "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t",
+    "GIT_AUTHOR_NAME": "t",
+    "GIT_AUTHOR_EMAIL": "t@t",
+    "GIT_COMMITTER_NAME": "t",
+    "GIT_COMMITTER_EMAIL": "t@t",
 }
 
 
 def _git(repo: Path, *args: str) -> str:
     import os
+
     env = os.environ.copy()
     env.update(_GIT_ENV)
     return subprocess.run(
         ["git", "-C", str(repo), *args],
-        capture_output=True, text=True, check=True, env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+        env=env,
     ).stdout.strip()
 
 
@@ -318,6 +321,7 @@ class GitInterfaceTest(unittest.TestCase):
 
     def test_previous_tag_and_subjects(self):
         import contextlib
+
         with contextlib.ExitStack() as stack:
             repo = self._repo(stack)
             _commit(repo, "feat: base (#1)")
@@ -333,6 +337,7 @@ class GitInterfaceTest(unittest.TestCase):
 
     def test_non_v_tags_ignored(self):
         import contextlib
+
         with contextlib.ExitStack() as stack:
             repo = self._repo(stack)
             _commit(repo, "feat: base (#1)")
@@ -343,6 +348,7 @@ class GitInterfaceTest(unittest.TestCase):
 
     def test_no_tags_returns_none(self):
         import contextlib
+
         with contextlib.ExitStack() as stack:
             repo = self._repo(stack)
             _commit(repo, "feat: base (#1)")
@@ -352,13 +358,19 @@ class GitInterfaceTest(unittest.TestCase):
 class CliEndToEndTest(unittest.TestCase):
     def _make_repo(self, stack, changelog_body):
         import os
+
         repo = Path(stack.enter_context(TemporaryDirectory()))
-        env = os.environ.copy(); env.update(_GIT_ENV)
+        env = os.environ.copy()
+        env.update(_GIT_ENV)
         subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, env=env)
-        subprocess.run(["git", "-C", str(repo), "config", "tag.gpgSign", "false"], check=True, env=env)
+        subprocess.run(
+            ["git", "-C", str(repo), "config", "tag.gpgSign", "false"], check=True, env=env
+        )
         (repo / "CHANGELOG.md").write_text(changelog_body)
         subprocess.run(["git", "-C", str(repo), "add", "."], check=True, env=env)
-        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env)
+        subprocess.run(
+            ["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env
+        )
         subprocess.run(["git", "-C", str(repo), "tag", "v3.12.0"], check=True, env=env)
         return repo, env
 
@@ -369,6 +381,7 @@ class CliEndToEndTest(unittest.TestCase):
 
     def test_pass_when_covered(self):
         import contextlib
+
         with contextlib.ExitStack() as stack:
             cl = "# Changelog\n\n## [Unreleased]\n\n- new (#2)\n\n## [3.12.0]\n- old\n"
             repo, env = self._make_repo(stack, cl)
@@ -378,6 +391,7 @@ class CliEndToEndTest(unittest.TestCase):
 
     def test_fail_when_uncovered(self):
         import contextlib
+
         with contextlib.ExitStack() as stack:
             cl = "# Changelog\n\n## [Unreleased]\n\n- unrelated (#9)\n\n## [3.12.0]\n- old\n"
             repo, env = self._make_repo(stack, cl)
@@ -387,41 +401,58 @@ class CliEndToEndTest(unittest.TestCase):
             self.assertIn("#2", proc.stdout + proc.stderr)
 
     def test_fail_closed_no_previous_tag(self):
-        import contextlib, os
+        import contextlib
+        import os
+
         with contextlib.ExitStack() as stack:
             repo = Path(stack.enter_context(TemporaryDirectory()))
-            env = os.environ.copy(); env.update(_GIT_ENV)
+            env = os.environ.copy()
+            env.update(_GIT_ENV)
             subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, env=env)
             (repo / "CHANGELOG.md").write_text("## [Unreleased]\n- x (#1)\n")
             subprocess.run(["git", "-C", str(repo), "add", "."], check=True, env=env)
-            subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env)
+            subprocess.run(
+                ["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env
+            )
             # no tag at all -> fail closed (not first-release flag)
             proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
             self.assertEqual(proc.returncode, 1)
             self.assertIn("no previous release tag", (proc.stdout + proc.stderr).lower())
 
     def test_first_release_flag_passes(self):
-        import contextlib, os
+        import contextlib
+        import os
+
         with contextlib.ExitStack() as stack:
             repo = Path(stack.enter_context(TemporaryDirectory()))
-            env = os.environ.copy(); env.update(_GIT_ENV)
+            env = os.environ.copy()
+            env.update(_GIT_ENV)
             subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, env=env)
             (repo / "CHANGELOG.md").write_text("## [Unreleased]\n- x (#1)\n")
             subprocess.run(["git", "-C", str(repo), "add", "."], check=True, env=env)
-            subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env)
+            subprocess.run(
+                ["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env
+            )
             proc = run_script(SCRIPT, "--repo", str(repo), "--first-release", cwd=repo)
             self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
 
     def test_fail_when_changelog_missing(self):
-        import contextlib, os
+        import contextlib
+        import os
+
         with contextlib.ExitStack() as stack:
             repo = Path(stack.enter_context(TemporaryDirectory()))
-            env = os.environ.copy(); env.update(_GIT_ENV)
+            env = os.environ.copy()
+            env.update(_GIT_ENV)
             subprocess.run(["git", "-C", str(repo), "init", "-q"], check=True, env=env)
-            subprocess.run(["git", "-C", str(repo), "config", "tag.gpgSign", "false"], check=True, env=env)
+            subprocess.run(
+                ["git", "-C", str(repo), "config", "tag.gpgSign", "false"], check=True, env=env
+            )
             (repo / "f.txt").write_text("x")
             subprocess.run(["git", "-C", str(repo), "add", "."], check=True, env=env)
-            subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env)
+            subprocess.run(
+                ["git", "-C", str(repo), "commit", "-q", "-m", "base (#1)"], check=True, env=env
+            )
             subprocess.run(["git", "-C", str(repo), "tag", "v3.12.0"], check=True, env=env)
             proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
             self.assertEqual(proc.returncode, 1)
@@ -429,6 +460,7 @@ class CliEndToEndTest(unittest.TestCase):
 
     def test_fail_when_no_unreleased_section(self):
         import contextlib
+
         with contextlib.ExitStack() as stack:
             cl = "# Changelog\n\n## [3.12.0]\n- old\n"  # no [Unreleased]
             repo, env = self._make_repo(stack, cl)
@@ -441,10 +473,13 @@ class CliEndToEndTest(unittest.TestCase):
         # §0.2: the release-prep PR promotes [Unreleased] into [3.13.0] before
         # the tag exists; entries there must still count as coverage.
         import contextlib
+
         with contextlib.ExitStack() as stack:
-            cl = ("# Changelog\n\n## [Unreleased]\n\n"
-                  "## [3.13.0] - promoted\n- new (#2)\n\n"
-                  "## [3.12.0]\n- old\n")
+            cl = (
+                "# Changelog\n\n## [Unreleased]\n\n"
+                "## [3.13.0] - promoted\n- new (#2)\n\n"
+                "## [3.12.0]\n- old\n"
+            )
             repo, env = self._make_repo(stack, cl)
             self._add_commit(repo, env, "feat: new (#2)")
             proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
@@ -454,9 +489,9 @@ class CliEndToEndTest(unittest.TestCase):
         # §0.2 fail-closed precision: a #N in already-released history must not
         # cover a new commit that reuses the number.
         import contextlib
+
         with contextlib.ExitStack() as stack:
-            cl = ("# Changelog\n\n## [Unreleased]\n\n"
-                  "## [3.12.0]\n- ancient mention of (#2)\n")
+            cl = "# Changelog\n\n## [Unreleased]\n\n" "## [3.12.0]\n- ancient mention of (#2)\n"
             repo, env = self._make_repo(stack, cl)
             self._add_commit(repo, env, "feat: new (#2)")
             proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
@@ -467,6 +502,7 @@ class CliEndToEndTest(unittest.TestCase):
         # Tag v3.12.0 exists but CHANGELOG has no [3.12.0] heading: fail loud,
         # never silently widen the window to the whole file.
         import contextlib
+
         with contextlib.ExitStack() as stack:
             cl = "# Changelog\n\n## [Unreleased]\n- new (#2)\n"
             repo, env = self._make_repo(stack, cl)
@@ -479,12 +515,14 @@ class CliEndToEndTest(unittest.TestCase):
         # A typo'd --merges-ref (or missing origin/main in CI) must FAIL, not
         # silently pass as an empty range (codex P1: fail-open reproduced).
         import contextlib
+
         with contextlib.ExitStack() as stack:
             cl = "# Changelog\n\n## [Unreleased]\n\n## [3.12.0]\n- old\n"
             repo, env = self._make_repo(stack, cl)
             self._add_commit(repo, env, "feat: new (#2)")
-            proc = run_script(SCRIPT, "--repo", str(repo),
-                              "--merges-ref", "does-not-exist", cwd=repo)
+            proc = run_script(
+                SCRIPT, "--repo", str(repo), "--merges-ref", "does-not-exist", cwd=repo
+            )
             self.assertEqual(proc.returncode, 1)
             self.assertIn("failing closed", (proc.stdout + proc.stderr).lower())
 
@@ -492,18 +530,20 @@ class CliEndToEndTest(unittest.TestCase):
         # CI on a release-prep PR audits <tag>..origin/main, not the prep
         # branch's own in-flight commits.
         import contextlib
+
         with contextlib.ExitStack() as stack:
-            cl = ("# Changelog\n\n## [Unreleased]\n- covered (#2)\n\n"
-                  "## [3.12.0]\n- old\n")
+            cl = "# Changelog\n\n## [Unreleased]\n- covered (#2)\n\n" "## [3.12.0]\n- old\n"
             repo, env = self._make_repo(stack, cl)
             self._add_commit(repo, env, "feat: covered (#2)")
             covered_tip = subprocess.run(
                 ["git", "-C", str(repo), "rev-parse", "HEAD"],
-                check=True, env=env, capture_output=True, text=True,
+                check=True,
+                env=env,
+                capture_output=True,
+                text=True,
             ).stdout.strip()
             self._add_commit(repo, env, "feat: uncovered in-flight work")
             proc = run_script(SCRIPT, "--repo", str(repo), cwd=repo)
             self.assertEqual(proc.returncode, 1)  # default HEAD sees it
-            proc = run_script(SCRIPT, "--repo", str(repo),
-                              "--merges-ref", covered_tip, cwd=repo)
+            proc = run_script(SCRIPT, "--repo", str(repo), "--merges-ref", covered_tip, cwd=repo)
             self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)

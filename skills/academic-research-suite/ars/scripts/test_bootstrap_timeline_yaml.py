@@ -25,19 +25,27 @@ def _load_script_module():
 def test_bootstrap_dry_run_emits_skeleton(tmp_path):
     """Dry-run produces a timeline.yaml skeleton without calling Crossref/pdftotext."""
     corpus = tmp_path / "corpus.yaml"
-    corpus.write_text(yaml.safe_dump({
-        "literature_corpus": [
-            {"citation_key": "alpha", "title": "Alpha", "authors": [{"family": "Smith"}],
-             "year": 2024, "source_pointer": "doi:10.1/alpha", "doi": "10.1/alpha"},
-        ]
-    }))
+    corpus.write_text(
+        yaml.safe_dump(
+            {
+                "literature_corpus": [
+                    {
+                        "citation_key": "alpha",
+                        "title": "Alpha",
+                        "authors": [{"family": "Smith"}],
+                        "year": 2024,
+                        "source_pointer": "doi:10.1/alpha",
+                        "doi": "10.1/alpha",
+                    },
+                ]
+            }
+        )
+    )
     out = tmp_path / "timeline.yaml"
     result = subprocess.run(
-        [sys.executable, str(SCRIPT),
-         "--corpus", str(corpus),
-         "--output", str(out),
-         "--dry-run"],
-        capture_output=True, text=True,
+        [sys.executable, str(SCRIPT), "--corpus", str(corpus), "--output", str(out), "--dry-run"],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, f"stderr={result.stderr}"
     assert out.exists()
@@ -56,20 +64,29 @@ def test_bootstrap_dry_run_emits_skeleton(tmp_path):
 def test_bootstrap_validates_against_timeline_schema(tmp_path):
     """Generated timeline.yaml must validate against timeline.schema.json."""
     import jsonschema
+
     corpus = tmp_path / "corpus.yaml"
-    corpus.write_text(yaml.safe_dump({
-        "literature_corpus": [
-            {"citation_key": "alpha", "title": "Alpha", "authors": [{"family": "Smith"}],
-             "year": 2024, "source_pointer": "doi:10.1/alpha", "doi": "10.1/alpha"},
-        ]
-    }))
+    corpus.write_text(
+        yaml.safe_dump(
+            {
+                "literature_corpus": [
+                    {
+                        "citation_key": "alpha",
+                        "title": "Alpha",
+                        "authors": [{"family": "Smith"}],
+                        "year": 2024,
+                        "source_pointer": "doi:10.1/alpha",
+                        "doi": "10.1/alpha",
+                    },
+                ]
+            }
+        )
+    )
     out = tmp_path / "timeline.yaml"
     result = subprocess.run(
-        [sys.executable, str(SCRIPT),
-         "--corpus", str(corpus),
-         "--output", str(out),
-         "--dry-run"],
-        capture_output=True, text=True,
+        [sys.executable, str(SCRIPT), "--corpus", str(corpus), "--output", str(out), "--dry-run"],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0
     data = yaml.safe_load(out.read_text())
@@ -98,9 +115,7 @@ def test_crossref_lookup_quotes_doi_path(monkeypatch):
     result = module._crossref_lookup("10.1000/foo?bar=baz", dry_run=False)
 
     assert result == {"title": ["ok"]}
-    assert captured == [
-        ("https://api.crossref.org/works/10.1000%2Ffoo%3Fbar%3Dbaz", 10)
-    ]
+    assert captured == [("https://api.crossref.org/works/10.1000%2Ffoo%3Fbar%3Dbaz", 10)]
 
 
 def test_bootstrap_entry_locator_matches_queried_url(monkeypatch):

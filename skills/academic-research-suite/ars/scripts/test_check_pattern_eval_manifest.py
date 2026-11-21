@@ -26,10 +26,23 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = REPO_ROOT / "scripts" / "check_pattern_eval_manifest.py"
 
 PATTERN_IDS = (
-    "A1", "A2", "A3", "A4", "A5",
-    "B1", "B2", "B3", "B4", "B5",
-    "C1", "C2", "C3",
-    "D1", "D2", "D3", "D4",
+    "A1",
+    "A2",
+    "A3",
+    "A4",
+    "A5",
+    "B1",
+    "B2",
+    "B3",
+    "B4",
+    "B5",
+    "C1",
+    "C2",
+    "C3",
+    "D1",
+    "D2",
+    "D3",
+    "D4",
 )
 
 
@@ -128,7 +141,9 @@ def _materialize_micro_dir(parent: Path, doc: dict) -> Path:
     (fixture_dir / "bad_run" / "expected_orchestrator_action.yaml").write_text("expected_path: B\n")
     (fixture_dir / "good_run" / "deliverable.md").write_text("# good\n")
     (fixture_dir / "good_run" / "expected_audit_findings.yaml").write_text(_GOOD_VERDICT_YAML)
-    (fixture_dir / "good_run" / "expected_orchestrator_action.yaml").write_text("expected_path: B\n")
+    (fixture_dir / "good_run" / "expected_orchestrator_action.yaml").write_text(
+        "expected_path: B\n"
+    )
     return fixture_dir
 
 

@@ -22,9 +22,7 @@ class HandoffContractLintTests(unittest.TestCase):
         cls.mod = _load_module()
         cls.shared = (REPO_ROOT / cls.mod.SHARED).read_text(encoding="utf-8")
         cls.orch = (REPO_ROOT / cls.mod.ORCH).read_text(encoding="utf-8")
-        cls.owners = {
-            p: (REPO_ROOT / p).read_text(encoding="utf-8") for p in cls.mod.OWNERS
-        }
+        cls.owners = {p: (REPO_ROOT / p).read_text(encoding="utf-8") for p in cls.mod.OWNERS}
 
     def _check(self, shared=None, orch=None, owners=None):
         return self.mod.check(
@@ -44,7 +42,9 @@ class HandoffContractLintTests(unittest.TestCase):
     # --- invariant 1: shared canonical section ---
 
     def test_shared_section_removed(self) -> None:
-        mutated = self.shared.replace("### Cross-model handoff envelope (#527)", "### Handoff notes")
+        mutated = self.shared.replace(
+            "### Cross-model handoff envelope (#527)", "### Handoff notes"
+        )
         errors = self._check(shared=mutated)
         self.assertTrue(any(e.startswith("invariant 1") and "missing" in e for e in errors))
 
@@ -82,7 +82,9 @@ class HandoffContractLintTests(unittest.TestCase):
     def test_owner_fence_dropped(self) -> None:
         for path in self.mod.OWNERS:
             owners = dict(self.owners)
-            owners[path] = owners[path].replace("[CROSS-MODEL-HANDOFF v1]", "a clearly-delimited block")
+            owners[path] = owners[path].replace(
+                "[CROSS-MODEL-HANDOFF v1]", "a clearly-delimited block"
+            )
             errors = self._check(owners=owners)
             self.assertTrue(
                 any(e.startswith("invariant 2") and path in e for e in errors),
@@ -111,7 +113,10 @@ class HandoffContractLintTests(unittest.TestCase):
         mutations = [
             ("a `correlation_id` you choose", "a `correlation_idd` you choose"),
             ("`owner_decision` header", "`owner_decison` header"),
-            ("`owner_agent: editorial_synthesizer_agent`", "`owner_agent: research_architect_agent`"),
+            (
+                "`owner_agent: editorial_synthesizer_agent`",
+                "`owner_agent: research_architect_agent`",
+            ),
         ]
         for old, new in mutations:
             owners = dict(self.owners)
@@ -126,7 +131,9 @@ class HandoffContractLintTests(unittest.TestCase):
     def test_owner_blindness_clause_dropped(self) -> None:
         path = "deep-research/agents/research_architect_agent.md"
         owners = dict(self.owners)
-        owners[path] = owners[path].replace("never forwarded to the cross-model", "forwarded as context")
+        owners[path] = owners[path].replace(
+            "never forwarded to the cross-model", "forwarded as context"
+        )
         errors = self._check(owners=owners)
         self.assertTrue(
             any(e.startswith("invariant 2") and path in e for e in errors),
@@ -196,7 +203,9 @@ class HandoffContractLintTests(unittest.TestCase):
         """Adverse-value: the DA owner claims enum_comparison — must fire."""
         path = "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
         owners = dict(self.owners)
-        owners[path] = owners[path].replace("`expected_result: full_return`", "`expected_result: enum_comparison`")
+        owners[path] = owners[path].replace(
+            "`expected_result: full_return`", "`expected_result: enum_comparison`"
+        )
         errors = self._check(owners=owners)
         self.assertTrue(
             any(e.startswith("invariant 2") and path in e for e in errors),

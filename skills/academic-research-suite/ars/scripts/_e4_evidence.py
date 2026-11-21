@@ -40,8 +40,7 @@ def assert_no_symlink_components(path: Path, root: Path) -> None:
     try:
         relative = path.relative_to(root)
     except ValueError as failure:
-        raise EvidencePathError(f"{path} escapes evidence root {root}") \
-            from failure
+        raise EvidencePathError(f"{path} escapes evidence root {root}") from failure
     current = root
     if current.is_symlink():
         raise EvidencePathError(f"symlink evidence root is forbidden: {root}")
@@ -50,11 +49,9 @@ def assert_no_symlink_components(path: Path, root: Path) -> None:
         try:
             mode = current.lstat().st_mode
         except FileNotFoundError as failure:
-            raise EvidencePathError(f"evidence path does not resolve: {path}") \
-                from failure
+            raise EvidencePathError(f"evidence path does not resolve: {path}") from failure
         if stat.S_ISLNK(mode):
-            raise EvidencePathError(
-                f"symlink evidence path is forbidden: {current}")
+            raise EvidencePathError(f"symlink evidence path is forbidden: {current}")
 
 
 def assert_plain_file(path: Path, root: Path) -> None:
@@ -62,8 +59,7 @@ def assert_plain_file(path: Path, root: Path) -> None:
     try:
         mode = lexical_path(path).lstat().st_mode
     except FileNotFoundError as failure:
-        raise EvidencePathError(f"evidence file does not resolve: {path}") \
-            from failure
+        raise EvidencePathError(f"evidence file does not resolve: {path}") from failure
     if not stat.S_ISREG(mode):
         raise EvidencePathError(f"evidence path is not a regular file: {path}")
 
@@ -73,11 +69,9 @@ def assert_plain_directory(path: Path, root: Path) -> None:
     try:
         mode = lexical_path(path).lstat().st_mode
     except FileNotFoundError as failure:
-        raise EvidencePathError(
-            f"evidence directory does not resolve: {path}") from failure
+        raise EvidencePathError(f"evidence directory does not resolve: {path}") from failure
     if not stat.S_ISDIR(mode):
-        raise EvidencePathError(
-            f"evidence path is not a directory: {path}")
+        raise EvidencePathError(f"evidence path is not a directory: {path}")
 
 
 def tree_manifest(root: Path, *, exclude: set[str] | None = None) -> list[dict]:
@@ -92,19 +86,23 @@ def tree_manifest(root: Path, *, exclude: set[str] | None = None) -> list[dict]:
             continue
         mode = path.lstat().st_mode
         if stat.S_ISREG(mode):
-            entries.append({
-                "path": relative,
-                "type": "file",
-                "sha256": sha256_file(path),
-            })
+            entries.append(
+                {
+                    "path": relative,
+                    "type": "file",
+                    "sha256": sha256_file(path),
+                }
+            )
         elif stat.S_ISDIR(mode):
             entries.append({"path": relative, "type": "directory"})
         elif stat.S_ISLNK(mode):
-            entries.append({
-                "path": relative,
-                "type": "symlink",
-                "target": os.readlink(path),
-            })
+            entries.append(
+                {
+                    "path": relative,
+                    "type": "symlink",
+                    "target": os.readlink(path),
+                }
+            )
         else:
             entries.append({"path": relative, "type": "other"})
     return entries

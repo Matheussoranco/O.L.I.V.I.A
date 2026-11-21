@@ -23,10 +23,8 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 import yaml
-
 from scripts import ars_mark_read
 from tests.test_helpers import run_script
-
 
 SCRIPT = Path(__file__).parent / "ars_mark_read.py"
 
@@ -38,8 +36,7 @@ SCRIPT = Path(__file__).parent / "ars_mark_read.py"
 def _write_passport(path: Path, *, citation_keys: list[str]) -> None:
     payload = {
         "literature_corpus": [
-            {"citation_key": k, "year": 2024, "title": f"Title {k}"}
-            for k in citation_keys
+            {"citation_key": k, "year": 2024, "title": f"Title {k}"} for k in citation_keys
         ],
     }
     with path.open("w", encoding="utf-8") as f:
@@ -62,8 +59,12 @@ class TestMarkReadHappyPath(unittest.TestCase):
             _write_passport(passport, citation_keys=["smith2024"])
 
             result = run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
@@ -87,8 +88,13 @@ class TestMarkReadHappyPath(unittest.TestCase):
             _write_passport(passport, citation_keys=["smith2024", "jones2023"])
 
             result = run_script(
-                SCRIPT, "smith2024", "jones2023", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "jones2023",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
@@ -106,13 +112,21 @@ class TestMarkReadHappyPath(unittest.TestCase):
 
             # First mark
             run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
             # Second mark, different key
             result = run_script(
-                SCRIPT, "jones2023", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "jones2023",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
@@ -139,9 +153,7 @@ class TestMarkReadFailFast(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             phantom = Path(tmp) / "does_not_exist.json"
 
-            result = run_script(
-                SCRIPT, "smith2024", "--passport-path", str(phantom)
-            )
+            result = run_script(SCRIPT, "smith2024", "--passport-path", str(phantom))
 
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("[ARS-MARK-READ ERROR:", result.stderr + result.stdout)
@@ -160,17 +172,11 @@ class TestMarkReadFailFast(unittest.TestCase):
             # Strip read permission from the parent dir.
             os.chmod(locked, 0o000)
             try:
-                result = run_script(
-                    SCRIPT, "smith2024", "--passport-path", str(passport)
-                )
+                result = run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
 
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(
-                    "[ARS-MARK-READ ERROR:", result.stderr + result.stdout
-                )
-                self.assertIn(
-                    "unreadable", result.stderr + result.stdout
-                )
+                self.assertIn("[ARS-MARK-READ ERROR:", result.stderr + result.stdout)
+                self.assertIn("unreadable", result.stderr + result.stdout)
             finally:
                 # Restore permissions so TemporaryDirectory cleanup works.
                 os.chmod(locked, 0o700)
@@ -188,14 +194,10 @@ class TestMarkReadFailFast(unittest.TestCase):
             # sibling read-log file.
             os.chmod(root, 0o500)
             try:
-                result = run_script(
-                    SCRIPT, "smith2024", "--passport-path", str(passport)
-                )
+                result = run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
 
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn(
-                    "[ARS-MARK-READ ERROR:", result.stderr + result.stdout
-                )
+                self.assertIn("[ARS-MARK-READ ERROR:", result.stderr + result.stdout)
                 self.assertIn("unwritable", result.stderr + result.stdout)
             finally:
                 os.chmod(root, 0o700)
@@ -210,9 +212,7 @@ class TestMarkReadCitationKeyValidation(unittest.TestCase):
             passport = root / "passport.json"
             _write_passport(passport, citation_keys=["smith2024"])
 
-            result = run_script(
-                SCRIPT, "bogus_key", "--passport-path", str(passport)
-            )
+            result = run_script(SCRIPT, "bogus_key", "--passport-path", str(passport))
 
             self.assertNotEqual(result.returncode, 0)
             combined = result.stderr + result.stdout
@@ -246,9 +246,7 @@ class TestMarkReadCitationKeyValidation(unittest.TestCase):
             )
 
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn(
-                "[ARS-MARK-READ ERROR:", result.stderr + result.stdout
-            )
+            self.assertIn("[ARS-MARK-READ ERROR:", result.stderr + result.stdout)
             log_path = passport.parent / "passport_human_read_log.yaml"
             self.assertFalse(
                 log_path.exists(),
@@ -265,13 +263,15 @@ class TestUnmarkRead(unittest.TestCase):
             passport = root / "passport.json"
             _write_passport(passport, citation_keys=["smith2024"])
             run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
 
-            result = run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport), "--unmark"
-            )
+            result = run_script(SCRIPT, "smith2024", "--passport-path", str(passport), "--unmark")
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
             log_data = _read_log(passport)
@@ -290,18 +290,18 @@ class TestUnmarkRead(unittest.TestCase):
             passport = root / "passport.json"
             _write_passport(passport, citation_keys=["smith2024", "jones2023"])
             run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
 
-            result = run_script(
-                SCRIPT, "jones2023", "--passport-path", str(passport), "--unmark"
-            )
+            result = run_script(SCRIPT, "jones2023", "--passport-path", str(passport), "--unmark")
 
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn(
-                "[ARS-MARK-READ ERROR:", result.stderr + result.stdout
-            )
+            self.assertIn("[ARS-MARK-READ ERROR:", result.stderr + result.stdout)
 
 
 class TestMarkReadYAMLPassport(unittest.TestCase):
@@ -319,16 +319,18 @@ class TestMarkReadYAMLPassport(unittest.TestCase):
             _write_passport(passport, citation_keys=["smith2024"])
 
             result = run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
 
             self.assertEqual(result.returncode, 0, msg=f"stderr: {result.stderr}")
             log_data = _read_log(passport)
             self.assertEqual(len(log_data["human_read"]), 1)
-            self.assertEqual(
-                log_data["human_read"][0]["citation_key"], "smith2024"
-            )
+            self.assertEqual(log_data["human_read"][0]["citation_key"], "smith2024")
 
     def test_yaml_passport_invalid_citation_key_hard_errors(self) -> None:
         """Citation-key validation works the same against a YAML passport."""
@@ -337,14 +339,10 @@ class TestMarkReadYAMLPassport(unittest.TestCase):
             passport = root / "passport.yaml"
             _write_passport(passport, citation_keys=["smith2024"])
 
-            result = run_script(
-                SCRIPT, "nobody2099", "--passport-path", str(passport)
-            )
+            result = run_script(SCRIPT, "nobody2099", "--passport-path", str(passport))
 
             self.assertNotEqual(result.returncode, 0)
-            self.assertIn(
-                "not in literature_corpus[]", result.stderr + result.stdout
-            )
+            self.assertIn("not in literature_corpus[]", result.stderr + result.stdout)
 
 
 class TestReadLogUnwritableExistingFile(unittest.TestCase):
@@ -362,12 +360,8 @@ class TestReadLogUnwritableExistingFile(unittest.TestCase):
             # Read-only on the existing log file. Parent dir stays writable.
             log_path.chmod(stat.S_IRUSR)
             try:
-                result = run_script(
-                    SCRIPT, "smith2024", "--passport-path", str(passport)
-                )
-                self.assertNotEqual(
-                    result.returncode, 0, msg="should fail-fast not succeed"
-                )
+                result = run_script(SCRIPT, "smith2024", "--passport-path", str(passport))
+                self.assertNotEqual(result.returncode, 0, msg="should fail-fast not succeed")
                 combined = result.stderr + result.stdout
                 self.assertIn("[ARS-MARK-READ ERROR:", combined)
                 # Bare Python traceback is the failure mode we are guarding
@@ -375,8 +369,6 @@ class TestReadLogUnwritableExistingFile(unittest.TestCase):
                 self.assertNotIn("Traceback (most recent call last)", combined)
             finally:
                 log_path.chmod(stat.S_IRUSR | stat.S_IWUSR)
-
-
 
 
 class TestReadScopeAttestation(unittest.TestCase):
@@ -408,21 +400,34 @@ class TestReadScopeAttestation(unittest.TestCase):
     def test_sections_with_locators_and_note(self):
         with TemporaryDirectory() as tmp:
             passport, result = self._mark(
-                tmp, "--scope", "sections", "--locator", "pp. 10-24",
-                "--locator", "section 3", "--note", "methods read closely",
+                tmp,
+                "--scope",
+                "sections",
+                "--locator",
+                "pp. 10-24",
+                "--locator",
+                "section 3",
+                "--note",
+                "methods read closely",
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             (entry,) = _read_log(passport)["human_read"]
             self.assertEqual(
                 entry["read_scope"],
-                {"level": "sections", "locators": ["pp. 10-24", "section 3"],
-                 "note": "methods read closely"},
+                {
+                    "level": "sections",
+                    "locators": ["pp. 10-24", "section 3"],
+                    "note": "methods read closely",
+                },
             )
 
     def test_batch_applies_same_scope_to_every_key(self):
         with TemporaryDirectory() as tmp:
             passport, result = self._mark(
-                tmp, "--scope", "full_text", keys=("smith2024", "lee2023"),
+                tmp,
+                "--scope",
+                "full_text",
+                keys=("smith2024", "lee2023"),
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             entries = _read_log(passport)["human_read"]
@@ -441,7 +446,11 @@ class TestReadScopeAttestation(unittest.TestCase):
         for level in ("full_text", "abstract_only", "toc_only", "unknown"):
             with self.subTest(level=level), TemporaryDirectory() as tmp:
                 passport, result = self._mark(
-                    tmp, "--scope", level, "--locator", "pp. 1-2",
+                    tmp,
+                    "--scope",
+                    level,
+                    "--locator",
+                    "pp. 1-2",
                 )
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn("[ARS-MARK-READ ERROR:", result.stderr)
@@ -461,12 +470,21 @@ class TestReadScopeAttestation(unittest.TestCase):
             passport = root / "p.yaml"
             _write_passport(passport, citation_keys=["smith2024"])
             run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
             result = run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--unmark", "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--unmark",
+                "--scope",
+                "full_text",
             )
             self.assertNotEqual(result.returncode, 0)
             self.assertIn("[ARS-MARK-READ ERROR:", result.stderr)
@@ -489,12 +507,14 @@ class TestReadScopeAttestation(unittest.TestCase):
                 ],
             }
             log_path = passport.parent / f"{passport.stem}_human_read_log.yaml"
-            log_path.write_text(
-                yaml.safe_dump(legacy_log, sort_keys=False), encoding="utf-8"
-            )
+            log_path.write_text(yaml.safe_dump(legacy_log, sort_keys=False), encoding="utf-8")
             result = run_script(
-                SCRIPT, "lee2023", "--passport-path", str(passport),
-                "--scope", "abstract_only",
+                SCRIPT,
+                "lee2023",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "abstract_only",
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             first, second = _read_log(passport)["human_read"]
@@ -515,12 +535,21 @@ class TestReadScopeAttestation(unittest.TestCase):
             passport = root / "p.yaml"
             _write_passport(passport, citation_keys=["smith2024"])
             run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--scope", "full_text",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--scope",
+                "full_text",
             )
             result = run_script(
-                SCRIPT, "smith2024", "--passport-path", str(passport),
-                "--unmark", "--note", "",
+                SCRIPT,
+                "smith2024",
+                "--passport-path",
+                str(passport),
+                "--unmark",
+                "--note",
+                "",
             )
             self.assertNotEqual(result.returncode, 0)
             (entry,) = _read_log(passport)["human_read"]
@@ -545,8 +574,13 @@ class TestReadScopeAttestation(unittest.TestCase):
     def test_max_length_boundary_values_accepted(self):
         with TemporaryDirectory() as tmp:
             passport, result = self._mark(
-                tmp, "--scope", "sections",
-                "--locator", "x" * 200, "--note", "y" * 1000,
+                tmp,
+                "--scope",
+                "sections",
+                "--locator",
+                "x" * 200,
+                "--note",
+                "y" * 1000,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             (entry,) = _read_log(passport)["human_read"]
@@ -564,16 +598,23 @@ class TestReadScopeAttestation(unittest.TestCase):
             self.skipTest("jsonschema not installed")
         schema_path = (
             Path(SCRIPT).resolve().parent.parent
-            / "shared" / "contracts" / "passport" / "human_read_log.schema.json"
+            / "shared"
+            / "contracts"
+            / "passport"
+            / "human_read_log.schema.json"
         )
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         bad = {
-            "session_id": "s", "created_at": "2026-07-20T00:00:00Z",
-            "human_read": [{
-                "citation_key": "smith2024", "marked_at": "2026-07-20T00:00:00Z",
-                "attestation_type": "USER_ATTESTED_READ",
-                "read_scope": {"level": "full_text", "locators": ["pp. 1-2"]},
-            }],
+            "session_id": "s",
+            "created_at": "2026-07-20T00:00:00Z",
+            "human_read": [
+                {
+                    "citation_key": "smith2024",
+                    "marked_at": "2026-07-20T00:00:00Z",
+                    "attestation_type": "USER_ATTESTED_READ",
+                    "read_scope": {"level": "full_text", "locators": ["pp. 1-2"]},
+                }
+            ],
         }
         with self.assertRaises(jsonschema.ValidationError):
             jsonschema.validate(bad, schema)
@@ -590,7 +631,10 @@ class TestReadScopeAttestation(unittest.TestCase):
             self.skipTest("jsonschema not installed")
         schema_path = (
             Path(SCRIPT).resolve().parent.parent
-            / "shared" / "contracts" / "passport" / "human_read_log.schema.json"
+            / "shared"
+            / "contracts"
+            / "passport"
+            / "human_read_log.schema.json"
         )
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         valid = {
@@ -630,13 +674,21 @@ class TestReadScopeAttestation(unittest.TestCase):
             self.skipTest("jsonschema not installed")
         schema_path = (
             Path(SCRIPT).resolve().parent.parent
-            / "shared" / "contracts" / "passport" / "human_read_log.schema.json"
+            / "shared"
+            / "contracts"
+            / "passport"
+            / "human_read_log.schema.json"
         )
         schema = json.loads(schema_path.read_text(encoding="utf-8"))
         with TemporaryDirectory() as tmp:
             passport, result = self._mark(
-                tmp, "--scope", "sections", "--locator", "pp. 1-9",
-                "--note", "intro only",
+                tmp,
+                "--scope",
+                "sections",
+                "--locator",
+                "pp. 1-9",
+                "--note",
+                "intro only",
             )
             self.assertEqual(result.returncode, 0, result.stderr)
             run_script(SCRIPT, "smith2024", "--passport-path", str(passport), "--unmark")
@@ -646,9 +698,7 @@ class TestReadScopeAttestation(unittest.TestCase):
 class TestExistingLedgerFailClosed(unittest.TestCase):
     """#738: an invalid existing ledger is immutable evidence, not input to repair."""
 
-    def _assert_rejected_unchanged(
-        self, raw: bytes, *, unmark: bool = False
-    ) -> None:
+    def _assert_rejected_unchanged(self, raw: bytes, *, unmark: bool = False) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             passport = root / "passport.yaml"
@@ -780,9 +830,7 @@ class TestLockedLedgerTransaction(unittest.TestCase):
                 except Exception as exc:  # surfaced in the test thread
                     errors.append(exc)
 
-            with patch.object(
-                ars_mark_read, "_load_log", side_effect=controlled_load
-            ):
+            with patch.object(ars_mark_read, "_load_log", side_effect=controlled_load):
                 first = threading.Thread(target=write_one, args=("first2026",))
                 second = threading.Thread(target=write_one, args=("second2026",))
                 first.start()
@@ -809,12 +857,8 @@ class TestLockedLedgerTransaction(unittest.TestCase):
             lock_fd = os.open(lock_path, os.O_RDWR | os.O_CREAT, 0o600)
             ars_mark_read.fcntl.flock(lock_fd, ars_mark_read.fcntl.LOCK_EX)
             try:
-                with self.assertRaisesRegex(
-                    ars_mark_read.LedgerLockError, "timed out"
-                ):
-                    with ars_mark_read._ledger_lock(
-                        log_path, timeout_seconds=0.01
-                    ):
+                with self.assertRaisesRegex(ars_mark_read.LedgerLockError, "timed out"):
+                    with ars_mark_read._ledger_lock(log_path, timeout_seconds=0.01):
                         self.fail("contended lock must not be acquired")
             finally:
                 ars_mark_read.fcntl.flock(lock_fd, ars_mark_read.fcntl.LOCK_UN)
@@ -828,9 +872,7 @@ class TestLockedLedgerTransaction(unittest.TestCase):
             with patch.object(
                 ars_mark_read,
                 "_update_log_locked",
-                side_effect=ars_mark_read.LedgerLockError(
-                    "simulated acquisition failure"
-                ),
+                side_effect=ars_mark_read.LedgerLockError("simulated acquisition failure"),
             ), redirect_stderr(stderr):
                 result = ars_mark_read.main(
                     [
@@ -897,14 +939,13 @@ class TestAtomicLedgerReplace(unittest.TestCase):
                 observed.append((source_path, destination_path))
                 real_replace(source_path, destination_path)
 
-            with patch.object(
-                ars_mark_read.os, "replace", side_effect=observe_replace
-            ):
+            with patch.object(ars_mark_read.os, "replace", side_effect=observe_replace):
                 ars_mark_read._save_log(log_path, self._valid_payload())
 
             self.assertEqual(len(observed), 1)
             self.assertEqual(yaml.safe_load(log_path.read_text()), self._valid_payload())
             self.assertEqual(list(root.glob(f".{log_path.name}.*.tmp")), [])
+
 
 if __name__ == "__main__":
     unittest.main()

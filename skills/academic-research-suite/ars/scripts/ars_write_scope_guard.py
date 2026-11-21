@@ -181,7 +181,7 @@ def _match_segments(path_segs, pat_segs):
             # matches name in any subdir but NOT at root (the bare INFRA pattern covers root).
             if i < n:
                 stack.append((i + 1, j + 1))  # `**` ate exactly this segment
-                stack.append((i + 1, j))      # `**` keeps eating
+                stack.append((i + 1, j))  # `**` keeps eating
             continue
         # A literal segment pattern: needs a path segment that fnmatches it.
         if i < n and fnmatch.fnmatch(path_segs[i], head):
@@ -336,13 +336,15 @@ def evaluate_decision(payload, manifest, workspace_root, plugin_root=None):
         if is_bucket_a:
             return {
                 "decision": "deny",
-                "reason": (f"ARS scope guard: {agent_type} (a single-phase agent) may not use "
-                           "Bash. Use the Grep/Glob tools to search and the Write/Edit/MultiEdit "
-                           "tools to make file changes — those are scope-enforced deterministically. "
-                           "Bash is denied wholesale because neither 'writes a file' nor 'is "
-                           "read-only' is a property that can be decided reliably from a command "
-                           "string (a tool can spawn a subprocess or be steered by an env var); "
-                           "all-deny is the only policy that cannot fail open (spec §3.2/§3.3/§7)."),
+                "reason": (
+                    f"ARS scope guard: {agent_type} (a single-phase agent) may not use "
+                    "Bash. Use the Grep/Glob tools to search and the Write/Edit/MultiEdit "
+                    "tools to make file changes — those are scope-enforced deterministically. "
+                    "Bash is denied wholesale because neither 'writes a file' nor 'is "
+                    "read-only' is a property that can be decided reliably from a command "
+                    "string (a tool can spawn a subprocess or be steered by an env var); "
+                    "all-deny is the only policy that cannot fail open (spec §3.2/§3.3/§7)."
+                ),
                 "bash_denied": True,
             }
         # Non-Bucket-A (main session / Bucket B/C/D) Bash -> pass through unconstrained.
@@ -355,9 +357,11 @@ def evaluate_decision(payload, manifest, workspace_root, plugin_root=None):
         # silently allow — fail loud (deny + advisory) so the guard cannot fail open.
         return {
             "decision": "deny",
-            "reason": (f"ARS scope guard: {tool_name} payload carried no top-level "
-                       "file_path (unexpected schema) — denying to avoid silent "
-                       "fail-open. Re-verify the tool_input shape."),
+            "reason": (
+                f"ARS scope guard: {tool_name} payload carried no top-level "
+                "file_path (unexpected schema) — denying to avoid silent "
+                "fail-open. Re-verify the tool_input shape."
+            ),
             "schema_drift_advisory": True,
         }
     # --- Step 2: infrastructure self-protection (anchored on plugin_root). RUNS FIRST,
@@ -377,8 +381,10 @@ def evaluate_decision(payload, manifest, workspace_root, plugin_root=None):
     if _infra_protected_target(raw, cwd, plugin_root):
         return {
             "decision": "deny",
-            "reason": (f"ARS scope guard: {raw} is part of the ARS plugin's enforcement "
-                       "infrastructure and may not be written by any agent."),
+            "reason": (
+                f"ARS scope guard: {raw} is part of the ARS plugin's enforcement "
+                "infrastructure and may not be written by any agent."
+            ),
         }
 
     rel, escaped = _normalize_target(raw, cwd, workspace_root)
@@ -396,8 +402,10 @@ def evaluate_decision(payload, manifest, workspace_root, plugin_root=None):
         if is_bucket_a:
             return {
                 "decision": "deny",
-                "reason": (f"ARS scope guard: {agent_type} write target {raw!r} escapes the "
-                           "workspace root (path traversal) — denied."),
+                "reason": (
+                    f"ARS scope guard: {agent_type} write target {raw!r} escapes the "
+                    "workspace root (path traversal) — denied."
+                ),
             }
         return _allow_unconstrained(agent_type)
 
@@ -411,8 +419,10 @@ def evaluate_decision(payload, manifest, workspace_root, plugin_root=None):
     if not _matches_any(rel, allowed):
         return {
             "decision": "deny",
-            "reason": (f"ARS scope guard: {agent_type} may not write {rel} "
-                       f"(outside allowed_write_globs {allowed})."),
+            "reason": (
+                f"ARS scope guard: {agent_type} may not write {rel} "
+                f"(outside allowed_write_globs {allowed})."
+            ),
         }
     return {"decision": "allow", "reason": ""}
 
@@ -427,13 +437,15 @@ def render_hook_output(decision):
     silently widen what the rest of the permission system would otherwise have asked about.
     """
     if decision.get("decision") == "deny":
-        return json.dumps({
-            "hookSpecificOutput": {
-                "hookEventName": "PreToolUse",
-                "permissionDecision": "deny",
-                "permissionDecisionReason": decision.get("reason", ""),
+        return json.dumps(
+            {
+                "hookSpecificOutput": {
+                    "hookEventName": "PreToolUse",
+                    "permissionDecision": "deny",
+                    "permissionDecisionReason": decision.get("reason", ""),
+                }
             }
-        })
+        )
     # Pass-through: a bare hookSpecificOutput with no permissionDecision key.
     return json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse"}})
 
@@ -477,8 +489,7 @@ def main():
     # abspath) so a symlinked script / scripts dir — the norm for the ~/.claude/skills
     # symlink install track — resolves to the REAL plugin tree, not the symlink's location
     # (abspath would not follow the symlink and compute the wrong root).
-    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or str(
-        Path(__file__).resolve().parents[1])
+    plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT") or str(Path(__file__).resolve().parents[1])
 
     try:
         manifest = _load_manifest()
@@ -492,11 +503,15 @@ def main():
 
     # Surface fail-loud advisories to stderr (visible to the user/transcript), never silent.
     if decision.get("absent_agent_type_advisory"):
-        sys.stderr.write("[ARS write-scope guard] write tool fired with no agent_type; "
-                         "allowed (main session) but surfaced per no-silent-no-op rule.\n")
+        sys.stderr.write(
+            "[ARS write-scope guard] write tool fired with no agent_type; "
+            "allowed (main session) but surfaced per no-silent-no-op rule.\n"
+        )
     if decision.get("schema_drift_advisory"):
-        sys.stderr.write("[ARS write-scope guard] structured write tool lacked a top-level "
-                         "file_path; denied to avoid silent fail-open.\n")
+        sys.stderr.write(
+            "[ARS write-scope guard] structured write tool lacked a top-level "
+            "file_path; denied to avoid silent fail-open.\n"
+        )
 
     print(render_hook_output(decision))
     return 0

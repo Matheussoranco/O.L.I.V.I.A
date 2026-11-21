@@ -20,7 +20,6 @@ if str(REPO_ROOT / "scripts") not in sys.path:
 
 import check_policy_anchor_table as cpat  # noqa: E402
 
-
 _GOOD_TABLE = textwrap.dedent(
     """\
     # Policy Anchor Table
@@ -139,9 +138,7 @@ class CheckPolicyAnchorTableMutationTests(unittest.TestCase):
         # Remove field #5 from PRISMA-trAIce. textwrap.dedent strips leading
         # indent so rows start at column 0; match the row prefix exactly.
         lines = _GOOD_TABLE.split("\n")
-        bad_lines = [
-            line for line in lines if not line.lstrip().startswith("| 5 | Specific task")
-        ]
+        bad_lines = [line for line in lines if not line.lstrip().startswith("| 5 | Specific task")]
         bad = "\n".join(bad_lines)
         violations = cpat.lint_text(bad)
         self.assertTrue(
@@ -198,9 +195,7 @@ class CheckPolicyAnchorTableMutationTests(unittest.TestCase):
         )
         # If we just delete a row, the field-count test catches it. To test order
         # we keep all 16 but rename one with a wrong number.
-        bad = _GOOD_TABLE.replace(
-            "| 14 | Disclosure location", "| 99 | Disclosure location"
-        )
+        bad = _GOOD_TABLE.replace("| 14 | Disclosure location", "| 99 | Disclosure location")
         violations = cpat.lint_text(bad)
         self.assertTrue(
             any("order" in v.lower() or "field" in v.lower() or "99" in v for v in violations),
@@ -251,7 +246,9 @@ class CheckPolicyAnchorTableNatureSourceOfTruthTest(unittest.TestCase):
     def test_main_command_invokes_dedup_helper(self) -> None:
         # Codex round-7 P3 #1 closure: removing the canonical Nature source
         # file should fail the main lint command (not just the unit test).
-        import shutil, tempfile
+        import shutil
+        import tempfile
+
         with tempfile.TemporaryDirectory() as td:
             tdir = Path(td)
             anchor = REPO_ROOT / "academic-paper/references/policy_anchor_table.md"

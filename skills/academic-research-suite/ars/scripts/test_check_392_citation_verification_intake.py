@@ -9,9 +9,7 @@ from tempfile import TemporaryDirectory
 
 from tests.test_helpers import run_script
 
-SCRIPT = (
-    Path(__file__).resolve().parent / "check_392_citation_verification_intake.py"
-)
+SCRIPT = Path(__file__).resolve().parent / "check_392_citation_verification_intake.py"
 REPO_ROOT = SCRIPT.parent.parent
 
 GOOD_INTAKE = textwrap.dedent(
@@ -66,9 +64,7 @@ class TestCitationVerificationIntakeLint(unittest.TestCase):
             root = Path(tmp)
             _write(
                 root,
-                GOOD_INTAKE.replace(
-                    ", then Step 13\n(Citation Verification Level)", ""
-                ),
+                GOOD_INTAKE.replace(", then Step 13\n(Citation Verification Level)", ""),
             )
             result = _run(root)
             self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
@@ -80,9 +76,7 @@ class TestCitationVerificationIntakeLint(unittest.TestCase):
             _write(
                 root,
                 "\n".join(
-                    l
-                    for l in GOOD_INTAKE.splitlines()
-                    if "**Citation Verification**" not in l
+                    l for l in GOOD_INTAKE.splitlines() if "**Citation Verification**" not in l
                 ),
             )
             result = _run(root)

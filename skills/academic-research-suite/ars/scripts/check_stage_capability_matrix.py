@@ -73,13 +73,11 @@ import datetime
 import json
 import re
 import sys
-from functools import lru_cache
+from functools import cache
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-DEFAULT_MATRIX = (
-    REPO_ROOT / "shared" / "contracts" / "capability" / "stage_capability_matrix.json"
-)
+DEFAULT_MATRIX = REPO_ROOT / "shared" / "contracts" / "capability" / "stage_capability_matrix.json"
 DEFAULT_VIEW = REPO_ROOT / "docs" / "STAGE_CAPABILITY_MATRIX.md"
 
 # Frozen stage/task-family vocabulary — the same closed list the #742 profile
@@ -148,24 +146,26 @@ _REPORT_NAME_RE = re.compile(r"^measurement-.+\.json$")
 # Shipped-inventory locks (degradation-registry D5 convention): silently
 # deleting a shipped row or a shipped row's claim anchors cannot pass —
 # adding/removing requires touching this lint in the same commit.
-_EXPECTED_ROW_IDS = frozenset({
-    "rq_formation.wording_advisory",
-    "rq_formation.ideation_diversity",
-    "rq_formation.research_workflow_profile",
-    "rq_formation.inquiry_branch_ledger",
-    "retrieval.citation_existence_gate",
-    "retrieval.claim_standing_probe",
-    "methodology.blueprint",
-    "synthesis.cross_source",
-    "drafting.citation_emission",
-    "integrity_check.claim_verification",
-    "integrity_check.tortured_phrase_screen",
-    "integrity_check.inquiry_branch_ledger",
-    "review.seeded_defect_panel",
-    "review.calibration",
-    "revision.claim_drift_guard",
-    "finalization.format_and_disclosure",
-})
+_EXPECTED_ROW_IDS = frozenset(
+    {
+        "rq_formation.wording_advisory",
+        "rq_formation.ideation_diversity",
+        "rq_formation.research_workflow_profile",
+        "rq_formation.inquiry_branch_ledger",
+        "retrieval.citation_existence_gate",
+        "retrieval.claim_standing_probe",
+        "methodology.blueprint",
+        "synthesis.cross_source",
+        "drafting.citation_emission",
+        "integrity_check.claim_verification",
+        "integrity_check.tortured_phrase_screen",
+        "integrity_check.inquiry_branch_ledger",
+        "review.seeded_defect_panel",
+        "review.calibration",
+        "revision.claim_drift_guard",
+        "finalization.format_and_disclosure",
+    }
+)
 _EXPECTED_ANCHOR_MINIMUMS = {
     "rq_formation.wording_advisory": 1,
     "retrieval.citation_existence_gate": 1,
@@ -185,9 +185,7 @@ def _reject_duplicate_keys(pairs):
 
 def _load(path: Path) -> dict:
     """Strict matrix loader shared by the lint and --render."""
-    data = json.loads(
-        path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicate_keys
-    )
+    data = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_reject_duplicate_keys)
     if not isinstance(data, dict):
         raise ValueError("matrix root must be an object")
     return data
@@ -207,7 +205,7 @@ def _contained(relative) -> Path | None:
     return target
 
 
-@lru_cache(maxsize=None)
+@cache
 def _read_repo_file(relative: str) -> str | None:
     """Containment-checked, memoized repo-relative read (None = unreadable)."""
     target = _contained(relative)
@@ -221,15 +219,12 @@ def _nonempty_str(value) -> bool:
 
 
 def _nonempty_str_list(value) -> bool:
-    return (
-        isinstance(value, list)
-        and len(value) >= 1
-        and all(_nonempty_str(v) for v in value)
-    )
+    return isinstance(value, list) and len(value) >= 1 and all(_nonempty_str(v) for v in value)
 
 
-def _check_behavioral(row_id: str, ev, today: datetime.date,
-                      stale_after_days: int | None, errors: list[str]) -> None:
+def _check_behavioral(
+    row_id: str, ev, today: datetime.date, stale_after_days: int | None, errors: list[str]
+) -> None:
     prefix = f"M4 row {row_id}:"
     if not isinstance(ev, dict):
         errors.append(f"{prefix} behavioral_evidence must be an object")
@@ -239,9 +234,7 @@ def _check_behavioral(row_id: str, ev, today: datetime.date,
         errors.append(f"{prefix} unknown behavioral_evidence fields {sorted(unknown)}")
     status = ev.get("status")
     if status not in _BEHAVIORAL_STATUSES:
-        errors.append(
-            f"{prefix} status {status!r} not in {_BEHAVIORAL_STATUSES}"
-        )
+        errors.append(f"{prefix} status {status!r} not in {_BEHAVIORAL_STATUSES}")
         return
     eval_ref = ev.get("eval_ref")
     if eval_ref is not None:
@@ -258,23 +251,16 @@ def _check_behavioral(row_id: str, ev, today: datetime.date,
             errors.append(f"{prefix} {status} requires non-empty 'eval_ref' provenance")
         for field in ("model", "population", "measured_at", "result_summary"):
             if not _nonempty_str(ev.get(field)):
-                errors.append(
-                    f"{prefix} {status} requires non-empty {field!r} provenance"
-                )
+                errors.append(f"{prefix} {status} requires non-empty {field!r} provenance")
         measured_date = None
         measured_at = ev.get("measured_at")
         if _nonempty_str(measured_at):
             try:
                 measured_date = datetime.date.fromisoformat(measured_at)
             except ValueError:
-                errors.append(
-                    f"{prefix} measured_at {measured_at!r} is not an ISO date"
-                )
+                errors.append(f"{prefix} measured_at {measured_at!r} is not an ISO date")
         if measured_date is not None and measured_date > today:
-            errors.append(
-                f"{prefix} measured_at {measured_date.isoformat()} is in the "
-                "future"
-            )
+            errors.append(f"{prefix} measured_at {measured_date.isoformat()} is in the " "future")
             measured_date = None
         if measured_date is not None and stale_after_days is not None:
             age = (today - measured_date).days
@@ -300,9 +286,13 @@ def _check_behavioral(row_id: str, ev, today: datetime.date,
         errors.append(f"{prefix} 'reason' is only lawful on OUT_OF_SCOPE rows")
 
 
-def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
-                          measured_date: datetime.date | None,
-                          errors: list[str]) -> None:
+def _check_report_binding(
+    row_id: str,
+    ev: dict,
+    eval_ref: str | None,
+    measured_date: datetime.date | None,
+    errors: list[str],
+) -> None:
     """M11: bind measured rows to their suite's latest measurement report."""
     prefix = f"M11 row {row_id}:"
     suite_dir = (REPO_ROOT / eval_ref) if eval_ref else None
@@ -325,8 +315,7 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
     report_path = REPO_ROOT / binding
     if not _REPORT_NAME_RE.fullmatch(report_path.name):
         errors.append(
-            f"{prefix} measurement_report {binding!r} must be a "
-            "measurement-*.json report file"
+            f"{prefix} measurement_report {binding!r} must be a " "measurement-*.json report file"
         )
         return
     if suite_dir is None or report_path.parent != suite_dir:
@@ -341,9 +330,7 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
         errors.append(f"{prefix} cannot load measurement_report {binding!r}: {exc}")
         return
     if not isinstance(report, dict):
-        errors.append(
-            f"{prefix} measurement_report {binding!r} must be a JSON object"
-        )
+        errors.append(f"{prefix} measurement_report {binding!r} must be a JSON object")
         return
     # heldout-measurement/1.0 uses measurement_date; pre-#654 legacy reports
     # carry measured_at instead — accept either, prefer the contract field.
@@ -369,9 +356,7 @@ def _check_report_binding(row_id: str, ev: dict, eval_ref: str | None,
                 "object — supersession cannot be assessed"
             )
             continue
-        sibling_date = sibling_report.get("measurement_date") or sibling_report.get(
-            "measured_at"
-        )
+        sibling_date = sibling_report.get("measurement_date") or sibling_report.get("measured_at")
         if isinstance(sibling_date, str):
             dates.append(sibling_date)
     if (
@@ -434,22 +419,13 @@ def _check_anchors(row, errors: list[str]) -> None:
         return
     for anchor in anchors:
         if not isinstance(anchor, dict) or set(anchor) != {"file", "anchor"}:
-            errors.append(
-                f"M7 row {row_id}: each claim anchor is exactly "
-                "{{file, anchor}}"
-            )
+            errors.append(f"M7 row {row_id}: each claim anchor is exactly " "{{file, anchor}}")
             continue
         text = anchor["anchor"]
         if not _nonempty_str(text) or len(text) < _MIN_ANCHOR_LEN:
-            errors.append(
-                f"M7 row {row_id}: anchor must be >= {_MIN_ANCHOR_LEN} chars"
-            )
+            errors.append(f"M7 row {row_id}: anchor must be >= {_MIN_ANCHOR_LEN} chars")
             continue
-        content = (
-            _read_repo_file(anchor["file"])
-            if _nonempty_str(anchor["file"])
-            else None
-        )
+        content = _read_repo_file(anchor["file"]) if _nonempty_str(anchor["file"]) else None
         if content is None:
             errors.append(
                 f"M7 row {row_id}: anchor file {anchor['file']!r} is not a "
@@ -470,8 +446,7 @@ def _check_conformance_pins(row, errors: list[str]) -> None:
     if conformance == "NONE":
         if pins is not None:
             errors.append(
-                f"M12 row {row_id}: NONE conformance must not carry "
-                "conformance_pinned_by"
+                f"M12 row {row_id}: NONE conformance must not carry " "conformance_pinned_by"
             )
         return
     if conformance not in ("CI_GATED", "TESTED"):
@@ -490,20 +465,16 @@ def _check_conformance_pins(row, errors: list[str]) -> None:
         path, func = match.group("path"), match.group("func")
         content = _read_repo_file(path)
         if content is None:
-            errors.append(
-                f"M12 row {row_id}: pin {pin!r} names a missing file"
-            )
+            errors.append(f"M12 row {row_id}: pin {pin!r} names a missing file")
             continue
         if func is not None:
             if not path.endswith(".py"):
                 errors.append(
-                    f"M12 row {row_id}: '::function' pins require a .py path "
-                    f"({pin!r})"
+                    f"M12 row {row_id}: '::function' pins require a .py path " f"({pin!r})"
                 )
             elif not re.search(rf"^def {re.escape(func)}\(", content, re.M):
                 errors.append(
-                    f"M12 row {row_id}: pin {pin!r} names a function not "
-                    "defined in the file"
+                    f"M12 row {row_id}: pin {pin!r} names a function not " "defined in the file"
                 )
 
 
@@ -525,9 +496,7 @@ def run(
     if not shape_ok:
         missing = _TOP_FIELDS - set(data)
         unknown = set(data) - _TOP_FIELDS
-        errors.append(
-            f"M1: top-level fields missing={sorted(missing)} unknown={sorted(unknown)}"
-        )
+        errors.append(f"M1: top-level fields missing={sorted(missing)} unknown={sorted(unknown)}")
     if data.get("schema_version") != _SCHEMA_VERSION:
         errors.append(
             f"M1: schema_version must be {_SCHEMA_VERSION!r}, "
@@ -577,8 +546,7 @@ def run(
             covered.add(family)
         if row.get("mechanism_status") not in _MECHANISM_STATUSES:
             errors.append(
-                f"M3 row {row_id}: mechanism_status must be one of "
-                f"{_MECHANISM_STATUSES}"
+                f"M3 row {row_id}: mechanism_status must be one of " f"{_MECHANISM_STATUSES}"
             )
         if row.get("deterministic_conformance") not in _CONFORMANCE_STATUSES:
             errors.append(
@@ -599,17 +567,13 @@ def run(
                     "non-empty string (write 'none known' explicitly)"
                 )
 
-        _check_behavioral(
-            row_id, row.get("behavioral_evidence"), today, stale_after_days, errors
-        )
+        _check_behavioral(row_id, row.get("behavioral_evidence"), today, stale_after_days, errors)
         _check_claim_language(row, errors)
         _check_anchors(row, errors)
         _check_conformance_pins(row, errors)
 
         status = _status(row)
-        if status != "OUT_OF_SCOPE" and not _nonempty_str(
-            row.get("next_required_evaluation")
-        ):
+        if status != "OUT_OF_SCOPE" and not _nonempty_str(row.get("next_required_evaluation")):
             errors.append(
                 f"M9 row {row_id}: next_required_evaluation must be non-empty "
                 "unless the row is OUT_OF_SCOPE"
@@ -617,9 +581,7 @@ def run(
 
     uncovered = set(TASK_FAMILIES) - covered
     if uncovered:
-        errors.append(
-            f"M5: task families with no row: {sorted(uncovered)}"
-        )
+        errors.append(f"M5: task families with no row: {sorted(uncovered)}")
 
     if inventory_lock:
         missing_rows = _EXPECTED_ROW_IDS - seen_ids
@@ -631,9 +593,7 @@ def run(
             )
         anchors_by_id = {
             r.get("row_id"): (
-                len(r["claim_anchors"])
-                if isinstance(r.get("claim_anchors"), list)
-                else 0
+                len(r["claim_anchors"]) if isinstance(r.get("claim_anchors"), list) else 0
             )
             for r in rows
             if isinstance(r, dict)
@@ -655,8 +615,7 @@ def run(
         else:
             if current != render(data):
                 errors.append(
-                    f"M10: {target} is out of sync with the matrix — "
-                    "regenerate with --render"
+                    f"M10: {target} is out of sync with the matrix — " "regenerate with --render"
                 )
     return errors
 
@@ -697,9 +656,7 @@ def render(data: dict) -> str:
             )
             if row.get("conformance_pinned_by"):
                 conformance_line += (
-                    " (pinned by "
-                    + "; ".join(_flat(p) for p in row["conformance_pinned_by"])
-                    + ")"
+                    " (pinned by " + "; ".join(_flat(p) for p in row["conformance_pinned_by"]) + ")"
                 )
             lines.append(conformance_line)
             detail = [f"**Behavioral evidence**: {status}"]
@@ -740,8 +697,7 @@ def render(data: dict) -> str:
                     )
                 )
             lines.append(
-                "- **Maximum licensed claim**: "
-                + _flat(row.get("max_licensed_claim", ""))
+                "- **Maximum licensed claim**: " + _flat(row.get("max_licensed_claim", ""))
             )
             if row.get("next_required_evaluation"):
                 lines.append(

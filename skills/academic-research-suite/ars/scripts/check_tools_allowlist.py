@@ -210,15 +210,13 @@ def _uses_merge_or_alias(node: yaml.Node) -> bool:
 def _key_values(node: yaml.MappingNode, key: str) -> list[yaml.Node]:
     """Every value node whose key resolves to `key`, duplicates included
     (the node tree preserves a shadowed key that safe_load would collapse)."""
-    return [v for k, v in node.value
-            if isinstance(k, yaml.ScalarNode) and _scalar_py(k) == key]
+    return [v for k, v in node.value if isinstance(k, yaml.ScalarNode) and _scalar_py(k) == key]
 
 
 def _key_nodes(node: yaml.MappingNode, key: str) -> list[yaml.ScalarNode]:
     """Every KEY node that resolves to `key` (for line marks), duplicates
     included."""
-    return [k for k, v in node.value
-            if isinstance(k, yaml.ScalarNode) and _scalar_py(k) == key]
+    return [k for k, v in node.value if isinstance(k, yaml.ScalarNode) and _scalar_py(k) == key]
 
 
 def _node_to_py(value_node: yaml.Node) -> object:
@@ -299,8 +297,8 @@ def _raw_tools_line(block: str, key_node: yaml.ScalarNode) -> str | None:
     idx = key_node.start_mark.index
     if not (0 <= idx <= len(block)):
         return None
-    start = block.rfind("\n", 0, idx) + 1        # char after the prev newline
-    end = block.find("\n", idx)                  # next newline, or end
+    start = block.rfind("\n", 0, idx) + 1  # char after the prev newline
+    end = block.find("\n", idx)  # next newline, or end
     return block[start:] if end == -1 else block[start:end]
 
 
@@ -335,8 +333,7 @@ def _bucket_a_names(root: Path) -> tuple[set[str] | None, str | None]:
     agents = data.get("agents") if isinstance(data, dict) else None
     if not isinstance(agents, dict):
         return None, (
-            f"{MANIFEST}: no `agents` mapping — invariant 2 cannot run; "
-            "failing closed."
+            f"{MANIFEST}: no `agents` mapping — invariant 2 cannot run; " "failing closed."
         )
     return set(agents), None
 
@@ -409,8 +406,7 @@ def check(root: Path) -> list[str]:
         if len(key_nodes) == 1:
             raw_line = _raw_tools_line(block, key_nodes[0])
             if raw_line != PINNED_TOOLS_LINE:
-                found = raw_line if raw_line is not None else \
-                    "(tools key not on its own line)"
+                found = raw_line if raw_line is not None else "(tools key not on its own line)"
                 errors.append(
                     f"{rel}: the `tools` line is not byte-equal to the frozen "
                     f"#514 form.\n    expected: {PINNED_TOOLS_LINE}\n    "

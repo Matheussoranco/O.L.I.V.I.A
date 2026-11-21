@@ -8,8 +8,8 @@ model, retrieval, or dispatch surface.
 from __future__ import annotations
 
 import argparse
-from collections import Counter
 import json
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -96,9 +96,7 @@ def _slot(item_id: str) -> str:
 
 def validate_set(value: dict[str, Any]) -> None:
     schema = json.loads(SET_SCHEMA.read_bytes())
-    errors = sorted(
-        Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path)
-    )
+    errors = sorted(Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path))
     if errors:
         first = errors[0]
         _fail(f"schema: {list(first.path)!r}: {first.message}")
@@ -121,8 +119,7 @@ def validate_set(value: dict[str, Any]) -> None:
         slots = Counter(_slot(item["item_id"]) for item in subset)
         if slots != EXPECTED_SLOTS:
             _fail(
-                f"language block {language} design-slot coverage is not exact: "
-                f"{dict(slots)!r}"
+                f"language block {language} design-slot coverage is not exact: " f"{dict(slots)!r}"
             )
         disciplines = [item["discipline"] for item in subset]
         if len(set(disciplines)) != len(disciplines):
@@ -204,9 +201,7 @@ def validate_set(value: dict[str, Any]) -> None:
 
 def validate_expert_file(value: dict[str, Any], set_value: dict[str, Any]) -> None:
     schema = json.loads(EXPERT_SCHEMA.read_bytes())
-    errors = sorted(
-        Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path)
-    )
+    errors = sorted(Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path))
     if errors:
         first = errors[0]
         _fail(f"expert file schema: {list(first.path)!r}: {first.message}")

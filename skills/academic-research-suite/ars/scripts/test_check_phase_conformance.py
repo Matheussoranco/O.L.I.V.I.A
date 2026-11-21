@@ -7,7 +7,6 @@ import time
 from pathlib import Path
 
 import pytest
-
 from scripts import check_panel_synthesis as panel
 from scripts import check_phase_conformance as phase
 
@@ -24,8 +23,7 @@ def phase1_text(role: str, overrides=None) -> str:
     # with fewer paragraphs would stop being a valid Phase 1 at all.
     lines = ["## Contract Paraphrase", ""]
     for dim in FULL["acceptance_dimensions"]:
-        lines += [f"{dim['id']} concerns {dim['name']} as the contract "
-                  "defines it.", ""]
+        lines += [f"{dim['id']} concerns {dim['name']} as the contract " "defines it.", ""]
     lines += ["## Scoring Plan", ""]
     for dim in FULL["acceptance_dimensions"]:
         if role not in dim["eligible_roles"]:
@@ -34,27 +32,22 @@ def phase1_text(role: str, overrides=None) -> str:
         fields = {
             "dimension_id": did,
             "what_to_look_for": f"observable evidence relevant to {did}",
-            "what_triggers_block":
-                f"block evidence pattern for {did} requiring major repair",
-            "what_triggers_warn":
-                f"warn evidence pattern for {did} requiring clarification",
+            "what_triggers_block": f"block evidence pattern for {did} requiring major repair",
+            "what_triggers_warn": f"warn evidence pattern for {did} requiring clarification",
         }
         if dim["priority"] == "mandatory":
-            fields["what_triggers_fatal"] = (
-                f"fatal evidence pattern for {did} invalidating the core"
-            )
+            fields[
+                "what_triggers_fatal"
+            ] = f"fatal evidence pattern for {did} invalidating the core"
         fields.update(overrides.get(did, {}))
         lines += [f"### {did}: {dim['name']}"]
-        lines += [f"{key}: {value}" for key, value in fields.items()
-                  if value is not None]
+        lines += [f"{key}: {value}" for key, value in fields.items() if value is not None]
         lines.append("")
     lines.append("[CONTRACT-ACKNOWLEDGED]")
     return "\n".join(lines)
 
 
-def phase2_text(
-    role: str, overrides=None, body="", dissent=(), receipts=None
-) -> str:
+def phase2_text(role: str, overrides=None, body="", dissent=(), receipts=None) -> str:
     """Build a Phase 2 card; a methodology card carries its #610 receipt
     section (default: the no-recomputable-statistics attestation), because a
     methodology card without one stopped being conformant when the receipt
@@ -82,12 +75,14 @@ def phase2_text(
                 ]
             elif value == "block":
                 lines += [
-                    "score: block", "block_class: repairable",
+                    "score: block",
+                    "block_class: repairable",
                     f'trigger: "block evidence pattern for {did}"',
                 ]
             elif value == "fatal":
                 lines += [
-                    "score: block", "block_class: fatal",
+                    "score: block",
+                    "block_class: fatal",
                     f'trigger: "fatal evidence pattern for {did}"',
                 ]
             elif value == "abstain":
@@ -110,9 +105,7 @@ def phase2_text(
 
 
 def parse_plan(role="methodology", overrides=None):
-    return phase.parse_phase1(
-        "p1.md", phase1_text(role, overrides), FULL, role
-    )
+    return phase.parse_phase1("p1.md", phase1_text(role, overrides), FULL, role)
 
 
 def parse_report(role="methodology", overrides=None, body="", dissent=()):
@@ -128,11 +121,9 @@ def test_required_cli_flags_cannot_be_omitted():
 
 @pytest.mark.parametrize("missing", ["--role", "--manuscript", "--metadata"])
 def test_each_required_context_flag_fails_closed(tmp_path, missing):
-    args = write_cli_files(tmp_path, "methodology") + [
-        "--role", "methodology"
-    ]
+    args = write_cli_files(tmp_path, "methodology") + ["--role", "methodology"]
     index = args.index(missing)
-    del args[index:index + 2]
+    del args[index : index + 2]
     with pytest.raises(SystemExit) as exc:
         phase._parse_args(args)
     assert exc.value.code == 2
@@ -191,20 +182,15 @@ def test_short_trigger_is_advisory_not_failure():
         {"D1": {"what_triggers_warn": "short warning trigger"}},
     )
     assert any(
-        "D1 what_triggers_warn has fewer than 8 words" in warning
-        for warning in plan.warnings
+        "D1 what_triggers_warn has fewer than 8 words" in warning for warning in plan.warnings
     )
 
 
 @pytest.mark.parametrize(
     "mutation",
     [
-        lambda text: text.replace(
-            "what_triggers_fatal:", "- what_triggers_fatal:", 1
-        ),
-        lambda text: text.replace(
-            "what_triggers_fatal:", "what_triggers_fatal —", 1
-        ),
+        lambda text: text.replace("what_triggers_fatal:", "- what_triggers_fatal:", 1),
+        lambda text: text.replace("what_triggers_fatal:", "what_triggers_fatal —", 1),
     ],
 )
 def test_phase1_noncanonical_line_forms_fail(mutation):
@@ -231,10 +217,7 @@ def test_unicode_separator_keeps_phase1_plan_fenced(separator):
 
 
 def test_manuscript_12_word_shingle_leaks():
-    manuscript = (
-        "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu "
-        "nu xi"
-    )
+    manuscript = "alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu " "nu xi"
     leaked = phase1_text("methodology") + (
         "\nalpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu"
     )
@@ -265,8 +248,7 @@ def test_metadata_title_shingle_is_exempt():
             "field": "testing",
             "word_count": 12,
             "unexpected_body": (
-                "alpha beta gamma delta epsilon zeta eta theta iota "
-                "kappa lambda mu"
+                "alpha beta gamma delta epsilon zeta eta theta iota " "kappa lambda mu"
             ),
         },
         {"title": "Synthetic", "field": "testing"},
@@ -280,13 +262,10 @@ def test_metadata_envelope_shape_fails_closed(metadata):
 
 def test_trigger_text_absent_from_phase1_fails():
     report, _ = parse_report("methodology", {"D1": "warn"})
-    report.scores["D1"] = panel.DimensionScore(
-        "warn", trigger="a completely new threshold"
-    )
+    report.scores["D1"] = panel.DimensionScore("warn", trigger="a completely new threshold")
     with pytest.raises(phase.ConformanceError, match="TRIGGER-DRIFT"):
         phase.check_trigger_binding(
-            report, parse_plan(),
-            {dim["id"]: dim for dim in FULL["acceptance_dimensions"]}, set()
+            report, parse_plan(), {dim["id"]: dim for dim in FULL["acceptance_dimensions"]}, set()
         )
 
 
@@ -305,17 +284,11 @@ def test_trigger_binding_rechecks_required_trigger_defence_in_depth():
 @pytest.mark.parametrize(
     "role,did,value",
     (
-        ("methodology", "D1", panel.DimensionScore(
-            "pass", trigger="surplus post hoc trigger"
-        )),
-        ("eic", "D1", panel.DimensionScore(
-            "not_assessed", trigger="surplus structural trigger"
-        )),
+        ("methodology", "D1", panel.DimensionScore("pass", trigger="surplus post hoc trigger")),
+        ("eic", "D1", panel.DimensionScore("not_assessed", trigger="surplus structural trigger")),
     ),
 )
-def test_trigger_binding_rechecks_surplus_trigger_defence_in_depth(
-    role, did, value
-):
+def test_trigger_binding_rechecks_surplus_trigger_defence_in_depth(role, did, value):
     report, _ = parse_report(role)
     report.scores[did] = value
     with pytest.raises(phase.ConformanceError, match="TRIGGER-GRAMMAR"):
@@ -329,13 +302,10 @@ def test_trigger_binding_rechecks_surplus_trigger_defence_in_depth(
 
 def test_fatal_block_cannot_bind_warn_trigger():
     report, _ = parse_report("methodology", {"D1": "fatal"})
-    report.scores["D1"] = panel.DimensionScore(
-        "block", "fatal", "warn evidence pattern for D1"
-    )
+    report.scores["D1"] = panel.DimensionScore("block", "fatal", "warn evidence pattern for D1")
     with pytest.raises(phase.ConformanceError, match="TRIGGER-DRIFT"):
         phase.check_trigger_binding(
-            report, parse_plan(),
-            {dim["id"]: dim for dim in FULL["acceptance_dimensions"]}, set()
+            report, parse_plan(), {dim["id"]: dim for dim in FULL["acceptance_dimensions"]}, set()
         )
 
 
@@ -350,12 +320,9 @@ def test_fatal_block_cannot_bind_warn_trigger():
 def test_trigger_substring_must_bind_one_kind_only(score, shared_fields):
     shared = "shared evidence pattern appears"
     overrides = {
-        "what_triggers_block":
-            "repairable evidence pattern requires bounded revision",
-        "what_triggers_warn":
-            "warning evidence pattern requires clarification only",
-        "what_triggers_fatal":
-            "fatal evidence pattern proves the core cannot recover",
+        "what_triggers_block": "repairable evidence pattern requires bounded revision",
+        "what_triggers_warn": "warning evidence pattern requires clarification only",
+        "what_triggers_fatal": "fatal evidence pattern proves the core cannot recover",
     }
     for field in shared_fields:
         overrides[field] = f"{shared} and then diverges for {field}"
@@ -363,34 +330,28 @@ def test_trigger_substring_must_bind_one_kind_only(score, shared_fields):
     report, _ = parse_report("methodology", {"D1": score})
     report.scores["D1"] = panel.DimensionScore(
         "warn" if score == "warn" else "block",
-        "fatal" if score == "fatal" else (
-            "repairable" if score == "block" else None
-        ),
+        "fatal" if score == "fatal" else ("repairable" if score == "block" else None),
         shared,
     )
     with pytest.raises(phase.ConformanceError, match="TRIGGER-AMBIGUOUS"):
         phase.check_trigger_binding(
-            report, plan,
+            report,
+            plan,
             {dim["id"]: dim for dim in FULL["acceptance_dimensions"]},
             set(),
         )
 
 
 def test_dissent_cannot_mint_fatality():
-    report, _ = parse_report(
-        "methodology", {"D1": "fatal"}, dissent=("D1",)
-    )
+    report, _ = parse_report("methodology", {"D1": "fatal"}, dissent=("D1",))
     with pytest.raises(phase.ConformanceError, match="DISSENT-FATALITY"):
         phase.check_trigger_binding(
-            report, parse_plan(),
-            {dim["id"]: dim for dim in FULL["acceptance_dimensions"]}, {"D1"}
+            report, parse_plan(), {dim["id"]: dim for dim in FULL["acceptance_dimensions"]}, {"D1"}
         )
 
 
 def test_dissent_requires_rationale():
-    _, text = parse_report(
-        "methodology", {"D1": "block"}, dissent=("D1",)
-    )
+    _, text = parse_report("methodology", {"D1": "block"}, dissent=("D1",))
     text = text.replace("rationale: plan was inadequate\n", "")
     with pytest.raises(phase.ConformanceError, match="requires one rationale"):
         phase.parse_dissent_dimensions(text)
@@ -399,57 +360,51 @@ def test_dissent_requires_rationale():
 def test_late_dissent_fails_closed_at_cli_boundary(tmp_path):
     args = write_cli_files(tmp_path, "methodology")
     phase2_path = Path(args[args.index("--phase2") + 1])
-    text = phase2_text(
-        "methodology", {"D1": "block"}, dissent=("D1",)
-    )
+    text = phase2_text("methodology", {"D1": "block"}, dissent=("D1",))
     dissent_block = (
-        "## Scoring Plan Dissent\n\n"
-        "dimension_id: D1\n"
-        "rationale: plan was inadequate\n\n"
+        "## Scoring Plan Dissent\n\n" "dimension_id: D1\n" "rationale: plan was inadequate\n\n"
     )
-    text = text.replace(dissent_block, "", 1).replace(
-        "## Review Body",
-        f"{dissent_block}## Review Body",
-        1,
-    ).replace(
-        'trigger: "block evidence pattern for D1"',
-        'trigger: "novel post hoc trigger"',
-        1,
+    text = (
+        text.replace(dissent_block, "", 1)
+        .replace(
+            "## Review Body",
+            f"{dissent_block}## Review Body",
+            1,
+        )
+        .replace(
+            'trigger: "block evidence pattern for D1"',
+            'trigger: "novel post hoc trigger"',
+            1,
+        )
     )
     phase2_path.write_text(text, encoding="utf-8")
-    assert phase.main(args + ["--role", "methodology"]) == \
-        phase.EXIT_CONFORMANCE
+    assert phase.main(args + ["--role", "methodology"]) == phase.EXIT_CONFORMANCE
 
 
 def test_dissent_must_name_a_dimension_committed_by_the_seat():
     report, _ = parse_report("methodology", dissent=("D2",))
-    with pytest.raises(
-        phase.ConformanceError, match="not committed by this seat"
-    ):
+    with pytest.raises(phase.ConformanceError, match="not committed by this seat"):
         phase.check_trigger_binding(
-            report, parse_plan(),
+            report,
+            parse_plan(),
             {dim["id"]: dim for dim in FULL["acceptance_dimensions"]},
             {"D2"},
         )
 
 
 def test_dissent_repairable_block_passes_binding_exemption():
-    report, _ = parse_report(
-        "methodology", {"D1": "block"}, dissent=("D1",)
-    )
+    report, _ = parse_report("methodology", {"D1": "block"}, dissent=("D1",))
     phase.check_trigger_binding(
-        report, parse_plan(),
-        {dim["id"]: dim for dim in FULL["acceptance_dimensions"]}, {"D1"}
+        report, parse_plan(), {dim["id"]: dim for dim in FULL["acceptance_dimensions"]}, {"D1"}
     )
 
 
 def test_two_dissent_dimensions_fail():
-    report, _ = parse_report(
-        "methodology", dissent=("D1", "D3")
-    )
+    report, _ = parse_report("methodology", dissent=("D1", "D3"))
     with pytest.raises(phase.ConformanceError, match="multi_dissent"):
         phase.check_trigger_binding(
-            report, parse_plan(),
+            report,
+            parse_plan(),
             {dim["id"]: dim for dim in FULL["acceptance_dimensions"]},
             {"D1", "D3"},
         )
@@ -460,9 +415,7 @@ def phase2_with_dissent_section(
 ) -> str:
     """Splice a custom ## Scoring Plan Dissent section into a phase 2 card."""
     text = phase2_text(role, overrides)
-    section = "\n".join(
-        ["## Scoring Plan Dissent", "", *body_lines, ""]
-    ) + "\n"
+    section = "\n".join(["## Scoring Plan Dissent", "", *body_lines, ""]) + "\n"
     anchor = "## Review Body" if late else "## Dimension Scores"
     return text.replace(anchor, f"{section}{anchor}", 1)
 
@@ -481,17 +434,17 @@ def test_empty_dissent_section_records_an_auditable_diagnostic():
 
 def test_observed_placeholder_retraction_prose_no_longer_aborts():
     # Verbatim shape of the 2026-07-27 perspective Phase 2 abort (#609).
-    text = phase2_with_dissent_section([
-        "*(omitted — Phase 1 plan holds)*",
-        "",
-        "Wait — that placeholder is not permitted. Removing it.",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "*(omitted — Phase 1 plan holds)*",
+            "",
+            "Wait — that placeholder is not permitted. Removing it.",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == set()
 
 
-@pytest.mark.parametrize(
-    "placeholder", ["none", "omitted", "not applicable", "N/A"]
-)
+@pytest.mark.parametrize("placeholder", ["none", "omitted", "not applicable", "N/A"])
 def test_placeholder_words_are_not_a_dissent(placeholder):
     text = phase2_with_dissent_section([placeholder])
     parsed = phase.parse_dissent_dimensions(text)
@@ -515,22 +468,20 @@ def test_canonical_dissent_still_parses_without_a_diagnostic():
 
 def test_claimed_dissent_without_dimension_id_still_aborts():
     text = phase2_with_dissent_section(["rationale: plan was inadequate"])
-    with pytest.raises(
-        phase.ConformanceError, match="must name dimension_id"
-    ):
+    with pytest.raises(phase.ConformanceError, match="must name dimension_id"):
         phase.parse_dissent_dimensions(text)
 
 
 def test_duplicate_dissent_dimension_ids_still_abort():
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "dimension_id: D1",
-        "rationale: plan was inadequate again",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="duplicate dimension_id"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "dimension_id: D1",
+            "rationale: plan was inadequate again",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="duplicate dimension_id"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -538,9 +489,7 @@ def test_claimed_dissent_after_dimension_scores_still_aborts():
     text = phase2_with_dissent_section(
         ["dimension_id: D1", "rationale: plan was inadequate"], late=True
     )
-    with pytest.raises(
-        phase.ConformanceError, match="must precede"
-    ):
+    with pytest.raises(phase.ConformanceError, match="must precede"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -551,9 +500,7 @@ def test_duplicate_empty_dissent_headings_still_abort():
         "## Scoring Plan Dissent\n\n## Scoring Plan Dissent",
         1,
     )
-    with pytest.raises(
-        phase.ConformanceError, match="duplicate ## Scoring Plan Dissent"
-    ):
+    with pytest.raises(phase.ConformanceError, match="duplicate ## Scoring Plan Dissent"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -569,34 +516,37 @@ def test_empty_section_diagnostic_reports_the_non_blank_line_count():
     assert "2 non-blank line(s)" in diagnostic
 
 
-@pytest.mark.parametrize("field_line", [
-    "- dimension_id: D1",
-    "* dimension_id: D1",
-    "+ dimension_id: D1",
-    "> dimension_id: D1",
-    "1. dimension_id: D1",
-    "**dimension_id**: D1",
-    "`dimension_id`: D1",
-    "  dimension_id: D1",
-    "dimension_id：D1",
-    "- [ ] dimension_id: D1",
-    "- [x] dimension_id: D1",
-    "* [X] rationale: the phase 1 plan was inadequate",
-    "| dimension_id: D1 |",
-    "[dimension_id]: D1",
-    "_dimension_id_: D1",
-    "dimension id: D1",
-    "- rationale: the phase 1 plan was inadequate",
-    "**rationale**: the phase 1 plan was inadequate",
-    "| rationale: the phase 1 plan was inadequate |",
-    "[dimension_id](#dissent): D1",
-    "[rationale][note]: the phase 1 plan was inadequate",
-    "<b>dimension_id</b>: D1",
-    "[dimension_id](https://example.com/a:b): D1",
-    "[rationale](https://example.com): the phase 1 plan was inadequate",
-    "> | dimension_id: D1 |",
-    "\tdimension_id: D1",
-])
+@pytest.mark.parametrize(
+    "field_line",
+    [
+        "- dimension_id: D1",
+        "* dimension_id: D1",
+        "+ dimension_id: D1",
+        "> dimension_id: D1",
+        "1. dimension_id: D1",
+        "**dimension_id**: D1",
+        "`dimension_id`: D1",
+        "  dimension_id: D1",
+        "dimension_id：D1",
+        "- [ ] dimension_id: D1",
+        "- [x] dimension_id: D1",
+        "* [X] rationale: the phase 1 plan was inadequate",
+        "| dimension_id: D1 |",
+        "[dimension_id]: D1",
+        "_dimension_id_: D1",
+        "dimension id: D1",
+        "- rationale: the phase 1 plan was inadequate",
+        "**rationale**: the phase 1 plan was inadequate",
+        "| rationale: the phase 1 plan was inadequate |",
+        "[dimension_id](#dissent): D1",
+        "[rationale][note]: the phase 1 plan was inadequate",
+        "<b>dimension_id</b>: D1",
+        "[dimension_id](https://example.com/a:b): D1",
+        "[rationale](https://example.com): the phase 1 plan was inadequate",
+        "> | dimension_id: D1 |",
+        "\tdimension_id: D1",
+    ],
+)
 def test_non_canonical_dissent_field_shape_aborts(field_line):
     text = phase2_with_dissent_section([field_line])
     with pytest.raises(
@@ -606,40 +556,47 @@ def test_non_canonical_dissent_field_shape_aborts(field_line):
         phase.parse_dissent_dimensions(text)
 
 
-@pytest.mark.parametrize("hidden", [
-    ["```", "dimension_id: D1", "rationale: plan was inadequate", "```"],
-    ["<!-- dimension_id: D1 -->", "<!-- rationale: plan was inadequate -->"],
-    ["## dimension_id: D1", "## rationale: plan was inadequate"],
-])
+@pytest.mark.parametrize(
+    "hidden",
+    [
+        ["```", "dimension_id: D1", "rationale: plan was inadequate", "```"],
+        ["<!-- dimension_id: D1 -->", "<!-- rationale: plan was inadequate -->"],
+        ["## dimension_id: D1", "## rationale: plan was inadequate"],
+    ],
+)
 def test_a_dissent_hidden_from_the_sanitizers_still_aborts(hidden):
     """Fences, comments and headings must not launder a dissent field."""
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(phase2_with_dissent_section(hidden))
 
 
-@pytest.mark.parametrize("wrapper", [
-    ("## dimension_id: D3", "## rationale: second plan was inadequate"),
-    ("<!-- dimension_id: D3 -->", "<!-- rationale: second -->"),
-    ("```", "dimension_id: D3", "rationale: second", "```"),
-])
+@pytest.mark.parametrize(
+    "wrapper",
+    [
+        ("## dimension_id: D3", "## rationale: second plan was inadequate"),
+        ("<!-- dimension_id: D3 -->", "<!-- rationale: second -->"),
+        ("```", "dimension_id: D3", "rationale: second", "```"),
+    ],
+)
 def test_a_canonical_dissent_cannot_hide_a_second_laundered_one(wrapper):
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        *wrapper,
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            *wrapper,
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
-@pytest.mark.parametrize("body", [
-    ["```", "(omitted — the Phase 1 plan holds)", "```"],
-    ["<!-- no dissent; the Phase 1 plan holds -->"],
-])
+@pytest.mark.parametrize(
+    "body",
+    [
+        ["```", "(omitted — the Phase 1 plan holds)", "```"],
+        ["<!-- no dissent; the Phase 1 plan holds -->"],
+    ],
+)
 def test_a_wrapper_carrying_no_field_stays_tolerated(body):
     parsed = phase.parse_dissent_dimensions(phase2_with_dissent_section(body))
     assert parsed.dimensions == set()
@@ -649,8 +606,7 @@ def test_a_wrapper_carrying_no_field_stays_tolerated(body):
 def test_a_field_shaped_heading_outside_the_span_is_not_a_dissent():
     """parse_report permits extra H2 sections; they are not dissent fields."""
     text = phase2_with_dissent_section(["*(omitted)*"]).replace(
-        "## Review Body", "## Rationale: Additional notes\n\nprose\n\n"
-        "## Review Body", 1
+        "## Review Body", "## Rationale: Additional notes\n\nprose\n\n" "## Review Body", 1
     )
     parsed = phase.parse_dissent_dimensions(text)
     assert parsed.dimensions == set()
@@ -658,54 +614,54 @@ def test_a_field_shaped_heading_outside_the_span_is_not_a_dissent():
 
 
 def test_a_fenced_heading_does_not_end_the_scanned_span():
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "```",
-        "## Notes",
-        "dimension_id: D3",
-        "rationale: second plan was inadequate",
-        "```",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "```",
+            "## Notes",
+            "dimension_id: D3",
+            "rationale: second plan was inadequate",
+            "```",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
-@pytest.mark.parametrize("sample", [
-    "a\n```\nb\n```\nc",
-    "a\n~~~\nb\n~~~\nc",
-    "a\n````\nb\n```\nc\n````\nd",
-    "a\n```py`\nb\n",
-    "a\n   ```\nb\n```\nc",
-    "a\n```\nb",
-    "x\r\ny\n```\nz\n```\n",
-])
+@pytest.mark.parametrize(
+    "sample",
+    [
+        "a\n```\nb\n```\nc",
+        "a\n~~~\nb\n~~~\nc",
+        "a\n````\nb\n```\nc\n````\nd",
+        "a\n```py`\nb\n",
+        "a\n   ```\nb\n```\nc",
+        "a\n```\nb",
+        "x\r\ny\n```\nz\n```\n",
+    ],
+)
 def test_local_fence_state_agrees_with_the_shared_stripper(sample):
     """Anti-drift: the mirrored bookkeeping must track panel.strip_fences."""
-    unfenced = [
-        line for line, fenced in phase._lines_with_fence_state(sample)
-        if not fenced
-    ]
+    unfenced = [line for line, fenced in phase._lines_with_fence_state(sample) if not fenced]
     assert unfenced == panel.strip_fences(sample)
 
 
 @pytest.mark.parametrize("fence", ["```", "~~~", "````"])
 def test_a_fenced_structural_heading_does_not_end_the_scanned_span(fence):
     """A real section title inside a fence is inert, not a boundary."""
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        fence,
-        "## Dimension Scores",
-        "dimension_id: D3",
-        "rationale: second plan was inadequate",
-        fence,
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            fence,
+            "## Dimension Scores",
+            "dimension_id: D3",
+            "rationale: second plan was inadequate",
+            fence,
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -715,11 +671,13 @@ def test_a_backtick_fence_with_a_backtick_info_string_is_not_a_fence():
     Treating it as one would hide the canonical dissent below it, which the
     raw-span scan would then report as a laundered field.
     """
-    text = phase2_with_dissent_section([
-        "```py`",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "```py`",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
@@ -732,13 +690,15 @@ def test_a_commented_heading_ends_the_span_and_credits_nothing():
     miss, which grants the seat nothing: no dissent is credited, so no
     trigger-binding exemption follows. Change deliberately, never incidentally.
     """
-    text = phase2_with_dissent_section([
-        "<!--",
-        "## Notes",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "-->",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "<!--",
+            "## Notes",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "-->",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == set()
 
 
@@ -748,9 +708,13 @@ def test_a_comment_marker_inside_a_fence_does_not_leak_the_span():
     Treating one as real would swallow every later heading, run the span into
     ## Review Body, and abort a valid card on prose there.
     """
-    text = phase2_with_dissent_section([
-        "```", "<!-- an unmatched marker in an example", "```",
-    ]).replace(
+    text = phase2_with_dissent_section(
+        [
+            "```",
+            "<!-- an unmatched marker in an example",
+            "```",
+        ]
+    ).replace(
         "## Review Body\n\n",
         "## Review Body\n\nrationale: the seat explains itself here\n\n",
         1,
@@ -762,9 +726,11 @@ def test_a_comment_marker_inside_a_fence_does_not_leak_the_span():
 
 def test_an_inline_code_comment_marker_does_not_leak_the_span():
     """CommonMark reads it as code; only a line-initial opener hides a head."""
-    text = phase2_with_dissent_section([
-        "The literal `<!--` token is discussed here without a closer.",
-    ]).replace(
+    text = phase2_with_dissent_section(
+        [
+            "The literal `<!--` token is discussed here without a closer.",
+        ]
+    ).replace(
         "## Review Body\n\n",
         "## Review Body\n\nrationale: the seat explains itself here\n\n",
         1,
@@ -776,17 +742,17 @@ def test_an_inline_code_comment_marker_does_not_leak_the_span():
 
 def test_a_duplicate_field_hidden_in_a_fence_is_counted_not_matched():
     """Identical strings do not launder: occurrences are compared."""
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "```",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "```",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "```",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "```",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -794,12 +760,15 @@ def test_a_commented_out_dissent_is_not_credited_as_one():
     """Pre-existing hole: strip_fences leaves comments, so canonical fields
     inside `<!-- ... -->` were parsed as a real dissent and granted the
     trigger-binding exemption, letting a drifting trigger through."""
-    text = phase2_with_dissent_section([
-        "<!--", "dimension_id: D1", "rationale: plan was inadequate", "-->",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "<!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "-->",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -815,14 +784,16 @@ def test_a_commented_out_dissent_cannot_excuse_a_drifting_trigger(tmp_path):
         1,
     )
     phase2_path.write_text(text, encoding="utf-8")
-    assert phase.main(args + ["--role", "methodology"]) == \
-        phase.EXIT_CONFORMANCE
+    assert phase.main(args + ["--role", "methodology"]) == phase.EXIT_CONFORMANCE
 
 
-@pytest.mark.parametrize("opener_line", [
-    "<!-- an aside --> <!--",
-    "<!-- an aside --><!--",
-])
+@pytest.mark.parametrize(
+    "opener_line",
+    [
+        "<!-- an aside --> <!--",
+        "<!-- an aside --><!--",
+    ],
+)
 def test_a_comment_reopened_on_its_opening_line_still_hides(opener_line):
     """Comment state is resolved by delimiter ORDER, not by presence.
 
@@ -830,41 +801,54 @@ def test_a_comment_reopened_on_its_opening_line_still_hides(opener_line):
     reading it as closed credited the fields below as a real dissent and
     handed back the trigger-binding exemption this scan exists to withhold.
     """
-    text = phase2_with_dissent_section([
-        opener_line,
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "-->",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            opener_line,
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "-->",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
 def test_a_comment_reopened_on_its_closing_line_still_hides():
     """Same order rule while already inside one: the closer does not win
     merely by appearing on a line that reopens after it."""
-    text = phase2_with_dissent_section([
-        "<!--",
-        "an aside",
-        "--> visible again <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "-->",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "<!--",
+            "an aside",
+            "--> visible again <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "-->",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
-@pytest.mark.parametrize("opener", [
-    "- <!--", "* <!--", "+ <!--", "1. <!--", "1) <!--",
-    "> <!--", "> - <!--", "  - <!--", "-   <!--",
-    "-    <!--", ">   <!--", ">    <!--",
-    "> \t<!--", " > \t<!--",
-])
+@pytest.mark.parametrize(
+    "opener",
+    [
+        "- <!--",
+        "* <!--",
+        "+ <!--",
+        "1. <!--",
+        "1) <!--",
+        "> <!--",
+        "> - <!--",
+        "  - <!--",
+        "-   <!--",
+        "-    <!--",
+        ">   <!--",
+        ">    <!--",
+        "> \t<!--",
+        " > \t<!--",
+    ],
+)
 def test_a_container_prefixed_opener_still_hides(opener):
     """A block opener behind a list or quote marker is still a block opener.
 
@@ -873,28 +857,31 @@ def test_a_container_prefixed_opener_still_hides(opener):
     Crediting them handed the trigger-binding exemption to a dissent invisible
     on the page, which is the hole the raw-span scan exists to close.
     """
-    text = phase2_with_dissent_section([
-        opener,
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            opener,
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
-@pytest.mark.parametrize("indented", [
-    "    - <!-- a draft this seat withdrew",
-    "     > <!--",
-    "    1. <!--",
-    "\t- <!--",
-    "-     <!--",
-    ">     <!--",
-    "> - \t<!--",
-    "  - \t<!--",
-    " 1. \t<!--",
-])
+@pytest.mark.parametrize(
+    "indented",
+    [
+        "    - <!-- a draft this seat withdrew",
+        "     > <!--",
+        "    1. <!--",
+        "\t- <!--",
+        "-     <!--",
+        ">     <!--",
+        "> - \t<!--",
+        "  - \t<!--",
+        " 1. \t<!--",
+    ],
+)
 def test_an_indented_container_marker_aborts(indented):
     """#613: a bare `<!--` inside the dissent span is out-of-grammar
     wherever it appears (the delivered prompts require inline code for
@@ -903,11 +890,13 @@ def test_an_indented_container_marker_aborts(indented):
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        indented,
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            indented,
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -921,12 +910,14 @@ def test_an_ordered_marker_mid_paragraph_aborts(marker):
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        "Reviewed the plan and stand by it.",
-        f"{marker} <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "Reviewed the plan and stand by it.",
+            f"{marker} <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -940,22 +931,29 @@ def test_a_container_marker_at_a_block_start_still_opens(marker):
     setext underline) is covered separately; one reached from an open
     paragraph is not a block start at all for a non-1 ordered marker.
     """
-    text = phase2_with_dissent_section([
-        f"{marker} <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            f"{marker} <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
-@pytest.mark.parametrize("closer,marker", [
-    ("---", "2."), ("***", "9)"), ("___", "10."),
-    ("### an aside", "2."), ("#### deeper", "2."), ("#", "2."),
-    ("-", "2."),
-])
+@pytest.mark.parametrize(
+    "closer,marker",
+    [
+        ("---", "2."),
+        ("***", "9)"),
+        ("___", "10."),
+        ("### an aside", "2."),
+        ("#### deeper", "2."),
+        ("#", "2."),
+        ("-", "2."),
+    ],
+)
 def test_a_paragraph_closing_line_restores_every_marker(closer, marker):
     """A thematic break or an ATX heading ends the paragraph above it.
 
@@ -964,17 +962,17 @@ def test_a_paragraph_closing_line_restores_every_marker(closer, marker):
     the paragraph-restricted pattern credited fields no reader can see, a
     bypass neither `main` nor the pre-paragraph-fix commit had.
     """
-    text = phase2_with_dissent_section([
-        "Reviewed the plan and stand by it.",
-        closer,
-        f"{marker} <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "<!-- -->",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "Reviewed the plan and stand by it.",
+            closer,
+            f"{marker} <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "<!-- -->",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -992,11 +990,14 @@ def test_a_deeply_nested_quote_line_resolves_without_backtracking():
     assert time.perf_counter() - started < 0.5
 
 
-@pytest.mark.parametrize("comment_block", [
-    ["<!-- an aside -->"],
-    ["<!--", "an aside", "-->"],
-    ["<!-- an aside", "-->"],
-])
+@pytest.mark.parametrize(
+    "comment_block",
+    [
+        ["<!-- an aside -->"],
+        ["<!--", "an aside", "-->"],
+        ["<!-- an aside", "-->"],
+    ],
+)
 def test_a_comment_block_is_not_a_paragraph(comment_block):
     """Raw HTML is not a paragraph, so the line after a comment block is at a
     block start where any ordered marker opens a list.
@@ -1004,15 +1005,15 @@ def test_a_comment_block_is_not_a_paragraph(comment_block):
     Recording the comment's own lines as an open paragraph read the next
     `2. <!--` with the restricted pattern and credited the fields it hides.
     """
-    text = phase2_with_dissent_section([
-        *comment_block,
-        "2. <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            *comment_block,
+            "2. <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -1025,12 +1026,14 @@ def test_a_nested_marker_after_a_paragraph_aborts(nested):
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        "Standing by the plan.",
-        nested,
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "Standing by the plan.",
+            nested,
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -1044,12 +1047,14 @@ def test_a_marker_after_an_orphan_setext_line_aborts(orphan):
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        orphan,
-        "2. <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            orphan,
+            "2. <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -1058,16 +1063,16 @@ def test_a_marker_after_an_orphan_setext_line_aborts(orphan):
 def test_a_lone_bullet_at_a_block_start_is_an_empty_list_item(marker):
     """With no paragraph above it, a bullet alone is an empty list item, so the
     next line is at a block start where any ordered marker opens a comment."""
-    text = phase2_with_dissent_section([
-        marker,
-        "2. <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "<!-- -->",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            marker,
+            "2. <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "<!-- -->",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -1080,29 +1085,31 @@ def test_a_marker_after_a_lone_list_marker_aborts(marker):
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        "Standing by the plan.",
-        marker,
-        "2. <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "Standing by the plan.",
+            marker,
+            "2. <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
 
 def test_a_setext_underline_closes_the_paragraph_above_it():
-    text = phase2_with_dissent_section([
-        "An underlined heading",
-        "===",
-        "2. <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "<!-- -->",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "An underlined heading",
+            "===",
+            "2. <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "<!-- -->",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -1115,13 +1122,15 @@ def test_a_marker_after_exotic_whitespace_aborts(whitespace):
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        "Reviewed the plan and stand by it.",
-        whitespace,
-        "2. <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "Reviewed the plan and stand by it.",
+            whitespace,
+            "2. <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -1130,39 +1139,42 @@ def test_a_marker_after_exotic_whitespace_aborts(whitespace):
 def test_a_paragraph_interrupting_marker_still_opens(marker):
     """A bullet, a blockquote, and an ordered list starting at 1 DO interrupt
     a paragraph, so those keep hiding the fields below them."""
-    text = phase2_with_dissent_section([
-        "Reviewed the plan and stand by it.",
-        f"{marker} <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "Reviewed the plan and stand by it.",
+            f"{marker} <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
 def test_a_balanced_container_prefixed_comment_hides_nothing_after():
     """Same order rule behind a marker: a closed aside leaves the dissent."""
-    text = phase2_with_dissent_section([
-        "- <!-- drafted and withdrawn -->",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "- <!-- drafted and withdrawn -->",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
-@pytest.mark.parametrize("container,opener", [
-    ("- an earlier note", "2. <!--"),
-    ("- an earlier note", "    <!--"),
-    ("- an earlier note", "\t<!--"),
-    ("- an earlier note", "- 2. <!--"),
-    ("> an earlier note", "> 2. <!--"),
-    ("> an earlier note", ">     <!--"),
-])
-def test_an_opener_inside_an_open_container_aborts(
-    container, opener
-):
+@pytest.mark.parametrize(
+    "container,opener",
+    [
+        ("- an earlier note", "2. <!--"),
+        ("- an earlier note", "    <!--"),
+        ("- an earlier note", "\t<!--"),
+        ("- an earlier note", "- 2. <!--"),
+        ("> an earlier note", "> 2. <!--"),
+        ("> an earlier note", ">     <!--"),
+    ],
+)
+def test_an_opener_inside_an_open_container_aborts(container, opener):
     """#613: a bare `<!--` inside the dissent span is out-of-grammar
     wherever it appears (the delivered prompts require inline code for
     any mention), so this shape now aborts loudly instead of the
@@ -1170,13 +1182,15 @@ def test_an_opener_inside_an_open_container_aborts(
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        container,
-        opener,
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "-->",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            container,
+            opener,
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "-->",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -1203,48 +1217,53 @@ def test_an_indented_opener_continuing_a_paragraph_aborts():
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        "Reviewed the plan and stand by it.",
-        "    <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "-->",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "Reviewed the plan and stand by it.",
+            "    <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "-->",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
 
-@pytest.mark.parametrize("line,entering,expected", [
-    ("<!--", False, True),
-    ("- <!--", False, True),
-    ("> <!--", False, True),
-    ("1. <!--", False, True),
-    ("- <!-- a -->", False, False),
-    ("- text <!--", False, False),
-    ("    <!--", False, False),
-    ("    - <!--", False, False),
-    ("     > <!--", False, False),
-    ("-     <!--", False, False),
-    (">     <!--", False, False),
-    ("   - <!--", False, True),
-    (">    <!--", False, True),
-    ("- `<!--`", False, False),
-    ("<!-->", False, False),
-    ("<!--->", False, False),
-    ("<!-- -->", False, False),
-    ("<!--x-->", False, False),
-    ("<!-- a --> <!--", False, True),
-    ("<!-- a --><!--", False, True),
-    ("<!-- a --> <!-- b -->", False, False),
-    ("   <!--", False, True),
-    ("    <!--", False, False),
-    ("prose <!--", False, False),
-    ("plain prose", False, False),
-    ("still inside", True, True),
-    ("--> out", True, False),
-    ("--> out <!--", True, True),
-    ("-->", True, False),
-])
+@pytest.mark.parametrize(
+    "line,entering,expected",
+    [
+        ("<!--", False, True),
+        ("- <!--", False, True),
+        ("> <!--", False, True),
+        ("1. <!--", False, True),
+        ("- <!-- a -->", False, False),
+        ("- text <!--", False, False),
+        ("    <!--", False, False),
+        ("    - <!--", False, False),
+        ("     > <!--", False, False),
+        ("-     <!--", False, False),
+        (">     <!--", False, False),
+        ("   - <!--", False, True),
+        (">    <!--", False, True),
+        ("- `<!--`", False, False),
+        ("<!-->", False, False),
+        ("<!--->", False, False),
+        ("<!-- -->", False, False),
+        ("<!--x-->", False, False),
+        ("<!-- a --> <!--", False, True),
+        ("<!-- a --><!--", False, True),
+        ("<!-- a --> <!-- b -->", False, False),
+        ("   <!--", False, True),
+        ("    <!--", False, False),
+        ("prose <!--", False, False),
+        ("plain prose", False, False),
+        ("still inside", True, True),
+        ("--> out", True, False),
+        ("--> out <!--", True, True),
+        ("-->", True, False),
+    ],
+)
 def test_comment_state_after_resolves_by_order(line, entering, expected):
     """The state machine itself, pinned line by line.
 
@@ -1263,11 +1282,13 @@ def test_a_commonmark_empty_comment_hides_nothing_after(empty_comment):
     struck the fields below and aborted a card that presence-testing for a
     closer had passed, which is the failure this tolerance removes.
     """
-    text = phase2_with_dissent_section([
-        empty_comment,
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            empty_comment,
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
@@ -1275,11 +1296,13 @@ def test_a_comment_closed_and_reopened_then_closed_hides_nothing_after():
     """The order rule cuts both ways: a line that ends outside a comment
     leaves the fields below visible, so a balanced aside cannot abort a
     valid card."""
-    text = phase2_with_dissent_section([
-        "<!-- drafted --> <!-- reviewed -->",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "<!-- drafted --> <!-- reviewed -->",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
@@ -1291,12 +1314,14 @@ def test_a_comment_opened_after_prose_on_its_line_aborts():
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        "an aside <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "-->",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "an aside <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "-->",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -1307,12 +1332,14 @@ def test_an_unbackticked_marker_in_a_rationale_now_aborts_loudly():
     mid-line opener is read as real — it swallows the second dissent, and
     the card aborts as unparsed occurrences instead of silently keeping
     D2's credit while CommonMark hides it."""
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: the card left an unclosed <!-- marker in its own output",
-        "dimension_id: D2",
-        "rationale: the second plan was inadequate too",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: the card left an unclosed <!-- marker in its own output",
+            "dimension_id: D2",
+            "rationale: the second plan was inadequate too",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -1321,10 +1348,12 @@ def test_a_canonical_rationale_may_mention_comment_syntax():
     """The sanctioned spelling: comment tokens in INLINE CODE are prose
     under the #613 output grammar — code spans are blanked before the
     inline-opener scan, so the mention neither opens a comment nor aborts."""
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: the seat wrote `<!--` and `-->` in its explanation",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: the seat wrote `<!--` and `-->` in its explanation",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
@@ -1332,11 +1361,13 @@ def test_an_inline_comment_that_closes_restores_the_parse():
     """A mid-line comment that opens AND closes leaves the following
     canonical fields rendered, so they parse normally — the inline state is
     delimiter-order-resolved, not presence-tested."""
-    text = phase2_with_dissent_section([
-        "Reviewed the plan. <!-- aside --> Standing by the dissent:",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "Reviewed the plan. <!-- aside --> Standing by the dissent:",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
@@ -1349,9 +1380,7 @@ def test_a_comment_opened_before_the_heading_credits_no_dissent():
         "rationale: plan was inadequate\n\n-->\n\n## Dimension Scores",
         1,
     )
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -1363,11 +1392,13 @@ def test_an_indented_comment_marker_aborts():
     have shown the fields is decided by the output grammar now, not by
     block-structure modelling in the parser.
     """
-    text = phase2_with_dissent_section([
-        "    <!-- an indented example with no closer",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "    <!-- an indented example with no closer",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -1397,27 +1428,33 @@ def test_a_quoted_attribute_raw_html_field_now_aborts():
     span guard rejects the tag itself before an empty-section advisory could
     grant any exemption.
     """
-    text = phase2_with_dissent_section([
-        '<span title="x>y">dimension_id</span>: D1',
-    ])
+    text = phase2_with_dissent_section(
+        [
+            '<span title="x>y">dimension_id</span>: D1',
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-RAW-HTML"):
         phase.parse_dissent_dimensions(text)
 
 
 def test_one_nesting_level_in_a_link_destination_still_aborts():
-    text = phase2_with_dissent_section([
-        "[dimension_id](https://e/x_(y)z): D1",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
+    text = phase2_with_dissent_section(
+        [
+            "[dimension_id](https://e/x_(y)z): D1",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
         phase.parse_dissent_dimensions(text)
 
 
 def test_the_diagnostic_counts_fenced_placeholder_prose():
-    text = phase2_with_dissent_section([
-        "```", "(omitted — the Phase 1 plan holds)", "```",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "```",
+            "(omitted — the Phase 1 plan holds)",
+            "```",
+        ]
+    )
     diagnostic = phase.parse_dissent_dimensions(text).diagnostics[0]
     assert "0 non-blank line(s)" not in diagnostic
 
@@ -1432,51 +1469,54 @@ def test_a_fenced_block_elsewhere_leaves_the_dissent_section_alone():
 
 
 def test_bulleted_multi_dissent_cannot_bypass_the_cardinality_gate():
-    text = phase2_with_dissent_section([
-        "- dimension_id: D1",
-        "- rationale: first plan was inadequate",
-        "- dimension_id: D3",
-        "- rationale: second plan was inadequate",
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
-        phase.parse_dissent_dimensions(text)
-
-
-@pytest.mark.parametrize("wrapper", [
-    ("- dimension_id: D3", "- rationale: second plan was inadequate"),
-    ("| dimension_id: D3 |", "| rationale: second plan was inadequate |"),
-    ("- [ ] dimension_id: D3", "- [ ] rationale: second plan was inadequate"),
-    ("[dimension_id](#d): D3", "[rationale](#d): second plan was inadequate"),
-    ("[dimension_id](https://e.com): D3",
-     "[rationale](https://e.com): second"),
-])
-def test_a_canonical_dissent_cannot_hide_a_second_decorated_one(wrapper):
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        *wrapper,
-    ])
-    with pytest.raises(
-        phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"
-    ):
-        phase.parse_dissent_dimensions(text)
-
-
-@pytest.mark.parametrize("prose", [
-    "No dissent, so there is no dimension_id: line under this heading.",
-    "I dissent from D1: the plan held after all, so nothing is claimed.",
-    "Note: the Phase 1 plan holds.",
-    "Dissent: none.",
-    "無異議，dimension_id 已省略：Phase 1 計畫維持不變",
-    "異議なし：dimension_id は省略しました。",
-    "이견 없음: dimension_id 줄은 생략했습니다.",
-])
-def test_prose_carrying_a_colon_stays_tolerated(prose):
-    parsed = phase.parse_dissent_dimensions(
-        phase2_with_dissent_section([prose])
+    text = phase2_with_dissent_section(
+        [
+            "- dimension_id: D1",
+            "- rationale: first plan was inadequate",
+            "- dimension_id: D3",
+            "- rationale: second plan was inadequate",
+        ]
     )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
+        phase.parse_dissent_dimensions(text)
+
+
+@pytest.mark.parametrize(
+    "wrapper",
+    [
+        ("- dimension_id: D3", "- rationale: second plan was inadequate"),
+        ("| dimension_id: D3 |", "| rationale: second plan was inadequate |"),
+        ("- [ ] dimension_id: D3", "- [ ] rationale: second plan was inadequate"),
+        ("[dimension_id](#d): D3", "[rationale](#d): second plan was inadequate"),
+        ("[dimension_id](https://e.com): D3", "[rationale](https://e.com): second"),
+    ],
+)
+def test_a_canonical_dissent_cannot_hide_a_second_decorated_one(wrapper):
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            *wrapper,
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|canonical unbulleted"):
+        phase.parse_dissent_dimensions(text)
+
+
+@pytest.mark.parametrize(
+    "prose",
+    [
+        "No dissent, so there is no dimension_id: line under this heading.",
+        "I dissent from D1: the plan held after all, so nothing is claimed.",
+        "Note: the Phase 1 plan holds.",
+        "Dissent: none.",
+        "無異議，dimension_id 已省略：Phase 1 計畫維持不變",
+        "異議なし：dimension_id は省略しました。",
+        "이견 없음: dimension_id 줄은 생략했습니다.",
+    ],
+)
+def test_prose_carrying_a_colon_stays_tolerated(prose):
+    parsed = phase.parse_dissent_dimensions(phase2_with_dissent_section([prose]))
     assert parsed.dimensions == set()
     assert len(parsed.diagnostics) == 1
 
@@ -1484,26 +1524,19 @@ def test_prose_carrying_a_colon_stays_tolerated(prose):
 def test_tolerated_empty_dissent_section_still_binds_every_trigger(tmp_path):
     args = write_cli_files(tmp_path, "methodology")
     phase2_path = Path(args[args.index("--phase2") + 1])
-    text = phase2_with_dissent_section(
-        ["*(omitted)*"], overrides={"D1": "block"}
-    ).replace(
+    text = phase2_with_dissent_section(["*(omitted)*"], overrides={"D1": "block"}).replace(
         'trigger: "block evidence pattern for D1"',
         'trigger: "novel post hoc trigger never committed in phase 1"',
         1,
     )
     phase2_path.write_text(text, encoding="utf-8")
-    assert phase.main(args + ["--role", "methodology"]) == \
-        phase.EXIT_CONFORMANCE
+    assert phase.main(args + ["--role", "methodology"]) == phase.EXIT_CONFORMANCE
 
 
-def test_cli_passes_and_prints_diagnostic_for_empty_dissent_section(
-    tmp_path, capsys
-):
+def test_cli_passes_and_prints_diagnostic_for_empty_dissent_section(tmp_path, capsys):
     args = write_cli_files(tmp_path, "methodology")
     phase2_path = Path(args[args.index("--phase2") + 1])
-    phase2_path.write_text(
-        phase2_with_dissent_section([]), encoding="utf-8"
-    )
+    phase2_path.write_text(phase2_with_dissent_section([]), encoding="utf-8")
     assert phase.main(args + ["--role", "methodology"]) == phase.EXIT_PASS
     assert "[DISSENT-EMPTY-SECTION:" in capsys.readouterr().out
 
@@ -1537,13 +1570,11 @@ def test_nonmandatory_block_class_fails_phase_checker(tmp_path):
     [
         "### W1: no anchor\n**Severity**: Critical\n**Problem**: no anchor",
         "### W1: long quote\n**Severity**: Major\n**Evidence Anchor**: text: "
-        "\"one two three four five six seven eight nine ten eleven twelve "
+        '"one two three four five six seven eight nine ten eleven twelve '
         "thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty "
-        "twentyone twentytwo twentythree twentyfour twentyfive twentysix\"",
-        "### W1: empty absence\n**Severity**: Critical\n"
-        "**Evidence Anchor**: absence:",
-        "### W1: incomplete absence\n**Severity**: Critical\n"
-        "**Evidence Anchor**: absence: x",
+        'twentyone twentytwo twentythree twentyfour twentyfive twentysix"',
+        "### W1: empty absence\n**Severity**: Critical\n" "**Evidence Anchor**: absence:",
+        "### W1: incomplete absence\n**Severity**: Critical\n" "**Evidence Anchor**: absence: x",
         "### W1: missing expected item\n**Severity**: Critical\n"
         "**Evidence Anchor**: absence: Methods — expected ; checked appendix",
         "### W1: missing checked surfaces\n**Severity**: Critical\n"
@@ -1568,7 +1599,7 @@ def test_critical_major_anchor_failures(body):
 @pytest.mark.parametrize(
     "body",
     [
-        '### W1: quoted defect\n**Severity**: Critical\n'
+        "### W1: quoted defect\n**Severity**: Critical\n"
         '**Evidence Anchor**: text: "short exact quote" p. 2',
         "### W1: missing surfaces\n**Severity**: Major\n"
         "**Evidence Anchor**: absence: Methods — expected an ethics statement; "
@@ -1624,10 +1655,7 @@ def test_same_line_duplicate_severity_declarations_fail():
     (`_SEVERITY_DECL_RE`) whose value cannot parse mid-prose, so the
     declared-but-unparseable guard still aborts. Only cross-line
     supersession takes last-wins."""
-    body = (
-        "### W1: hidden critical\n"
-        "**Severity**: Minor and **Severity**: Critical"
-    )
+    body = "### W1: hidden critical\n" "**Severity**: Minor and **Severity**: Critical"
     report, _ = parse_report("eic", body=body)
     with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
         phase.check_scoring_seat_anchors(report)
@@ -1639,16 +1667,10 @@ def test_same_line_pipe_separated_severity_pair_fails():
     declarations on one line are not a reading-order self-correction and
     must not enter the supersession path (which could otherwise waive the
     anchor requirement via `Critical | Minor`)."""
-    for pair in ("Minor | **Severity**: Critical",
-                 "Critical | **Severity**: Minor"):
-        body = (
-            "### W1: table smuggle\n"
-            f"**Severity**: {pair}"
-        )
+    for pair in ("Minor | **Severity**: Critical", "Critical | **Severity**: Minor"):
+        body = "### W1: table smuggle\n" f"**Severity**: {pair}"
         report, _ = parse_report("eic", body=body)
-        with pytest.raises(
-            phase.ConformanceError, match="exactly one parseable Severity"
-        ):
+        with pytest.raises(phase.ConformanceError, match="exactly one parseable Severity"):
             phase.check_scoring_seat_anchors(report)
 
 
@@ -1667,20 +1689,14 @@ def test_cross_line_severity_supersession_takes_last(capsys):
     report, _ = parse_report("eic", body=body)
     phase.check_scoring_seat_anchors(report)
     assert (
-        "[SEVERITY-SUPERSEDED: p2.md: W1: construct mismatch: "
-        "Major -> Critical]"
+        "[SEVERITY-SUPERSEDED: p2.md: W1: construct mismatch: " "Major -> Critical]"
     ) in capsys.readouterr().out
 
 
 def test_unparseable_severity_declaration_still_fails():
-    body = (
-        "### W1: bad value\n"
-        "**Severity**: High"
-    )
+    body = "### W1: bad value\n" "**Severity**: High"
     report, _ = parse_report("eic", body=body)
-    with pytest.raises(
-        phase.ConformanceError, match="exactly one parseable Severity"
-    ):
+    with pytest.raises(phase.ConformanceError, match="exactly one parseable Severity"):
         phase.check_scoring_seat_anchors(report)
 
 
@@ -1696,9 +1712,7 @@ def test_revisited_severity_value_still_fails():
         "**Severity**: Minor"
     )
     report, _ = parse_report("eic", body=body)
-    with pytest.raises(
-        phase.ConformanceError, match="strictly escalating"
-    ):
+    with pytest.raises(phase.ConformanceError, match="strictly escalating"):
         phase.check_scoring_seat_anchors(report)
 
 
@@ -1713,9 +1727,7 @@ def test_deescalating_severity_pair_still_fails():
         "**Severity**: Minor"
     )
     report, _ = parse_report("eic", body=body)
-    with pytest.raises(
-        phase.ConformanceError, match="strictly escalating"
-    ):
+    with pytest.raises(phase.ConformanceError, match="strictly escalating"):
         phase.check_scoring_seat_anchors(report)
 
 
@@ -1731,9 +1743,7 @@ def test_distinct_severity_bundle_still_fails():
         "**Severity**: Minor"
     )
     report, _ = parse_report("eic", body=body)
-    with pytest.raises(
-        phase.ConformanceError, match="strictly escalating"
-    ):
+    with pytest.raises(phase.ConformanceError, match="strictly escalating"):
         phase.check_scoring_seat_anchors(report)
 
 
@@ -1754,10 +1764,7 @@ def test_escalating_supersession_operative_value_needs_anchor():
 
 
 def test_noncanonical_heading_and_severity_label_fail_together():
-    body = (
-        "### Weakness 1: fabricated denominators\n"
-        "**Severity:** Critical"
-    )
+    body = "### Weakness 1: fabricated denominators\n" "**Severity:** Critical"
     report, _ = parse_report("eic", body=body)
     with pytest.raises(phase.ConformanceError, match="FINDING-GRAMMAR"):
         phase.check_scoring_seat_anchors(report)
@@ -1937,10 +1944,7 @@ def test_severity_outside_review_body_fails():
 def test_flat_severity_without_finding_heading_fails():
     report, _ = parse_report(
         "eic",
-        body=(
-            "**Severity**: Critical\n"
-            '**Evidence Anchor**: text: "quote" p. 1'
-        ),
+        body=("**Severity**: Critical\n" '**Evidence Anchor**: text: "quote" p. 1'),
     )
     with pytest.raises(phase.ConformanceError, match="own ### finding"):
         phase.check_scoring_seat_anchors(report)
@@ -1980,8 +1984,7 @@ def test_missing_review_body_fails_anchor_family():
 def da_text(ids=("C1",), anchors=None, major_rows=()):
     anchors = anchors or {finding_id: 'text: "quote" p. 1' for finding_id in ids}
     rows = "\n".join(
-        f"| {finding_id} | Issue | {anchors.get(finding_id, '')} |"
-        for finding_id in ids
+        f"| {finding_id} | Issue | {anchors.get(finding_id, '')} |" for finding_id in ids
     )
     return phase2_text(
         "da",
@@ -2035,12 +2038,8 @@ def test_da_conforming_table_passes():
         ("| C2 | Issue |", "| X2 | Issue |", "invalid CRITICAL ID"),
     ],
 )
-def test_da_header_and_critical_id_gates_fail_phase_checker(
-    old, new, fragment
-):
-    report = panel.parse_report(
-        "da.md", da_text(ids=("C1", "C2")).replace(old, new, 1), FULL
-    )
+def test_da_header_and_critical_id_gates_fail_phase_checker(old, new, fragment):
+    report = panel.parse_report("da.md", da_text(ids=("C1", "C2")).replace(old, new, 1), FULL)
     with pytest.raises(
         (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
         match=fragment,
@@ -2050,20 +2049,18 @@ def test_da_header_and_critical_id_gates_fail_phase_checker(
 
 def test_da_shadow_table_fails_phase_checker():
     canonical = (
-        '| # | Issue | Evidence Anchor |\n'
-        '|---|-------|-----------------|\n'
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
         '| C1 | Issue | text: "quote" p. 1 |'
     )
     shadowed = (
-        '| ID | Issue | Anchor |\n'
-        '|---|-------|--------|\n'
+        "| ID | Issue | Anchor |\n"
+        "|---|-------|--------|\n"
         '| C1 | Issue | text: "quoted evidence" p. 1 |\n\n'
-        '| # | Issue | Evidence Anchor |\n'
-        '|---|-------|-----------------|'
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|"
     )
-    report = panel.parse_report(
-        "da.md", da_text(ids=("C1",)).replace(canonical, shadowed, 1), FULL
-    )
+    report = panel.parse_report("da.md", da_text(ids=("C1",)).replace(canonical, shadowed, 1), FULL)
     with pytest.raises(phase.ConformanceError, match="first nonblank line"):
         phase.check_da_anchors(report)
 
@@ -2106,24 +2103,19 @@ def test_da_extra_issue_table_band_fails_phase_checker():
         1,
     )
     report = panel.parse_report("da.md", text, FULL)
-    with pytest.raises(
-        phase.ConformanceError, match="unexpected issue-table band"
-    ):
+    with pytest.raises(phase.ConformanceError, match="unexpected issue-table band"):
         phase.check_da_anchors(report)
 
 
 @pytest.mark.parametrize(
     ("lead_in", "header"),
     (
-        ("The following issues invalidate the claim:\n\n",
-         "| # | Issue | Evidence Anchor |"),
+        ("The following issues invalidate the claim:\n\n", "| # | Issue | Evidence Anchor |"),
         ("", "| # | Issue | evidence anchor |"),
         ("", "# | Issue | Evidence Anchor"),
     ),
 )
-def test_da_disguised_extra_issue_table_band_fails_phase_checker(
-    lead_in, header
-):
+def test_da_disguised_extra_issue_table_band_fails_phase_checker(lead_in, header):
     text = da_text().replace(
         "#### MAJOR",
         "#### ADDITIONAL CRITICAL FINDINGS\n"
@@ -2134,9 +2126,7 @@ def test_da_disguised_extra_issue_table_band_fails_phase_checker(
         1,
     )
     report = panel.parse_report("da.md", text, FULL)
-    with pytest.raises(
-        phase.ConformanceError, match="unexpected issue-table band"
-    ):
+    with pytest.raises(phase.ConformanceError, match="unexpected issue-table band"):
         phase.check_da_anchors(report)
 
 
@@ -2221,8 +2211,7 @@ def test_da_commonmark_visible_issue_header_fails_phase(header):
 
 def test_da_balanced_link_destination_header_fails_phase():
     header = (
-        r"| [\#](<https://x.test/a(b)>) | Issue | "
-        r"[Evidence Anchor](<https://x.test/a(b)>) |"
+        r"| [\#](<https://x.test/a(b)>) | Issue | " r"[Evidence Anchor](<https://x.test/a(b)>) |"
     )
     text = da_text().replace(
         "#### MAJOR",
@@ -2240,8 +2229,7 @@ def test_da_balanced_link_destination_header_fails_phase():
 
 def test_da_typed_anchor_payload_alone_fails_phase():
     header = (
-        r"| [\#](<https://x.test/a(b)>) | Issue | "
-        r"[Evidence Anchor](<https://x.test/a(b)>) |"
+        r"| [\#](<https://x.test/a(b)>) | Issue | " r"[Evidence Anchor](<https://x.test/a(b)>) |"
     )
     text = da_text().replace(
         "#### MAJOR",
@@ -2261,10 +2249,12 @@ def test_da_escaped_pipe_cell_evasion_fails_phase():
     block = (
         "#### ADDITIONAL CRITICAL FINDINGS\n"
         r"| [\#<!--\|-->](https://x.test) | Issue | "
-        r"[Evidence<!--\|--> Anchor](https://x.test) |" "\n"
+        r"[Evidence<!--\|--> Anchor](https://x.test) |"
+        "\n"
         "|---|---|---|\n"
         r"| [C<!--\|-->9](https://x.test) | impossible df | "
-        r'[text<!--\|-->: "n=41" p. 4](https://x.test) |' "\n\n"
+        r'[text<!--\|-->: "n=41" p. 4](https://x.test) |'
+        "\n\n"
     )
     text = da_text().replace("#### MAJOR", block + "#### MAJOR", 1)
     report = panel.parse_report("da.md", text, FULL)
@@ -2272,9 +2262,7 @@ def test_da_escaped_pipe_cell_evasion_fails_phase():
         phase.check_da_anchors(report)
 
 
-@pytest.mark.parametrize(
-    "invisible", ("\u0600", "\u200b", "\u034f", "\ufe0e", "\u3164", "\ufff0")
-)
+@pytest.mark.parametrize("invisible", ("\u0600", "\u200b", "\u034f", "\ufe0e", "\u3164", "\ufff0"))
 def test_da_invisible_issue_payload_fails_phase(invisible):
     block = (
         "#### ADDITIONAL CRITICAL FINDINGS\n"
@@ -2325,10 +2313,7 @@ def test_da_nested_html_issue_table_in_canonical_row_fails_phase():
 
 
 def test_da_bare_html_row_fails_phase():
-    block = (
-        "#### ADDITIONAL CRITICAL FINDINGS\n"
-        "<tr><td>C9</td><td>text: n=41</td></tr>\n\n"
-    )
+    block = "#### ADDITIONAL CRITICAL FINDINGS\n" "<tr><td>C9</td><td>text: n=41</td></tr>\n\n"
     text = da_text().replace("#### MAJOR", block + "#### MAJOR", 1)
     report = panel.parse_report("da.md", text, FULL)
     with pytest.raises(phase.ConformanceError, match="raw HTML issue-table"):
@@ -2369,9 +2354,7 @@ def test_da_valid_major_row_passes_phase_checker():
     ],
 )
 def test_da_separator_drift_fails_phase_checker(old, new):
-    report = panel.parse_report(
-        "da.md", da_text().replace(old, new, 1), FULL
-    )
+    report = panel.parse_report("da.md", da_text().replace(old, new, 1), FULL)
     with pytest.raises(
         (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
         match="separator",
@@ -2399,12 +2382,9 @@ def test_da_row_without_outer_pipes_fails_phase_checker():
 def test_da_pre_table_prose_passes_phase_checker():
     report = panel.parse_report(
         "da.md",
-        da_text(
-            major_rows=('| M1 | Issue | text: "short quote" |',)
-        ).replace(
+        da_text(major_rows=('| M1 | Issue | text: "short quote" |',)).replace(
             "#### CRITICAL",
-            "Ordinary adversarial commentary precedes the terminal tables.\n\n"
-            "#### CRITICAL",
+            "Ordinary adversarial commentary precedes the terminal tables.\n\n" "#### CRITICAL",
             1,
         ),
         FULL,
@@ -2413,15 +2393,18 @@ def test_da_pre_table_prose_passes_phase_checker():
 
 
 def test_da_bare_comment_closer_passes_phase_checker():
-    text = da_text(ids=("C1",)).replace(
-        "#### CRITICAL",
-        "The reported N moves 41 --> 38 without explanation.\n\n"
-        "#### CRITICAL",
-        1,
-    ).replace(
-        'text: "quote" p. 1',
-        'text: "N moves 41 --> 38" p. 1',
-        1,
+    text = (
+        da_text(ids=("C1",))
+        .replace(
+            "#### CRITICAL",
+            "The reported N moves 41 --> 38 without explanation.\n\n" "#### CRITICAL",
+            1,
+        )
+        .replace(
+            'text: "quote" p. 1',
+            'text: "N moves 41 --> 38" p. 1',
+            1,
+        )
     )
     report = panel.parse_report("da.md", text, FULL)
     phase.check_da_anchors(report)
@@ -2484,9 +2467,7 @@ def test_da_post_boundary_table_surfaces_fail_phase_checker(
 def test_da_post_major_table_surfaces_fail_phase_checker(
     late_surface,
 ):
-    report = panel.parse_report(
-        "da.md", da_text(ids=("C1",)) + f"\n\n{late_surface}", FULL
-    )
+    report = panel.parse_report("da.md", da_text(ids=("C1",)) + f"\n\n{late_surface}", FULL)
     with pytest.raises(
         (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
         match="issue tables are terminal",
@@ -2496,9 +2477,7 @@ def test_da_post_major_table_surfaces_fail_phase_checker(
 
 def test_da_fenced_payload_after_major_fails_phase_checker():
     text = da_text(ids=("C1",)) + (
-        "\n\n```markdown\n"
-        '| C2 | Hidden critical issue | text: "hidden evidence" p. 2 |\n'
-        "```"
+        "\n\n```markdown\n" '| C2 | Hidden critical issue | text: "hidden evidence" p. 2 |\n' "```"
     )
     report = panel.parse_report("da.md", text, FULL)
     with pytest.raises(
@@ -2509,9 +2488,7 @@ def test_da_fenced_payload_after_major_fails_phase_checker():
 
 
 def test_da_html_comment_inside_fence_fails_phase_checker():
-    text = da_text(ids=()) + (
-        "\n\n```\n<!-- hidden adjudication payload -->\n```"
-    )
+    text = da_text(ids=()) + ("\n\n```\n<!-- hidden adjudication payload -->\n```")
     report = panel.parse_report("da.md", text, FULL)
     with pytest.raises(
         (panel.ReportError, phase.panel.ReportError, phase.ConformanceError),
@@ -2521,9 +2498,7 @@ def test_da_html_comment_inside_fence_fails_phase_checker():
 
 
 def test_da_html_commented_tables_fail_phase_checker():
-    text = da_text(ids=()).replace(
-        "#### CRITICAL", "<!--\n#### CRITICAL", 1
-    )
+    text = da_text(ids=()).replace("#### CRITICAL", "<!--\n#### CRITICAL", 1)
     text += "\n-->"
     report = panel.parse_report("da.md", text, FULL)
     with pytest.raises(
@@ -2542,9 +2517,7 @@ def test_da_html_commented_tables_fail_phase_checker():
     ],
 )
 def test_da_required_sections_fail_closed(old, new, fragment):
-    report = panel.parse_report(
-        "da.md", da_text().replace(old, new, 1), FULL
-    )
+    report = panel.parse_report("da.md", da_text().replace(old, new, 1), FULL)
     with pytest.raises(
         (phase.ConformanceError, phase.panel.ReportError), match=re.escape(fragment)
     ):
@@ -2559,28 +2532,31 @@ def write_cli_files(tmp_path: Path, role: str) -> list[str]:
     phase1.write_text(phase1_text(role), encoding="utf-8")
     phase2.write_text(phase2_text(role), encoding="utf-8")
     manuscript.write_text("short synthetic manuscript", encoding="utf-8")
-    metadata.write_text(json.dumps({
-        "title": "Synthetic", "field": "testing", "word_count": 3
-    }), encoding="utf-8")
+    metadata.write_text(
+        json.dumps({"title": "Synthetic", "field": "testing", "word_count": 3}), encoding="utf-8"
+    )
     return [
-        "--contract", str(FULL_PATH),
-        "--phase1", str(phase1),
-        "--phase2", str(phase2),
-        "--manuscript", str(manuscript),
-        "--metadata", str(metadata),
+        "--contract",
+        str(FULL_PATH),
+        "--phase1",
+        str(phase1),
+        "--phase2",
+        str(phase2),
+        "--manuscript",
+        str(manuscript),
+        "--metadata",
+        str(metadata),
     ]
 
 
 def test_full_cli_pass(tmp_path):
-    assert phase.main(
-        write_cli_files(tmp_path, "methodology") + ["--role", "methodology"]
-    ) == 0
+    assert phase.main(write_cli_files(tmp_path, "methodology") + ["--role", "methodology"]) == 0
 
 
 def phase1_only_args(tmp_path: Path, role: str) -> list[str]:
     """CLI arguments for the gate that runs before Phase 2 exists."""
     args = write_cli_files(tmp_path, role)
-    del args[args.index("--phase2"):args.index("--phase2") + 2]
+    del args[args.index("--phase2") : args.index("--phase2") + 2]
     return args + ["--phase1-only", "--role", role]
 
 
@@ -2591,8 +2567,7 @@ def test_phase1_only_cli_passes_before_phase2_exists(tmp_path, capsys):
     requiring `--phase2` forced the harness to invent one or to reimplement
     the gate, and a reimplemented gate is not the checker's own output.
     """
-    assert phase.main(phase1_only_args(tmp_path, "methodology")) == \
-        phase.EXIT_PASS
+    assert phase.main(phase1_only_args(tmp_path, "methodology")) == phase.EXIT_PASS
     assert "PHASE1-CONFORMANCE: PASS" in capsys.readouterr().out
 
 
@@ -2615,9 +2590,7 @@ def test_phase1_only_cli_still_checks_manuscript_blindness(tmp_path, capsys):
     manuscript = Path(args[args.index("--manuscript") + 1])
     leak = " ".join(f"leaked{index}" for index in range(14))
     manuscript.write_text(leak, encoding="utf-8")
-    phase1_path.write_text(
-        phase1_text("methodology") + "\n" + leak + "\n", encoding="utf-8"
-    )
+    phase1_path.write_text(phase1_text("methodology") + "\n" + leak + "\n", encoding="utf-8")
     assert phase.main(args) == phase.EXIT_CONFORMANCE
     assert "LEAK" in capsys.readouterr().out
 
@@ -2630,14 +2603,12 @@ def test_phase1_only_and_phase2_are_mutually_exclusive(tmp_path):
 
 def test_one_of_phase1_only_or_phase2_is_required(tmp_path):
     args = write_cli_files(tmp_path, "methodology")
-    del args[args.index("--phase2"):args.index("--phase2") + 2]
+    del args[args.index("--phase2") : args.index("--phase2") + 2]
     with pytest.raises(SystemExit):
         phase.main(args + ["--role", "methodology"])
 
 
-def test_multi_dissent_emits_its_machine_token_on_the_violation_line(
-    tmp_path, capsys
-):
+def test_multi_dissent_emits_its_machine_token_on_the_violation_line(tmp_path, capsys):
     """Pinned as an interface, not prose.
 
     The dispatch harness routes §5's one permitted Phase 2 retry on this exact
@@ -2646,18 +2617,20 @@ def test_multi_dissent_emits_its_machine_token_on_the_violation_line(
     """
     args = write_cli_files(tmp_path, "methodology")
     Path(args[args.index("--phase2") + 1]).write_text(
-        phase2_with_dissent_section([
-            "dimension_id: D1",
-            "rationale: the plan understated the risk here",
-            "dimension_id: D3",
-            "rationale: the plan understated a second risk here",
-        ]),
+        phase2_with_dissent_section(
+            [
+                "dimension_id: D1",
+                "rationale: the plan understated the risk here",
+                "dimension_id: D3",
+                "rationale: the plan understated a second risk here",
+            ]
+        ),
         encoding="utf-8",
     )
-    assert phase.main(args + ["--role", "methodology"]) == \
-        phase.EXIT_CONFORMANCE
+    assert phase.main(args + ["--role", "methodology"]) == phase.EXIT_CONFORMANCE
     violations = [
-        line for line in capsys.readouterr().out.splitlines()
+        line
+        for line in capsys.readouterr().out.splitlines()
         if line.lstrip().startswith("[PROTOCOL-VIOLATION:")
     ]
     assert len(violations) == 1, violations
@@ -2666,18 +2639,16 @@ def test_multi_dissent_emits_its_machine_token_on_the_violation_line(
 
 def test_phase1_requires_the_paraphrase_section():
     """§4 names three requirements; a valid plan alone must not pass."""
-    text = re.sub(r"## Contract Paraphrase.*?(?=## Scoring Plan)", "",
-                  phase1_text("methodology"), flags=re.S)
-    with pytest.raises(phase.ConformanceError,
-                       match="Contract Paraphrase"):
+    text = re.sub(
+        r"## Contract Paraphrase.*?(?=## Scoring Plan)", "", phase1_text("methodology"), flags=re.S
+    )
+    with pytest.raises(phase.ConformanceError, match="Contract Paraphrase"):
         phase.parse_phase1("p1.md", text, FULL, "methodology")
 
 
 def test_phase1_requires_the_terminal_acknowledgement():
-    text = phase1_text("methodology").replace(
-        "[CONTRACT-ACKNOWLEDGED]", "").rstrip() + "\n"
-    with pytest.raises(phase.ConformanceError,
-                       match="CONTRACT-ACKNOWLEDGED"):
+    text = phase1_text("methodology").replace("[CONTRACT-ACKNOWLEDGED]", "").rstrip() + "\n"
+    with pytest.raises(phase.ConformanceError, match="CONTRACT-ACKNOWLEDGED"):
         phase.parse_phase1("p1.md", text, FULL, "methodology")
 
 
@@ -2690,7 +2661,9 @@ def test_phase1_requires_the_paraphrase_paragraph_floor():
     text = re.sub(
         r"## Contract Paraphrase.*?(?=## Scoring Plan)",
         "## Contract Paraphrase\n\nAll dimensions understood.\n\n",
-        phase1_text("methodology"), flags=re.S)
+        phase1_text("methodology"),
+        flags=re.S,
+    )
     with pytest.raises(phase.ConformanceError, match="fewer than"):
         phase.parse_phase1("p1.md", text, FULL, "methodology")
 
@@ -2703,14 +2676,13 @@ def test_phase1_requires_the_exact_h2_sequence():
     """
     good = phase1_text("methodology")
     reordered = good.replace("## Contract Paraphrase", "## ZZZ", 1)
-    reordered = reordered.replace("## Scoring Plan",
-                                  "## Contract Paraphrase", 1)
+    reordered = reordered.replace("## Scoring Plan", "## Contract Paraphrase", 1)
     reordered = reordered.replace("## ZZZ", "## Scoring Plan", 1)
     with pytest.raises(phase.ConformanceError, match="H2 sections"):
         phase.parse_phase1("p1.md", reordered, FULL, "methodology")
-    extra = good.replace("## Scoring Plan",
-                         "## Reviewer Notes\n\nan extra section\n\n"
-                         "## Scoring Plan", 1)
+    extra = good.replace(
+        "## Scoring Plan", "## Reviewer Notes\n\nan extra section\n\n" "## Scoring Plan", 1
+    )
     with pytest.raises(phase.ConformanceError, match="H2 sections"):
         phase.parse_phase1("p1.md", extra, FULL, "methodology")
 
@@ -2721,12 +2693,13 @@ def test_phase1_heading_only_paraphrase_fails_the_paragraph_floor():
     prose at all satisfied the floor. A heading is a heading, not a
     paragraph, and it separates paragraphs rather than joining them.
     """
-    headings = "\n\n".join(
-        f"### {dim['id']}" for dim in FULL["acceptance_dimensions"])
+    headings = "\n\n".join(f"### {dim['id']}" for dim in FULL["acceptance_dimensions"])
     text = re.sub(
         r"## Contract Paraphrase.*?(?=## Scoring Plan)",
         f"## Contract Paraphrase\n\n{headings}\n\n",
-        phase1_text("methodology"), flags=re.S)
+        phase1_text("methodology"),
+        flags=re.S,
+    )
     with pytest.raises(phase.ConformanceError, match="fewer than"):
         phase.parse_phase1("p1.md", text, FULL, "methodology")
 
@@ -2738,12 +2711,15 @@ def test_phase1_headings_do_not_join_two_prose_paragraphs():
     """
     dims = FULL["acceptance_dimensions"]
     body = "\n\n".join(
-        f"### {dim['id']}\n{dim['id']} concerns {dim['name']} as the "
-        "contract defines it." for dim in dims)
+        f"### {dim['id']}\n{dim['id']} concerns {dim['name']} as the " "contract defines it."
+        for dim in dims
+    )
     text = re.sub(
         r"## Contract Paraphrase.*?(?=## Scoring Plan)",
         f"## Contract Paraphrase\n\n{body}\n\n",
-        phase1_text("methodology"), flags=re.S)
+        phase1_text("methodology"),
+        flags=re.S,
+    )
     parsed = phase.parse_phase1("p1.md", text, FULL, "methodology")
     assert parsed is not None
 
@@ -2758,7 +2734,9 @@ def test_phase1_zero_content_blocks_do_not_satisfy_the_floor():
         text = re.sub(
             r"## Contract Paraphrase.*?(?=## Scoring Plan)",
             f"## Contract Paraphrase\n\n{blocks}\n\n",
-            phase1_text("methodology"), flags=re.S)
+            phase1_text("methodology"),
+            flags=re.S,
+        )
         with pytest.raises(phase.ConformanceError, match="fewer than"):
             phase.parse_phase1("p1.md", text, FULL, "methodology")
 
@@ -2771,12 +2749,14 @@ def test_phase1_a_bulleted_paraphrase_still_counts_as_content():
     """
     dims = FULL["acceptance_dimensions"]
     bullets = "\n\n".join(
-        f"- {dim['id']} concerns {dim['name']} as the contract defines "
-        "it." for dim in dims)
+        f"- {dim['id']} concerns {dim['name']} as the contract defines " "it." for dim in dims
+    )
     text = re.sub(
         r"## Contract Paraphrase.*?(?=## Scoring Plan)",
         f"## Contract Paraphrase\n\n{bullets}\n\n",
-        phase1_text("methodology"), flags=re.S)
+        phase1_text("methodology"),
+        flags=re.S,
+    )
     parsed = phase.parse_phase1("p1.md", text, FULL, "methodology")
     assert parsed is not None
 
@@ -2791,7 +2771,9 @@ def test_phase1_multiline_html_comments_do_not_satisfy_the_floor():
     text = re.sub(
         r"## Contract Paraphrase.*?(?=## Scoring Plan)",
         f"## Contract Paraphrase\n\n{blocks}\n\n",
-        phase1_text("methodology"), flags=re.S)
+        phase1_text("methodology"),
+        flags=re.S,
+    )
     with pytest.raises(phase.ConformanceError, match="fewer than"):
         phase.parse_phase1("p1.md", text, FULL, "methodology")
 
@@ -2804,11 +2786,15 @@ def test_phase1_prose_mentioning_a_comment_opener_still_counts():
     dims = FULL["acceptance_dimensions"]
     body = "\n\n".join(
         f"{dim['id']} concerns {dim['name']}; authors sometimes hide "
-        "text with <!-- markers --> in drafts." for dim in dims)
+        "text with <!-- markers --> in drafts."
+        for dim in dims
+    )
     text = re.sub(
         r"## Contract Paraphrase.*?(?=## Scoring Plan)",
         f"## Contract Paraphrase\n\n{body}\n\n",
-        phase1_text("methodology"), flags=re.S)
+        phase1_text("methodology"),
+        flags=re.S,
+    )
     parsed = phase.parse_phase1("p1.md", text, FULL, "methodology")
     assert parsed is not None
 
@@ -2823,7 +2809,9 @@ def test_phase1_lone_list_markers_do_not_satisfy_the_floor():
         text = re.sub(
             r"## Contract Paraphrase.*?(?=## Scoring Plan)",
             f"## Contract Paraphrase\n\n{blocks}\n\n",
-            phase1_text("methodology"), flags=re.S)
+            phase1_text("methodology"),
+            flags=re.S,
+        )
         with pytest.raises(phase.ConformanceError, match="fewer than"):
             phase.parse_phase1("p1.md", text, FULL, "methodology")
 
@@ -2844,62 +2832,52 @@ def grim_receipt(**overrides) -> list[str]:
     fields = {
         "procedure_id": "grim",
         "evidence_anchor": "table: Table 2, M=3.847 with N=87",
-        "reported_inputs": "single 1-5 integer item, N=87, M=3.847, "
-                           "three-decimal precision",
+        "reported_inputs": "single 1-5 integer item, N=87, M=3.847, " "three-decimal precision",
         "assumptions": "unweighted single-item mean as stated in §3.2",
         "derivation": "integer sums 334 and 335 bracket 87 * 3.847",
         "derived_value_or_range": "334/87 = 3.8390...; 335/87 = 3.8505...",
-        "comparison_rule": "an achievable sum must round to 3.847 at three "
-                           "decimals",
+        "comparison_rule": "an achievable sum must round to 3.847 at three " "decimals",
         "rounding_interval": "[3.8465, 3.8475)",
         "nearest_achievable": "334/87 = 3.8390...; 335/87 = 3.8505...",
         "status": "mismatch",
         "finding_ref": "W1",
     }
     fields.update(overrides)
-    return [f"{key}: {value}" for key, value in fields.items()
-            if value is not None]
+    return [f"{key}: {value}" for key, value in fields.items() if value is not None]
 
 
 def p_receipt(**overrides) -> list[str]:
     fields = {
         "procedure_id": "p_from_test_statistic",
         "evidence_anchor": 'text: §4.1 "t(140) = 1.31, p = .008"',
-        "reported_inputs": "independent t, t=1.31, df=140, p=.008, no tail "
-                           "stated",
+        "reported_inputs": "independent t, t=1.31, df=140, p=.008, no tail " "stated",
         "assumptions": "central t distribution; no paper-licensed tail",
         "tail_convention": "unstated",
         "derivation": "p from t=1.31 at df=140 under both tail readings",
         "derived_value_or_range": "two-tailed p ≈ .192; one-tailed p ≈ .096",
-        "comparison_rule": "reported .008 must match either tail value at "
-                           "reported precision",
+        "comparison_rule": "reported .008 must match either tail value at " "reported precision",
         "status": "mismatch",
         "finding_ref": "W1",
     }
     fields.update(overrides)
-    return [f"{key}: {value}" for key, value in fields.items()
-            if value is not None]
+    return [f"{key}: {value}" for key, value in fields.items() if value is not None]
 
 
 def n_from_df_receipt(**overrides) -> list[str]:
     fields = {
         "procedure_id": "n_from_df",
-        "evidence_anchor": 'text: §4.2 "t(156)" against the stated maximum '
-                           'analytic sample',
-        "reported_inputs": "independent-groups t with df=156; stated maximum "
-                           "analytic N=142",
+        "evidence_anchor": 'text: §4.2 "t(156)" against the stated maximum ' "analytic sample",
+        "reported_inputs": "independent-groups t with df=156; stated maximum " "analytic N=142",
         "assumptions": "equal-variance independent t as the paper names",
         "df_identity": "df = N1 + N2 - 2",
         "derivation": "df=156 requires total N=158 under the named identity",
         "derived_value_or_range": "required N = 158",
-        "comparison_rule": "required N must not exceed the stated analytic "
-                           "ceiling of 142",
+        "comparison_rule": "required N must not exceed the stated analytic " "ceiling of 142",
         "status": "mismatch",
         "finding_ref": "W1",
     }
     fields.update(overrides)
-    return [f"{key}: {value}" for key, value in fields.items()
-            if value is not None]
+    return [f"{key}: {value}" for key, value in fields.items() if value is not None]
 
 
 def receipt_section(*receipts: list[str]) -> list[str]:
@@ -2936,22 +2914,21 @@ def test_valid_n_from_df_receipt_passes():
 
 def test_valid_consistent_receipt_needs_no_finding():
     check_receipts(
-        receipt_section(
-            grim_receipt(status="consistent", finding_ref=None)
-        ),
+        receipt_section(grim_receipt(status="consistent", finding_ref=None)),
         body="prose only",
     )
 
 
 def test_valid_not_computable_receipt_passes():
     check_receipts(
-        receipt_section(p_receipt(
-            status="not_computable",
-            not_computable_reason="tail_ambiguous",
-            finding_ref=None,
-            derived_value_or_range="not derived; tail choice flips the "
-                                   "verdict",
-        )),
+        receipt_section(
+            p_receipt(
+                status="not_computable",
+                not_computable_reason="tail_ambiguous",
+                finding_ref=None,
+                derived_value_or_range="not derived; tail choice flips the " "verdict",
+            )
+        ),
         body="prose only",
     )
 
@@ -2973,8 +2950,10 @@ def test_missing_receipt_section_fails():
 
 
 def test_duplicate_receipt_section_fails():
-    text = phase2_text("methodology", body="prose") + \
-        "\n\n## Arithmetic Receipts\n\nno_recomputable_statistics: twice\n"
+    text = (
+        phase2_text("methodology", body="prose")
+        + "\n\n## Arithmetic Receipts\n\nno_recomputable_statistics: twice\n"
+    )
     report = panel.parse_report("p2.md", text, FULL)
     with pytest.raises(phase.ConformanceError, match="duplicate"):
         phase.check_methodology_receipts(report)
@@ -2985,14 +2964,11 @@ def test_receipt_section_before_review_body_fails():
     text = text[: text.index("\n## Arithmetic Receipts")]
     text = text.replace(
         "## Review Body",
-        "## Arithmetic Receipts\n\nno_recomputable_statistics: early\n\n"
-        "## Review Body",
+        "## Arithmetic Receipts\n\nno_recomputable_statistics: early\n\n" "## Review Body",
         1,
     )
     report = panel.parse_report("p2.md", text, FULL)
-    with pytest.raises(
-        phase.ConformanceError, match="must be the final section"
-    ):
+    with pytest.raises(phase.ConformanceError, match="must be the final section"):
         phase.check_methodology_receipts(report)
 
 
@@ -3022,26 +2998,35 @@ def test_invalid_receipt_heading_fails():
 
 def test_duplicate_receipt_heading_fails():
     lines = [
-        "### AR1", *grim_receipt(), "",
-        "### AR1", *grim_receipt(), "",
+        "### AR1",
+        *grim_receipt(),
+        "",
+        "### AR1",
+        *grim_receipt(),
+        "",
     ]
     with pytest.raises(phase.ConformanceError, match="duplicate receipt"):
         check_receipts(lines)
 
 
 def test_unknown_procedure_id_fails():
-    with pytest.raises(
-        phase.ConformanceError, match="not a bounded procedure"
-    ):
-        check_receipts(
-            receipt_section(grim_receipt(procedure_id="effect_size_check"))
-        )
+    with pytest.raises(phase.ConformanceError, match="not a bounded procedure"):
+        check_receipts(receipt_section(grim_receipt(procedure_id="effect_size_check")))
 
 
-@pytest.mark.parametrize("key", [
-    "procedure_id", "evidence_anchor", "reported_inputs", "assumptions",
-    "derivation", "derived_value_or_range", "comparison_rule", "status",
-])
+@pytest.mark.parametrize(
+    "key",
+    [
+        "procedure_id",
+        "evidence_anchor",
+        "reported_inputs",
+        "assumptions",
+        "derivation",
+        "derived_value_or_range",
+        "comparison_rule",
+        "status",
+    ],
+)
 def test_each_missing_canonical_receipt_field_fails(key):
     with pytest.raises(phase.ConformanceError, match="RECEIPT-GRAMMAR"):
         check_receipts(receipt_section(grim_receipt(**{key: None})))
@@ -3056,17 +3041,13 @@ def test_duplicated_receipt_field_fails():
 
 def test_unknown_status_fails():
     with pytest.raises(phase.ConformanceError, match="closed status enum"):
-        check_receipts(
-            receipt_section(grim_receipt(status="plausible"))
-        )
+        check_receipts(receipt_section(grim_receipt(status="plausible")))
 
 
 def test_not_computable_without_reason_fails():
     with pytest.raises(phase.ConformanceError, match="not_computable_reason"):
         check_receipts(
-            receipt_section(grim_receipt(
-                status="not_computable", finding_ref=None
-            )),
+            receipt_section(grim_receipt(status="not_computable", finding_ref=None)),
             body="prose",
         )
 
@@ -3074,20 +3055,20 @@ def test_not_computable_without_reason_fails():
 def test_reason_on_verdict_status_fails():
     with pytest.raises(phase.ConformanceError, match="forbidden unless"):
         check_receipts(
-            receipt_section(grim_receipt(
-                not_computable_reason="rounding_rule_ambiguous"
-            ))
+            receipt_section(grim_receipt(not_computable_reason="rounding_rule_ambiguous"))
         )
 
 
 def test_unknown_not_computable_reason_fails():
     with pytest.raises(phase.ConformanceError, match="closed v1 enum"):
         check_receipts(
-            receipt_section(grim_receipt(
-                status="not_computable",
-                not_computable_reason="model_was_unsure",
-                finding_ref=None,
-            )),
+            receipt_section(
+                grim_receipt(
+                    status="not_computable",
+                    not_computable_reason="model_was_unsure",
+                    finding_ref=None,
+                )
+            ),
             body="prose",
         )
 
@@ -3099,38 +3080,36 @@ def test_p_receipt_without_tail_convention_fails():
 
 def test_tail_convention_on_grim_is_forbidden():
     with pytest.raises(phase.ConformanceError, match="forbidden for"):
-        check_receipts(
-            receipt_section(grim_receipt(tail_convention="two-tailed"))
-        )
+        check_receipts(receipt_section(grim_receipt(tail_convention="two-tailed")))
 
 
 def test_unknown_tail_convention_fails():
     with pytest.raises(phase.ConformanceError, match="closed enum"):
-        check_receipts(
-            receipt_section(p_receipt(tail_convention="lower-tail"))
-        )
+        check_receipts(receipt_section(p_receipt(tail_convention="lower-tail")))
 
 
-@pytest.mark.parametrize("derived", [
-    "two-tailed p ≈ .192 only",
-    "one-tailed p ≈ .096 only",
-    "p ≈ .192 under the default reading",
-])
+@pytest.mark.parametrize(
+    "derived",
+    [
+        "two-tailed p ≈ .192 only",
+        "one-tailed p ≈ .096 only",
+        "p ≈ .192 under the default reading",
+    ],
+)
 def test_unstated_tail_verdict_must_show_both_tails(derived):
     with pytest.raises(phase.ConformanceError, match="RECEIPT-TAILS"):
-        check_receipts(
-            receipt_section(p_receipt(derived_value_or_range=derived))
-        )
+        check_receipts(receipt_section(p_receipt(derived_value_or_range=derived)))
 
 
 def test_stated_tail_needs_no_both_tail_display():
     check_receipts(
-        receipt_section(p_receipt(
-            tail_convention="two-tailed",
-            reported_inputs="paired t, t=1.31, df=140, p=.008, two-tailed "
-                            "stated in §4.1",
-            derived_value_or_range="two-tailed p ≈ .192",
-        ))
+        receipt_section(
+            p_receipt(
+                tail_convention="two-tailed",
+                reported_inputs="paired t, t=1.31, df=140, p=.008, two-tailed " "stated in §4.1",
+                derived_value_or_range="two-tailed p ≈ .192",
+            )
+        )
     )
 
 
@@ -3142,22 +3121,22 @@ def test_grim_verdict_without_reachability_fields_fails(key):
 
 def test_grim_not_computable_may_omit_reachability_fields():
     check_receipts(
-        receipt_section(grim_receipt(
-            status="not_computable",
-            not_computable_reason="scale_granularity_unknown",
-            rounding_interval=None,
-            nearest_achievable=None,
-            finding_ref=None,
-        )),
+        receipt_section(
+            grim_receipt(
+                status="not_computable",
+                not_computable_reason="scale_granularity_unknown",
+                rounding_interval=None,
+                nearest_achievable=None,
+                finding_ref=None,
+            )
+        ),
         body="prose",
     )
 
 
 def test_rounding_interval_on_p_procedure_is_forbidden():
     with pytest.raises(phase.ConformanceError, match="forbidden for"):
-        check_receipts(
-            receipt_section(p_receipt(rounding_interval="[.0075, .0085)"))
-        )
+        check_receipts(receipt_section(p_receipt(rounding_interval="[.0075, .0085)")))
 
 
 def test_n_from_df_verdict_without_identity_fails():
@@ -3167,16 +3146,12 @@ def test_n_from_df_verdict_without_identity_fails():
 
 def test_df_identity_on_grim_is_forbidden():
     with pytest.raises(phase.ConformanceError, match="forbidden for"):
-        check_receipts(
-            receipt_section(grim_receipt(df_identity="df = N - 1"))
-        )
+        check_receipts(receipt_section(grim_receipt(df_identity="df = N - 1")))
 
 
 def test_invalid_receipt_anchor_fails():
     with pytest.raises(phase.ConformanceError):
-        check_receipts(
-            receipt_section(grim_receipt(evidence_anchor="somewhere in §4"))
-        )
+        check_receipts(receipt_section(grim_receipt(evidence_anchor="somewhere in §4")))
 
 
 def test_mismatch_without_finding_ref_fails():
@@ -3186,9 +3161,7 @@ def test_mismatch_without_finding_ref_fails():
 
 def test_finding_ref_on_consistent_receipt_fails():
     with pytest.raises(phase.ConformanceError, match="RECEIPT-LINKAGE"):
-        check_receipts(
-            receipt_section(grim_receipt(status="consistent"))
-        )
+        check_receipts(receipt_section(grim_receipt(status="consistent")))
 
 
 def test_malformed_finding_ref_fails():
@@ -3203,9 +3176,7 @@ def test_finding_ref_to_absent_weakness_fails():
 
 def test_two_receipts_sharing_a_finding_ref_fail():
     with pytest.raises(phase.ConformanceError, match="share a finding_ref"):
-        check_receipts(
-            receipt_section(grim_receipt(), n_from_df_receipt())
-        )
+        check_receipts(receipt_section(grim_receipt(), n_from_df_receipt()))
 
 
 def test_mismatch_weakness_without_backref_fails():
@@ -3215,21 +3186,15 @@ def test_mismatch_weakness_without_backref_fails():
 
 
 def test_backref_naming_wrong_receipt_fails():
-    body = W1_BACKREF_BODY.replace(
-        "**Arithmetic Receipt**: AR1", "**Arithmetic Receipt**: AR2"
-    )
+    body = W1_BACKREF_BODY.replace("**Arithmetic Receipt**: AR1", "**Arithmetic Receipt**: AR2")
     with pytest.raises(phase.ConformanceError, match="RECEIPT-LINKAGE"):
         check_receipts(receipt_section(grim_receipt()), body=body)
 
 
 def test_stale_backref_without_mismatch_receipt_fails():
-    with pytest.raises(
-        phase.ConformanceError, match="does not correspond"
-    ):
+    with pytest.raises(phase.ConformanceError, match="does not correspond"):
         check_receipts(
-            receipt_section(
-                grim_receipt(status="consistent", finding_ref=None)
-            ),
+            receipt_section(grim_receipt(status="consistent", finding_ref=None)),
             body=W1_BACKREF_BODY,
         )
 
@@ -3274,41 +3239,44 @@ def test_fenced_h2_inside_receipt_section_does_not_delimit():
 def test_receipt_section_must_be_the_final_h2():
     # #610 round-1 fix 6: the prompt says "final section"; the checker
     # enforces exactly that, not merely "after Review Body".
-    text = phase2_text(
-        "methodology",
-        body=W1_BACKREF_BODY,
-        receipts=receipt_section(grim_receipt()),
-    ) + "\n\n## Trailing Notes\n\nnothing\n"
+    text = (
+        phase2_text(
+            "methodology",
+            body=W1_BACKREF_BODY,
+            receipts=receipt_section(grim_receipt()),
+        )
+        + "\n\n## Trailing Notes\n\nnothing\n"
+    )
     report = panel.parse_report("p2.md", text, FULL)
-    with pytest.raises(
-        phase.ConformanceError, match="must be the final section"
-    ):
+    with pytest.raises(phase.ConformanceError, match="must be the final section"):
         phase.check_methodology_receipts(report)
 
 
-@pytest.mark.parametrize("derived", [
-    "two-tailed; one-tailed p ≈ .096",
-    "two-tailed p ≈ .192; one-tailed",
-    "two-tailed and one-tailed; both p ≈ .192",
-])
+@pytest.mark.parametrize(
+    "derived",
+    [
+        "two-tailed; one-tailed p ≈ .096",
+        "two-tailed p ≈ .192; one-tailed",
+        "two-tailed and one-tailed; both p ≈ .192",
+    ],
+)
 def test_unstated_tail_label_without_value_in_segment_fails(derived):
     # #610 round-1 fix 1: a bare label is not a shown value — each label
     # needs a digit inside its own `;`-delimited segment.
     with pytest.raises(phase.ConformanceError, match="RECEIPT-TAILS"):
-        check_receipts(
-            receipt_section(p_receipt(derived_value_or_range=derived))
-        )
+        check_receipts(receipt_section(p_receipt(derived_value_or_range=derived)))
 
 
-@pytest.mark.parametrize("derived", [
-    "two–tailed p ≈ .192; one–tailed p ≈ .096",
-    "two‐tailed p = 0.192; one tailed p = 0.096",
-    "TWO-TAILED p ≈ .192; One-Tailed p ≈ .096",
-])
+@pytest.mark.parametrize(
+    "derived",
+    [
+        "two–tailed p ≈ .192; one–tailed p ≈ .096",
+        "two‐tailed p = 0.192; one tailed p = 0.096",
+        "TWO-TAILED p ≈ .192; One-Tailed p ≈ .096",
+    ],
+)
 def test_unstated_tail_hyphen_and_case_variants_pass(derived):
-    check_receipts(
-        receipt_section(p_receipt(derived_value_or_range=derived))
-    )
+    check_receipts(receipt_section(p_receipt(derived_value_or_range=derived)))
 
 
 def test_attestation_pass_prints_declaration_only_advisory(capsys):
@@ -3325,24 +3293,25 @@ def test_receipt_pass_prints_no_attestation_advisory(capsys):
     assert "[RECEIPT-ATTESTATION" not in capsys.readouterr().out
 
 
-@pytest.mark.parametrize("decorated", [
-    "**status:** mismatch",
-    "| status: mismatch |",
-    "1. status: mismatch",
-    "> status: mismatch",
-    "  status: mismatch",
-    "`status`: mismatch",
-    "sTaTus: mismatch",
-    "ｓｔａｔｕｓ: mismatch",
-])
+@pytest.mark.parametrize(
+    "decorated",
+    [
+        "**status:** mismatch",
+        "| status: mismatch |",
+        "1. status: mismatch",
+        "> status: mismatch",
+        "  status: mismatch",
+        "`status`: mismatch",
+        "sTaTus: mismatch",
+        "ｓｔａｔｕｓ: mismatch",
+    ],
+)
 def test_decorated_status_line_aborts_loudly(decorated):
     # #610 round-1 fix 4: an unenumerated decoration of a machine field is a
     # loud declaration, never a silently starved required-field count.
     lines = receipt_section(grim_receipt(status=None))
     lines.insert(lines.index("finding_ref: W1"), decorated)
-    with pytest.raises(
-        phase.ConformanceError, match="decorated or non-canonical"
-    ):
+    with pytest.raises(phase.ConformanceError, match="decorated or non-canonical"):
         check_receipts(lines)
 
 
@@ -3350,12 +3319,8 @@ def test_decorated_forbidden_field_cannot_pass_silently():
     # A decorated spelling of a field the procedure forbids used to sail
     # through the forbidden-field guard unseen; it now aborts.
     lines = receipt_section(grim_receipt())
-    lines.insert(
-        lines.index("finding_ref: W1"), "**tail_convention:** two-tailed"
-    )
-    with pytest.raises(
-        phase.ConformanceError, match="decorated or non-canonical"
-    ):
+    lines.insert(lines.index("finding_ref: W1"), "**tail_convention:** two-tailed")
+    with pytest.raises(phase.ConformanceError, match="decorated or non-canonical"):
         check_receipts(lines)
 
 
@@ -3368,12 +3333,15 @@ def test_prose_naming_a_field_mid_sentence_stays_tolerated():
     check_receipts(lines)
 
 
-@pytest.mark.parametrize("backref", [
-    "**Arithmetic Receipt**: AR1, AR2",
-    "**Arithmetic Receipt**: AR1 which shows the mismatch",
-    "**Arithmetic Receipt:** AR1",
-    "**Arithmetic Receipt**: see AR1",
-])
+@pytest.mark.parametrize(
+    "backref",
+    [
+        "**Arithmetic Receipt**: AR1, AR2",
+        "**Arithmetic Receipt**: AR1 which shows the mismatch",
+        "**Arithmetic Receipt:** AR1",
+        "**Arithmetic Receipt**: see AR1",
+    ],
+)
 def test_non_exact_backref_value_aborts(backref):
     # #610 round-1 fix 5: the back-reference value is exactly AR<n> to end
     # of line or next pipe; list values and trailing prose abort.
@@ -3393,8 +3361,7 @@ def test_fenced_backref_declaration_aborts():
 
 def test_prose_mentioning_the_receipts_section_stays_tolerated():
     body = W1_BACKREF_BODY + (
-        "\nSee the Arithmetic Receipts section: AR1 documents the "
-        "reachability check.\n"
+        "\nSee the Arithmetic Receipts section: AR1 documents the " "reachability check.\n"
     )
     check_receipts(receipt_section(grim_receipt()), body=body)
 
@@ -3405,33 +3372,35 @@ def grimmer_receipt(**overrides) -> list[str]:
         "procedure_id": "grimmer",
         "evidence_anchor": "table: Table 3, SD=0.10 with N=10, M=3.00",
         "reported_inputs": "single 1-5 integer item, N=10, M=3.00, SD=0.10, "
-                           "sample SD, two-decimal precision",
+        "sample SD, two-decimal precision",
         "assumptions": "sample SD as stated in §3.4; integer responses on "
-                       "the published 1-5 scale",
+        "the published 1-5 scale",
         "derivation": "sum fixed at 30; all-3s give SD 0; any deviation "
-                      "pair gives squared-deviation sum >= 2, so minimum "
-                      "nonzero sample SD is sqrt(2/9)",
+        "pair gives squared-deviation sum >= 2, so minimum "
+        "nonzero sample SD is sqrt(2/9)",
         "derived_value_or_range": "attainable sample SDs: 0 or >= 0.4714...",
-        "comparison_rule": "an attainable SD must round to 0.10 at two "
-                           "decimals",
+        "comparison_rule": "an attainable SD must round to 0.10 at two " "decimals",
         "rounding_interval": "[0.095, 0.105)",
-        "nearest_achievable": "0 and sqrt(2/9) = 0.4714... straddle the "
-                              "reported 0.10",
+        "nearest_achievable": "0 and sqrt(2/9) = 0.4714... straddle the " "reported 0.10",
         "status": "mismatch",
         "finding_ref": "W1",
     }
     fields.update(overrides)
-    return [f"{key}: {value}" for key, value in fields.items()
-            if value is not None]
+    return [f"{key}: {value}" for key, value in fields.items() if value is not None]
 
 
 def test_valid_grimmer_mismatch_receipt_passes():
     check_receipts(receipt_section(grimmer_receipt()))
 
 
-@pytest.mark.parametrize("key", [
-    "rounding_interval", "nearest_achievable", "derivation",
-])
+@pytest.mark.parametrize(
+    "key",
+    [
+        "rounding_interval",
+        "nearest_achievable",
+        "derivation",
+    ],
+)
 def test_grimmer_verdict_missing_field_fails(key):
     with pytest.raises(phase.ConformanceError, match=key):
         check_receipts(receipt_section(grimmer_receipt(**{key: None})))
@@ -3462,7 +3431,9 @@ def test_unclosed_comment_cannot_swallow_the_receipts():
 
 def test_visible_receipts_with_hidden_duplicate_field_abort():
     lines = receipt_section(grim_receipt()) + [
-        "<!--", "status: consistent", "-->",
+        "<!--",
+        "status: consistent",
+        "-->",
     ]
     with pytest.raises(phase.ConformanceError, match="HTML comment"):
         check_receipts(lines)
@@ -3474,7 +3445,9 @@ def test_comment_markup_in_receipt_section_aborts():
     # paragraph-inline `prose <!--` opener the block visibility model
     # cannot read would otherwise launder the receipts below it.
     lines = receipt_section(grim_receipt()) + [
-        "<!--", "internal note, no machine fields", "-->",
+        "<!--",
+        "internal note, no machine fields",
+        "-->",
     ]
     with pytest.raises(phase.ConformanceError, match="HTML comment markup"):
         check_receipts(lines)
@@ -3492,7 +3465,9 @@ def test_inline_comment_opener_in_receipt_section_aborts():
 
 def test_fenced_comment_markup_in_receipts_is_literal_text():
     lines = receipt_section(grim_receipt()) + [
-        "```", "<!-- rendered literally inside the fence -->", "```",
+        "```",
+        "<!-- rendered literally inside the fence -->",
+        "```",
     ]
     check_receipts(lines)
 
@@ -3513,24 +3488,24 @@ def test_inline_comment_span_dies_at_a_blank_line():
     # backref in the NEXT paragraph is live and the card conforms.
     body = W1_BACKREF_BODY.replace(
         "**Arithmetic Receipt**: AR1\n",
-        "prose mentioning <!-- an unclosed marker\n\n"
-        "**Arithmetic Receipt**: AR1\n",
+        "prose mentioning <!-- an unclosed marker\n\n" "**Arithmetic Receipt**: AR1\n",
     )
     check_receipts(receipt_section(grim_receipt()), body=body)
 
 
-@pytest.mark.parametrize("entity_line", [
-    "tail_convention&#xFF1A; two-tailed",
-    "status&#65306; mismatch",
-])
+@pytest.mark.parametrize(
+    "entity_line",
+    [
+        "tail_convention&#xFF1A; two-tailed",
+        "status&#65306; mismatch",
+    ],
+)
 def test_fullwidth_colon_entity_field_spelling_aborts(entity_line):
     # Round-3 P1 (codex track): unescape must run BEFORE the NFKC fold so
     # a fullwidth-colon entity decodes and then folds to `:`.
     lines = receipt_section(grim_receipt())
     lines.insert(lines.index("finding_ref: W1"), entity_line)
-    with pytest.raises(
-        phase.ConformanceError, match="decorated or non-canonical"
-    ):
+    with pytest.raises(phase.ConformanceError, match="decorated or non-canonical"):
         check_receipts(lines)
 
 
@@ -3594,19 +3569,20 @@ def test_four_space_paragraph_continuation_backref_still_counts():
     check_receipts(receipt_section(grim_receipt()), body=body)
 
 
-@pytest.mark.parametrize("bad", [
-    "procedure_id: cohen_d_check",
-    "finding_ref: W9",
-    "not_computable_reason: bogus_reason",
-    "status: not_applicable",
-])
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "procedure_id: cohen_d_check",
+        "finding_ref: W9",
+        "not_computable_reason: bogus_reason",
+        "status: not_applicable",
+    ],
+)
 def test_machine_line_in_section_preamble_aborts(bad):
     # Round-2 P1 (security track): the preamble is not a parking lot — a
     # canonical machine line the enum/linkage gates never inspect aborts.
     lines = [bad, "", *receipt_section(grim_receipt())]
-    with pytest.raises(
-        phase.ConformanceError, match="outside every ### AR<n>"
-    ):
+    with pytest.raises(phase.ConformanceError, match="outside every ### AR<n>"):
         check_receipts(lines)
 
 
@@ -3615,9 +3591,7 @@ def test_attestation_card_with_stray_machine_line_aborts():
         "no_recomputable_statistics: nothing recomputable",
         "status: consistent",
     ]
-    with pytest.raises(
-        phase.ConformanceError, match="outside every ### AR<n>"
-    ):
+    with pytest.raises(phase.ConformanceError, match="outside every ### AR<n>"):
         check_receipts(lines, body="prose")
 
 
@@ -3629,20 +3603,14 @@ def test_forbidden_field_in_a_later_table_cell_aborts():
         lines.index("finding_ref: W1"),
         "| note | **tail_convention:** two-tailed |",
     )
-    with pytest.raises(
-        phase.ConformanceError, match="decorated or non-canonical"
-    ):
+    with pytest.raises(phase.ConformanceError, match="decorated or non-canonical"):
         check_receipts(lines)
 
 
 def test_entity_colon_field_spelling_aborts():
     lines = receipt_section(grim_receipt())
-    lines.insert(
-        lines.index("finding_ref: W1"), "tail_convention&#58; two-tailed"
-    )
-    with pytest.raises(
-        phase.ConformanceError, match="decorated or non-canonical"
-    ):
+    lines.insert(lines.index("finding_ref: W1"), "tail_convention&#58; two-tailed")
+    with pytest.raises(phase.ConformanceError, match="decorated or non-canonical"):
         check_receipts(lines)
 
 
@@ -3656,9 +3624,7 @@ def test_cjk_prose_in_a_table_cell_stays_tolerated():
 def test_half_bold_field_is_not_canonical(half_bold):
     lines = receipt_section(grim_receipt(status=None))
     lines.insert(lines.index("finding_ref: W1"), half_bold)
-    with pytest.raises(
-        phase.ConformanceError, match="decorated or non-canonical"
-    ):
+    with pytest.raises(phase.ConformanceError, match="decorated or non-canonical"):
         check_receipts(lines)
 
 
@@ -3676,24 +3642,23 @@ def test_canonical_plus_malformed_backref_on_one_line_aborts():
 def test_indented_trailing_h2_still_violates_terminal_rule():
     # Round-2 (security track): a 1-3-space-indented `##` renders as a
     # heading even though the section grammar ignores it.
-    text = phase2_text(
-        "methodology",
-        body=W1_BACKREF_BODY,
-        receipts=receipt_section(grim_receipt()),
-    ) + "\n\n   ## Trailing Section\n\ntext\n"
+    text = (
+        phase2_text(
+            "methodology",
+            body=W1_BACKREF_BODY,
+            receipts=receipt_section(grim_receipt()),
+        )
+        + "\n\n   ## Trailing Section\n\ntext\n"
+    )
     report = panel.parse_report("p2.md", text, FULL)
-    with pytest.raises(
-        phase.ConformanceError, match="must be the final section"
-    ):
+    with pytest.raises(phase.ConformanceError, match="must be the final section"):
         phase.check_methodology_receipts(report)
 
 
 def test_three_space_indented_fence_is_read_dedented():
     # Round-2 (codex track): CommonMark strips the opener's indent from the
     # displayed content of an indented fence; the gate reads display form.
-    lines = ["   ```"] + [
-        "   " + line for line in receipt_section(grim_receipt())
-    ] + ["   ```"]
+    lines = ["   ```"] + ["   " + line for line in receipt_section(grim_receipt())] + ["   ```"]
     check_receipts(lines)
 
 
@@ -3710,24 +3675,36 @@ def test_indented_fence_hiding_direction_still_aborts():
 
 
 def test_tail_value_before_label_in_segment_passes():
-    check_receipts(receipt_section(p_receipt(
-        derived_value_or_range="p = .192 (two-tailed); p = .096 (one-tailed)",
-    )))
+    check_receipts(
+        receipt_section(
+            p_receipt(
+                derived_value_or_range="p = .192 (two-tailed); p = .096 (one-tailed)",
+            )
+        )
+    )
 
 
 def test_embedded_word_tail_labels_do_not_satisfy_the_rule():
     with pytest.raises(phase.ConformanceError, match="RECEIPT-TAILS"):
-        check_receipts(receipt_section(p_receipt(
-            derived_value_or_range="notwo-tailed note 2; someone-tailed 1",
-        )))
+        check_receipts(
+            receipt_section(
+                p_receipt(
+                    derived_value_or_range="notwo-tailed note 2; someone-tailed 1",
+                )
+            )
+        )
 
 
 def test_fused_tail_label_with_value_still_counts():
     # A `twotailed` typo carries its value; rejecting it would be a false
     # abort on an unretryable phase (declared boundary).
-    check_receipts(receipt_section(p_receipt(
-        derived_value_or_range="twotailed p=.192; onetailed p=.096",
-    )))
+    check_receipts(
+        receipt_section(
+            p_receipt(
+                derived_value_or_range="twotailed p=.192; onetailed p=.096",
+            )
+        )
+    )
 
 
 def test_field_name_leading_prose_abort_is_a_declared_boundary():
@@ -3737,9 +3714,7 @@ def test_field_name_leading_prose_abort_is_a_declared_boundary():
     lines = receipt_section(grim_receipt()) + [
         "Assumptions: none beyond what the paper licenses.",
     ]
-    with pytest.raises(
-        phase.ConformanceError, match="decorated or non-canonical"
-    ):
+    with pytest.raises(phase.ConformanceError, match="decorated or non-canonical"):
         check_receipts(lines)
 
 
@@ -3779,8 +3754,7 @@ def test_backref_after_a_closing_comment_on_the_same_line_is_live():
 def test_spurious_backref_after_a_closing_comment_still_aborts():
     body = W1_BACKREF_BODY.replace(
         "**Arithmetic Receipt**: AR1\n",
-        "**Arithmetic Receipt**: AR1\n"
-        "open <!-- x\nclosed --> **Arithmetic Receipt**: AR2\n",
+        "**Arithmetic Receipt**: AR1\n" "open <!-- x\nclosed --> **Arithmetic Receipt**: AR2\n",
     )
     with pytest.raises(phase.ConformanceError, match="exactly one"):
         check_receipts(receipt_section(grim_receipt()), body=body)
@@ -3808,9 +3782,7 @@ def test_unequal_code_ticks_do_not_hide_a_later_cell_field():
         lines.index("finding_ref: W1"),
         "| `note | **tail_convention:** two-tailed`` |",
     )
-    with pytest.raises(
-        phase.ConformanceError, match="decorated or non-canonical"
-    ):
+    with pytest.raises(phase.ConformanceError, match="decorated or non-canonical"):
         check_receipts(lines)
 
 
@@ -3849,8 +3821,7 @@ def test_hidden_declaration_beside_a_visible_one_still_aborts():
     # aborts even when the same line also carries a visible, credited one.
     body = W1_BACKREF_BODY.replace(
         "**Arithmetic Receipt**: AR1\n",
-        "**Arithmetic Receipt**: AR1 <!-- | **Arithmetic Receipt**: AR2\n"
-        "-->\n",
+        "**Arithmetic Receipt**: AR1 <!-- | **Arithmetic Receipt**: AR2\n" "-->\n",
     )
     with pytest.raises(phase.ConformanceError, match="paragraph-inline"):
         check_receipts(receipt_section(grim_receipt()), body=body)
@@ -3871,8 +3842,7 @@ def test_prose_span_cannot_shield_a_declaration_in_the_next_span():
 def test_fragments_across_spans_cannot_synthesize_a_declaration():
     body = W1_BACKREF_BODY.replace(
         "**Arithmetic Receipt**: AR1\n",
-        "**Arithmetic Receipt**: AR1 <!-- Arithmetic --> "
-        "<!-- Receipt: typo -->\n",
+        "**Arithmetic Receipt**: AR1 <!-- Arithmetic --> " "<!-- Receipt: typo -->\n",
     )
     check_receipts(receipt_section(grim_receipt()), body=body)
 
@@ -3895,25 +3865,24 @@ def test_any_atx_heading_ends_an_inline_comment_span():
 
 def test_grimmer_grim_inconsistent_mean_is_not_computable():
     check_receipts(
-        receipt_section(grimmer_receipt(
-            status="not_computable",
-            not_computable_reason="mean_grim_inconsistent",
-            rounding_interval=None,
-            nearest_achievable=None,
-            finding_ref=None,
-        )),
+        receipt_section(
+            grimmer_receipt(
+                status="not_computable",
+                not_computable_reason="mean_grim_inconsistent",
+                rounding_interval=None,
+                nearest_achievable=None,
+                finding_ref=None,
+            )
+        ),
         body="prose",
     )
 
 
 @pytest.mark.parametrize("role", ["eic", "domain", "perspective", "da"])
 def test_receipt_section_is_forbidden_on_other_seats(role):
-    text = phase2_text(role) + \
-        "\n\n## Arithmetic Receipts\n\nno_recomputable_statistics: rogue\n"
+    text = phase2_text(role) + "\n\n## Arithmetic Receipts\n\nno_recomputable_statistics: rogue\n"
     report = panel.parse_report("p2.md", text, FULL)
-    with pytest.raises(
-        phase.ConformanceError, match="RECEIPT-SECTION-FORBIDDEN"
-    ):
+    with pytest.raises(phase.ConformanceError, match="RECEIPT-SECTION-FORBIDDEN"):
         phase.check_receipt_section_forbidden(report)
 
 
@@ -3935,11 +3904,8 @@ def test_full_cli_rejects_missing_receipt_section(tmp_path, capsys):
     args = write_cli_files(tmp_path, "methodology")
     phase2_path = Path(args[args.index("--phase2") + 1])
     text = phase2_text("methodology", body="prose")
-    phase2_path.write_text(
-        text[: text.index("\n## Arithmetic Receipts")], encoding="utf-8"
-    )
-    assert phase.main(args + ["--role", "methodology"]) == \
-        phase.EXIT_CONFORMANCE
+    phase2_path.write_text(text[: text.index("\n## Arithmetic Receipts")], encoding="utf-8")
+    assert phase.main(args + ["--role", "methodology"]) == phase.EXIT_CONFORMANCE
     assert "[RECEIPT-MISSING:" in capsys.readouterr().out
 
 
@@ -3947,7 +3913,6 @@ def test_full_cli_rejects_missing_receipt_section(tmp_path, capsys):
 
 
 from scripts import recompute_receipts as recompute  # noqa: E402
-
 
 GRIM_EXTRACTION = (
     "## Recompute Extraction\n"
@@ -3971,70 +3936,72 @@ ATTESTATION_EXTRACTION = (
 )
 
 
-def extraction_args(tmp_path: Path, extraction_text: str,
-                    role: str = "methodology") -> list[str]:
+def extraction_args(tmp_path: Path, extraction_text: str, role: str = "methodology") -> list[str]:
     args = write_cli_files(tmp_path, role)
-    del args[args.index("--phase2"):args.index("--phase2") + 2]
+    del args[args.index("--phase2") : args.index("--phase2") + 2]
     extraction = tmp_path / "extraction.md"
     extraction.write_text(extraction_text, encoding="utf-8")
     return args + ["--extraction", str(extraction), "--role", role]
 
 
 def test_extraction_stage_passes_on_rr_grammar(tmp_path, capsys):
-    assert phase.main(extraction_args(tmp_path, GRIM_EXTRACTION)) == \
-        phase.EXIT_PASS
+    assert phase.main(extraction_args(tmp_path, GRIM_EXTRACTION)) == phase.EXIT_PASS
     assert "EXTRACTION-CONFORMANCE: PASS" in capsys.readouterr().out
 
 
-def test_extraction_stage_passes_on_attestation_with_advisory(tmp_path,
-                                                              capsys):
-    assert phase.main(extraction_args(tmp_path, ATTESTATION_EXTRACTION)) == \
-        phase.EXIT_PASS
+def test_extraction_stage_passes_on_attestation_with_advisory(tmp_path, capsys):
+    assert phase.main(extraction_args(tmp_path, ATTESTATION_EXTRACTION)) == phase.EXIT_PASS
     out = capsys.readouterr().out
     assert "EXTRACTION-CONFORMANCE: PASS" in out
     assert "[RECEIPT-ATTESTATION:" in out
 
 
 def test_extraction_stage_is_methodology_only(tmp_path, capsys):
-    assert phase.main(
-        extraction_args(tmp_path, GRIM_EXTRACTION, role="eic")
-    ) == phase.EXIT_CONTRACT
+    assert phase.main(extraction_args(tmp_path, GRIM_EXTRACTION, role="eic")) == phase.EXIT_CONTRACT
     assert "[ROLE-BINDING:" in capsys.readouterr().out
 
 
 def test_extraction_preamble_prose_is_nonconforming(tmp_path, capsys):
-    assert phase.main(extraction_args(
-        tmp_path, "I will now extract the statistics.\n\n" + GRIM_EXTRACTION
-    )) == phase.EXIT_CONFORMANCE
+    assert (
+        phase.main(
+            extraction_args(tmp_path, "I will now extract the statistics.\n\n" + GRIM_EXTRACTION)
+        )
+        == phase.EXIT_CONFORMANCE
+    )
     assert "[EXTRACTION-GRAMMAR:" in capsys.readouterr().out
 
 
 def test_extraction_extra_section_is_nonconforming(tmp_path, capsys):
-    assert phase.main(extraction_args(
-        tmp_path, GRIM_EXTRACTION + "\n## Notes\n\nsome prose\n"
-    )) == phase.EXIT_CONFORMANCE
+    assert (
+        phase.main(extraction_args(tmp_path, GRIM_EXTRACTION + "\n## Notes\n\nsome prose\n"))
+        == phase.EXIT_CONFORMANCE
+    )
     assert "[EXTRACTION-GRAMMAR:" in capsys.readouterr().out
 
 
 def test_extraction_missing_section_is_nonconforming(tmp_path, capsys):
-    assert phase.main(extraction_args(
-        tmp_path, "## Wrong Heading\n\nn: 87\n"
-    )) == phase.EXIT_CONFORMANCE
+    assert (
+        phase.main(extraction_args(tmp_path, "## Wrong Heading\n\nn: 87\n"))
+        == phase.EXIT_CONFORMANCE
+    )
     assert "[EXTRACTION-GRAMMAR:" in capsys.readouterr().out
 
 
 def test_extraction_unknown_field_is_nonconforming(tmp_path, capsys):
-    assert phase.main(extraction_args(
-        tmp_path, GRIM_EXTRACTION + "surprise_field: value\n"
-    )) == phase.EXIT_CONFORMANCE
+    assert (
+        phase.main(extraction_args(tmp_path, GRIM_EXTRACTION + "surprise_field: value\n"))
+        == phase.EXIT_CONFORMANCE
+    )
     assert "unknown field" in capsys.readouterr().out
 
 
-def test_extraction_prose_line_inside_section_is_nonconforming(tmp_path,
-                                                               capsys):
-    assert phase.main(extraction_args(
-        tmp_path, GRIM_EXTRACTION + "This mean looks impossible to me.\n"
-    )) == phase.EXIT_CONFORMANCE
+def test_extraction_prose_line_inside_section_is_nonconforming(tmp_path, capsys):
+    assert (
+        phase.main(
+            extraction_args(tmp_path, GRIM_EXTRACTION + "This mean looks impossible to me.\n")
+        )
+        == phase.EXIT_CONFORMANCE
+    )
     assert "not a machine line" in capsys.readouterr().out
 
 
@@ -4043,8 +4010,7 @@ def test_extraction_invalid_anchor_is_nonconforming(tmp_path, capsys):
         "evidence_anchor: table: Table 2, M=3.847 with N=87",
         "evidence_anchor: somewhere in the paper",
     )
-    assert phase.main(extraction_args(tmp_path, bad)) == \
-        phase.EXIT_CONFORMANCE
+    assert phase.main(extraction_args(tmp_path, bad)) == phase.EXIT_CONFORMANCE
     assert "ANCHOR" in capsys.readouterr().out
 
 
@@ -4053,9 +4019,7 @@ def test_extraction_and_phase2_stages_are_mutually_exclusive(tmp_path):
     extraction = tmp_path / "extraction.md"
     extraction.write_text(GRIM_EXTRACTION, encoding="utf-8")
     with pytest.raises(SystemExit) as exc:
-        phase._parse_args(
-            args + ["--extraction", str(extraction), "--role", "methodology"]
-        )
+        phase._parse_args(args + ["--extraction", str(extraction), "--role", "methodology"])
     assert exc.value.code == 2
 
 
@@ -4067,14 +4031,16 @@ def test_injected_receipts_flag_requires_phase2(tmp_path):
 
 
 def injected_receipts_text() -> str:
-    return recompute.compute_receipts(
-        recompute.parse_extraction(GRIM_EXTRACTION)
-    )
+    return recompute.compute_receipts(recompute.parse_extraction(GRIM_EXTRACTION))
 
 
-def injected_cli(tmp_path: Path, card_receipt_lines: list[str],
-                 injected_text: str, body: str = W1_BACKREF_BODY,
-                 role: str = "methodology") -> list[str]:
+def injected_cli(
+    tmp_path: Path,
+    card_receipt_lines: list[str],
+    injected_text: str,
+    body: str = W1_BACKREF_BODY,
+    role: str = "methodology",
+) -> list[str]:
     args = write_cli_files(tmp_path, role)
     (tmp_path / "p2.md").write_text(
         phase2_text(role, body=body, receipts=card_receipt_lines),
@@ -4094,22 +4060,25 @@ def faithful_card_lines(injected_text: str) -> list[str]:
 
 def test_injected_identity_passes_on_verbatim_copy(tmp_path):
     injected = injected_receipts_text()
-    assert phase.main(injected_cli(
-        tmp_path, faithful_card_lines(injected), injected
-    )) == phase.EXIT_PASS
+    assert (
+        phase.main(injected_cli(tmp_path, faithful_card_lines(injected), injected))
+        == phase.EXIT_PASS
+    )
 
 
 def test_injected_identity_rejects_an_altered_line(tmp_path, capsys):
     injected = injected_receipts_text()
     lines = [
         line.replace("status: mismatch", "status: consistent")
-        if line == "status: mismatch" else line
+        if line == "status: mismatch"
+        else line
         for line in faithful_card_lines(injected)
         if line != "finding_ref: W1"
     ]
-    assert phase.main(injected_cli(
-        tmp_path, lines, injected, body="clean methodology review prose"
-    )) == phase.EXIT_CONFORMANCE
+    assert (
+        phase.main(injected_cli(tmp_path, lines, injected, body="clean methodology review prose"))
+        == phase.EXIT_CONFORMANCE
+    )
     assert "[RECEIPT-IDENTITY:" in capsys.readouterr().out
 
 
@@ -4119,12 +4088,10 @@ def test_injected_identity_rejects_a_paraphrased_line(tmp_path, capsys):
     # incremental value this gate exists for.
     injected = injected_receipts_text()
     lines = [
-        "derivation: I re-derived this my own way" if
-        line.startswith("derivation: ") else line
+        "derivation: I re-derived this my own way" if line.startswith("derivation: ") else line
         for line in faithful_card_lines(injected)
     ]
-    assert phase.main(injected_cli(tmp_path, lines, injected)) == \
-        phase.EXIT_CONFORMANCE
+    assert phase.main(injected_cli(tmp_path, lines, injected)) == phase.EXIT_CONFORMANCE
     assert "[RECEIPT-IDENTITY:" in capsys.readouterr().out
 
 
@@ -4142,9 +4109,10 @@ def test_injected_identity_rejects_an_extra_receipt(tmp_path, capsys):
         "status: consistent",
         "df_identity: df=N1+N2-2",
     ]
-    assert phase.main(injected_cli(
-        tmp_path, faithful_card_lines(injected) + extra, injected
-    )) == phase.EXIT_CONFORMANCE
+    assert (
+        phase.main(injected_cli(tmp_path, faithful_card_lines(injected) + extra, injected))
+        == phase.EXIT_CONFORMANCE
+    )
     assert "[RECEIPT-IDENTITY:" in capsys.readouterr().out
 
 
@@ -4153,8 +4121,7 @@ def test_injected_identity_survives_added_blank_lines(tmp_path):
     spaced = []
     for line in faithful_card_lines(injected):
         spaced += [line, ""]
-    assert phase.main(injected_cli(tmp_path, spaced, injected)) == \
-        phase.EXIT_PASS
+    assert phase.main(injected_cli(tmp_path, spaced, injected)) == phase.EXIT_PASS
 
 
 def test_injected_receipts_are_methodology_only(tmp_path, capsys):
@@ -4162,26 +4129,34 @@ def test_injected_receipts_are_methodology_only(tmp_path, capsys):
     args = write_cli_files(tmp_path, "eic")
     injected_path = tmp_path / "injected.md"
     injected_path.write_text(injected, encoding="utf-8")
-    assert phase.main(
-        args + ["--role", "eic", "--injected-receipts", str(injected_path)]
-    ) == phase.EXIT_CONTRACT
+    assert (
+        phase.main(args + ["--role", "eic", "--injected-receipts", str(injected_path)])
+        == phase.EXIT_CONTRACT
+    )
     assert "[ROLE-BINDING:" in capsys.readouterr().out
 
 
 def test_injected_file_without_heading_is_a_contract_error(tmp_path, capsys):
     injected = injected_receipts_text()
-    assert phase.main(injected_cli(
-        tmp_path, faithful_card_lines(injected),
-        "### AR1\nprocedure_id: grim\n",
-    )) == phase.EXIT_CONTRACT
+    assert (
+        phase.main(
+            injected_cli(
+                tmp_path,
+                faithful_card_lines(injected),
+                "### AR1\nprocedure_id: grim\n",
+            )
+        )
+        == phase.EXIT_CONTRACT
+    )
     assert "[INJECTED-RECEIPTS-INVALID:" in capsys.readouterr().out
 
 
 def test_injected_identity_pass_emits_its_witness_marker(tmp_path, capsys):
     injected = injected_receipts_text()
-    assert phase.main(injected_cli(
-        tmp_path, faithful_card_lines(injected), injected
-    )) == phase.EXIT_PASS
+    assert (
+        phase.main(injected_cli(tmp_path, faithful_card_lines(injected), injected))
+        == phase.EXIT_PASS
+    )
     assert "RECEIPT-IDENTITY: PASS" in capsys.readouterr().out
 
 
@@ -4194,8 +4169,7 @@ def test_injected_identity_rejects_a_decorated_finding_ref(tmp_path, capsys):
         "- **finding_ref**: W1" if line == "finding_ref: W1" else line
         for line in faithful_card_lines(injected)
     ]
-    assert phase.main(injected_cli(tmp_path, lines, injected)) == \
-        phase.EXIT_CONFORMANCE
+    assert phase.main(injected_cli(tmp_path, lines, injected)) == phase.EXIT_CONFORMANCE
     assert "[RECEIPT-IDENTITY:" in capsys.readouterr().out
 
 
@@ -4204,11 +4178,13 @@ def test_an_escaped_backtick_span_cannot_hide_a_dissent(  # #613 sec P1a
     r"""CommonMark: `\`` is a literal backtick and opens no code span, so
     the marker between two escaped backticks is a live comment opener —
     blanking it credited a dissent the rendered page hides."""
-    text = phase2_with_dissent_section([
-        "Note: \\` <!-- \\` end.",
-        "dimension_id: D1",
-        "rationale: plan understated the sampling frame. -->",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "Note: \\` <!-- \\` end.",
+            "dimension_id: D1",
+            "rationale: plan understated the sampling frame. -->",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
@@ -4217,14 +4193,15 @@ def test_a_cross_line_code_span_cannot_hide_a_dissent():  # #613 sec P1b
     """A trailing unpaired backtick run pairs into the NEXT line for the
     renderer, pulling the marker out of code; once a paragraph's runs stop
     pairing locally, blanking is off and the marker opens."""
-    text = phase2_with_dissent_section([
-        "Note on markup: `",
-        "` <!-- `",
-        "dimension_id: D1",
-        "rationale: plan was inadequate -->",
-    ])
-    with pytest.raises(phase.ConformanceError,
-                       match="DISSENT-HIDDEN|DISSENT-GRAMMAR"):
+    text = phase2_with_dissent_section(
+        [
+            "Note on markup: `",
+            "` <!-- `",
+            "dimension_id: D1",
+            "rationale: plan was inadequate -->",
+        ]
+    )
+    with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN|DISSENT-GRAMMAR"):
         phase.parse_dissent_dimensions(text)
 
 
@@ -4232,10 +4209,12 @@ def test_balanced_inline_code_mention_still_parses_after_the_fix():
     """The sanctioned spelling survives both new guards: escaped-backtick
     blanking and paragraph run-parity poisoning leave a balanced same-line
     span as prose."""
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: the seat wrote `<!--` and `-->` in inline code",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: the seat wrote `<!--` and `-->` in inline code",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
@@ -4244,105 +4223,127 @@ def test_an_empty_comment_closer_overlap_does_not_false_abort():
     the closer reuses the opener's dashes — so the rendered fields below
     them must keep parsing."""
     for empty in ("<!-->", "<!--->"):
-        text = phase2_with_dissent_section([
-            f"note {empty}",
-            "dimension_id: D1",
-            "rationale: plan was inadequate",
-        ])
+        text = phase2_with_dissent_section(
+            [
+                f"note {empty}",
+                "dimension_id: D1",
+                "rationale: plan was inadequate",
+            ]
+        )
         assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
 def test_a_mid_line_reopen_after_a_close_hides_again():
     """codex #650 round 1 (P3): a genuine close-and-REOPEN on one mid-line
     — the second opener hides the fields below it."""
-    text = phase2_with_dissent_section([
-        "prose <!-- first --> more <!--",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        "-->",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "prose <!-- first --> more <!--",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            "-->",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-HIDDEN"):
         phase.parse_dissent_dimensions(text)
 
 
 def test_a_mid_line_double_close_leaves_fields_parsed():
-    text = phase2_with_dissent_section([
-        "prose <!-- a --> and <!-- b --> clear:",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "prose <!-- a --> and <!-- b --> clear:",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
-@pytest.mark.parametrize("raw_html", [
-    "<script>",
-    "</script>",
-    "<style media=\"screen\">",
-    "<template>",
-    "<div hidden>",
-    "<span style=\"display:none\">",
-    "<input type=\"hidden\" />",
-    "<details>",
-    "<svg aria-hidden=\"true\">",
-    "<!DOCTYPE html>",
-    "<![CDATA[",
-    "<?xml version=\"1.0\"?>",
-    "<script",
-    "<span>dimension_id</span>: D1",
-])
+@pytest.mark.parametrize(
+    "raw_html",
+    [
+        "<script>",
+        "</script>",
+        '<style media="screen">',
+        "<template>",
+        "<div hidden>",
+        '<span style="display:none">',
+        '<input type="hidden" />',
+        "<details>",
+        '<svg aria-hidden="true">',
+        "<!DOCTYPE html>",
+        "<![CDATA[",
+        '<?xml version="1.0"?>',
+        "<script",
+        "<span>dimension_id</span>: D1",
+    ],
+)
 def test_non_comment_raw_html_in_dissent_aborts(raw_html):
-    text = phase2_with_dissent_section([
-        raw_html,
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            raw_html,
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-RAW-HTML"):
         phase.parse_dissent_dimensions(text)
 
 
 @pytest.mark.parametrize("container", ["- ", "* ", "1. ", "> ", "> - "])
 def test_container_prefixed_raw_html_in_dissent_aborts(container):
-    text = phase2_with_dissent_section([
-        f"{container}<template hidden>",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-        f"{container}</template>",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            f"{container}<template hidden>",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+            f"{container}</template>",
+        ]
+    )
     with pytest.raises(phase.ConformanceError, match="DISSENT-RAW-HTML"):
         phase.parse_dissent_dimensions(text)
 
 
-@pytest.mark.parametrize("code", [
-    "`<script>`",
-    "``<template data-tick=`x`>``",
-    "```<span hidden>```",
-])
+@pytest.mark.parametrize(
+    "code",
+    [
+        "`<script>`",
+        "``<template data-tick=`x`>``",
+        "```<span hidden>```",
+    ],
+)
 def test_inline_code_raw_html_mention_in_dissent_is_permitted(code):
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        f"rationale: the seat mentioned {code} as literal syntax",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            f"rationale: the seat mentioned {code} as literal syntax",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
 def test_fenced_raw_html_example_in_dissent_keeps_existing_semantics():
-    text = phase2_with_dissent_section([
-        "```html",
-        "<script>",
-        "const example = true;",
-        "</script>",
-        "```",
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ])
+    text = phase2_with_dissent_section(
+        [
+            "```html",
+            "<script>",
+            "const example = true;",
+            "</script>",
+            "```",
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    )
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
 def test_raw_html_outside_dissent_span_is_not_scanned():
-    text = phase2_with_dissent_section([
-        "dimension_id: D1",
-        "rationale: plan was inadequate",
-    ]).replace(
+    text = phase2_with_dissent_section(
+        [
+            "dimension_id: D1",
+            "rationale: plan was inadequate",
+        ]
+    ).replace(
         "## Review Body",
         "## Review Body\n\n<script hidden>outside the dissent span</script>",
         1,
@@ -4350,11 +4351,14 @@ def test_raw_html_outside_dissent_span_is_not_scanned():
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}
 
 
-@pytest.mark.parametrize("prose", [
-    "rationale: compare x < y before accepting the plan",
-    "rationale: see <https://example.test> for the public protocol",
-    "rationale: contact <reviewer@example.test> for the archived note",
-])
+@pytest.mark.parametrize(
+    "prose",
+    [
+        "rationale: compare x < y before accepting the plan",
+        "rationale: see <https://example.test> for the public protocol",
+        "rationale: contact <reviewer@example.test> for the archived note",
+    ],
+)
 def test_non_html_angle_bracket_prose_in_dissent_is_permitted(prose):
     text = phase2_with_dissent_section(["dimension_id: D1", prose])
     assert phase.parse_dissent_dimensions(text).dimensions == {"D1"}

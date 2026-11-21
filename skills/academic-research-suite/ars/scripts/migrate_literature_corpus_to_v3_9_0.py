@@ -26,9 +26,10 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Mapping
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 # Dual-path import: see openalex_client.py comment.
 try:
@@ -95,8 +96,8 @@ def migrate_passport(
     accept injected clients for testability (no subprocess, no env-var mock).
     """
     import contamination_signals as cs
-    from openalex_client import OpenAlexUnavailable
     from crossref_client import CrossrefUnavailable
+    from openalex_client import OpenAlexUnavailable
 
     doc = load_passport(path)
     corpus = doc.get("literature_corpus") if doc else None
@@ -155,9 +156,7 @@ def migrate_passport(
             try:
                 result = get_result()
             except exc_type as e:
-                degradation_log.append(
-                    f"[CORPUS MIGRATION INCOMPLETE: {label}] {key}: {e}"
-                )
+                degradation_log.append(f"[CORPUS MIGRATION INCOMPLETE: {label}] {key}: {e}")
                 report[f"degraded_{label}"] += 1
                 _log(f"{key}: degraded ({label}) — {e}")
                 # #511 Part A reason-provenance: record WHY the field is
@@ -165,8 +164,8 @@ def migrate_passport(
                 # "never computed". Idempotent (re-run with the API still
                 # down changes nothing); dry-run reports without writing.
                 already = (
-                    entry.get("contamination_signal_omissions", {})
-                    .get(sig_key) == cs.OMISSION_API_DEGRADED
+                    entry.get("contamination_signal_omissions", {}).get(sig_key)
+                    == cs.OMISSION_API_DEGRADED
                 )
                 if already:
                     return False
@@ -214,12 +213,16 @@ def migrate_passport(
         elif need_oa:
             entry_changed = _reconcile(
                 lambda: cs.resolve_openalex_unmatched(entry, oa_client),
-                "openalex_unmatched", OpenAlexUnavailable, "openalex",
+                "openalex_unmatched",
+                OpenAlexUnavailable,
+                "openalex",
             )
         elif need_cr:
             entry_changed = _reconcile(
                 lambda: cs.resolve_crossref_unmatched(entry, cr_client),
-                "crossref_unmatched", CrossrefUnavailable, "crossref",
+                "crossref_unmatched",
+                CrossrefUnavailable,
+                "crossref",
             )
 
         if entry_changed:
@@ -258,12 +261,14 @@ def _build_default_oa_client():
     """Production OpenAlex client. Lazy-imported so tests that inject
     mock clients never trigger a network-dependent module load."""
     from openalex_client import OpenAlexClient
+
     return OpenAlexClient()
 
 
 def _build_default_cr_client():
     """Production Crossref client. Lazy-imported for the same reason."""
     from crossref_client import CrossrefClient
+
     return CrossrefClient()
 
 
@@ -279,9 +284,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--dry-run", action="store_true", help="Show proposed changes, write nothing"
     )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Per-entry logging to stderr"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Per-entry logging to stderr")
     return parser.parse_args(argv)
 
 

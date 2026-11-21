@@ -35,9 +35,9 @@ try:
     from scripts import claim_standing_stance_runner as runner
 except ImportError:  # direct script execution
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import build_claim_standing_candidate_ledger as substrate  # noqa: E402
-    import claim_standing_discovery as discovery  # noqa: E402
-    import claim_standing_stance_runner as runner  # noqa: E402
+    import build_claim_standing_candidate_ledger as substrate
+    import claim_standing_discovery as discovery
+    import claim_standing_stance_runner as runner
 
 STALE_REASONS = (
     "claim_text_changed",
@@ -128,9 +128,7 @@ def assess_freshness(
         reasons.add("claim_text_changed")
 
     if candidate_ledger is not None:
-        _require_self_digest(
-            candidate_ledger, "candidate_ledger_sha256", "candidate ledger"
-        )
+        _require_self_digest(candidate_ledger, "candidate_ledger_sha256", "candidate ledger")
         assessed.update({"query_plan", "adapter_registry_binding"})
         if candidate_ledger.get("query_plan_sha256") != plan["plan_sha256"]:
             reasons.add("query_plan_changed")
@@ -140,16 +138,10 @@ def assess_freshness(
             reasons.add("adapter_registry_changed")
 
     if stance_record is not None:
-        _require_self_digest(
-            stance_record, "stance_record_sha256", "stance record"
-        )
+        _require_self_digest(stance_record, "stance_record_sha256", "stance record")
         identity = stance_record.get("identity")
-        _require(
-            isinstance(identity, dict), "stance record is missing its identity"
-        )
-        assessed.update(
-            {"consent_receipt", "candidate_ledger", "stance_configuration"}
-        )
+        _require(isinstance(identity, dict), "stance record is missing its identity")
+        assessed.update({"consent_receipt", "candidate_ledger", "stance_configuration"})
         expected = runner.expected_identity(plan, candidate_ledger)
         unmapped = set(expected) - set(IDENTITY_FIELD_REASONS)
         _require(
@@ -161,19 +153,14 @@ def assess_freshness(
         for field, expected_value in expected.items():
             if identity.get(field) != expected_value:
                 reasons.add(IDENTITY_FIELD_REASONS[field])
-        if identity.get("claim_sha256") != substrate.text_digest(
-            current_claim_text
-        ):
+        if identity.get("claim_sha256") != substrate.text_digest(current_claim_text):
             reasons.add("claim_text_changed")
         stance_runtime = stance_record.get("stance_runtime", {})
         stance_plan = plan.get("stance_plan") or {}
         for field in ("provider_identity", "model_identity"):
             if stance_runtime.get(field) != stance_plan.get(field):
                 reasons.add("stance_configuration_changed")
-        if (
-            stance_runtime.get("prompt_contract_version")
-            != runner.PROMPT_CONTRACT_VERSION
-        ):
+        if stance_runtime.get("prompt_contract_version") != runner.PROMPT_CONTRACT_VERSION:
             reasons.add("stance_configuration_changed")
 
     if runtime_check:
@@ -185,12 +172,8 @@ def assess_freshness(
         "probe_id": plan["probe_id"],
         "status": "stale" if stale_reasons else "current",
         "stale_reasons": stale_reasons,
-        "assessed": [
-            token for token in ASSESSMENT_TOKENS if token in assessed
-        ],
-        "unassessed": [
-            token for token in ASSESSMENT_TOKENS if token not in assessed
-        ],
+        "assessed": [token for token in ASSESSMENT_TOKENS if token in assessed],
+        "unassessed": [token for token in ASSESSMENT_TOKENS if token not in assessed],
     }
     if stale_reasons:
         verdict["presentation_rule"] = PRESENTATION_RULE
@@ -212,9 +195,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         try:
-            current_claim_text = args.current_claim_file.read_text(
-                encoding="utf-8"
-            )
+            current_claim_text = args.current_claim_file.read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
             raise FreshnessError(
                 f"{args.current_claim_file}: cannot read claim text: {exc}"
@@ -228,9 +209,7 @@ def main(argv: list[str] | None = None) -> int:
                 else None
             ),
             stance_record=(
-                substrate.load_json(args.stance_record)
-                if args.stance_record is not None
-                else None
+                substrate.load_json(args.stance_record) if args.stance_record is not None else None
             ),
             runtime_check=args.runtime_check,
         )

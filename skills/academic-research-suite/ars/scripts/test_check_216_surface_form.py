@@ -43,28 +43,41 @@ class TestMutations(unittest.TestCase):
     # --- 1. clause deletion (one test per load-bearing clause, proving each is non-vacuous) ---
 
     def test_clause_extract_substance_removed_fails(self) -> None:
-        errors = self._patch(lambda t: t.replace("Extract the checkable substance first", "Skip the substance"))
+        errors = self._patch(
+            lambda t: t.replace("Extract the checkable substance first", "Skip the substance")
+        )
         self.assertTrue(any("extract-substance" in e for e in errors), msg=f"{errors!r}")
 
     def test_clause_judge_vs_paper_removed_fails(self) -> None:
         errors = self._patch(
-            lambda t: t.replace("Judge the claim against the paper, not against the polish", "Judge however")
+            lambda t: t.replace(
+                "Judge the claim against the paper, not against the polish", "Judge however"
+            )
         )
         self.assertTrue(any("judge-vs-paper-not-polish" in e for e in errors), msg=f"{errors!r}")
 
     def test_clause_no_credit_specificity_removed_fails(self) -> None:
-        errors = self._patch(lambda t: t.replace("Do not credit technical specificity", "Credit specificity"))
+        errors = self._patch(
+            lambda t: t.replace("Do not credit technical specificity", "Credit specificity")
+        )
         self.assertTrue(any("no-credit-specificity" in e for e in errors), msg=f"{errors!r}")
 
     def test_clause_checking_required_removed_fails(self) -> None:
         errors = self._patch(
-            lambda t: t.replace("still requires checking against the paper before you accept it", "is fine to accept")
+            lambda t: t.replace(
+                "still requires checking against the paper before you accept it",
+                "is fine to accept",
+            )
         )
         self.assertTrue(any("still-requires-checking" in e for e in errors), msg=f"{errors!r}")
 
     def test_clause_counterfactual_removed_fails(self) -> None:
-        errors = self._patch(lambda t: t.replace("Run the opposite-style counterfactual", "Skip the counterfactual"))
-        self.assertTrue(any("opposite-style-counterfactual" in e for e in errors), msg=f"{errors!r}")
+        errors = self._patch(
+            lambda t: t.replace("Run the opposite-style counterfactual", "Skip the counterfactual")
+        )
+        self.assertTrue(
+            any("opposite-style-counterfactual" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_clause_would_verdict_change_removed_fails(self) -> None:
         errors = self._patch(
@@ -77,7 +90,9 @@ class TestMutations(unittest.TestCase):
 
     def test_clause_revise_or_ambiguous_removed_fails(self) -> None:
         errors = self._patch(
-            lambda t: t.replace("revise the verdict, or mark the claim ambiguous", "keep the verdict")
+            lambda t: t.replace(
+                "revise the verdict, or mark the claim ambiguous", "keep the verdict"
+            )
         )
         self.assertTrue(any("revise-or-mark-ambiguous" in e for e in errors), msg=f"{errors!r}")
 
@@ -97,7 +112,9 @@ class TestMutations(unittest.TestCase):
         """Weakening 'Do not down-rate informal or vague wording' must fail — a bare 'down-rate'
         elsewhere cannot satisfy the bound clause."""
         errors = self._patch(
-            lambda t: t.replace("Do not down-rate informal or vague wording", "You may down-rate informal wording")
+            lambda t: t.replace(
+                "Do not down-rate informal or vague wording", "You may down-rate informal wording"
+            )
         )
         self.assertTrue(any("no-down-rate-informal" in e for e in errors), msg=f"{errors!r}")
 
@@ -136,10 +153,14 @@ class TestMutations(unittest.TestCase):
         def mutate(t: str) -> str:
             t2 = t.replace("- **Run the opposite-style counterfactual.**", "- (moved)")
             # re-inject the raw clause text after the END marker, outside the block
-            return t2.replace(csf.END_MARKER + " (#216) -->", csf.END_MARKER + " (#216) -->\n" + needle)
+            return t2.replace(
+                csf.END_MARKER + " (#216) -->", csf.END_MARKER + " (#216) -->\n" + needle
+            )
 
         errors = self._patch(mutate)
-        self.assertTrue(any("opposite-style-counterfactual" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(
+            any("opposite-style-counterfactual" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_marker_block_moved_out_of_section_fails(self) -> None:
         """codex P2: if the whole marker block is relocated to AFTER the parity section ends
@@ -192,8 +213,12 @@ class TestMutations(unittest.TestCase):
         def mutate(t: str) -> str:
             block_full_begin = "<!-- " + csf.BEGIN_MARKER
             idx = t.index(block_full_begin)
-            return t[:idx] + "```\n" + t[idx:].replace(
-                csf.END_MARKER + " (#216) -->", csf.END_MARKER + " (#216) -->\n```", 1
+            return (
+                t[:idx]
+                + "```\n"
+                + t[idx:].replace(
+                    csf.END_MARKER + " (#216) -->", csf.END_MARKER + " (#216) -->\n```", 1
+                )
             )
 
         errors = self._patch(mutate)
@@ -217,15 +242,22 @@ class TestMutations(unittest.TestCase):
 
     def test_verdict_framing_removed_fails(self) -> None:
         errors = self._patch(
-            lambda t: t.replace("verdict-assignment time", "some time").replace("verdict time", "some time")
+            lambda t: t.replace("verdict-assignment time", "some time").replace(
+                "verdict time", "some time"
+            )
         )
-        self.assertTrue(any("verdict" in e and "time-of-application" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(
+            any("verdict" in e and "time-of-application" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_section_header_removed_fails(self) -> None:
         errors = self._patch(
             lambda t: t.replace("## Surface-Form Parity Self-Check (#216)", "## Removed Section")
         )
-        self.assertTrue(any("missing '## Surface-Form Parity Self-Check (#216)' section" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(
+            any("missing '## Surface-Form Parity Self-Check (#216)' section" in e for e in errors),
+            msg=f"{errors!r}",
+        )
 
     def test_f36_attribution_removed_fails(self) -> None:
         errors = self._patch(lambda t: t.replace("§F.3.6", "§X"))
@@ -261,12 +293,22 @@ class TestSynthesizerSurface(unittest.TestCase):
         self.assertEqual(csf.check(), [], msg="shipped surfaces should pass")
 
     def test_synth_section_removed_fails(self) -> None:
-        errors = self._patch(lambda t: t.replace("### Step 1c — Surface-Form Parity Check (#216)", "### Step 1c — Removed"))
-        self.assertTrue(any(SYNTH in e and "missing" in e and "section" in e for e in errors), msg=f"{errors!r}")
+        errors = self._patch(
+            lambda t: t.replace(
+                "### Step 1c — Surface-Form Parity Check (#216)", "### Step 1c — Removed"
+            )
+        )
+        self.assertTrue(
+            any(SYNTH in e and "missing" in e and "section" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_synth_clause_no_down_rate_removed_fails(self) -> None:
-        errors = self._patch(lambda t: t.replace("Do not down-rate informal or vague wording", "You may down-rate"))
-        self.assertTrue(any(SYNTH in e and "no-down-rate-informal" in e for e in errors), msg=f"{errors!r}")
+        errors = self._patch(
+            lambda t: t.replace("Do not down-rate informal or vague wording", "You may down-rate")
+        )
+        self.assertTrue(
+            any(SYNTH in e and "no-down-rate-informal" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_synth_clause_authorship_removed_fails(self) -> None:
         errors = self._patch(
@@ -275,13 +317,19 @@ class TestSynthesizerSurface(unittest.TestCase):
                 "Authorship may change a sub-claim's decision bearing",
             )
         )
-        self.assertTrue(any(SYNTH in e and "authorship-not-input" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(
+            any(SYNTH in e and "authorship-not-input" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_synth_clause_reassess_unevaluable_removed_fails(self) -> None:
         errors = self._patch(
-            lambda t: t.replace("reassess on substance, or mark the sub-claim unevaluable", "keep the assessment")
+            lambda t: t.replace(
+                "reassess on substance, or mark the sub-claim unevaluable", "keep the assessment"
+            )
         )
-        self.assertTrue(any(SYNTH in e and "reassess-or-unevaluable" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(
+            any(SYNTH in e and "reassess-or-unevaluable" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_synth_clause_paper_evidence_removed_fails(self) -> None:
         errors = self._patch(
@@ -290,7 +338,9 @@ class TestSynthesizerSurface(unittest.TestCase):
                 "A precise-sounding sub-claim is sufficient",
             )
         )
-        self.assertTrue(any(SYNTH in e and "needs-paper-evidence" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(
+            any(SYNTH in e and "needs-paper-evidence" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_synth_clause_counterfactual_assessment_removed_fails(self) -> None:
         errors = self._patch(
@@ -299,7 +349,9 @@ class TestSynthesizerSurface(unittest.TestCase):
                 "would the prose sound different",
             )
         )
-        self.assertTrue(any(SYNTH in e and "would-assessment-change" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(
+            any(SYNTH in e and "would-assessment-change" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_synth_marker_block_removed_fails(self) -> None:
         block = csf._marker_block(self._real)
@@ -312,7 +364,9 @@ class TestSynthesizerSurface(unittest.TestCase):
 
     def test_synth_f36_attribution_removed_fails(self) -> None:
         errors = self._patch(lambda t: t.replace("§F.3.6", "§X"))
-        self.assertTrue(any(SYNTH in e and "§F.3.6 paper attribution" in e for e in errors), msg=f"{errors!r}")
+        self.assertTrue(
+            any(SYNTH in e and "§F.3.6 paper attribution" in e for e in errors), msg=f"{errors!r}"
+        )
 
     def test_synth_marker_moved_to_later_subsection_fails(self) -> None:
         """codex P2 round 7: Step 1c is a ### section, so _section() must stop at the next ###

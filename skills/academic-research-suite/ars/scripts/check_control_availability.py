@@ -66,18 +66,14 @@ def check_links_resolve(root: Path) -> list[str]:
             # An existing HOST file outside the repo must not mask a broken
             # repo link (an over-deep `../../..` slip).
             errors.append(
-                f"CA-1: link target '{path_part}' escapes the repository "
-                f"(from {DOC_RELPATH})"
+                f"CA-1: link target '{path_part}' escapes the repository " f"(from {DOC_RELPATH})"
             )
         elif failure is RelativeLinkFailure.DOES_NOT_EXIST:
             errors.append(
-                f"CA-1: link target '{path_part}' does not exist "
-                f"(from {DOC_RELPATH})"
+                f"CA-1: link target '{path_part}' does not exist " f"(from {DOC_RELPATH})"
             )
         elif failure is RelativeLinkFailure.ANCHOR_ON_NON_MARKDOWN:
-            errors.append(
-                f"CA-1: anchor on non-markdown target '{target}'"
-            )
+            errors.append(f"CA-1: anchor on non-markdown target '{target}'")
         elif failure is RelativeLinkFailure.ANCHOR_NOT_FOUND:
             if not path_part:
                 errors.append(
@@ -136,8 +132,7 @@ def check_inbound_links(root: Path) -> list[str]:
         text = surface.read_text(encoding="utf-8")
         if not links_to(text, surface.parent, doc_abs):
             errors.append(
-                f"CA-3: {rel} no longer links to {DOC_RELPATH.name} "
-                f"(#757 acceptance criterion)"
+                f"CA-3: {rel} no longer links to {DOC_RELPATH.name} " f"(#757 acceptance criterion)"
             )
     return errors
 

@@ -8,7 +8,6 @@ from pathlib import Path
 
 from _skill_lint import read_or_exit2
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DISPLAY_LABEL = "Journal-Fit Reviewer"
 INTERNAL_ROLE = "eic"
@@ -40,12 +39,8 @@ REQUIRED = {
         "full 모드 (Journal-Fit Reviewer + R1/R2/R3 + Devil's Advocate)",
         "1차 심사 패널 대 계약 기반 re-review 디스패치 경계",
     ),
-    "MODE_REGISTRY.md": (
-        "Journal-Fit Reviewer quick assessment + key issues list",
-    ),
-    "shared/mode_spectrum.md": (
-        "Fixed Journal-Fit Reviewer quick-assessment format",
-    ),
+    "MODE_REGISTRY.md": ("Journal-Fit Reviewer quick assessment + key issues list",),
+    "shared/mode_spectrum.md": ("Fixed Journal-Fit Reviewer quick-assessment format",),
     "academic-paper-reviewer/WORKFLOW.md": (
         "the public display name is **Journal-Fit Reviewer**",
         "`eic_agent` (agent), `eic` (`contract_role` / dispatch role), and `EIC`",
@@ -199,17 +194,13 @@ REQUIRED = {
     "docs/PERFORMANCE.md": (
         "Two reviewers (Journal-Fit Reviewer + methodology) each run two phases",
     ),
-    "docs/PERFORMANCE.zh-TW.md": (
-        "Journal-Fit Reviewer + methodology 兩位 reviewer 各跑兩階段",
-    ),
+    "docs/PERFORMANCE.zh-TW.md": ("Journal-Fit Reviewer + methodology 兩位 reviewer 各跑兩階段",),
     "shared/model_tiering.md": (
         "Stage 3' uses three dedicated contract judgment calls",
         "They are protocol calls, not agent-manifest identities",
         "Do not reuse Stage 3 `eic` or `editorial_synthesizer` workers for Stage 3'",
     ),
-    "docs/SETUP.md": (
-        "Cross-model generates a blind, separately executed critique",
-    ),
+    "docs/SETUP.md": ("Cross-model generates a blind, separately executed critique",),
     "deep-research/agents/devils_advocate_agent.md": (
         "a blind, separately executed critique",
         "Blinding and separate execution are typed facts, not proof of independent errors",
@@ -259,9 +250,7 @@ FORBIDDEN_REVIEW_DISPATCH = {
     "academic-paper-reviewer/references/re_review_mode_protocol.md": (
         "The inherited #576 narrow roster remains `eic_agent` plus `editorial_synthesizer_agent`",
     ),
-    "docs/ARCHITECTURE.md": (
-        "**Narrow re-review team**: eic_agent + editorial_synthesizer_agent",
-    ),
+    "docs/ARCHITECTURE.md": ("**Narrow re-review team**: eic_agent + editorial_synthesizer_agent",),
     "shared/model_tiering.md": (
         "Stage 3' re-review dispatches the narrow team",
         "the narrow re-review team: `eic`, `editorial_synthesizer`",
@@ -329,9 +318,7 @@ FORBIDDEN_DISPLAY = {
         "### EIC Review Report",
         "within EIC's core remit",
     ),
-    "academic-paper-reviewer/examples/subclaim_decomposition_example.md": (
-        "EIC arbitration",
-    ),
+    "academic-paper-reviewer/examples/subclaim_decomposition_example.md": ("EIC arbitration",),
 }
 
 # Full-mode execution has five seats: four configured scoring identities plus
@@ -339,12 +326,8 @@ FORBIDDEN_DISPLAY = {
 # non-DA consensus denominator. Role separation and blinding are typed axes;
 # neither licenses a binary "independent reports" claim.
 FORBIDDEN_PANEL_LANGUAGE = {
-    "academic-paper-reviewer/WORKFLOW.md": (
-        "dynamically configures 5 reviewers",
-    ),
-    "academic-paper-reviewer/agents/editorial_synthesizer_agent.md": (
-        "Based on the 4 reports",
-    ),
+    "academic-paper-reviewer/WORKFLOW.md": ("dynamically configures 5 reviewers",),
+    "academic-paper-reviewer/agents/editorial_synthesizer_agent.md": ("Based on the 4 reports",),
     "academic-paper-reviewer/templates/editorial_decision_template.md": (
         "[Attach all 4 complete reviewer reports",
         "**[CONSENSUS-4]** (All reviewers agree)",

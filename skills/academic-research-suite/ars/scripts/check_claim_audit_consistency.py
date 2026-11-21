@@ -40,7 +40,7 @@ import sys
 import urllib.parse
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from jsonschema import Draft202012Validator
 
@@ -123,6 +123,7 @@ ALLOWED_MATRIX: set[tuple[str, str, Any]] = {
     ("RETRIEVAL_FAILED", "inconclusive", "not_applicable"),
 }
 
+
 @dataclass(frozen=True)
 class Finding:
     invariant: str
@@ -167,11 +168,15 @@ def _check_inv_1(e: dict[str, Any]) -> list[Finding]:
         return []
     findings: list[Finding] = []
     if e.get("defect_stage") is not None:
-        findings.append(Finding("INV-1", f"SUPPORTED row has non-null defect_stage={e['defect_stage']!r}"))
+        findings.append(
+            Finding("INV-1", f"SUPPORTED row has non-null defect_stage={e['defect_stage']!r}")
+        )
     if e.get("violated_constraint_id") not in (None, ""):
         findings.append(Finding("INV-1", "SUPPORTED row has non-null violated_constraint_id"))
     if e.get("audit_status") != "completed":
-        findings.append(Finding("INV-1", f"SUPPORTED row has audit_status={e.get('audit_status')!r}"))
+        findings.append(
+            Finding("INV-1", f"SUPPORTED row has audit_status={e.get('audit_status')!r}")
+        )
     return findings
 
 
@@ -195,7 +200,9 @@ def _check_inv_2(e: dict[str, Any]) -> list[Finding]:
             )
         )
     if e.get("audit_status") != "completed":
-        findings.append(Finding("INV-2", f"UNSUPPORTED row has audit_status={e.get('audit_status')!r}"))
+        findings.append(
+            Finding("INV-2", f"UNSUPPORTED row has audit_status={e.get('audit_status')!r}")
+        )
     return findings
 
 
@@ -214,7 +221,9 @@ def _check_inv_3(e: dict[str, Any]) -> list[Finding]:
             )
         )
     if e.get("audit_status") != "completed":
-        findings.append(Finding("INV-3", f"AMBIGUOUS row has audit_status={e.get('audit_status')!r}"))
+        findings.append(
+            Finding("INV-3", f"AMBIGUOUS row has audit_status={e.get('audit_status')!r}")
+        )
     return findings
 
 
@@ -256,11 +265,26 @@ def _check_inv_6(e: dict[str, Any]) -> list[Finding]:
         return []
     findings: list[Finding] = []
     if e.get("judgment") != "RETRIEVAL_FAILED":
-        findings.append(Finding("INV-6", f"anchor=none row has judgment={e.get('judgment')!r}; must be RETRIEVAL_FAILED"))
+        findings.append(
+            Finding(
+                "INV-6",
+                f"anchor=none row has judgment={e.get('judgment')!r}; must be RETRIEVAL_FAILED",
+            )
+        )
     if e.get("audit_status") != "inconclusive":
-        findings.append(Finding("INV-6", f"anchor=none row has audit_status={e.get('audit_status')!r}; must be inconclusive"))
+        findings.append(
+            Finding(
+                "INV-6",
+                f"anchor=none row has audit_status={e.get('audit_status')!r}; must be inconclusive",
+            )
+        )
     if e.get("defect_stage") != "not_applicable":
-        findings.append(Finding("INV-6", f"anchor=none row has defect_stage={e.get('defect_stage')!r}; must be not_applicable"))
+        findings.append(
+            Finding(
+                "INV-6",
+                f"anchor=none row has defect_stage={e.get('defect_stage')!r}; must be not_applicable",
+            )
+        )
     if e.get("ref_retrieval_method") != "not_attempted":
         findings.append(
             Finding(
@@ -295,7 +319,9 @@ def _check_inv_7(e: dict[str, Any]) -> list[Finding]:
     if e.get("defect_stage") != "negative_constraint_violation":
         return []
     if e.get("violated_constraint_id") in (None, ""):
-        return [Finding("INV-7", "negative_constraint_violation row has null violated_constraint_id")]
+        return [
+            Finding("INV-7", "negative_constraint_violation row has null violated_constraint_id")
+        ]
     return []
 
 
@@ -336,9 +362,13 @@ def _check_inv_10(e: dict[str, Any]) -> list[Finding]:
     if e.get("judgment") != "RETRIEVAL_FAILED":
         findings.append(Finding("INV-10", f"method=failed but judgment={e.get('judgment')!r}"))
     if e.get("audit_status") != "inconclusive":
-        findings.append(Finding("INV-10", f"method=failed but audit_status={e.get('audit_status')!r}"))
+        findings.append(
+            Finding("INV-10", f"method=failed but audit_status={e.get('audit_status')!r}")
+        )
     if e.get("defect_stage") != "not_applicable":
-        findings.append(Finding("INV-10", f"method=failed but defect_stage={e.get('defect_stage')!r}"))
+        findings.append(
+            Finding("INV-10", f"method=failed but defect_stage={e.get('defect_stage')!r}")
+        )
     return findings
 
 
@@ -393,7 +423,9 @@ def _check_inv_13(e: dict[str, Any]) -> list[Finding]:
     if e.get("judgment") != "UNSUPPORTED":
         findings.append(Finding("INV-13", f"metadata row has judgment={e.get('judgment')!r}"))
     if e.get("audit_status") != "completed":
-        findings.append(Finding("INV-13", f"metadata row has audit_status={e.get('audit_status')!r}"))
+        findings.append(
+            Finding("INV-13", f"metadata row has audit_status={e.get('audit_status')!r}")
+        )
     if e.get("ref_retrieval_method") not in ("api", "manual_pdf"):
         findings.append(
             Finding(
@@ -410,11 +442,17 @@ def _check_inv_14(e: dict[str, Any]) -> list[Finding]:
         return []
     findings: list[Finding] = []
     if e.get("judgment") != "RETRIEVAL_FAILED":
-        findings.append(Finding("INV-14", f"audit_tool_failure row has judgment={e.get('judgment')!r}"))
+        findings.append(
+            Finding("INV-14", f"audit_tool_failure row has judgment={e.get('judgment')!r}")
+        )
     if e.get("audit_status") != "inconclusive":
-        findings.append(Finding("INV-14", f"audit_tool_failure row has audit_status={e.get('audit_status')!r}"))
+        findings.append(
+            Finding("INV-14", f"audit_tool_failure row has audit_status={e.get('audit_status')!r}")
+        )
     if e.get("defect_stage") != "not_applicable":
-        findings.append(Finding("INV-14", f"audit_tool_failure row has defect_stage={e.get('defect_stage')!r}"))
+        findings.append(
+            Finding("INV-14", f"audit_tool_failure row has defect_stage={e.get('defect_stage')!r}")
+        )
     rationale = e.get("rationale") or ""
     if not any(rationale.startswith(f"{tag}:") for tag in INV14_FAULT_CLASS_TAGS):
         findings.append(
@@ -525,7 +563,10 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
     findings: list[Finding] = []
     if e.get("judgment") != "UNSUPPORTED":
         findings.append(
-            Finding("INV-19", f"sub_claim_breakdown present but judgment={e.get('judgment')!r}; must be UNSUPPORTED")
+            Finding(
+                "INV-19",
+                f"sub_claim_breakdown present but judgment={e.get('judgment')!r}; must be UNSUPPORTED",
+            )
         )
     if e.get("defect_stage") != "source_description":
         findings.append(
@@ -535,7 +576,9 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
             )
         )
     if not isinstance(bd, list) or len(bd) < 2:
-        findings.append(Finding("INV-19", "sub_claim_breakdown must have >=2 items (not a true partial)"))
+        findings.append(
+            Finding("INV-19", "sub_claim_breakdown must have >=2 items (not a true partial)")
+        )
         return findings
     verdicts = [item.get("sub_verdict") for item in _iter_dicts(bd)]
     # "non-SUPPORTED" counts only the *valid* opposing verdicts (the shared
@@ -544,10 +587,17 @@ def _check_inv_19(e: dict[str, Any]) -> list[Finding]:
     # masquerade as true-partial (round-2 review #1). The granular split here is
     # equivalent to `is_true_partial_breakdown(bd)` but yields distinct findings.
     if not any(v == "SUPPORTED" for v in verdicts):
-        findings.append(Finding("INV-19", "sub_claim_breakdown is not true-partial: needs >=1 SUPPORTED sub_verdict"))
+        findings.append(
+            Finding(
+                "INV-19", "sub_claim_breakdown is not true-partial: needs >=1 SUPPORTED sub_verdict"
+            )
+        )
     if not any(v in SUBCLAIM_NON_SUPPORTED for v in verdicts):
         findings.append(
-            Finding("INV-19", "sub_claim_breakdown is not true-partial: needs >=1 non-SUPPORTED sub_verdict")
+            Finding(
+                "INV-19",
+                "sub_claim_breakdown is not true-partial: needs >=1 non-SUPPORTED sub_verdict",
+            )
         )
     return findings
 
@@ -803,7 +853,10 @@ def _check_experiment_provenance_invariants(
             continue  # schema-shape surfaces malformed/missing ids separately
         if eid in seen:
             findings.append(
-                Finding("EP-INV-1", f"duplicate experiment_id={eid!r} (also at experiment_provenance[{seen[eid]}])")
+                Finding(
+                    "EP-INV-1",
+                    f"duplicate experiment_id={eid!r} (also at experiment_provenance[{seen[eid]}])",
+                )
             )
         else:
             seen[eid] = i
@@ -934,7 +987,10 @@ def _check_experiment_alignment_invariants(
             continue
         if fid in seen:
             findings.append(
-                Finding("EA-INV-1", f"duplicate finding_id={fid!r} (also at experiment_alignment_results[{seen[fid]}])")
+                Finding(
+                    "EA-INV-1",
+                    f"duplicate finding_id={fid!r} (also at experiment_alignment_results[{seen[fid]}])",
+                )
             )
         else:
             seen[fid] = i
@@ -988,7 +1044,10 @@ def _check_uncited_invariants(
             continue
         if fid in seen:
             findings.append(
-                Finding("U-INV-1", f"duplicate finding_id={fid!r} (also at uncited_assertions[{seen[fid]}])")
+                Finding(
+                    "U-INV-1",
+                    f"duplicate finding_id={fid!r} (also at uncited_assertions[{seen[fid]}])",
+                )
             )
         else:
             seen[fid] = i
@@ -997,7 +1056,9 @@ def _check_uncited_invariants(
         # U-INV-2: trigger_tokens non-empty (schema also enforces minItems=1).
         tokens = e.get("trigger_tokens", [])
         if not isinstance(tokens, list) or len(tokens) == 0:
-            findings.append(Finding("U-INV-2", f"empty trigger_tokens on finding_id={e.get('finding_id')!r}"))
+            findings.append(
+                Finding("U-INV-2", f"empty trigger_tokens on finding_id={e.get('finding_id')!r}")
+            )
 
         # U-INV-3: rule_version literal.
         if e.get("rule_version") != "D4-c-v1":
@@ -1061,7 +1122,9 @@ def _check_drift_invariants(
             continue
         if fid in seen:
             findings.append(
-                Finding("D-INV-1", f"duplicate finding_id={fid!r} (also at claim_drifts[{seen[fid]}])")
+                Finding(
+                    "D-INV-1", f"duplicate finding_id={fid!r} (also at claim_drifts[{seen[fid]}])"
+                )
             )
         else:
             seen[fid] = i
@@ -1575,15 +1638,37 @@ def validate_passport(body: Any) -> list[Finding]:
 
     # Schema-shape — gives the lint a chance to surface malformed entries with
     # an actionable rendering before cross-field checks fan out spurious tags.
-    findings.extend(_validate_against_schema(manifests_raw, "claim_intent_manifest", "claim_intent_manifests"))
-    findings.extend(_validate_against_schema(results_raw, "claim_audit_result", "claim_audit_results"))
-    findings.extend(_validate_against_schema(uncited_raw, "uncited_assertion", "uncited_assertions"))
+    findings.extend(
+        _validate_against_schema(manifests_raw, "claim_intent_manifest", "claim_intent_manifests")
+    )
+    findings.extend(
+        _validate_against_schema(results_raw, "claim_audit_result", "claim_audit_results")
+    )
+    findings.extend(
+        _validate_against_schema(uncited_raw, "uncited_assertion", "uncited_assertions")
+    )
     findings.extend(_validate_against_schema(drifts_raw, "claim_drift", "claim_drifts"))
-    findings.extend(_validate_against_schema(violations_raw, "constraint_violation", "constraint_violations"))
-    findings.extend(_validate_against_schema(samplings_raw, "audit_sampling_summary", "audit_sampling_summaries"))
-    findings.extend(_validate_against_schema(uaf_raw, "uncited_audit_failure", "uncited_audit_failures"))
-    findings.extend(_validate_against_schema(provenance_raw, "experiment_provenance_entry", "experiment_provenance"))
-    findings.extend(_validate_against_schema(alignment_raw, "experiment_alignment_result", "experiment_alignment_results"))
+    findings.extend(
+        _validate_against_schema(violations_raw, "constraint_violation", "constraint_violations")
+    )
+    findings.extend(
+        _validate_against_schema(
+            samplings_raw, "audit_sampling_summary", "audit_sampling_summaries"
+        )
+    )
+    findings.extend(
+        _validate_against_schema(uaf_raw, "uncited_audit_failure", "uncited_audit_failures")
+    )
+    findings.extend(
+        _validate_against_schema(
+            provenance_raw, "experiment_provenance_entry", "experiment_provenance"
+        )
+    )
+    findings.extend(
+        _validate_against_schema(
+            alignment_raw, "experiment_alignment_result", "experiment_alignment_results"
+        )
+    )
 
     # Manifest invariants + index for downstream cross-array checks.
     findings.extend(_check_manifest_invariants(manifests))
@@ -1621,7 +1706,9 @@ def validate_passport(body: Any) -> list[Finding]:
     # #260 experiment provenance / alignment cross-array invariants.
     findings.extend(_check_experiment_provenance_invariants(provenance, manifests, declaration))
     experiment_ids = _build_experiment_id_set(provenance)
-    findings.extend(_check_experiment_alignment_invariants(alignment, manifest_index, experiment_ids))
+    findings.extend(
+        _check_experiment_alignment_invariants(alignment, manifest_index, experiment_ids)
+    )
 
     return findings
 

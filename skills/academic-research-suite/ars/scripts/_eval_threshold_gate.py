@@ -52,8 +52,7 @@ def failed_tasks(report: dict[str, Any]) -> list[str]:
         for pc in task.get("per_class", []):
             if pc.get("passed") is False:
                 failures.append(
-                    f"{task['task_name']}.{pc.get('class_name', '?')}."
-                    f"{pc.get('metric', '?')}"
+                    f"{task['task_name']}.{pc.get('class_name', '?')}." f"{pc.get('metric', '?')}"
                 )
     return failures
 
@@ -61,8 +60,7 @@ def failed_tasks(report: dict[str, Any]) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 1:
-        print("usage: python -m scripts._eval_threshold_gate <report.json>",
-              file=sys.stderr)
+        print("usage: python -m scripts._eval_threshold_gate <report.json>", file=sys.stderr)
         return 2
     report = json.loads(open(args[0], encoding="utf-8").read())
     print(",".join(failed_tasks(report)))

@@ -88,7 +88,9 @@ class TestSegmentation(unittest.TestCase):
         doc = parse_document(text)
         self.assertIsNotNone(doc.frontmatter_span)
         self.assertEqual(len(doc.blocks), 1)
-        self.assertEqual(doc.text[doc.frontmatter_span[0] : doc.frontmatter_span[1]], "---\ntitle: x\n---\n")
+        self.assertEqual(
+            doc.text[doc.frontmatter_span[0] : doc.frontmatter_span[1]], "---\ntitle: x\n---\n"
+        )
 
     def test_unterminated_frontmatter_rejected(self):
         with self.assertRaises(BlockParseError) as ctx:

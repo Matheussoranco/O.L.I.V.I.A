@@ -121,9 +121,7 @@ def _normalize_result(classified: Any) -> dict[str, Any]:
     # state is text_based with no OCR pages; every other non-empty upstream
     # type is conservatively reduced to the closed OCR_RECOMMENDED advisory.
     classification = (
-        "TEXT_AVAILABLE"
-        if raw_pdf_type == "text_based" and not pages
-        else "OCR_RECOMMENDED"
+        "TEXT_AVAILABLE" if raw_pdf_type == "text_based" and not pages else "OCR_RECOMMENDED"
     )
     return {
         "schema": SCHEMA,

@@ -49,8 +49,9 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Any, Iterator, Optional
+from typing import Any, Optional
 
 import yaml
 
@@ -69,8 +70,8 @@ try:
     # stdlib fallback does not fetch external entities but is exposed to
     # entity-expansion DoS — acceptable only because the input is the
     # scholar's own package, and requirements-dev installs the hardened path.
-    from defusedxml.ElementTree import fromstring as _xml_fromstring
     from defusedxml.common import DefusedXmlException as _DefusedXmlException
+    from defusedxml.ElementTree import fromstring as _xml_fromstring
 except ImportError:
     _xml_fromstring = ET.fromstring
 
@@ -80,8 +81,14 @@ except ImportError:
 
 # A hardened-parser rejection (entity/DOCTYPE tricks) is an unreadable
 # artifact, reported as NOT-CHECKED — it must not crash the scan.
-_XML_READ_ERRORS = (zipfile.BadZipFile, ET.ParseError, OSError, KeyError,
-                    ValueError, _DefusedXmlException)
+_XML_READ_ERRORS = (
+    zipfile.BadZipFile,
+    ET.ParseError,
+    OSError,
+    KeyError,
+    ValueError,
+    _DefusedXmlException,
+)
 
 # Zip-bomb guards for the raw DOCX part reads (read-only scan, no extraction
 # — path traversal is not exposed, memory is).
@@ -104,8 +111,7 @@ _SCAN_EXCLUDED_NAMES = {"provenance_summary.md", REPORT_BASENAME}
 # cannot fingerprint its own bytes; provenance_summary.md is appended to by
 # the formatter AFTER the report is stamped (the advisories section), so
 # fingerprinting it would self-stale every evaluated report.
-_FINGERPRINT_EXCLUDED_NAMES = frozenset({REPORT_BASENAME,
-                                         "provenance_summary.md"})
+_FINGERPRINT_EXCLUDED_NAMES = frozenset({REPORT_BASENAME, "provenance_summary.md"})
 
 # v3.7.1+ marker grammar with the canonical slug charset (the lint-side
 # REF_PATTERN in check_v3_7_3_three_layer_citation.py). The suffix handling is
@@ -139,15 +145,23 @@ _CHECK_REGISTRY = {
     "A1": ("blind_review_residue", True, "deterministic"),  # PDF metadata authors
     "A2": ("blind_review_residue", True, "deterministic"),  # DOCX metadata authors
     "A3": ("blind_review_residue", True, "deterministic"),  # DOCX revision/comment authors
-    "A4": ("blind_review_residue", True, "deterministic"),  # acknowledgments in blind variant (strict only by profile declaration, §3.1)
-    "A5": ("blind_review_residue", True, "heuristic"),      # self-citation phrasing
-    "A6": ("blind_review_residue", True, "heuristic"),      # filename leakage
-    "A7": ("blind_review_residue", True, "deterministic"),  # blind variant missing under declared double-blind
-    "B1": ("venue_limits", True, "deterministic"),   # manuscript word count
-    "B2": ("venue_limits", True, "deterministic"),   # abstract word count
-    "B3": ("venue_limits", True, "deterministic"),   # keyword count range
-    "B4": ("venue_limits", True, "deterministic"),   # required sections
-    "B5": ("venue_limits", True, "deterministic"),   # reference count ceiling
+    "A4": (
+        "blind_review_residue",
+        True,
+        "deterministic",
+    ),  # acknowledgments in blind variant (strict only by profile declaration, §3.1)
+    "A5": ("blind_review_residue", True, "heuristic"),  # self-citation phrasing
+    "A6": ("blind_review_residue", True, "heuristic"),  # filename leakage
+    "A7": (
+        "blind_review_residue",
+        True,
+        "deterministic",
+    ),  # blind variant missing under declared double-blind
+    "B1": ("venue_limits", True, "deterministic"),  # manuscript word count
+    "B2": ("venue_limits", True, "deterministic"),  # abstract word count
+    "B3": ("venue_limits", True, "deterministic"),  # keyword count range
+    "B4": ("venue_limits", True, "deterministic"),  # required sections
+    "B5": ("venue_limits", True, "deterministic"),  # reference count ceiling
     "C1": ("reference_integrity", True, None),
     "C2": ("reference_integrity", False, None),
 }
@@ -171,17 +185,18 @@ _NAME = r"[A-Z][\w'’-]+"
 # with an optional page-locator tail: `Smith (2024, p. 12)`.
 _NARRATIVE_CITE_RE = re.compile(
     r"(" + _NAME + r")(?:\s+et al\.?|\s+(?:and|&)\s+" + _NAME + r")?"
-    r"\s+\((\d{4})[a-z]?(?:\s*,\s*pp?\.?[^)]*)?\)")
+    r"\s+\((\d{4})[a-z]?(?:\s*,\s*pp?\.?[^)]*)?\)"
+)
 # Parenthetical group content is split on `;` and each segment matched:
 # `(Smith, 2024)`, `(Chen & Lee, 2023)`, `(Smith et al., 2024a)`,
 # `(Chen & Lee, 2023, pp. 45–67)`.
 _PAREN_GROUP_RE = re.compile(r"\(([^()]+)\)")
 _PAREN_SEGMENT_RE = re.compile(
-    r"^\s*(" + _NAME + r")[^\d]*?(\d{4})[a-z]?(?:\s*,\s*pp?\.?[^;]*)?\s*$")
+    r"^\s*(" + _NAME + r")[^\d]*?(\d{4})[a-z]?(?:\s*,\s*pp?\.?[^;]*)?\s*$"
+)
 
 
-def compute_package_fingerprint(package_dir: Path,
-                                report_relpath: Optional[str] = None) -> str:
+def compute_package_fingerprint(package_dir: Path, report_relpath: Optional[str] = None) -> str:
     """Audit-snapshot manifest convention over the package files (§10 item 3):
     one `<package-relative-path>:<sha256>` line per file, LC_ALL=C byte-sorted,
     trailing newline; fingerprint = SHA-256 of the manifest text. The report
@@ -207,9 +222,9 @@ def compute_package_fingerprint(package_dir: Path,
     return sha256_hex(manifest_text.encode("utf-8"))
 
 
-def compute_inputs_fingerprint(venue_profile_path: Optional[str],
-                               join_map_path: Optional[str],
-                               passport_path: Optional[str]) -> str:
+def compute_inputs_fingerprint(
+    venue_profile_path: Optional[str], join_map_path: Optional[str], passport_path: Optional[str]
+) -> str:
     """SHA-256 over the external-inputs manifest (gate-2 review P1): one
     `<name>:<sha256-of-file-bytes|absent>` line per input, sorted by name,
     trailing newline. Family B/C verdicts depend on these inputs, so the
@@ -217,17 +232,18 @@ def compute_inputs_fingerprint(venue_profile_path: Optional[str],
     (the inputs live outside the package). An absent input hashes as the
     literal token `absent`, so declared→absent is a visible change."""
     lines = []
-    for name, raw in (("join_map", join_map_path),
-                      ("passport", passport_path),
-                      ("venue_profile", venue_profile_path)):
+    for name, raw in (
+        ("join_map", join_map_path),
+        ("passport", passport_path),
+        ("venue_profile", venue_profile_path),
+    ):
         digest = sha256_hex(Path(raw).read_bytes()) if raw else "absent"
         lines.append(f"{name}:{digest}")
     manifest_text = "\n".join(sorted(lines)) + "\n"
     return sha256_hex(manifest_text.encode("utf-8"))
 
 
-def _collect_package_texts(package_dir: Path
-                           ) -> tuple[dict[str, str], dict[str, str]]:
+def _collect_package_texts(package_dir: Path) -> tuple[dict[str, str], dict[str, str]]:
     """One walk, one read per file: ({manuscript rel: text}, {bib rel: text})."""
     manuscripts: dict[str, str] = {}
     bibs: dict[str, str] = {}
@@ -279,8 +295,7 @@ def _parse_bib_metadata(bibs: dict[str, str]) -> dict[tuple, set]:
             continue
         surname = _first_author_surname(author.group(1))
         if surname:
-            metadata.setdefault(
-                (surname.lower(), year.group(1)), set()).add(key)
+            metadata.setdefault((surname.lower(), year.group(1)), set()).add(key)
     return metadata
 
 
@@ -298,8 +313,7 @@ def _corpus_metadata(passport: dict[str, Any]) -> dict[tuple, set]:
         key = e.get("citation_key")
         year = e.get("year")
         authors = e.get("authors") or []
-        family = authors[0].get("family") if (
-            authors and isinstance(authors[0], dict)) else None
+        family = authors[0].get("family") if (authors and isinstance(authors[0], dict)) else None
         if isinstance(key, str) and family and year is not None:
             metadata.setdefault((str(family).lower(), str(year)), set()).add(key)
     return metadata
@@ -310,9 +324,9 @@ def _strip_reference_section(text: str) -> str:
     return text[: m.start()] if m else text
 
 
-def _extract_fallback(manuscripts: dict[str, str],
-                      metadata: dict[tuple, set]
-                      ) -> tuple[dict[str, str], dict[str, str]]:
+def _extract_fallback(
+    manuscripts: dict[str, str], metadata: dict[tuple, set]
+) -> tuple[dict[str, str], dict[str, str]]:
     """Best-effort in-text extraction (§3.3 fallback path): \\cite{} keys from
     .tex, author-year hits from .md/.txt matched against reference metadata.
     Returns (in_text {citation_key: location}, unresolved {display token:
@@ -330,8 +344,7 @@ def _extract_fallback(manuscripts: dict[str, str],
                         in_text.setdefault(key, rel)
             continue
         prose = _strip_reference_section(text)
-        hits = [(m.group(1), m.group(2))
-                for m in _NARRATIVE_CITE_RE.finditer(prose)]
+        hits = [(m.group(1), m.group(2)) for m in _NARRATIVE_CITE_RE.finditer(prose)]
         for g in _PAREN_GROUP_RE.finditer(prose):
             for segment in g.group(1).split(";"):
                 m = _PAREN_SEGMENT_RE.match(segment)
@@ -347,10 +360,15 @@ def _extract_fallback(manuscripts: dict[str, str],
     return in_text, unresolved
 
 
-def _check(check_id: str, status: str, detail: str, *,
-           signal_class: str = "deterministic",
-           location: Optional[str] = None,
-           strict_eligible: Optional[bool] = None) -> dict[str, Any]:
+def _check(
+    check_id: str,
+    status: str,
+    detail: str,
+    *,
+    signal_class: str = "deterministic",
+    location: Optional[str] = None,
+    strict_eligible: Optional[bool] = None,
+) -> dict[str, Any]:
     family, fail_capable, fixed_class = _CHECK_REGISTRY[check_id]
     if fixed_class is not None:
         signal_class = fixed_class  # registry-bound class wins (§3.1)
@@ -387,13 +405,16 @@ def _listed(keys: set[str]) -> str:
     return listing
 
 
-def _compare_sets(in_text: dict[str, str], reference_keys: set[str],
-                  *, signal_class: str, in_text_label: str,
-                  reference_label: str,
-                  unjoined: Optional[dict[str, str]] = None,
-                  unjoined_label: str = ("with no join entry in the supplied "
-                                         "join source")
-                  ) -> list[dict[str, Any]]:
+def _compare_sets(
+    in_text: dict[str, str],
+    reference_keys: set[str],
+    *,
+    signal_class: str,
+    in_text_label: str,
+    reference_label: str,
+    unjoined: Optional[dict[str, str]] = None,
+    unjoined_label: str = ("with no join entry in the supplied " "join source"),
+) -> list[dict[str, Any]]:
     """Two-way set check (§3.3): orphan in-text citation = fail (C1); uncited
     reference entry = warn (C2 — some venues allow further-reading entries).
     `unjoined` carries in-text hits that cannot be placed in the citation-key
@@ -410,35 +431,53 @@ def _compare_sets(in_text: dict[str, str], reference_keys: set[str],
         if orphans:
             parts.append(
                 f"{len(orphans)} in-text citation(s) absent from "
-                f"{reference_label}: {_listed(orphans)}")
+                f"{reference_label}: {_listed(orphans)}"
+            )
         if unjoined:
             parts.append(
                 f"{len(unjoined)} in-text citation(s) {unjoined_label}: "
-                f"{_listed(set(unjoined))}")
-        first_loc = min(
-            [in_text[k] for k in orphans] + list(unjoined.values()))
-        checks.append(_check(
-            "C1", "fail",
-            "; ".join(parts) + f" [{in_text_label}]",
-            signal_class=signal_class, location=first_loc))
+                f"{_listed(set(unjoined))}"
+            )
+        first_loc = min([in_text[k] for k in orphans] + list(unjoined.values()))
+        checks.append(
+            _check(
+                "C1",
+                "fail",
+                "; ".join(parts) + f" [{in_text_label}]",
+                signal_class=signal_class,
+                location=first_loc,
+            )
+        )
     else:
-        checks.append(_check(
-            "C1", "pass",
-            f"all {len(in_text)} in-text citation(s) present in "
-            f"{reference_label} [{in_text_label}]",
-            signal_class=signal_class))
+        checks.append(
+            _check(
+                "C1",
+                "pass",
+                f"all {len(in_text)} in-text citation(s) present in "
+                f"{reference_label} [{in_text_label}]",
+                signal_class=signal_class,
+            )
+        )
     if uncited:
-        checks.append(_check(
-            "C2", "warn",
-            f"{len(uncited)} reference entr(ies) never cited in text: "
-            f"{_listed(uncited)} [{in_text_label}]",
-            signal_class=signal_class))
+        checks.append(
+            _check(
+                "C2",
+                "warn",
+                f"{len(uncited)} reference entr(ies) never cited in text: "
+                f"{_listed(uncited)} [{in_text_label}]",
+                signal_class=signal_class,
+            )
+        )
     else:
-        checks.append(_check(
-            "C2", "pass",
-            f"all {len(reference_keys)} reference entr(ies) cited in text "
-            f"[{in_text_label}]",
-            signal_class=signal_class))
+        checks.append(
+            _check(
+                "C2",
+                "pass",
+                f"all {len(reference_keys)} reference entr(ies) cited in text "
+                f"[{in_text_label}]",
+                signal_class=signal_class,
+            )
+        )
     return checks
 
 
@@ -471,15 +510,12 @@ def _corpus_keys(passport: dict[str, Any]) -> set[str]:
 
 
 _NO_REFERENCE_LIST_REASON = (
-    "no machine-readable reference list (no package .bib and no "
-    "passport literature_corpus[])")
-_NO_MANUSCRIPT_REASON = (
-    "no manuscript found (no .md/.tex/.txt file in the package)")
+    "no machine-readable reference list (no package .bib and no " "passport literature_corpus[])"
+)
+_NO_MANUSCRIPT_REASON = "no manuscript found (no .md/.tex/.txt file in the package)"
 
 
-def _reference_list(bib_keys: set[str],
-                    passport: Optional[dict[str, Any]]
-                    ) -> tuple[set[str], str]:
+def _reference_list(bib_keys: set[str], passport: Optional[dict[str, Any]]) -> tuple[set[str], str]:
     """The machine-readable reference list both Family C and B5 compare
     against: package .bib keys, or the passport's declared
     literature_corpus[] keys. Empty set + empty label = no source."""
@@ -491,12 +527,15 @@ def _reference_list(bib_keys: set[str],
     return set(), ""
 
 
-def run_family_c(manuscripts: dict[str, str], bibs: dict[str, str],
-                 bib_keys: set[str],
-                 reference_keys: set[str], reference_label: str,
-                 passport: Optional[dict[str, Any]] = None,
-                 join_map: Optional[dict[str, str]] = None
-                 ) -> tuple[list[dict[str, Any]], str]:
+def run_family_c(
+    manuscripts: dict[str, str],
+    bibs: dict[str, str],
+    bib_keys: set[str],
+    reference_keys: set[str],
+    reference_label: str,
+    passport: Optional[dict[str, Any]] = None,
+    join_map: Optional[dict[str, str]] = None,
+) -> tuple[list[dict[str, Any]], str]:
     """Run Family C over the collected package texts.
     Returns (checks, extraction_path)."""
     if not manuscripts:
@@ -526,7 +565,8 @@ def run_family_c(manuscripts: dict[str, str], bibs: dict[str, str],
                 "missing prose-reference join: <!--ref:slug--> markers found "
                 "but no citation_verification_summary, --join-map, or package "
                 ".bib supplies the slug->citation_key join (§3.3 — never a "
-                "guessed comparison)"), "none"
+                "guessed comparison)"
+            ), "none"
         if join is None:  # .bib identity relation
             in_text, unjoined = dict(markers), {}
         else:
@@ -541,9 +581,13 @@ def run_family_c(manuscripts: dict[str, str], bibs: dict[str, str],
                 else:
                     unjoined.setdefault(slug, loc)
         return _compare_sets(
-            in_text, reference_keys, signal_class="deterministic",
+            in_text,
+            reference_keys,
+            signal_class="deterministic",
             in_text_label="joined marker path",
-            reference_label=reference_label, unjoined=unjoined), "joined_marker"
+            reference_label=reference_label,
+            unjoined=unjoined,
+        ), "joined_marker"
 
     # Fallback path (§3.3): no markers — non-ARS or post-converted source.
     # Format-aware best-effort extraction, heuristic-classed (advisory-only).
@@ -553,30 +597,32 @@ def run_family_c(manuscripts: dict[str, str], bibs: dict[str, str],
             metadata.setdefault(k, set()).update(v)
     in_text, unresolved = _extract_fallback(manuscripts, metadata)
     return _compare_sets(
-        in_text, reference_keys, signal_class="heuristic",
+        in_text,
+        reference_keys,
+        signal_class="heuristic",
         in_text_label="best-effort extraction",
-        reference_label=reference_label, unjoined=unresolved,
-        unjoined_label="unmatched against any reference metadata"
-        ), "best_effort"
+        reference_label=reference_label,
+        unjoined=unresolved,
+        unjoined_label="unmatched against any reference metadata",
+    ), "best_effort"
 
 
 _FAMILY_B_IDS = tuple(
-    cid for cid, (fam, _fc, _sc) in sorted(_CHECK_REGISTRY.items())
-    if fam == "venue_limits")
+    cid for cid, (fam, _fc, _sc) in sorted(_CHECK_REGISTRY.items()) if fam == "venue_limits"
+)
 
 _WORD_COUNT_TOLERANCE = 1.02  # §3.2: ±2% before fail (format-conversion noise)
 
 _MD_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$", re.MULTILINE)
 _KEYWORDS_LINE_RE = re.compile(
-    r"^\s*(?:\*\*|__)?\s*keywords?\s*(?:\*\*|__)?\s*[:：]\s*(.+?)\s*$",
-    re.IGNORECASE | re.MULTILINE)
+    r"^\s*(?:\*\*|__)?\s*keywords?\s*(?:\*\*|__)?\s*[:：]\s*(.+?)\s*$", re.IGNORECASE | re.MULTILINE
+)
 _TEX_KEYWORDS_RE = re.compile(r"\\keywords\s*\{([^}]*)\}", re.IGNORECASE)
 _TEX_SECTION_RE = re.compile(r"\\(?:sub)*section\*?\s*\{([^}]*)\}")
-_TEX_ABSTRACT_RE = re.compile(
-    r"\\begin\{abstract\}(.*?)\\end\{abstract\}", re.DOTALL)
+_TEX_ABSTRACT_RE = re.compile(r"\\begin\{abstract\}(.*?)\\end\{abstract\}", re.DOTALL)
 _TEX_BIBLIO_RE = re.compile(
-    r"\\begin\{thebibliography\}.*?\\end\{thebibliography\}|\\bibliography\s*\{[^}]*\}",
-    re.DOTALL)
+    r"\\begin\{thebibliography\}.*?\\end\{thebibliography\}|\\bibliography\s*\{[^}]*\}", re.DOTALL
+)
 _HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
 
 
@@ -588,10 +634,10 @@ def _word_count(text: str) -> int:
 def _md_sections(text: str) -> list[tuple[str, int, int]]:
     """[(heading title, content start, content end)] per markdown section."""
     heads = list(_MD_HEADING_RE.finditer(text))
-    return [(m.group(2).strip(),
-             m.end(),
-             heads[i + 1].start() if i + 1 < len(heads) else len(text))
-            for i, m in enumerate(heads)]
+    return [
+        (m.group(2).strip(), m.end(), heads[i + 1].start() if i + 1 < len(heads) else len(text))
+        for i, m in enumerate(heads)
+    ]
 
 
 def _is_abstract_title(title: str) -> bool:
@@ -610,7 +656,7 @@ def _md_drop_sections(text: str, title_predicates) -> str:
     for i, m in enumerate(heads):
         end = heads[i + 1].start() if i + 1 < len(heads) else len(text)
         if any(p(m.group(2).strip()) for p in title_predicates):
-            keep.append(text[cursor:m.start()])
+            keep.append(text[cursor : m.start()])
             cursor = end
     keep.append(text[cursor:])
     return "".join(keep)
@@ -629,22 +675,26 @@ def _countable_body(rel: str, text: str, scope: str) -> tuple[str, str]:
     """(countable text, human description of what was counted) for B1."""
     if rel.lower().endswith(".tex"):
         if scope == "body_only":
-            return (_detex(_TEX_BIBLIO_RE.sub(
-                        " ", _TEX_ABSTRACT_RE.sub(" ", text))),
-                    "naive detex; abstract + bibliography excluded")
+            return (
+                _detex(_TEX_BIBLIO_RE.sub(" ", _TEX_ABSTRACT_RE.sub(" ", text))),
+                "naive detex; abstract + bibliography excluded",
+            )
         if scope == "body_plus_references":
-            return (_detex(_TEX_ABSTRACT_RE.sub(" ", text)),
-                    "naive detex; abstract excluded")
+            return (_detex(_TEX_ABSTRACT_RE.sub(" ", text)), "naive detex; abstract excluded")
         return _detex(text), "naive detex; everything counted"
     text = _HTML_COMMENT_RE.sub(" ", text)
     if scope == "body_only":
-        return (_md_drop_sections(_KEYWORDS_LINE_RE.sub(" ", text),
-                                  (_is_abstract_title, _is_refs_title)),
-                "abstract + references + keywords line excluded")
+        return (
+            _md_drop_sections(
+                _KEYWORDS_LINE_RE.sub(" ", text), (_is_abstract_title, _is_refs_title)
+            ),
+            "abstract + references + keywords line excluded",
+        )
     if scope == "body_plus_references":
-        return (_md_drop_sections(_KEYWORDS_LINE_RE.sub(" ", text),
-                                  (_is_abstract_title,)),
-                "abstract + keywords line excluded")
+        return (
+            _md_drop_sections(_KEYWORDS_LINE_RE.sub(" ", text), (_is_abstract_title,)),
+            "abstract + keywords line excluded",
+        )
     # `all` counts everything the author wrote — only the ARS tool markers
     # (HTML comments) are stripped, and that is declared.
     return text, "everything counted (tool markers stripped)"
@@ -675,12 +725,12 @@ def _headings(rel: str, text: str) -> list[str]:
 
 
 _CANONICAL_MANUSCRIPT_STEMS = frozenset({"paper", "manuscript", "main"})
-_NON_MANUSCRIPT_PREFIXES = (
-    "cover_letter", "cover-letter", "response", "rebuttal", "readme")
+_NON_MANUSCRIPT_PREFIXES = ("cover_letter", "cover-letter", "response", "rebuttal", "readme")
 
 
-def _primary_manuscript(manuscripts: dict[str, str]
-                        ) -> tuple[Optional[str], Optional[str], Optional[str]]:
+def _primary_manuscript(
+    manuscripts: dict[str, str]
+) -> tuple[Optional[str], Optional[str], Optional[str]]:
     """(rel, text, blocked_reason) — the manuscript the limits are checked
     against; rel/text are None iff blocked_reason says why. Canonical
     filenames (paper/manuscript/main) win; known package-document names
@@ -691,52 +741,73 @@ def _primary_manuscript(manuscripts: dict[str, str]
     if not manuscripts:
         return None, None, _NO_MANUSCRIPT_REASON
     candidates = {
-        rel: t for rel, t in manuscripts.items()
-        if not Path(rel).name.lower().startswith(_NON_MANUSCRIPT_PREFIXES)}
+        rel: t
+        for rel, t in manuscripts.items()
+        if not Path(rel).name.lower().startswith(_NON_MANUSCRIPT_PREFIXES)
+    }
     candidates = candidates or manuscripts
-    canonical = {rel: t for rel, t in candidates.items()
-                 if Path(rel).stem.lower() in _CANONICAL_MANUSCRIPT_STEMS}
+    canonical = {
+        rel: t
+        for rel, t in candidates.items()
+        if Path(rel).stem.lower() in _CANONICAL_MANUSCRIPT_STEMS
+    }
     pool = canonical or candidates
     if not canonical and len(candidates) > 1:
-        return None, None, (
-            "ambiguous manuscript: several candidates and none carries a "
-            f"canonical name (paper/manuscript/main): "
-            f"{', '.join(sorted(candidates))} — rename the manuscript or "
-            "remove the extras")
+        return (
+            None,
+            None,
+            (
+                "ambiguous manuscript: several candidates and none carries a "
+                f"canonical name (paper/manuscript/main): "
+                f"{', '.join(sorted(candidates))} — rename the manuscript or "
+                "remove the extras"
+            ),
+        )
     rel = max(sorted(pool), key=lambda r: _word_count(pool[r]))
     return rel, pool[rel], None
 
 
-def _ceiling_check(check_id: str, count: int, limit: int, what: str,
-                   location: Optional[str] = None,
-                   tolerance: float = 1.0) -> dict[str, Any]:
+def _ceiling_check(
+    check_id: str,
+    count: int,
+    limit: int,
+    what: str,
+    location: Optional[str] = None,
+    tolerance: float = 1.0,
+) -> dict[str, Any]:
     tol_note = " (±2% tolerance)" if tolerance > 1.0 else ""
     status = "pass" if count <= limit * tolerance else "fail"
-    return _check(check_id, status,
-                  f"{what}: {count} vs declared limit {limit}{tol_note}",
-                  location=location)
+    return _check(
+        check_id, status, f"{what}: {count} vs declared limit {limit}{tol_note}", location=location
+    )
 
 
-def run_family_b(manuscripts: dict[str, str],
-                 reference_keys: set[str], reference_label: str,
-                 profile: Optional[dict[str, Any]]
-                 ) -> list[dict[str, Any]]:
+def run_family_b(
+    manuscripts: dict[str, str],
+    reference_keys: set[str],
+    reference_label: str,
+    profile: Optional[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """Family B: venue-declared limits vs actuals (§3.2). Without a profile,
     every check is NOT-CHECKED — limits are never guessed from the journal
     name (R-L3-2-D mirror). A partially-declared profile runs the checks it
     can and NOT-CHECKEDs the rest (§4)."""
     if profile is None:
-        return [_check(i, "not_checked",
-                       "no venue profile declared — limits are never guessed "
-                       "from the journal name (R-L3-2-D mirror)")
-                for i in _FAMILY_B_IDS]
+        return [
+            _check(
+                i,
+                "not_checked",
+                "no venue profile declared — limits are never guessed "
+                "from the journal name (R-L3-2-D mirror)",
+            )
+            for i in _FAMILY_B_IDS
+        ]
 
     checks: list[dict[str, Any]] = []
     rel, text, no_manuscript_reason = _primary_manuscript(manuscripts)
 
     def not_declared(check_id: str, field: str) -> dict[str, Any]:
-        return _check(check_id, "not_checked",
-                      f"{field} not declared in venue profile")
+        return _check(check_id, "not_checked", f"{field} not declared in venue profile")
 
     # B1 — manuscript word count vs word_limit (±2%, §3.2)
     word_limit = profile.get("word_limit")
@@ -748,12 +819,18 @@ def run_family_b(manuscripts: dict[str, str],
         scope = profile.get("word_count_scope")
         scope_decl = scope or "body_only (default — scope not declared)"
         body, counted_desc = _countable_body(rel, text, scope or "body_only")
-        checks.append(_ceiling_check(
-            "B1", _word_count(body), word_limit,
-            f"manuscript word count of {rel}, scope {scope_decl} "
-            f"({counted_desc}; whitespace-split per "
-            f"shared/references/word_count_conventions.md)",
-            location=rel, tolerance=_WORD_COUNT_TOLERANCE))
+        checks.append(
+            _ceiling_check(
+                "B1",
+                _word_count(body),
+                word_limit,
+                f"manuscript word count of {rel}, scope {scope_decl} "
+                f"({counted_desc}; whitespace-split per "
+                f"shared/references/word_count_conventions.md)",
+                location=rel,
+                tolerance=_WORD_COUNT_TOLERANCE,
+            )
+        )
 
     # B2 — abstract word count vs abstract_word_limit (±2%)
     abstract_limit = profile.get("abstract_word_limit")
@@ -764,14 +841,20 @@ def run_family_b(manuscripts: dict[str, str],
     else:
         abstract = _abstract_text(rel, text)
         if abstract is None:
-            checks.append(_check(
-                "B2", "not_checked",
-                f"no abstract section found in {rel}", location=rel))
+            checks.append(
+                _check("B2", "not_checked", f"no abstract section found in {rel}", location=rel)
+            )
         else:
-            checks.append(_ceiling_check(
-                "B2", _word_count(abstract), abstract_limit,
-                f"abstract word count of {rel} (whitespace-split)",
-                location=rel, tolerance=_WORD_COUNT_TOLERANCE))
+            checks.append(
+                _ceiling_check(
+                    "B2",
+                    _word_count(abstract),
+                    abstract_limit,
+                    f"abstract word count of {rel} (whitespace-split)",
+                    location=rel,
+                    tolerance=_WORD_COUNT_TOLERANCE,
+                )
+            )
 
     # B3 — keyword count vs keyword_range (exact)
     keyword_range = profile.get("keyword_range")
@@ -782,16 +865,20 @@ def run_family_b(manuscripts: dict[str, str],
     else:
         keywords = _keyword_list(text)
         if keywords is None:
-            checks.append(_check(
-                "B3", "not_checked",
-                f"no keywords line found in {rel}", location=rel))
+            checks.append(
+                _check("B3", "not_checked", f"no keywords line found in {rel}", location=rel)
+            )
         else:
             lo, hi = keyword_range["min"], keyword_range["max"]
             ok = lo <= len(keywords) <= hi
-            checks.append(_check(
-                "B3", "pass" if ok else "fail",
-                f"keyword count of {rel}: {len(keywords)} vs declared range "
-                f"{lo}–{hi}", location=rel))
+            checks.append(
+                _check(
+                    "B3",
+                    "pass" if ok else "fail",
+                    f"keyword count of {rel}: {len(keywords)} vs declared range " f"{lo}–{hi}",
+                    location=rel,
+                )
+            )
 
     # B4 — required sections present (set comparison)
     required = profile.get("required_sections")
@@ -801,18 +888,26 @@ def run_family_b(manuscripts: dict[str, str],
         checks.append(_check("B4", "not_checked", no_manuscript_reason))
     else:
         headings = [h.lower() for h in _headings(rel, text)]
-        missing = [s for s in required
-                   if not any(s.lower() in h for h in headings)]
+        missing = [s for s in required if not any(s.lower() in h for h in headings)]
         if missing:
-            checks.append(_check(
-                "B4", "fail",
-                f"required section(s) missing from {rel} (case-insensitive "
-                f"heading containment): {', '.join(missing)}", location=rel))
+            checks.append(
+                _check(
+                    "B4",
+                    "fail",
+                    f"required section(s) missing from {rel} (case-insensitive "
+                    f"heading containment): {', '.join(missing)}",
+                    location=rel,
+                )
+            )
         else:
-            checks.append(_check(
-                "B4", "pass",
-                f"all {len(required)} required section(s) present in {rel}",
-                location=rel))
+            checks.append(
+                _check(
+                    "B4",
+                    "pass",
+                    f"all {len(required)} required section(s) present in {rel}",
+                    location=rel,
+                )
+            )
 
     # B5 — reference count vs reference_limit (exact)
     reference_limit = profile.get("reference_limit")
@@ -821,16 +916,25 @@ def run_family_b(manuscripts: dict[str, str],
     elif not reference_keys:
         checks.append(_check("B5", "not_checked", _NO_REFERENCE_LIST_REASON))
     else:
-        checks.append(_ceiling_check(
-            "B5", len(reference_keys), reference_limit,
-            f"reference entries in {reference_label}"))
+        checks.append(
+            _ceiling_check(
+                "B5",
+                len(reference_keys),
+                reference_limit,
+                f"reference entries in {reference_label}",
+            )
+        )
 
     return checks
 
 
 _PROFILE_SCHEMA_PATH = (
-    Path(__file__).resolve().parent.parent / "shared" / "contracts"
-    / "submission" / "venue_profile.schema.json")
+    Path(__file__).resolve().parent.parent
+    / "shared"
+    / "contracts"
+    / "submission"
+    / "venue_profile.schema.json"
+)
 _profile_schema_cache: Optional[dict[str, Any]] = None
 
 
@@ -840,14 +944,12 @@ def _profile_schema() -> dict[str, Any]:
     one source of truth (a schema edit cannot silently desync the CLI gate)."""
     global _profile_schema_cache
     if _profile_schema_cache is None:
-        _profile_schema_cache = json.loads(
-            _PROFILE_SCHEMA_PATH.read_text(encoding="utf-8"))
+        _profile_schema_cache = json.loads(_PROFILE_SCHEMA_PATH.read_text(encoding="utf-8"))
     return _profile_schema_cache
 
 
 def _schema_enum(field: str) -> tuple:
-    return tuple(v for v in _profile_schema()["properties"][field]["enum"]
-                 if v is not None)
+    return tuple(v for v in _profile_schema()["properties"][field]["enum"] if v is not None)
 
 
 def _is_int(v: Any) -> bool:
@@ -867,65 +969,80 @@ def _validate_venue_profile(raw: dict[str, Any]) -> dict[str, Any]:
         raise ValueError(
             f"venue profile has unknown field(s) {sorted(unknown)} — the "
             f"schema is closed (a typoed limit would otherwise be silently "
-            f"ignored); allowed: {sorted(allowed)}")
+            f"ignored); allowed: {sorted(allowed)}"
+        )
     if raw.get("declared_by") != "scholar":
         raise ValueError(
             "venue profile must carry `declared_by: scholar` — the profile is "
-            "scholar-declared only, never scraped or inferred (spec §4)")
+            "scholar-declared only, never scraped or inferred (spec §4)"
+        )
     name = raw.get("venue_name")
     if name is not None and not isinstance(name, str):
-        raise ValueError(f"venue profile venue_name must be a string or null, "
-                         f"got {name!r}")
+        raise ValueError(f"venue profile venue_name must be a string or null, " f"got {name!r}")
     for field in ("word_limit", "abstract_word_limit", "reference_limit"):
         v = raw.get(field)
         if v is not None and (not _is_int(v) or v < 1):
-            raise ValueError(f"venue profile {field} must be a positive "
-                             f"integer or null, got {v!r}")
+            raise ValueError(
+                f"venue profile {field} must be a positive " f"integer or null, got {v!r}"
+            )
     scope = raw.get("word_count_scope")
     if scope is not None and scope not in _schema_enum("word_count_scope"):
-        raise ValueError(f"venue profile word_count_scope must be one of "
-                         f"{'/'.join(_schema_enum('word_count_scope'))}/null, "
-                         f"got {scope!r}")
+        raise ValueError(
+            f"venue profile word_count_scope must be one of "
+            f"{'/'.join(_schema_enum('word_count_scope'))}/null, "
+            f"got {scope!r}"
+        )
     blind = raw.get("blind_review")
     if blind is not None and blind not in _schema_enum("blind_review"):
-        raise ValueError(f"venue profile blind_review must be one of "
-                         f"{'/'.join(_schema_enum('blind_review'))}/null, "
-                         f"got {blind!r}")
+        raise ValueError(
+            f"venue profile blind_review must be one of "
+            f"{'/'.join(_schema_enum('blind_review'))}/null, "
+            f"got {blind!r}"
+        )
     kr = raw.get("keyword_range")
     if kr is not None:
-        if (not isinstance(kr, dict) or set(kr) != {"min", "max"}
-                or not _is_int(kr.get("min")) or kr["min"] < 0
-                or not _is_int(kr.get("max")) or kr["max"] < 1
-                or kr["min"] > kr["max"]):
+        if (
+            not isinstance(kr, dict)
+            or set(kr) != {"min", "max"}
+            or not _is_int(kr.get("min"))
+            or kr["min"] < 0
+            or not _is_int(kr.get("max"))
+            or kr["max"] < 1
+            or kr["min"] > kr["max"]
+        ):
             raise ValueError(
                 f"venue profile keyword_range must be {{min >= 0, max >= 1}} "
-                f"integers with min <= max, got {kr!r}")
+                f"integers with min <= max, got {kr!r}"
+            )
     sections = raw.get("required_sections")
     if sections is not None and (
-            not isinstance(sections, list)
-            or not all(isinstance(s, str) and s for s in sections)):
-        raise ValueError("venue profile required_sections must be a list of "
-                         "non-empty strings or null")
+        not isinstance(sections, list) or not all(isinstance(s, str) and s for s in sections)
+    ):
+        raise ValueError(
+            "venue profile required_sections must be a list of " "non-empty strings or null"
+        )
     ack = raw.get("acknowledgments_forbidden_in_blind")
     if ack is not None and not isinstance(ack, bool):
         raise ValueError(
             f"venue profile acknowledgments_forbidden_in_blind must be a "
-            f"boolean or null, got {ack!r}")
+            f"boolean or null, got {ack!r}"
+        )
     return raw
 
 
 # --- Family A: blind-review residue (§3.1) -----------------------------------
 
 _FAMILY_A_IDS = tuple(
-    cid for cid, (fam, _fc, _sc) in sorted(_CHECK_REGISTRY.items())
-    if fam == "blind_review_residue")
+    cid for cid, (fam, _fc, _sc) in sorted(_CHECK_REGISTRY.items()) if fam == "blind_review_residue"
+)
 _SCAN_A_IDS = ("A1", "A2", "A3", "A4", "A5", "A6")  # the variant-scanning subset
 
 # Filename convention for the anonymized (blind-review) variant: a stem token
 # match, so `paper_anonymized.docx` / `manuscript-blind.pdf` classify but
 # `canonical.md` does not.
 _BLIND_STEM_TOKENS = frozenset(
-    {"anonymized", "anonymised", "anonymous", "anon", "blind", "blinded"})
+    {"anonymized", "anonymised", "anonymous", "anon", "blind", "blinded"}
+)
 # Only manuscript-class artifacts count as "the blind variant" — a
 # blind-named ancillary file (blind_survey.csv) is not a blind manuscript
 # and must not satisfy A7 under a declared double-blind venue.
@@ -935,10 +1052,19 @@ _VARIANT_SUFFIXES = (".md", ".tex", ".txt", ".docx", ".pdf")
 # by the maintainer (#394 follow-up, 2026-06-10). 本文作者先前 is anchored on
 # the 本文 prefix because bare 作者先前 matches 該作者先前 (a third party).
 _SELF_CITATION_PHRASES = (
-    "our previous work", "our earlier study", "our prior work",
-    "we previously showed", "we have previously", "in our previous",
-    "我們先前的研究", "我們過去的研究", "我們先前曾", "我們已於先前",
-    "筆者先前的研究", "本研究團隊先前", "本文作者先前",
+    "our previous work",
+    "our earlier study",
+    "our prior work",
+    "we previously showed",
+    "we have previously",
+    "in our previous",
+    "我們先前的研究",
+    "我們過去的研究",
+    "我們先前曾",
+    "我們已於先前",
+    "筆者先前的研究",
+    "本研究團隊先前",
+    "本文作者先前",
 )
 
 _ACK_TITLE_RE = re.compile(r"acknowledg(?:e)?ments?|致謝", re.IGNORECASE)
@@ -957,31 +1083,32 @@ def _a4_strict(profile: Optional[dict[str, Any]]) -> bool:
     — the deterministic signal stays advisory otherwise because the
     de-anonymization judgment is the scholar's). Single definition so EVERY
     A4 emission path (pass/fail/not_checked/not_applicable) agrees."""
-    return bool(profile) and (
-        profile.get("acknowledgments_forbidden_in_blind") is True)
+    return bool(profile) and (profile.get("acknowledgments_forbidden_in_blind") is True)
 
 
 def _package_files(package_dir: Path) -> list[str]:
     return sorted(
         p.relative_to(package_dir).as_posix()
         for p in package_dir.rglob("*")
-        if p.is_file() and p.name not in _SCAN_EXCLUDED_NAMES)
+        if p.is_file() and p.name not in _SCAN_EXCLUDED_NAMES
+    )
 
 
-def _blanket_family_a(ids, status: str, reason: str,
-                      profile: Optional[dict[str, Any]]
-                      ) -> list[dict[str, Any]]:
+def _blanket_family_a(
+    ids, status: str, reason: str, profile: Optional[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """One emitter for every whole-family blanket path (untriggered
     not_applicable / no-variant not_checked), so A4's profile-conditional
     eligibility cannot diverge between them."""
-    return [_check(i, status, reason,
-                   strict_eligible=_a4_strict(profile) if i == "A4" else None)
-            for i in ids]
+    return [
+        _check(i, status, reason, strict_eligible=_a4_strict(profile) if i == "A4" else None)
+        for i in ids
+    ]
 
 
-def run_family_a(package_dir: Path, manuscripts: dict[str, str],
-                 profile: Optional[dict[str, Any]]
-                 ) -> list[dict[str, Any]]:
+def run_family_a(
+    package_dir: Path, manuscripts: dict[str, str], profile: Optional[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """Family A: blind-review residue scan (§3.1). Trigger is
     presence-or-declaration: an anonymized variant in the package, or a
     declared double-blind venue. Untriggered = not_applicable (the package
@@ -992,37 +1119,43 @@ def run_family_a(package_dir: Path, manuscripts: dict[str, str],
 
     if not anon_rels and not declared_double:
         return _blanket_family_a(
-            _FAMILY_A_IDS, "not_applicable",
+            _FAMILY_A_IDS,
+            "not_applicable",
             "not triggered: no anonymized variant in the package and no "
             "declared double-blind review (§3.1 presence-or-declaration)",
-            profile)
+            profile,
+        )
 
     checks: list[dict[str, Any]] = []
     if declared_double and not anon_rels:
-        checks.append(_check(
-            "A7", "fail",
-            "venue profile declares double-blind review but the package "
-            "contains no anonymized manuscript variant "
-            f"({'/'.join(_VARIANT_SUFFIXES)} with a name token among "
-            f"{'/'.join(sorted(_BLIND_STEM_TOKENS))}) — the blind version "
-            "is missing (the most basic residue of all, §3.1)"))
-        checks.extend(_blanket_family_a(
-            _SCAN_A_IDS, "not_checked", "no anonymized variant to scan",
-            profile))
+        checks.append(
+            _check(
+                "A7",
+                "fail",
+                "venue profile declares double-blind review but the package "
+                "contains no anonymized manuscript variant "
+                f"({'/'.join(_VARIANT_SUFFIXES)} with a name token among "
+                f"{'/'.join(sorted(_BLIND_STEM_TOKENS))}) — the blind version "
+                "is missing (the most basic residue of all, §3.1)",
+            )
+        )
+        checks.extend(
+            _blanket_family_a(_SCAN_A_IDS, "not_checked", "no anonymized variant to scan", profile)
+        )
         return checks
 
-    checks.append(_check(
-        "A7", "pass",
-        f"anonymized variant present: {', '.join(anon_rels)}"))
-    checks.extend(_scan_blind_set(
-        package_dir, manuscripts, all_rels, anon_rels, profile))
+    checks.append(_check("A7", "pass", f"anonymized variant present: {', '.join(anon_rels)}"))
+    checks.extend(_scan_blind_set(package_dir, manuscripts, all_rels, anon_rels, profile))
     return checks
 
 
-def _scan_blind_set(package_dir: Path, manuscripts: dict[str, str],
-                    all_rels: list[str], anon_rels: list[str],
-                    profile: Optional[dict[str, Any]]
-                    ) -> list[dict[str, Any]]:
+def _scan_blind_set(
+    package_dir: Path,
+    manuscripts: dict[str, str],
+    all_rels: list[str],
+    anon_rels: list[str],
+    profile: Optional[dict[str, Any]],
+) -> list[dict[str, Any]]:
     """A1-A6 over the blind submission set (the anonymized variants)."""
     checks: list[dict[str, Any]] = []
     pdf_rels = [r for r in anon_rels if r.lower().endswith(".pdf")]
@@ -1036,35 +1169,44 @@ def _scan_blind_set(package_dir: Path, manuscripts: dict[str, str],
     return checks
 
 
-def _residue_verdict(check_id: str, findings: "list[tuple[str, str]]",
-                     unreadable: list[str], what: str) -> dict[str, Any]:
+def _residue_verdict(
+    check_id: str, findings: list[tuple[str, str]], unreadable: list[str], what: str
+) -> dict[str, Any]:
     """fail on any (rel, message) finding; otherwise not_checked if any
     artifact was unreadable (incompleteness is never folded into pass, §1.4);
     else pass."""
     if findings:
-        listed = "; ".join(f"{rel}: {msg}"
-                           for rel, msg in findings[:_LOCATION_CAP])
-        return _check(check_id, "fail",
-                      f"{what} in the blind submission set: {listed}",
-                      location=findings[0][0])
+        listed = "; ".join(f"{rel}: {msg}" for rel, msg in findings[:_LOCATION_CAP])
+        return _check(
+            check_id,
+            "fail",
+            f"{what} in the blind submission set: {listed}",
+            location=findings[0][0],
+        )
     if unreadable:
-        return _check(check_id, "not_checked",
-                      f"unreadable artifact(s), {what} could not be scanned: "
-                      f"{', '.join(unreadable[:_LOCATION_CAP])}")
+        return _check(
+            check_id,
+            "not_checked",
+            f"unreadable artifact(s), {what} could not be scanned: "
+            f"{', '.join(unreadable[:_LOCATION_CAP])}",
+        )
     return _check(check_id, "pass", f"no {what} in the blind submission set")
 
 
-def _pdf_metadata_checks(package_dir: Path,
-                         pdf_rels: list[str]) -> list[dict[str, Any]]:
+def _pdf_metadata_checks(package_dir: Path, pdf_rels: list[str]) -> list[dict[str, Any]]:
     """A1: PDF info dict /Author + XMP dc:creator non-empty (§3.1)."""
     if not pdf_rels:
-        return [_check("A1", "not_applicable",
-                       "no PDF in the blind submission set")]
+        return [_check("A1", "not_applicable", "no PDF in the blind submission set")]
     if pypdf is None:
-        return [_check("A1", "not_checked",
-                       "parser unavailable: pypdf is not installed (pip "
-                       "install pypdf) — PDF metadata cannot be scanned")]
-    findings: "list[tuple[str, str]]" = []
+        return [
+            _check(
+                "A1",
+                "not_checked",
+                "parser unavailable: pypdf is not installed (pip "
+                "install pypdf) — PDF metadata cannot be scanned",
+            )
+        ]
+    findings: list[tuple[str, str]] = []
     unreadable: list[str] = []
     for rel in pdf_rels:
         try:
@@ -1073,8 +1215,7 @@ def _pdf_metadata_checks(package_dir: Path,
             creators: list[str] = []
             try:
                 xmp = reader.xmp_metadata
-                creators = [c for c in (xmp.dc_creator or []) if str(c).strip()
-                            ] if xmp else []
+                creators = [c for c in (xmp.dc_creator or []) if str(c).strip()] if xmp else []
             except Exception:
                 # A malformed XMP stream means HALF of A1's signal could not
                 # be read — incompleteness, not a silent pass (§1.4). The
@@ -1087,8 +1228,7 @@ def _pdf_metadata_checks(package_dir: Path,
             findings.append((rel, f"/Author={author!r}"))
         if creators:
             findings.append((rel, f"XMP dc:creator={creators!r}"))
-    return [_residue_verdict("A1", findings, unreadable,
-                             "PDF metadata author(s)")]
+    return [_residue_verdict("A1", findings, unreadable, "PDF metadata author(s)")]
 
 
 def _pdf_info_author(reader) -> str:
@@ -1098,7 +1238,7 @@ def _pdf_info_author(reader) -> str:
     return str(meta.get("/Author") or "").strip() if meta else ""
 
 
-def _read_zip_part(z: "zipfile.ZipFile", name: str) -> bytes:
+def _read_zip_part(z: zipfile.ZipFile, name: str) -> bytes:
     """Bounded read of one zip part (the zip-bomb guard): the declared
     uncompressed size must stay under _MAX_XML_PART_BYTES."""
     if z.getinfo(name).file_size > _MAX_XML_PART_BYTES:
@@ -1106,7 +1246,7 @@ def _read_zip_part(z: "zipfile.ZipFile", name: str) -> bytes:
     return z.read(name)
 
 
-def _open_docx_guarded(path: Path) -> "zipfile.ZipFile":
+def _open_docx_guarded(path: Path) -> zipfile.ZipFile:
     """Open a .docx with the zip-bomb entry-count guard applied — the one
     opening path for every DOCX reader (A2/A3 and the A6 token harvest), so
     the guards cannot drift apart."""
@@ -1117,15 +1257,17 @@ def _open_docx_guarded(path: Path) -> "zipfile.ZipFile":
     return z
 
 
-def _docx_core_author_fields(z: "zipfile.ZipFile") -> "list[tuple[str, str]]":
+def _docx_core_author_fields(z: zipfile.ZipFile) -> list[tuple[str, str]]:
     """[(label, value)] for the non-empty author fields of docProps/core.xml
     — the one extraction A2 and the A6 token harvest share."""
     if "docProps/core.xml" not in set(z.namelist()):
         return []
     root = _xml_fromstring(_read_zip_part(z, "docProps/core.xml"))
     fields = []
-    for tag, label in ((_NS_DC + "creator", "creator"),
-                       (_NS_CP + "lastModifiedBy", "lastModifiedBy")):
+    for tag, label in (
+        (_NS_DC + "creator", "creator"),
+        (_NS_CP + "lastModifiedBy", "lastModifiedBy"),
+    ):
         el = root.find(tag)
         if el is not None and (el.text or "").strip():
             fields.append((label, el.text.strip()))
@@ -1139,53 +1281,47 @@ def _docx_core_author_fields(z: "zipfile.ZipFile") -> "list[tuple[str, str]]":
 # NOT-CHECKED hole at all (§1.3/§1.4; recorded as a spec §9 slice-3
 # refinement — pypdf remains the only new dependency).
 _NS_DC = "{http://purl.org/dc/elements/1.1/}"
-_NS_CP = ("{http://schemas.openxmlformats.org/package/2006/"
-          "metadata/core-properties}")
-_NS_W = ("{http://schemas.openxmlformats.org/wordprocessingml/2006/main}")
+_NS_CP = "{http://schemas.openxmlformats.org/package/2006/" "metadata/core-properties}"
+_NS_W = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
 
 
-def _docx_residue_checks(package_dir: Path,
-                         docx_rels: list[str]) -> list[dict[str, Any]]:
+def _docx_residue_checks(package_dir: Path, docx_rels: list[str]) -> list[dict[str, Any]]:
     """A2: docProps/core.xml creator/lastModifiedBy non-empty. A3: w:ins /
     w:del / w:comment author attributes in document parts (§3.1)."""
     if not docx_rels:
-        return [_check("A2", "not_applicable",
-                       "no DOCX in the blind submission set"),
-                _check("A3", "not_applicable",
-                       "no DOCX in the blind submission set")]
-    meta_findings: "list[tuple[str, str]]" = []
-    rev_findings: "list[tuple[str, str]]" = []
+        return [
+            _check("A2", "not_applicable", "no DOCX in the blind submission set"),
+            _check("A3", "not_applicable", "no DOCX in the blind submission set"),
+        ]
+    meta_findings: list[tuple[str, str]] = []
+    rev_findings: list[tuple[str, str]] = []
     unreadable: list[str] = []
     for rel in docx_rels:
         try:
             with _open_docx_guarded(package_dir / rel) as z:
                 for label, value in _docx_core_author_fields(z):
                     meta_findings.append((rel, f"{label}={value!r}"))
-                for part in sorted(n for n in z.namelist()
-                                   if n.startswith("word/")
-                                   and n.endswith(".xml")):
+                for part in sorted(
+                    n for n in z.namelist() if n.startswith("word/") and n.endswith(".xml")
+                ):
                     root = _xml_fromstring(_read_zip_part(z, part))
                     for el in root.iter():
-                        if el.tag in (_NS_W + "ins", _NS_W + "del",
-                                      _NS_W + "comment"):
+                        if el.tag in (_NS_W + "ins", _NS_W + "del", _NS_W + "comment"):
                             author = (el.get(_NS_W + "author") or "").strip()
                             if author:
                                 kind = el.tag.split("}", 1)[1]
-                                rev_findings.append(
-                                    (rel, f"w:{kind} author={author!r}"))
+                                rev_findings.append((rel, f"w:{kind} author={author!r}"))
         except _XML_READ_ERRORS:
             unreadable.append(rel)
     return [
-        _residue_verdict("A2", meta_findings, unreadable,
-                         "DOCX metadata author(s)"),
-        _residue_verdict("A3", rev_findings, unreadable,
-                         "DOCX revision/comment author(s)"),
+        _residue_verdict("A2", meta_findings, unreadable, "DOCX metadata author(s)"),
+        _residue_verdict("A3", rev_findings, unreadable, "DOCX revision/comment author(s)"),
     ]
 
 
-def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
-                         profile: Optional[dict[str, Any]]
-                         ) -> list[dict[str, Any]]:
+def _text_residue_checks(
+    manuscripts: dict[str, str], text_rels: list[str], profile: Optional[dict[str, Any]]
+) -> list[dict[str, Any]]:
     """A4 (acknowledgments section) + A5 (self-citation phrasing) over the
     text-form anonymized variants."""
     checks: list[dict[str, Any]] = []
@@ -1194,13 +1330,18 @@ def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
         # The blind variant exists but only in a form we cannot read headings
         # from — the scan SHOULD run and cannot: not_checked honesty (§1.4),
         # never a not_applicable masquerade.
-        checks.append(_check(
-            "A4", "not_checked",
-            "acknowledgments scan requires a text-form (md/tex/txt) "
-            "anonymized variant; DOCX/PDF heading extraction is not supported",
-            strict_eligible=a4_strict))
-        checks.append(_check("A5", "not_checked",
-                             "no extractable text in the blind submission set"))
+        checks.append(
+            _check(
+                "A4",
+                "not_checked",
+                "acknowledgments scan requires a text-form (md/tex/txt) "
+                "anonymized variant; DOCX/PDF heading extraction is not supported",
+                strict_eligible=a4_strict,
+            )
+        )
+        checks.append(
+            _check("A5", "not_checked", "no extractable text in the blind submission set")
+        )
         return checks
 
     ack_hits = []
@@ -1211,19 +1352,31 @@ def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
                 break
     if ack_hits:
         rel, title = ack_hits[0]
-        checks.append(_check(
-            "A4", "fail",
-            f"acknowledgments section present in the anonymized variant "
-            f"(heading {title!r}) — whether it de-anonymizes is the scholar's "
-            f"judgment (§3.1); flagged, never auto-removed"
-            + (" [venue declares acknowledgments forbidden in the blind "
-               "version]" if a4_strict else ""),
-            location=rel, strict_eligible=a4_strict))
+        checks.append(
+            _check(
+                "A4",
+                "fail",
+                f"acknowledgments section present in the anonymized variant "
+                f"(heading {title!r}) — whether it de-anonymizes is the scholar's "
+                f"judgment (§3.1); flagged, never auto-removed"
+                + (
+                    " [venue declares acknowledgments forbidden in the blind " "version]"
+                    if a4_strict
+                    else ""
+                ),
+                location=rel,
+                strict_eligible=a4_strict,
+            )
+        )
     else:
-        checks.append(_check(
-            "A4", "pass",
-            "no acknowledgments section in the anonymized variant",
-            strict_eligible=a4_strict))
+        checks.append(
+            _check(
+                "A4",
+                "pass",
+                "no acknowledgments section in the anonymized variant",
+                strict_eligible=a4_strict,
+            )
+        )
 
     phrase_hits = []
     for rel in text_rels:
@@ -1234,21 +1387,29 @@ def _text_residue_checks(manuscripts: dict[str, str], text_rels: list[str],
     if phrase_hits:
         rel, phrase = phrase_hits[0]
         listed = ", ".join(sorted({p for _r, p in phrase_hits})[:_LOCATION_CAP])
-        checks.append(_check(
-            "A5", "fail",
-            f"self-citation phrasing in the anonymized variant: {listed} — "
-            f"legitimate prose can false-positive (heuristic, advisory-only)",
-            signal_class="heuristic", location=rel))
+        checks.append(
+            _check(
+                "A5",
+                "fail",
+                f"self-citation phrasing in the anonymized variant: {listed} — "
+                f"legitimate prose can false-positive (heuristic, advisory-only)",
+                signal_class="heuristic",
+                location=rel,
+            )
+        )
     else:
-        checks.append(_check(
-            "A5", "pass",
-            "no self-citation phrasing detected in the anonymized variant",
-            signal_class="heuristic"))
+        checks.append(
+            _check(
+                "A5",
+                "pass",
+                "no self-citation phrasing detected in the anonymized variant",
+                signal_class="heuristic",
+            )
+        )
     return checks
 
 
-def _author_metadata_strings(package_dir: Path,
-                             rels: list[str]) -> list[str]:
+def _author_metadata_strings(package_dir: Path, rels: list[str]) -> list[str]:
     """Author strings from PDF /Author + DOCX core.xml creator/lastModifiedBy
     of the given artifacts — the SAME extraction (and zip guards) as A1/A2,
     consumed best-effort (A6 is heuristic by class, so unreadable artifacts
@@ -1259,11 +1420,9 @@ def _author_metadata_strings(package_dir: Path,
         try:
             if low.endswith(".docx"):
                 with _open_docx_guarded(package_dir / rel) as z:
-                    authors.extend(
-                        value for _label, value in _docx_core_author_fields(z))
+                    authors.extend(value for _label, value in _docx_core_author_fields(z))
             elif low.endswith(".pdf") and pypdf is not None:
-                author = _pdf_info_author(
-                    pypdf.PdfReader(str(package_dir / rel)))
+                author = _pdf_info_author(pypdf.PdfReader(str(package_dir / rel)))
                 if author:
                     authors.append(author)
         except Exception:
@@ -1271,22 +1430,24 @@ def _author_metadata_strings(package_dir: Path,
     return authors
 
 
-def _filename_leakage_check(package_dir: Path, all_rels: list[str],
-                            anon_rels: list[str]) -> dict[str, Any]:
+def _filename_leakage_check(
+    package_dir: Path, all_rels: list[str], anon_rels: list[str]
+) -> dict[str, Any]:
     """A6 (§3.1): author-name tokens from the NON-anonymized variant's
     metadata appearing in package filenames. Heuristic by class (coincidental
     name tokens false-positive). The metadata-source originals themselves are
     not scanned — their identified filenames are expected."""
     anon = set(anon_rels)
-    original_rels = [r for r in all_rels
-                     if r not in anon
-                     and r.lower().endswith((".docx", ".pdf"))]
+    original_rels = [r for r in all_rels if r not in anon and r.lower().endswith((".docx", ".pdf"))]
     authors = _author_metadata_strings(package_dir, original_rels)
     if not authors:
         return _check(
-            "A6", "not_checked",
+            "A6",
+            "not_checked",
             "no author metadata available on the non-anonymized artifacts to "
-            "derive name tokens from")
+            "derive name tokens from",
+        )
+
     # NOTE: not `\w` — underscore is a word char, and `smith_appendix` must
     # split into tokens. Token-to-token comparison under one delimiter model:
     # `smith` flags `smith_appendix.csv` but never `blacksmith_notes.md`.
@@ -1296,44 +1457,50 @@ def _filename_leakage_check(package_dir: Path, all_rels: list[str],
     tokens = {t for a in authors for t in name_tokens(a) if len(t) >= 3}
     originals = set(original_rels)
     scanned = [r for r in all_rels if r not in originals]
-    hits = sorted(
-        r for r in scanned if tokens & name_tokens(Path(r).name))
+    hits = sorted(r for r in scanned if tokens & name_tokens(Path(r).name))
     if hits:
         return _check(
-            "A6", "fail",
+            "A6",
+            "fail",
             f"author-name token(s) in package filename(s): "
             f"{', '.join(hits[:_LOCATION_CAP])} (tokens from "
             f"{', '.join(original_rels[:_LOCATION_CAP])} metadata) — "
             f"coincidental tokens can false-positive (heuristic)",
-            location=hits[0])
+            location=hits[0],
+        )
     return _check(
-        "A6", "pass",
-        "no author-name tokens from the non-anonymized metadata appear in "
-        "package filenames")
+        "A6",
+        "pass",
+        "no author-name tokens from the non-anonymized metadata appear in " "package filenames",
+    )
 
 
-def run_checks(package_dir: Path,
-               passport: Optional[dict[str, Any]] = None,
-               join_map: Optional[dict[str, str]] = None,
-               venue_profile: Optional[dict[str, Any]] = None
-               ) -> tuple[list[dict[str, Any]], str]:
+def run_checks(
+    package_dir: Path,
+    passport: Optional[dict[str, Any]] = None,
+    join_map: Optional[dict[str, str]] = None,
+    venue_profile: Optional[dict[str, Any]] = None,
+) -> tuple[list[dict[str, Any]], str]:
     """Collect the package texts once and run every check family.
     Returns (checks sorted by id, extraction_path)."""
     manuscripts, bibs = _collect_package_texts(package_dir)
     bib_keys = parse_bib_keys(bibs)
     reference_keys, reference_label = _reference_list(bib_keys, passport)
     checks_c, extraction_path = run_family_c(
-        manuscripts, bibs, bib_keys, reference_keys, reference_label,
-        passport=passport, join_map=join_map)
-    checks_b = run_family_b(
-        manuscripts, reference_keys, reference_label, venue_profile)
+        manuscripts,
+        bibs,
+        bib_keys,
+        reference_keys,
+        reference_label,
+        passport=passport,
+        join_map=join_map,
+    )
+    checks_b = run_family_b(manuscripts, reference_keys, reference_label, venue_profile)
     checks_a = run_family_a(package_dir, manuscripts, venue_profile)
-    return (sorted(checks_a + checks_b + checks_c, key=lambda c: c["id"]),
-            extraction_path)
+    return (sorted(checks_a + checks_b + checks_c, key=lambda c: c["id"]), extraction_path)
 
 
-def _report_relpath(package_dir: Path,
-                    report_path: Optional[Path]) -> Optional[str]:
+def _report_relpath(package_dir: Path, report_path: Optional[Path]) -> Optional[str]:
     """Package-relative posix path of the report file, or None when the
     report lives outside the package (nothing extra to exclude from the
     fingerprint). Single home for the resolve-relative logic so the
@@ -1342,38 +1509,39 @@ def _report_relpath(package_dir: Path,
     if report_path is None:
         return None
     try:
-        return report_path.resolve().relative_to(
-            package_dir.resolve()).as_posix()
+        return report_path.resolve().relative_to(package_dir.resolve()).as_posix()
     except ValueError:
         return None
 
 
-def build_report(package_dir: Path, checks: list[dict[str, Any]],
-                 extraction_path: str,
-                 report_path: Optional[Path] = None,
-                 policy_slug: Optional[str] = None,
-                 inputs_fingerprint: Optional[str] = None) -> dict[str, Any]:
+def build_report(
+    package_dir: Path,
+    checks: list[dict[str, Any]],
+    extraction_path: str,
+    report_path: Optional[Path] = None,
+    policy_slug: Optional[str] = None,
+    inputs_fingerprint: Optional[str] = None,
+) -> dict[str, Any]:
     emitted = {c["id"] for c in checks}
     if emitted != set(_CHECK_REGISTRY):
         # Roster guard (§1.4/#349): a runner that silently omits a registered
         # check would read as "covered"; fail loud instead.
         raise ValueError(
             f"check roster mismatch: emitted {sorted(emitted)}, "
-            f"registered {sorted(_CHECK_REGISTRY)}")
+            f"registered {sorted(_CHECK_REGISTRY)}"
+        )
     report_relpath = _report_relpath(package_dir, report_path)
     return {
         "header": {
             "extraction_path": extraction_path,
-            "not_checked_count": sum(
-                1 for c in checks if c["status"] == "not_checked"),
-            "package_fingerprint": compute_package_fingerprint(
-                package_dir, report_relpath),
+            "not_checked_count": sum(1 for c in checks if c["status"] == "not_checked"),
+            "package_fingerprint": compute_package_fingerprint(package_dir, report_relpath),
             # Gate-2 P1: external inputs (venue profile / passport / join
             # map) shape Family B/C verdicts; the freshness guard compares
             # this against the reusing invocation's inputs.
-            "inputs_fingerprint": (inputs_fingerprint
-                                   or compute_inputs_fingerprint(
-                                       None, None, None)),
+            "inputs_fingerprint": (
+                inputs_fingerprint or compute_inputs_fingerprint(None, None, None)
+            ),
             # §5.2/§5.3: the value handed down by the policy evaluator via
             # --policy; None = standalone unevaluated run (the argparse
             # default is None, never "advisory" — a null-stamped report can
@@ -1396,8 +1564,8 @@ def render_human(report: dict[str, Any]) -> str:
         status = c["status"].upper().replace("_", "-")
         loc = f" @ {c['location']}" if c["location"] else ""
         lines.append(
-            f"  [{status}] {c['id']} ({c['family']}, {c['signal_class']})"
-            f"{loc}: {c['detail']}")
+            f"  [{status}] {c['id']} ({c['family']}, {c['signal_class']})" f"{loc}: {c['detail']}"
+        )
     return "\n".join(lines)
 
 
@@ -1410,8 +1578,7 @@ def exit_code_for(report: dict[str, Any]) -> int:
     return 0
 
 
-def evaluate_policy(report: dict[str, Any],
-                    policy: Optional[str]) -> tuple[Optional[str], int]:
+def evaluate_policy(report: dict[str, Any], policy: Optional[str]) -> tuple[Optional[str], int]:
     """Slice-4 policy evaluation (§5.2/§5.3, applied with an
     already-resolved policy value — the orchestrator selects the policy,
     this is its deterministic tooling). The advisory/strict divergence
@@ -1427,8 +1594,8 @@ def evaluate_policy(report: dict[str, Any],
     if policy != "strict":
         return None, exit_code_for(report)
     strict_fails = sorted(
-        c["id"] for c in report["checks"]
-        if c["strict_eligible"] and c["status"] == "fail")
+        c["id"] for c in report["checks"] if c["strict_eligible"] and c["status"] == "fail"
+    )
     if strict_fails:
         return (
             "TERMINAL-BLOCK policy=submission_package "
@@ -1436,22 +1603,21 @@ def evaluate_policy(report: dict[str, Any],
             1,
         )
     incomplete = sorted(
-        c["id"] for c in report["checks"]
-        if c["strict_eligible"] and c["status"] == "not_checked")
+        c["id"] for c in report["checks"] if c["strict_eligible"] and c["status"] == "not_checked"
+    )
     if incomplete:
         # Fail-closed (§5.2): a missing parser/profile must not silently
         # waive the one check class the scholar opted into blocking on.
         return (
-            "VERIFICATION-INCOMPLETE "
-            f"strict_eligible_not_checked={','.join(incomplete)}",
+            "VERIFICATION-INCOMPLETE " f"strict_eligible_not_checked={','.join(incomplete)}",
             4,
         )
     return None, exit_code_for(report)
 
 
-def check_freshness(package_dir: Path, report_path: Path,
-                    expected_policy: str,
-                    expected_inputs_fingerprint: str) -> tuple[str, int]:
+def check_freshness(
+    package_dir: Path, report_path: Path, expected_policy: str, expected_inputs_fingerprint: str
+) -> tuple[str, int]:
     """Slice-4 freshness guard (§5.2): the orchestrator MUST run this before
     ever reusing a report. Does NOT re-run checks and never writes; it
     recomputes the package fingerprint with the SAME exclusion set used at
@@ -1492,8 +1658,7 @@ def check_freshness(package_dir: Path, report_path: Path,
         # Covers a changed/added/dropped venue profile, passport, or join
         # map, AND a legacy report predating the field (gets None).
         return "STALE-REPORT reason=inputs_mismatch", 5
-    current = compute_package_fingerprint(
-        package_dir, _report_relpath(package_dir, report_path))
+    current = compute_package_fingerprint(package_dir, _report_relpath(package_dir, report_path))
     if current != stamped_fingerprint:
         return "STALE-REPORT reason=fingerprint_mismatch", 5
     try:
@@ -1521,78 +1686,97 @@ def run(argv: Optional[list[str]] = None) -> int:
     parser = argparse.ArgumentParser(
         prog="verify_submission_package",
         description="Deterministic submission-package verifier (#394: Family "
-                    "C reference integrity + Family B venue limits).",
+        "C reference integrity + Family B venue limits).",
         epilog="Exit codes: 0 all-checked no-fail; 1 at least one fail; "
-               "2 usage/IO error; 3 no fail but at least one NOT-CHECKED; "
-               "4 VERIFICATION-INCOMPLETE (strict only: a strict-eligible "
-               "check is NOT-CHECKED — fail-closed); 5 STALE-REPORT "
-               "(--check-freshness: fingerprint, inputs, or policy-slug "
-               "mismatch). A FRESH report under --check-freshness re-emits "
-               "its verdict — token + exit semantics identical to a live "
-               "run; 'fresh' alone is never a pass. Terminal signals for "
-               "automation are the stdout tokens (TERMINAL-BLOCK / "
-               "VERIFICATION-INCOMPLETE / STALE-REPORT), NEVER raw exit "
-               "codes — exit 1 also covers nonterminal heuristic fails.")
+        "2 usage/IO error; 3 no fail but at least one NOT-CHECKED; "
+        "4 VERIFICATION-INCOMPLETE (strict only: a strict-eligible "
+        "check is NOT-CHECKED — fail-closed); 5 STALE-REPORT "
+        "(--check-freshness: fingerprint, inputs, or policy-slug "
+        "mismatch). A FRESH report under --check-freshness re-emits "
+        "its verdict — token + exit semantics identical to a live "
+        "run; 'fresh' alone is never a pass. Terminal signals for "
+        "automation are the stdout tokens (TERMINAL-BLOCK / "
+        "VERIFICATION-INCOMPLETE / STALE-REPORT), NEVER raw exit "
+        "codes — exit 1 also covers nonterminal heuristic fails.",
+    )
     parser.add_argument("package_dir", help="Output package directory to verify.")
     parser.add_argument(
-        "--passport", default=None,
+        "--passport",
+        default=None,
         help="Material Passport YAML supplying citation_verification_summary[] "
-             "(the prose-reference join) and/or literature_corpus[] (the "
-             "declared reference list).")
+        "(the prose-reference join) and/or literature_corpus[] (the "
+        "declared reference list).",
+    )
     parser.add_argument(
-        "--join-map", default=None,
+        "--join-map",
+        default=None,
         help="Explicit scholar-supplied {ref_slug: citation_key} YAML/JSON "
-             "mapping (overrides every other join source).")
+        "mapping (overrides every other join source).",
+    )
     parser.add_argument(
-        "--venue-profile", default=None,
+        "--venue-profile",
+        default=None,
         help="Scholar-declared venue profile YAML (schema shared/contracts/"
-             "submission/venue_profile.schema.json) enabling the Family B "
-             "limits checks. Absent: every Family B check reports "
-             "NOT-CHECKED(no venue profile) — never guessed from the "
-             "journal name.")
+        "submission/venue_profile.schema.json) enabling the Family B "
+        "limits checks. Absent: every Family B check reports "
+        "NOT-CHECKED(no venue profile) — never guessed from the "
+        "journal name.",
+    )
     parser.add_argument(
-        "--report-out", default=None,
-        help=f"Report path (default: <package_dir>/{REPORT_BASENAME}).")
+        "--report-out",
+        default=None,
+        help=f"Report path (default: <package_dir>/{REPORT_BASENAME}).",
+    )
     parser.add_argument(
-        "--policy", choices=("advisory", "strict"), default=None,
+        "--policy",
+        choices=("advisory", "strict"),
+        default=None,
         help="Already-resolved terminal-policy value handed down by the "
-             "policy evaluator (the orchestrator reads terminal_policies "
-             "and resolves key absence to advisory; this script never reads "
-             "the passport's policy block, §5.3). Stamps header.policy_slug. "
-             "Absent: standalone unevaluated run, policy_slug stays null.")
+        "policy evaluator (the orchestrator reads terminal_policies "
+        "and resolves key absence to advisory; this script never reads "
+        "the passport's policy block, §5.3). Stamps header.policy_slug. "
+        "Absent: standalone unevaluated run, policy_slug stays null.",
+    )
     parser.add_argument(
-        "--check-freshness", action="store_true",
+        "--check-freshness",
+        action="store_true",
         help="Do not run checks; verify the existing report is fresh: its "
-             "package_fingerprint still matches the package bytes and its "
-             "policy_slug matches --policy (REQUIRED with this flag). "
-             "Stale or null-stamped → STALE-REPORT + exit 5 (§5.2: never "
-             "reuse a stale report).")
+        "package_fingerprint still matches the package bytes and its "
+        "policy_slug matches --policy (REQUIRED with this flag). "
+        "Stale or null-stamped → STALE-REPORT + exit 5 (§5.2: never "
+        "reuse a stale report).",
+    )
     args = parser.parse_args(argv)
 
     package_dir = Path(args.package_dir)
     if not package_dir.is_dir():
-        print(f"[verify_submission_package ERROR] not a directory: "
-              f"{package_dir}", file=sys.stderr)
+        print(
+            f"[verify_submission_package ERROR] not a directory: " f"{package_dir}", file=sys.stderr
+        )
         return 2
 
     if args.check_freshness:
         if args.policy is None:
-            print("[verify_submission_package ERROR] --check-freshness "
-                  "requires --policy: freshness is always relative to an "
-                  "expected policy, never free-floating.", file=sys.stderr)
+            print(
+                "[verify_submission_package ERROR] --check-freshness "
+                "requires --policy: freshness is always relative to an "
+                "expected policy, never free-floating.",
+                file=sys.stderr,
+            )
             return 2
-        report_path = (Path(args.report_out) if args.report_out
-                       else package_dir / REPORT_BASENAME)
+        report_path = Path(args.report_out) if args.report_out else package_dir / REPORT_BASENAME
         try:
             expected_inputs = compute_inputs_fingerprint(
-                args.venue_profile, args.join_map, args.passport)
+                args.venue_profile, args.join_map, args.passport
+            )
         except OSError as e:
-            print(f"[verify_submission_package ERROR] could not read an "
-                  f"input file for the freshness comparison: {e}",
-                  file=sys.stderr)
+            print(
+                f"[verify_submission_package ERROR] could not read an "
+                f"input file for the freshness comparison: {e}",
+                file=sys.stderr,
+            )
             return 2
-        message, code = check_freshness(package_dir, report_path,
-                                        args.policy, expected_inputs)
+        message, code = check_freshness(package_dir, report_path, args.policy, expected_inputs)
         print(message)
         return code
 
@@ -1601,8 +1785,10 @@ def run(argv: Optional[list[str]] = None) -> int:
         try:
             passport = _load_yaml(Path(args.passport))
         except (OSError, ValueError, yaml.YAMLError) as e:
-            print(f"[verify_submission_package ERROR] could not load passport: "
-                  f"{e}", file=sys.stderr)
+            print(
+                f"[verify_submission_package ERROR] could not load passport: " f"{e}",
+                file=sys.stderr,
+            )
             return 2
 
     join_map = None
@@ -1610,40 +1796,45 @@ def run(argv: Optional[list[str]] = None) -> int:
         try:
             raw = _load_yaml(Path(args.join_map))
         except (OSError, ValueError, yaml.YAMLError) as e:
-            print(f"[verify_submission_package ERROR] could not load join map: "
-                  f"{e}", file=sys.stderr)
+            print(
+                f"[verify_submission_package ERROR] could not load join map: " f"{e}",
+                file=sys.stderr,
+            )
             return 2
         join_map = {str(slug): str(key) for slug, key in raw.items()}
 
     venue_profile = None
     if args.venue_profile is not None:
         try:
-            venue_profile = _validate_venue_profile(
-                _load_yaml(Path(args.venue_profile)))
+            venue_profile = _validate_venue_profile(_load_yaml(Path(args.venue_profile)))
         except (OSError, ValueError, yaml.YAMLError) as e:
-            print(f"[verify_submission_package ERROR] could not load venue "
-                  f"profile: {e}", file=sys.stderr)
+            print(
+                f"[verify_submission_package ERROR] could not load venue " f"profile: {e}",
+                file=sys.stderr,
+            )
             return 2
 
     checks, extraction_path = run_checks(
-        package_dir, passport=passport, join_map=join_map,
-        venue_profile=venue_profile)
-    report_path = (Path(args.report_out) if args.report_out
-                   else package_dir / REPORT_BASENAME)
-    report = build_report(package_dir, checks, extraction_path,
-                          report_path=report_path,
-                          policy_slug=args.policy,
-                          inputs_fingerprint=compute_inputs_fingerprint(
-                              args.venue_profile, args.join_map,
-                              args.passport))
+        package_dir, passport=passport, join_map=join_map, venue_profile=venue_profile
+    )
+    report_path = Path(args.report_out) if args.report_out else package_dir / REPORT_BASENAME
+    report = build_report(
+        package_dir,
+        checks,
+        extraction_path,
+        report_path=report_path,
+        policy_slug=args.policy,
+        inputs_fingerprint=compute_inputs_fingerprint(
+            args.venue_profile, args.join_map, args.passport
+        ),
+    )
 
     try:
         report_path.write_text(
-            json.dumps(report, indent=2, ensure_ascii=False) + "\n",
-            encoding="utf-8")
+            json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
     except OSError as e:
-        print(f"[verify_submission_package ERROR] could not write report: {e}",
-              file=sys.stderr)
+        print(f"[verify_submission_package ERROR] could not write report: {e}", file=sys.stderr)
         return 2
 
     print(render_human(report))

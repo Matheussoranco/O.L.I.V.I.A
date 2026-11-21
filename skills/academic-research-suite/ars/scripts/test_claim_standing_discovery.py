@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import build_claim_standing_candidate_ledger as ledger
 from scripts import claim_standing_discovery as discovery
 
@@ -26,9 +25,7 @@ def _rehash_plan(plan: dict) -> None:
     consent["provider_roster_sha256"] = ledger.digest(plan["provider_roster"])
     consent["caps_sha256"] = ledger.digest(plan["caps"])
     consent["queries_sha256"] = ledger.digest(plan["queries"])
-    consent["consentable_plan_sha256"] = ledger.digest(
-        ledger.consentable_plan_projection(plan)
-    )
+    consent["consentable_plan_sha256"] = ledger.digest(ledger.consentable_plan_projection(plan))
     consent["receipt_sha256"] = ledger.bound_digest(consent, "receipt_sha256")
     plan["plan_sha256"] = ledger.bound_digest(plan, "plan_sha256")
 
@@ -46,9 +43,7 @@ def _live_plan(
     plan["queries"] = plan["queries"][:1]
     plan["queries"][0]["index_targets"] = targets
     plan["queries"][0]["date_filter"] = (
-        date_filter
-        if date_filter is not None
-        else {"from_year": None, "through_year": None}
+        date_filter if date_filter is not None else {"from_year": None, "through_year": None}
     )
     plan["consent"]["local_persistence"] = "explicit_local_export"
     plan["consent"]["export_boundary"] = ledger.EXPLICIT_LOCAL_EXPORT_BOUNDARY
@@ -130,19 +125,19 @@ def _crossref_body() -> bytes:
 
 def _arxiv_body() -> bytes:
     return (
-        '<?xml version="1.0" encoding="UTF-8"?>'
-        '<feed xmlns="http://www.w3.org/2005/Atom" '
-        'xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/">'
-        "<opensearch:totalResults>1</opensearch:totalResults>"
-        "<entry>"
-        "<id>http://arxiv.org/abs/2408.00001v1</id>"
-        "<title>Synthetic arXiv result</title>"
-        "<summary>A synthetic preprint abstract.</summary>"
-        "<published>2024-08-01T00:00:00Z</published>"
-        "<author><name>Author A1</name></author>"
-        "</entry>"
-        "</feed>"
-    ).encode("utf-8")
+        b'<?xml version="1.0" encoding="UTF-8"?>'
+        b'<feed xmlns="http://www.w3.org/2005/Atom" '
+        b'xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/">'
+        b"<opensearch:totalResults>1</opensearch:totalResults>"
+        b"<entry>"
+        b"<id>http://arxiv.org/abs/2408.00001v1</id>"
+        b"<title>Synthetic arXiv result</title>"
+        b"<summary>A synthetic preprint abstract.</summary>"
+        b"<published>2024-08-01T00:00:00Z</published>"
+        b"<author><name>Author A1</name></author>"
+        b"</entry>"
+        b"</feed>"
+    )
 
 
 class FakeTransport:
@@ -175,9 +170,7 @@ def test_retrieve_produces_schema_valid_retrieval_input():
     plan = _live_plan()
     transport = _happy_transport()
     retained = discovery.retrieve(plan, transport=transport)
-    ledger.validate_schema(
-        retained, "retrieval_input.schema.json", "retrieval input"
-    )
+    ledger.validate_schema(retained, "retrieval_input.schema.json", "retrieval input")
     assert retained["query_plan_sha256"] == plan["plan_sha256"]
     assert retained["relevance_assessments"] == []
     assert retained["retry_authorizations"] == []
@@ -195,9 +188,7 @@ def test_retrieve_produces_schema_valid_retrieval_input():
     assert len(hits_by_index["openalex"]) == 2
     assert len(hits_by_index["crossref"]) == 1
     assert len(hits_by_index["arxiv"]) == 1
-    openalex_hits = sorted(
-        hits_by_index["openalex"], key=lambda row: row["provider_rank"]
-    )
+    openalex_hits = sorted(hits_by_index["openalex"], key=lambda row: row["provider_rank"])
     assert openalex_hits[0]["abstract_text"] == "Reconstructed openalex abstract text"
     assert openalex_hits[0]["abstract_state"] == "available"
     assert openalex_hits[0]["doi"] == "10.5555/oa-1"
@@ -245,15 +236,11 @@ def test_failure_vocabulary_is_closed_and_never_retried(response, outcome):
     assert attempt["retained_hit_count"] == 0
     assert retained["raw_hits"] == []
     assert len(transport.calls) == 1
-    ledger.validate_schema(
-        retained, "retrieval_input.schema.json", "retrieval input"
-    )
+    ledger.validate_schema(retained, "retrieval_input.schema.json", "retrieval input")
 
 
 def test_arxiv_with_year_filter_is_unsupported_without_a_network_call():
-    plan = _live_plan(
-        index_ids=["arxiv"], date_filter={"from_year": 2020, "through_year": 2026}
-    )
+    plan = _live_plan(index_ids=["arxiv"], date_filter={"from_year": 2020, "through_year": 2026})
     transport = FakeTransport({})
     retained = discovery.retrieve(plan, transport=transport)
     attempt = retained["attempts"][0]
@@ -318,9 +305,7 @@ def test_session_only_consent_refuses_writing_retrieval_output(tmp_path):
 
 def test_cli_writes_exclusively_and_never_overwrites(tmp_path):
     authorized = str(tmp_path / "candidate-ledger.json")
-    plan = _live_plan(
-        index_ids=["semantic_scholar"], authorized_output_path=authorized
-    )
+    plan = _live_plan(index_ids=["semantic_scholar"], authorized_output_path=authorized)
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
     fixture_path = tmp_path / "fixture.json"
@@ -344,9 +329,7 @@ def test_cli_writes_exclusively_and_never_overwrites(tmp_path):
     )
     assert exit_code == 0
     retained = json.loads(output.read_text(encoding="utf-8"))
-    ledger.validate_schema(
-        retained, "retrieval_input.schema.json", "retrieval input"
-    )
+    ledger.validate_schema(retained, "retrieval_input.schema.json", "retrieval input")
     assert (
         discovery.main(
             [
@@ -365,9 +348,7 @@ def test_cli_writes_exclusively_and_never_overwrites(tmp_path):
 
 def test_output_path_must_match_the_hash_bound_consent(tmp_path):
     authorized = str(tmp_path / "candidate-ledger.json")
-    plan = _live_plan(
-        index_ids=["semantic_scholar"], authorized_output_path=authorized
-    )
+    plan = _live_plan(index_ids=["semantic_scholar"], authorized_output_path=authorized)
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(json.dumps(plan), encoding="utf-8")
     fixture_path = tmp_path / "fixture.json"
@@ -402,9 +383,7 @@ def test_output_path_must_match_the_hash_bound_consent(tmp_path):
 )
 def test_malformed_provider_records_become_malformed_response(body):
     plan = _live_plan(index_ids=["semantic_scholar"])
-    transport = FakeTransport(
-        {"semanticscholar.org": (200, json.dumps(body).encode("utf-8"))}
-    )
+    transport = FakeTransport({"semanticscholar.org": (200, json.dumps(body).encode("utf-8"))})
     retained = discovery.retrieve(plan, transport=transport)
     assert retained["attempts"][0]["outcome"] == "malformed_response"
     assert retained["raw_hits"] == []
@@ -412,10 +391,7 @@ def test_malformed_provider_records_become_malformed_response(body):
 
 def test_live_transport_refuses_provider_redirects():
     handler = discovery._RefuseRedirects()
-    assert (
-        handler.redirect_request(None, None, 302, "Found", {}, "http://127.0.0.1/x")
-        is None
-    )
+    assert handler.redirect_request(None, None, 302, "Found", {}, "http://127.0.0.1/x") is None
     # A refused redirect surfaces as its 3xx status and maps into the closed
     # vocabulary as service_unavailable.
     assert discovery._status_outcome(302) == "service_unavailable"
@@ -472,9 +448,7 @@ def test_provider_contract_violation_poisons_only_its_own_attempt():
         "crossref": "success",
     }
     assert {hit["index_id"] for hit in retained["raw_hits"]} == {"crossref"}
-    ledger.validate_schema(
-        retained, "retrieval_input.schema.json", "retrieval input"
-    )
+    ledger.validate_schema(retained, "retrieval_input.schema.json", "retrieval input")
 
 
 def test_underreported_provider_count_is_malformed():
@@ -526,9 +500,7 @@ def test_publication_status_maps_conservatively():
     retained = discovery.retrieve(plan, transport=_happy_transport())
     status_by_index = {}
     for hit in retained["raw_hits"]:
-        status_by_index.setdefault(hit["index_id"], set()).add(
-            hit["publication_status"]
-        )
+        status_by_index.setdefault(hit["index_id"], set()).add(hit["publication_status"])
     assert status_by_index["semantic_scholar"] == {"published"}
     assert status_by_index["openalex"] == {"published", "unknown"}
     assert status_by_index["crossref"] == {"published"}
@@ -537,9 +509,7 @@ def test_publication_status_maps_conservatively():
 
 def test_untyped_provider_count_is_malformed():
     plan = _live_plan(index_ids=["semantic_scholar"])
-    body = json.dumps(
-        {"total": "1", "data": [_s2_record(1)]}
-    ).encode("utf-8")
+    body = json.dumps({"total": "1", "data": [_s2_record(1)]}).encode("utf-8")
     transport = FakeTransport({"semanticscholar.org": (200, body)})
     retained = discovery.retrieve(plan, transport=transport)
     assert retained["attempts"][0]["outcome"] == "malformed_response"

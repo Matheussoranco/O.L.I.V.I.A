@@ -7,9 +7,10 @@ file; it does not write to stdout on success).
 """
 
 import subprocess
-import yaml
-import pytest
 from pathlib import Path
+
+import pytest
+import yaml
 
 
 @pytest.fixture
@@ -47,15 +48,21 @@ def test_ars_mark_read_writes_read_log(passport_with_corpus: Path) -> None:
     test_keys = ["smith2024-data", "wang2023"]
 
     result = subprocess.run(
-        ["python3", str(script_path), *test_keys, "--passport-path", str(passport_with_corpus), "--scope", "full_text"],
+        [
+            "python3",
+            str(script_path),
+            *test_keys,
+            "--passport-path",
+            str(passport_with_corpus),
+            "--scope",
+            "full_text",
+        ],
         capture_output=True,
         text=True,
         check=False,
     )
 
-    assert result.returncode == 0, (
-        f"Script failed (exit={result.returncode}): {result.stderr}"
-    )
+    assert result.returncode == 0, f"Script failed (exit={result.returncode}): {result.stderr}"
 
     log_path = passport_with_corpus.parent / f"{passport_with_corpus.stem}_human_read_log.yaml"
     assert log_path.exists(), f"read-log not created at {log_path}"
@@ -87,7 +94,13 @@ def test_ars_mark_read_rejects_unknown_key(passport_with_corpus: Path) -> None:
     script_path = Path("scripts/ars_mark_read.py")
 
     result = subprocess.run(
-        ["python3", str(script_path), "not-in-corpus", "--passport-path", str(passport_with_corpus)],
+        [
+            "python3",
+            str(script_path),
+            "not-in-corpus",
+            "--passport-path",
+            str(passport_with_corpus),
+        ],
         capture_output=True,
         text=True,
         check=False,
@@ -104,15 +117,21 @@ def test_ars_mark_read_argument_parsing(passport_with_corpus: Path) -> None:
     test_keys = ["smith2024-data", "wang:2023"]
 
     result = subprocess.run(
-        ["python3", str(script_path), *test_keys, "--passport-path", str(passport_with_corpus), "--scope", "full_text"],
+        [
+            "python3",
+            str(script_path),
+            *test_keys,
+            "--passport-path",
+            str(passport_with_corpus),
+            "--scope",
+            "full_text",
+        ],
         capture_output=True,
         text=True,
         check=False,
     )
 
-    assert result.returncode == 0, (
-        f"Script failed (exit={result.returncode}): {result.stderr}"
-    )
+    assert result.returncode == 0, f"Script failed (exit={result.returncode}): {result.stderr}"
 
     log_path = passport_with_corpus.parent / f"{passport_with_corpus.stem}_human_read_log.yaml"
     assert log_path.exists(), f"read-log not created at {log_path}"

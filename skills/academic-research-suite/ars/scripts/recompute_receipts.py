@@ -53,8 +53,11 @@ ATTESTATION_KEY = "no_recomputable_statistics"
 PROCEDURES = ("p_from_test_statistic", "grim", "grimmer", "n_from_df")
 TEST_FAMILIES = ("t", "z", "F", "chi_square")
 COMPARATORS = (
-    "equals", "less_than", "less_than_or_equal",
-    "greater_than", "greater_than_or_equal",
+    "equals",
+    "less_than",
+    "less_than_or_equal",
+    "greater_than",
+    "greater_than_or_equal",
 )
 TAILS = ("two-tailed", "one-tailed", "upper-tail", "unstated")
 ROUNDING_RULES = ("half-up", "half-even", "truncation", "unstated")
@@ -63,22 +66,40 @@ DF_IDENTITIES = ("df=N-1", "df=N1+N2-2", "other_or_corrected", "unavailable")
 N_RELATIONS = ("equals", "at_most", "at_least", "unavailable")
 
 COMMON_FIELDS = (
-    "procedure_id", "evidence_anchor", "reported_inputs", "assumptions",
+    "procedure_id",
+    "evidence_anchor",
+    "reported_inputs",
+    "assumptions",
 )
 PROCEDURE_FIELDS = {
     "p_from_test_statistic": (
-        "test_family", "statistic_value", "df", "reported_p_comparator",
-        "reported_p_value", "tail_convention",
+        "test_family",
+        "statistic_value",
+        "df",
+        "reported_p_comparator",
+        "reported_p_value",
+        "tail_convention",
     ),
     "grim": (
-        "n", "reported_mean", "scale_min", "scale_max", "rounding_rule",
+        "n",
+        "reported_mean",
+        "scale_min",
+        "scale_max",
+        "rounding_rule",
     ),
     "grimmer": (
-        "n", "reported_mean", "scale_min", "scale_max", "rounding_rule",
-        "reported_sd", "sd_convention",
+        "n",
+        "reported_mean",
+        "scale_min",
+        "scale_max",
+        "rounding_rule",
+        "reported_sd",
+        "sd_convention",
     ),
     "n_from_df": (
-        "df_reported", "df_identity_candidate", "stated_n",
+        "df_reported",
+        "df_identity_candidate",
+        "stated_n",
         "stated_n_relation",
     ),
 }
@@ -146,8 +167,7 @@ _FENCE_CLOSE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})[ \t]*$")
 # Mirrors the gate's canonical field shape: optional single list marker,
 # balanced-or-absent bold around the key, one space after the colon.
 _FIELD_RE = re.compile(
-    r"^(?:[-*] )?(?:\*\*(?P<bkey>[a-z_]+)\*\*|(?P<key>[a-z_]+)): "
-    r"(?P<value>\S.*?)\s*$"
+    r"^(?:[-*] )?(?:\*\*(?P<bkey>[a-z_]+)\*\*|(?P<key>[a-z_]+)): " r"(?P<value>\S.*?)\s*$"
 )
 
 
@@ -191,6 +211,7 @@ class Receipt:
 
 # --- extraction parsing ---------------------------------------------------
 
+
 def parse_extraction(text: str) -> Extraction:
     lines = _section_lines(text)
     current: Request | None = None
@@ -211,8 +232,7 @@ def parse_extraction(text: str) -> Extraction:
             expected = f"RR{len(requests) + 1}"
             if title != expected:
                 raise ExtractionError(
-                    f"RR ids must be contiguous: expected {expected}, "
-                    f"found {title}"
+                    f"RR ids must be contiguous: expected {expected}, " f"found {title}"
                 )
             current = Request(title, {})
             requests.append(current)
@@ -231,15 +251,11 @@ def parse_extraction(text: str) -> Extraction:
                 )
         if key == ATTESTATION_KEY:
             if current is not None or attestation is not None:
-                raise ExtractionError(
-                    "attestation must be the only content of the section"
-                )
+                raise ExtractionError("attestation must be the only content of the section")
             attestation = value
             continue
         if current is None:
-            raise ExtractionError(
-                f"field line outside any RR subsection: {line!r}"
-            )
+            raise ExtractionError(f"field line outside any RR subsection: {line!r}")
         if key not in ALL_FIELD_KEYS:
             raise ExtractionError(f"unknown field: {key}")
         if key in current.fields:
@@ -248,9 +264,7 @@ def parse_extraction(text: str) -> Extraction:
     if attestation is not None and requests:
         raise ExtractionError("attestation and RR subsections cannot coexist")
     if attestation is None and not requests:
-        raise ExtractionError(
-            "section carries neither RR subsections nor the attestation"
-        )
+        raise ExtractionError("section carries neither RR subsections nor the attestation")
     for request in requests:
         _validate_request(request)
     return Extraction(attestation, requests)
@@ -275,16 +289,14 @@ def _section_lines(text: str) -> list[str]:
         line = raw.rstrip("\r")
         if fence is not None:
             close = _FENCE_CLOSE_RE.match(line)
-            if close and close.group(1)[0] == fence[0] \
-                    and len(close.group(1)) >= len(fence):
+            if close and close.group(1)[0] == fence[0] and len(close.group(1)) >= len(fence):
                 fence = None
                 continue
             if inside:
                 collected.append(line)
             continue
         opener = _FENCE_OPEN_RE.match(line)
-        if opener and not (opener.group(1)[0] == "`"
-                           and "`" in opener.group(2)):
+        if opener and not (opener.group(1)[0] == "`" and "`" in opener.group(2)):
             fence = opener.group(1)
             continue
         if match := _H2_RE.fullmatch(line):
@@ -301,9 +313,7 @@ def _section_lines(text: str) -> list[str]:
 def _validate_request(request: Request) -> None:
     procedure = request.fields.get("procedure_id")
     if procedure not in PROCEDURES:
-        raise ExtractionError(
-            f"{request.rr_id}: procedure_id must be one of {PROCEDURES}"
-        )
+        raise ExtractionError(f"{request.rr_id}: procedure_id must be one of {PROCEDURES}")
     required = COMMON_FIELDS + PROCEDURE_FIELDS[procedure]
     for key in required:
         if key not in request.fields:
@@ -311,8 +321,7 @@ def _validate_request(request: Request) -> None:
     extra = set(request.fields) - set(required)
     if extra:
         raise ExtractionError(
-            f"{request.rr_id}: fields {sorted(extra)} do not belong to "
-            f"{procedure}"
+            f"{request.rr_id}: fields {sorted(extra)} do not belong to " f"{procedure}"
         )
     enums = {
         "test_family": TEST_FAMILIES + ("unavailable",),
@@ -326,8 +335,7 @@ def _validate_request(request: Request) -> None:
     for key, allowed in enums.items():
         if key in request.fields and request.fields[key] not in allowed:
             raise ExtractionError(
-                f"{request.rr_id}: {key} must be one of {allowed}, "
-                f"got {request.fields[key]!r}"
+                f"{request.rr_id}: {key} must be one of {allowed}, " f"got {request.fields[key]!r}"
             )
     decimals = {
         "p_from_test_statistic": ("reported_p_value",),
@@ -338,8 +346,7 @@ def _validate_request(request: Request) -> None:
     for key in decimals:
         if not _DECIMAL_RE.fullmatch(request.fields[key]):
             raise ExtractionError(
-                f"{request.rr_id}: {key} must be a plain decimal, "
-                f"got {request.fields[key]!r}"
+                f"{request.rr_id}: {key} must be a plain decimal, " f"got {request.fields[key]!r}"
             )
     optional_decimal = {"statistic_value"}
     optional_int = {"n", "scale_min", "scale_max", "stated_n"}
@@ -348,15 +355,12 @@ def _validate_request(request: Request) -> None:
         value = request.fields[key]
         if value != "unavailable" and not _DECIMAL_RE.fullmatch(value):
             raise ExtractionError(
-                f"{request.rr_id}: {key} must be a decimal or "
-                f"'unavailable', got {value!r}"
+                f"{request.rr_id}: {key} must be a decimal or " f"'unavailable', got {value!r}"
             )
     for key in (optional_int | required_int) & set(request.fields):
         value = request.fields[key]
         allow_sentinel = key in optional_int
-        if not _INT_RE.fullmatch(value) and not (
-            allow_sentinel and value == "unavailable"
-        ):
+        if not _INT_RE.fullmatch(value) and not (allow_sentinel and value == "unavailable"):
             raise ExtractionError(
                 f"{request.rr_id}: {key} must be an integer"
                 + (" or 'unavailable'" if allow_sentinel else "")
@@ -377,10 +381,8 @@ def _validate_request(request: Request) -> None:
         # receipt downstream.
         family = request.fields["test_family"]
         shape_rules = {
-            "t": (lambda v: _INT_RE.fullmatch(v),
-                  "a single integer df"),
-            "chi_square": (lambda v: _INT_RE.fullmatch(v),
-                           "a single integer df"),
+            "t": (lambda v: _INT_RE.fullmatch(v), "a single integer df"),
+            "chi_square": (lambda v: _INT_RE.fullmatch(v), "a single integer df"),
             "z": (lambda v: v == "none", "df 'none'"),
             "F": (lambda v: _DF_PAIR_RE.fullmatch(v), "df as 'df1,df2'"),
         }
@@ -406,8 +408,16 @@ def _validate_numeric_domain(request: Request, procedure: str) -> None:
     `reachability_not_completed` instead.
     """
     numeric_keys = (
-        "statistic_value", "df", "reported_p_value", "n", "reported_mean",
-        "scale_min", "scale_max", "reported_sd", "df_reported", "stated_n",
+        "statistic_value",
+        "df",
+        "reported_p_value",
+        "n",
+        "reported_mean",
+        "scale_min",
+        "scale_max",
+        "reported_sd",
+        "df_reported",
+        "stated_n",
     )
     for key in numeric_keys:
         value = request.fields.get(key)
@@ -436,8 +446,7 @@ def _validate_numeric_domain(request: Request, procedure: str) -> None:
             )
     if procedure == "p_from_test_statistic":
         statistic = request.fields["statistic_value"]
-        if statistic != "unavailable" and abs(
-                Fraction(statistic)) > _MAX_P_MAGNITUDE:
+        if statistic != "unavailable" and abs(Fraction(statistic)) > _MAX_P_MAGNITUDE:
             raise ExtractionError(
                 f"{request.rr_id}: statistic_value exceeds the verified "
                 f"convergence domain (|value| <= {_MAX_P_MAGNITUDE})"
@@ -445,12 +454,8 @@ def _validate_numeric_domain(request: Request, procedure: str) -> None:
         df_value = request.fields["df"]
         if df_value not in ("none", "unavailable"):
             pair = _DF_PAIR_RE.fullmatch(df_value)
-            components = (
-                (int(pair.group(1)), int(pair.group(2))) if pair
-                else (int(df_value),)
-            )
-            if any(component > _MAX_P_MAGNITUDE
-                   for component in components):
+            components = (int(pair.group(1)), int(pair.group(2))) if pair else (int(df_value),)
+            if any(component > _MAX_P_MAGNITUDE for component in components):
                 raise ExtractionError(
                     f"{request.rr_id}: df exceeds the verified "
                     f"convergence domain (df <= {_MAX_P_MAGNITUDE})"
@@ -458,6 +463,7 @@ def _validate_numeric_domain(request: Request, procedure: str) -> None:
 
 
 # --- exact rational helpers ----------------------------------------------
+
 
 def _parse_decimal(text: str) -> tuple[Fraction, int]:
     """Exact value and its reported decimal precision."""
@@ -467,15 +473,14 @@ def _parse_decimal(text: str) -> tuple[Fraction, int]:
     return Fraction(text), places
 
 
-def _rounds_to(value: Fraction, reported: Fraction, places: int,
-               rule: str) -> bool:
+def _rounds_to(value: Fraction, reported: Fraction, places: int, rule: str) -> bool:
     """Does ``value`` round to ``reported`` at ``places`` decimals?
 
     Exact: ties are decided by the named rule, never by binary floating
     point. ``reported`` must be exactly representable at ``places`` (it is:
     it was parsed from that digit string).
     """
-    scale = 10 ** places
+    scale = 10**places
     scaled = value * scale
     target = reported * scale
     if target.denominator != 1:
@@ -506,7 +511,7 @@ def _rounds_to(value: Fraction, reported: Fraction, places: int,
 def _fmt_fraction(value: Fraction, places: int) -> str:
     """Fixed-point decimal rendering of an exact rational (half-up ties)."""
     sign = "-" if value < 0 else ""
-    magnitude = abs(value) * 10 ** places
+    magnitude = abs(value) * 10**places
     units = magnitude.numerator // magnitude.denominator
     if magnitude - units >= Fraction(1, 2):
         units += 1
@@ -526,14 +531,13 @@ def _fmt_p(value: float) -> str:
     return f"{value:.3g}"
 
 
-def _interval_text(reported: Fraction, places: int, rules: list[str],
-                   quantity: str) -> str:
+def _interval_text(reported: Fraction, places: int, rules: list[str], quantity: str) -> str:
     """The reporting interval under the operative rounding rule(s), stated
     with its true endpoint behavior (codex round 1, P1-2): a receipt must
     never print a half-up-shaped interval for a truncation or ties-to-even
     verdict — the interval line is part of what adjudication audits.
     """
-    step = Fraction(1, 10 ** places)
+    step = Fraction(1, 10**places)
     half = step / 2
     decimals = places + 1
     if rules == ["truncation"]:
@@ -541,45 +545,55 @@ def _interval_text(reported: Fraction, places: int, rules: list[str],
         # BOTH sides for v == 0 — truncation maps (-step, step) to zero
         # (codex round 2).
         if reported == 0:
-            return (f"{_fmt_fraction(-step, decimals)} < {quantity} < "
-                    f"{_fmt_fraction(step, decimals)} (truncation)")
+            return (
+                f"{_fmt_fraction(-step, decimals)} < {quantity} < "
+                f"{_fmt_fraction(step, decimals)} (truncation)"
+            )
         if reported > 0:
-            return (f"{_fmt_fraction(reported, decimals)} <= {quantity} < "
-                    f"{_fmt_fraction(reported + step, decimals)} "
-                    "(truncation)")
-        return (f"{_fmt_fraction(reported - step, decimals)} < {quantity} "
-                f"<= {_fmt_fraction(reported, decimals)} (truncation)")
+            return (
+                f"{_fmt_fraction(reported, decimals)} <= {quantity} < "
+                f"{_fmt_fraction(reported + step, decimals)} "
+                "(truncation)"
+            )
+        return (
+            f"{_fmt_fraction(reported - step, decimals)} < {quantity} "
+            f"<= {_fmt_fraction(reported, decimals)} (truncation)"
+        )
     low_text = _fmt_fraction(reported - half, decimals)
     high_text = _fmt_fraction(reported + half, decimals)
     if rules == ["half-up"]:
         # Ties away from zero: the tie endpoint on the zero side is
         # included, the other excluded.
         if reported >= 0:
-            return (f"{low_text} <= {quantity} < {high_text} "
-                    "(half-up, ties away from zero)")
-        return (f"{low_text} < {quantity} <= {high_text} "
-                "(half-up, ties away from zero)")
+            return f"{low_text} <= {quantity} < {high_text} " "(half-up, ties away from zero)"
+        return f"{low_text} < {quantity} <= {high_text} " "(half-up, ties away from zero)"
     if rules == ["half-even"]:
         # Endpoint membership is the target's parity: an even last digit
         # claims both tie endpoints, an odd one claims neither (codex
         # round 2 — the closed-interval display was wrong for odd
         # targets).
-        target_even = (reported * 10 ** places).numerator % 2 == 0
+        target_even = (reported * 10**places).numerator % 2 == 0
         if target_even:
-            return (f"{low_text} <= {quantity} <= {high_text} "
-                    "(ties-to-even; both endpoint ties round to this even "
-                    "value)")
-        return (f"{low_text} < {quantity} < {high_text} (ties-to-even; "
-                "the endpoint ties round to the even neighbors)")
-    return (f"{low_text} <= {quantity} <= {high_text} (interval interior; "
-            "endpoint ties depend on the unstated rule, and a verdict is "
-            "issued only where half-up and ties-to-even agree)")
+            return (
+                f"{low_text} <= {quantity} <= {high_text} "
+                "(ties-to-even; both endpoint ties round to this even "
+                "value)"
+            )
+        return (
+            f"{low_text} < {quantity} < {high_text} (ties-to-even; "
+            "the endpoint ties round to the even neighbors)"
+        )
+    return (
+        f"{low_text} <= {quantity} <= {high_text} (interval interior; "
+        "endpoint ties depend on the unstated rule, and a verdict is "
+        "issued only where half-up and ties-to-even agree)"
+    )
 
 
 # --- stdlib distribution tails -------------------------------------------
 
-def _reg_inc_beta(a: float, b: float, x: float,
-                  one_minus_x: float | None = None) -> float:
+
+def _reg_inc_beta(a: float, b: float, x: float, one_minus_x: float | None = None) -> float:
     """Regularized incomplete beta I_x(a, b), continued-fraction form.
 
     Callers that know the complement analytically pass it explicitly: near
@@ -594,8 +608,11 @@ def _reg_inc_beta(a: float, b: float, x: float,
     if one_minus_x <= 0.0:
         return 1.0
     ln_front = (
-        math.lgamma(a + b) - math.lgamma(a) - math.lgamma(b)
-        + a * math.log(x) + b * math.log(one_minus_x)
+        math.lgamma(a + b)
+        - math.lgamma(a)
+        - math.lgamma(b)
+        + a * math.log(x)
+        + b * math.log(one_minus_x)
     )
     front = math.exp(ln_front)
     if x < (a + 1.0) / (a + b + 2.0):
@@ -688,8 +705,7 @@ def _reg_gamma_q(a: float, x: float) -> float:
 
 def t_tail_two(t: float, df: int) -> float:
     denominator = df + t * t
-    return _reg_inc_beta(df / 2.0, 0.5, df / denominator,
-                         one_minus_x=(t * t) / denominator)
+    return _reg_inc_beta(df / 2.0, 0.5, df / denominator, one_minus_x=(t * t) / denominator)
 
 
 def t_tail_upper(t: float, df: int) -> float:
@@ -707,8 +723,9 @@ def z_tail_upper(z: float) -> float:
 
 def f_tail_upper(f_value: float, df1: int, df2: int) -> float:
     denominator = df2 + df1 * f_value
-    return _reg_inc_beta(df2 / 2.0, df1 / 2.0, df2 / denominator,
-                         one_minus_x=(df1 * f_value) / denominator)
+    return _reg_inc_beta(
+        df2 / 2.0, df1 / 2.0, df2 / denominator, one_minus_x=(df1 * f_value) / denominator
+    )
 
 
 def chi2_tail_upper(chi2: float, df: int) -> float:
@@ -718,8 +735,11 @@ def chi2_tail_upper(chi2: float, df: int) -> float:
 # --- procedure: p_from_test_statistic ------------------------------------
 
 _COMPARATOR_TEXT = {
-    "equals": "=", "less_than": "<", "less_than_or_equal": "<=",
-    "greater_than": ">", "greater_than_or_equal": ">=",
+    "equals": "=",
+    "less_than": "<",
+    "less_than_or_equal": "<=",
+    "greater_than": ">",
+    "greater_than_or_equal": ">=",
 }
 
 
@@ -735,16 +755,13 @@ def _p_receipt(request: Request) -> Receipt:
         return _not_computable(base, reason, why)
 
     if family == "unavailable":
-        return stop("test_family_ambiguous",
-                    "the test family is not identifiable from the report")
+        return stop("test_family_ambiguous", "the test family is not identifiable from the report")
     if request["statistic_value"] == "unavailable":
-        return stop("missing_reported_value",
-                    "the test statistic is not reported")
+        return stop("missing_reported_value", "the test statistic is not reported")
     statistic = float(Fraction(request["statistic_value"]))
     df_value = request["df"]
     if df_value == "unavailable":
-        return stop("missing_reported_value",
-                    "the degrees of freedom are not reported")
+        return stop("missing_reported_value", "the degrees of freedom are not reported")
     tail = request["tail_convention"]
     if family in ("F", "chi_square"):
         if tail not in ("upper-tail", "unstated"):
@@ -754,8 +771,9 @@ def _p_receipt(request: Request) -> Receipt:
                 f"{tail} p has no bounded procedure here",
             )
         if statistic < 0:
-            return stop("nonstandard_p_procedure",
-                        f"a negative {family} statistic is not interpretable")
+            return stop(
+                "nonstandard_p_procedure", f"a negative {family} statistic is not interpretable"
+            )
         # Family normalization: the receipt names the operative tail. An
         # unstated extraction stays honest about the paper, but F and
         # chi-square are upper-tail by family (§5.1), so the receipt's
@@ -766,8 +784,7 @@ def _p_receipt(request: Request) -> Receipt:
     # Tail probabilities per licensed tail label.
     if family == "t":
         if not _INT_RE.fullmatch(df_value):
-            return stop("df_identity_ambiguous",
-                        "a t statistic needs a single integer df")
+            return stop("df_identity_ambiguous", "a t statistic needs a single integer df")
         df = int(df_value)
         if df < 1:
             return stop("missing_reported_value", "df must be at least 1")
@@ -783,9 +800,10 @@ def _p_receipt(request: Request) -> Receipt:
         )
     elif family == "z":
         if df_value != "none":
-            return stop("df_identity_ambiguous",
-                        "a z statistic carries no df; extraction must say "
-                        "'none'")
+            return stop(
+                "df_identity_ambiguous",
+                "a z statistic carries no df; extraction must say " "'none'",
+            )
         tails = {
             "two-tailed": z_tail_two(statistic),
             "one-tailed": z_tail_two(statistic) / 2.0,
@@ -798,12 +816,10 @@ def _p_receipt(request: Request) -> Receipt:
     elif family == "F":
         pair = _DF_PAIR_RE.fullmatch(df_value)
         if not pair:
-            return stop("df_identity_ambiguous",
-                        "an F statistic needs df as 'df1,df2'")
+            return stop("df_identity_ambiguous", "an F statistic needs df as 'df1,df2'")
         df1, df2 = int(pair.group(1)), int(pair.group(2))
         if df1 < 1 or df2 < 1:
-            return stop("missing_reported_value",
-                        "F dfs must be at least 1")
+            return stop("missing_reported_value", "F dfs must be at least 1")
         tails = {"upper-tail": f_tail_upper(statistic, df1, df2)}
         derivation = (
             f"F distribution, df=({df1},{df2}): upper-tail probability of "
@@ -811,8 +827,7 @@ def _p_receipt(request: Request) -> Receipt:
         )
     else:  # chi_square
         if not _INT_RE.fullmatch(df_value):
-            return stop("df_identity_ambiguous",
-                        "a chi-square statistic needs a single integer df")
+            return stop("df_identity_ambiguous", "a chi-square statistic needs a single integer df")
         df = int(df_value)
         if df < 1:
             return stop("missing_reported_value", "df must be at least 1")
@@ -849,9 +864,7 @@ def _p_receipt(request: Request) -> Receipt:
             )
         verdicts.append(verdict)
 
-    shown = "; ".join(
-        f"p = {_fmt_p(derived)} ({label})" for label, derived in candidates
-    )
+    shown = "; ".join(f"p = {_fmt_p(derived)} ({label})" for label, derived in candidates)
     base.derivation = derivation
     base.derived_value_or_range = shown
     if comparator == "equals":
@@ -869,15 +882,13 @@ def _p_receipt(request: Request) -> Receipt:
     if len(set(verdicts)) > 1:
         return stop(
             "tail_ambiguous",
-            "the verdict depends on an unstated tail choice: "
-            + shown,
+            "the verdict depends on an unstated tail choice: " + shown,
         )
     base.status = "consistent" if verdicts[0] == "pass" else "mismatch"
     return base
 
 
-def _compare_p(derived: float, comparator: str, reported: Fraction,
-               places: int) -> str:
+def _compare_p(derived: float, comparator: str, reported: Fraction, places: int) -> str:
     reported_f = float(reported)
     if comparator == "equals":
         half = 0.5 * 10.0 ** (-places)
@@ -898,6 +909,7 @@ def _compare_p(derived: float, comparator: str, reported: Fraction,
 
 # --- procedure: grim ------------------------------------------------------
 
+
 def _grim_rules(request: Request) -> list[str]:
     rule = request["rounding_rule"]
     return ["half-up", "half-even"] if rule == "unstated" else [rule]
@@ -905,35 +917,38 @@ def _grim_rules(request: Request) -> list[str]:
 
 def _grim_ints(request: Request, base: Receipt) -> tuple | Receipt:
     if request["n"] == "unavailable":
-        return _not_computable(base, "analytic_n_ambiguous",
-                               "the item-specific analytic N is not reported")
-    if request["scale_min"] == "unavailable" or (
-            request["scale_max"] == "unavailable"):
-        return _not_computable(base, "scale_support_unknown",
-                               "the response-scale support is not reported")
+        return _not_computable(
+            base, "analytic_n_ambiguous", "the item-specific analytic N is not reported"
+        )
+    if request["scale_min"] == "unavailable" or (request["scale_max"] == "unavailable"):
+        return _not_computable(
+            base, "scale_support_unknown", "the response-scale support is not reported"
+        )
     n = int(request["n"])
     lo, hi = int(request["scale_min"]), int(request["scale_max"])
     if n < 1 or lo > hi:
-        return _not_computable(base, "scale_support_unknown",
-                               "N or the scale bounds are not interpretable")
+        return _not_computable(
+            base, "scale_support_unknown", "N or the scale bounds are not interpretable"
+        )
     return n, lo, hi
 
 
-def _reachable_sums(n: int, lo: int, hi: int, reported: Fraction,
-                    places: int, rule: str) -> list[int]:
-    step = Fraction(1, 10 ** places)
+def _reachable_sums(
+    n: int, lo: int, hi: int, reported: Fraction, places: int, rule: str
+) -> list[int]:
+    step = Fraction(1, 10**places)
     window_low = max(n * lo, math.floor((reported - step) * n) - 1)
     window_high = min(n * hi, math.ceil((reported + step) * n) + 1)
     if window_high - window_low > _SUM_WINDOW_BUDGET:
         raise _BudgetExceeded
     return [
-        total for total in range(window_low, window_high + 1)
+        total
+        for total in range(window_low, window_high + 1)
         if _rounds_to(Fraction(total, n), reported, places, rule)
     ]
 
 
-def _grim_neighbors(n: int, lo: int, hi: int,
-                    reported: Fraction) -> list[tuple[int, Fraction]]:
+def _grim_neighbors(n: int, lo: int, hi: int, reported: Fraction) -> list[tuple[int, Fraction]]:
     target = reported * n
     below = math.floor(target)
     above = below + 1
@@ -954,13 +969,12 @@ def _grim_receipt(request: Request) -> Receipt:
     mean_text = request["reported_mean"]
     rules = _grim_rules(request)
     try:
-        reachable = {rule: _reachable_sums(n, lo, hi, reported, places, rule)
-                     for rule in rules}
+        reachable = {rule: _reachable_sums(n, lo, hi, reported, places, rule) for rule in rules}
     except _BudgetExceeded:
         return _not_computable(
-            base, "reachability_not_completed",
-            "the candidate-sum search exceeds this calculator's documented "
-            "window budget",
+            base,
+            "reachability_not_completed",
+            "the candidate-sum search exceeds this calculator's documented " "window budget",
         )
     verdicts = {rule: bool(sums) for rule, sums in reachable.items()}
     interval = _interval_text(reported, places, rules, "mean")
@@ -977,13 +991,17 @@ def _grim_receipt(request: Request) -> Receipt:
     base.comparison_rule = (
         f"the reported mean {mean_text} at {places} decimals is reachable "
         "only if some integer sum lands in its rounding interval under "
-        + ("the stated rounding rule" if len(rules) == 1
-           else "every conventional rounding rule (half-up, half-even)")
+        + (
+            "the stated rounding rule"
+            if len(rules) == 1
+            else "every conventional rounding rule (half-up, half-even)"
+        )
     )
     base.rounding_interval = interval
     if len(set(verdicts.values())) > 1:
         return _not_computable(
-            base, "rounding_rule_ambiguous",
+            base,
+            "rounding_rule_ambiguous",
             "reachability changes with the unstated rounding rule",
         )
     reachable_now = next(iter(verdicts.values()))
@@ -994,14 +1012,11 @@ def _grim_receipt(request: Request) -> Receipt:
             f"{_fmt_fraction(Fraction(achieving, n), neighbor_places)}, "
             f"which rounds to {mean_text}"
         )
-        base.nearest_achievable = (
-            f"achieving sum {achieving}; adjacent sums {neighbors}"
-        )
+        base.nearest_achievable = f"achieving sum {achieving}; adjacent sums {neighbors}"
         base.status = "consistent"
     else:
         base.derived_value_or_range = (
-            f"no integer sum in [{n * lo},{n * hi}] rounds to {mean_text} "
-            f"at {places} decimals"
+            f"no integer sum in [{n * lo},{n * hi}] rounds to {mean_text} " f"at {places} decimals"
         )
         base.nearest_achievable = neighbors
         base.status = "mismatch"
@@ -1009,6 +1024,7 @@ def _grim_receipt(request: Request) -> Receipt:
 
 
 # --- procedure: grimmer ---------------------------------------------------
+
 
 class _BudgetExceeded(Exception):
     pass
@@ -1062,12 +1078,11 @@ def _attainable_sumsq(n: int, lo: int, hi: int, total: int) -> frozenset:
     return rec(0, n, total)
 
 
-def _sd_reachable(variances: set[Fraction], reported: Fraction, places: int,
-                  rule: str) -> bool:
+def _sd_reachable(variances: set[Fraction], reported: Fraction, places: int, rule: str) -> bool:
     """Is any attainable SD (given as its exact square) reportable as
     ``reported`` at ``places`` decimals under ``rule``? Decided on SD^2, so
     only a rational SD exactly on an interval endpoint needs the tie rule."""
-    step = Fraction(1, 10 ** places)
+    step = Fraction(1, 10**places)
     if rule == "truncation":
         low, high = reported, reported + step
         low_closed = True
@@ -1110,34 +1125,30 @@ def _grimmer_receipt(request: Request) -> Receipt:
         # convention-dependent cases stop here.
         if convention == "sample":
             return _not_computable(
-                base, "analytic_n_ambiguous",
-                "a sample SD is undefined for a single response")
+                base, "analytic_n_ambiguous", "a sample SD is undefined for a single response"
+            )
         if convention == "unstated":
             return _not_computable(
-                base, "sd_convention_unknown",
+                base,
+                "sd_convention_unknown",
                 "with one response a population SD is defined (zero) but "
                 "a sample SD is not; the verdict depends on the unstated "
-                "convention")
+                "convention",
+            )
     mean_reported, mean_places = _parse_decimal(request["reported_mean"])
     sd_reported, sd_places = _parse_decimal(request["reported_sd"])
     sd_text = request["reported_sd"]
     rules = _grim_rules(request)
-    conventions = (
-        ["sample", "population"] if convention == "unstated"
-        else [convention]
-    )
+    conventions = ["sample", "population"] if convention == "unstated" else [convention]
     per_rule: dict[str, dict[str, str]] = {}
     variance_sets: dict[str, dict[str, set[Fraction]]] = {}
     try:
         for rule in rules:
-            sums = _reachable_sums(n, lo, hi, mean_reported, mean_places,
-                                   rule)
+            sums = _reachable_sums(n, lo, hi, mean_reported, mean_places, rule)
             if not sums:
                 per_rule[rule] = {conv: "mean_fail" for conv in conventions}
                 continue
-            variances: dict[str, set[Fraction]] = {
-                conv: set() for conv in conventions
-            }
+            variances: dict[str, set[Fraction]] = {conv: set() for conv in conventions}
             for total in sums:
                 for sumsq in _attainable_sumsq(n, lo, hi, total):
                     centered = Fraction(sumsq) - Fraction(total * total, n)
@@ -1152,15 +1163,15 @@ def _grimmer_receipt(request: Request) -> Receipt:
             per_rule[rule] = {
                 conv: (
                     "reachable"
-                    if _sd_reachable(variances[conv], sd_reported,
-                                     sd_places, rule)
+                    if _sd_reachable(variances[conv], sd_reported, sd_places, rule)
                     else "unreachable"
                 )
                 for conv in conventions
             }
     except _BudgetExceeded:
         return _not_computable(
-            base, "reachability_not_completed",
+            base,
+            "reachability_not_completed",
             "the exhaustive feasible-value search exceeds this calculator's "
             "documented state budget",
         )
@@ -1171,8 +1182,7 @@ def _grimmer_receipt(request: Request) -> Receipt:
         f"[{lo},{hi}] is enumerated exhaustively and the implied SD is "
         "compared exactly on its square"
     )
-    base.rounding_interval = _interval_text(
-        sd_reported, sd_places, rules, "SD")
+    base.rounding_interval = _interval_text(sd_reported, sd_places, rules, "SD")
     base.comparison_rule = (
         f"the reported SD {sd_text} at {sd_places} decimals is reachable "
         "only if some attainable SD lands in its rounding interval; "
@@ -1182,41 +1192,39 @@ def _grimmer_receipt(request: Request) -> Receipt:
     # Decision order (documented, deterministic): the mean's own GRIM gate
     # first; then an unstated rounding rule that changes any verdict; then
     # an unstated SD convention that does.
-    mean_failed = [
-        rule for rule in rules
-        if per_rule[rule][conventions[0]] == "mean_fail"
-    ]
+    mean_failed = [rule for rule in rules if per_rule[rule][conventions[0]] == "mean_fail"]
     if len(mean_failed) == len(rules):
         return _not_computable(
-            base, "mean_grim_inconsistent",
+            base,
+            "mean_grim_inconsistent",
             "the reported mean is itself GRIM-inconsistent, so no response "
             "set exists whose SD could be checked",
         )
     if mean_failed:
         return _not_computable(
-            base, "rounding_rule_ambiguous",
+            base,
+            "rounding_rule_ambiguous",
             "the mean is reachable under one unstated rounding rule and "
             "unreachable under another",
         )
     for conv in conventions:
         if len({per_rule[rule][conv] for rule in rules}) > 1:
             return _not_computable(
-                base, "rounding_rule_ambiguous",
+                base,
+                "rounding_rule_ambiguous",
                 "reachability changes with the unstated rounding rule",
             )
     outcomes = {per_rule[rules[0]][conv] for conv in conventions}
     if len(outcomes) > 1:
         return _not_computable(
-            base, "sd_convention_unknown",
+            base,
+            "sd_convention_unknown",
             "the verdict depends on whether the reported SD is the sample "
             "or the population statistic",
         )
     outcome = outcomes.pop()
     first_rule = rules[0]
-    conv_label = (
-        conventions[0] if len(conventions) == 1
-        else "sample-or-population"
-    )
+    conv_label = conventions[0] if len(conventions) == 1 else "sample-or-population"
     variances = variance_sets[first_rule][conventions[0]]
     nearest = _nearest_sds(variances, sd_reported)
     base.nearest_achievable = nearest
@@ -1259,21 +1267,22 @@ def _n_from_df_receipt(request: Request) -> Receipt:
     identity = request["df_identity_candidate"]
     if identity == "other_or_corrected":
         return _not_computable(
-            base, "model_correction_or_pooling",
+            base,
+            "model_correction_or_pooling",
             "the analysis uses a corrected, pooled, or model-based df whose "
             "required inputs are not present",
         )
     if identity == "unavailable":
         return _not_computable(
-            base, "df_identity_ambiguous",
+            base,
+            "df_identity_ambiguous",
             "no test-specific df identity is identifiable from the report",
         )
-    if request["stated_n"] == "unavailable" or (
-            request["stated_n_relation"] == "unavailable"):
+    if request["stated_n"] == "unavailable" or (request["stated_n_relation"] == "unavailable"):
         return _not_computable(
-            base, "missing_reported_value",
-            "no manuscript N claim is available to compare the implied N "
-            "against",
+            base,
+            "missing_reported_value",
+            "no manuscript N claim is available to compare the implied N " "against",
         )
     df_reported = int(request["df_reported"])
     stated_n = int(request["stated_n"])
@@ -1282,7 +1291,8 @@ def _n_from_df_receipt(request: Request) -> Receipt:
     ceiling_note = (
         "; Welch-Satterthwaite df cannot exceed the ordinary total-df "
         "ceiling, so every variant needs at least this N"
-        if identity == "df=N1+N2-2" else ""
+        if identity == "df=N1+N2-2"
+        else ""
     )
     base.derivation = (
         f"{identity} gives implied N = {df_reported} + "
@@ -1307,13 +1317,16 @@ def _n_from_df_receipt(request: Request) -> Receipt:
 
 # --- receipt assembly -----------------------------------------------------
 
+
 def _base_receipt(request: Request) -> Receipt:
     return Receipt(
         procedure_id=request["procedure_id"],
         evidence_anchor=request["evidence_anchor"],
         reported_inputs=request["reported_inputs"],
         assumptions=request["assumptions"],
-        derivation="", derived_value_or_range="", comparison_rule="",
+        derivation="",
+        derived_value_or_range="",
+        comparison_rule="",
         status="",
     )
 
@@ -1354,22 +1367,16 @@ def compute_receipts(extraction: Extraction) -> str:
         lines.append(f"reported_inputs: {receipt.reported_inputs}")
         lines.append(f"assumptions: {receipt.assumptions}")
         lines.append(f"derivation: {receipt.derivation}")
-        lines.append(
-            f"derived_value_or_range: {receipt.derived_value_or_range}"
-        )
+        lines.append(f"derived_value_or_range: {receipt.derived_value_or_range}")
         lines.append(f"comparison_rule: {receipt.comparison_rule}")
         lines.append(f"status: {receipt.status}")
         if receipt.not_computable_reason is not None:
-            lines.append(
-                f"not_computable_reason: {receipt.not_computable_reason}"
-            )
+            lines.append(f"not_computable_reason: {receipt.not_computable_reason}")
         if receipt.tail_convention is not None:
             lines.append(f"tail_convention: {receipt.tail_convention}")
-        if receipt.rounding_interval is not None and receipt.status in (
-                "consistent", "mismatch"):
+        if receipt.rounding_interval is not None and receipt.status in ("consistent", "mismatch"):
             lines.append(f"rounding_interval: {receipt.rounding_interval}")
-        if receipt.nearest_achievable is not None and receipt.status in (
-                "consistent", "mismatch"):
+        if receipt.nearest_achievable is not None and receipt.status in ("consistent", "mismatch"):
             lines.append(f"nearest_achievable: {receipt.nearest_achievable}")
         if receipt.df_identity is not None:
             lines.append(f"df_identity: {receipt.df_identity}")
@@ -1401,8 +1408,7 @@ def main(argv=None) -> int:
         # newline="\n" pins the artifact bytes: default newline translation
         # would emit CRLF on Windows and the identity gate compares bytes
         # (codex round 1, P2-5).
-        with args.output.open("x", encoding="utf-8",
-                              newline="\n") as stream:
+        with args.output.open("x", encoding="utf-8", newline="\n") as stream:
             stream.write(receipts)
     except OSError as exc:
         print(f"cannot write receipts: {exc}", file=sys.stderr)

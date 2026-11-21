@@ -13,7 +13,6 @@ if str(REPO_ROOT / "scripts") not in sys.path:
 
 import check_policy_anchor_protocol as cpap  # noqa: E402
 
-
 # Each named invariant from impl spec §4.3 must be referenced verbatim. The
 # protocol doc must also resolve each §4.4 #1–#11 concern by name and carry
 # the §3 G10 7-row precedence table verbatim from Decision Doc.

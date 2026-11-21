@@ -21,15 +21,16 @@ def _atom(entries: list[str]) -> bytes:
     """Build an Atom feed body with the given <entry> blocks (raw XML strings)."""
     body = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<feed xmlns="http://www.w3.org/2005/Atom">\n'
-        + "\n".join(entries)
-        + "\n</feed>"
+        '<feed xmlns="http://www.w3.org/2005/Atom">\n' + "\n".join(entries) + "\n</feed>"
     )
     return body.encode("utf-8")
 
 
-def _entry(title: str, arxiv_url: str = "http://arxiv.org/abs/1706.03762v5",
-           published: str = "2017-06-12T00:00:00Z") -> str:
+def _entry(
+    title: str,
+    arxiv_url: str = "http://arxiv.org/abs/1706.03762v5",
+    published: str = "2017-06-12T00:00:00Z",
+) -> str:
     return (
         "<entry>"
         f"<id>{arxiv_url}</id>"
@@ -197,10 +198,12 @@ def test_title_search_prefers_matching_year():
     """Two same-title candidates - matching publication year wins via 0.05 bonus."""
     from arxiv_client import ArxivClient
 
-    body = _atom([
-        _entry("Attention Is All You Need", published="1999-01-01T00:00:00Z"),
-        _entry("Attention Is All You Need", published="2017-06-12T00:00:00Z"),
-    ])
+    body = _atom(
+        [
+            _entry("Attention Is All You Need", published="1999-01-01T00:00:00Z"),
+            _entry("Attention Is All You Need", published="2017-06-12T00:00:00Z"),
+        ]
+    )
     with patch("urllib.request.urlopen", return_value=_mock_resp(body)):
         client = ArxivClient()
         result = client.title_search("Attention Is All You Need", year=2017)
@@ -221,7 +224,10 @@ def test_429_backs_off_at_tou_pacing_floor(monkeypatch):
         call_count[0] += 1
         raise urllib.error.HTTPError(
             url="http://export.arxiv.org/api/query",
-            code=429, msg="Too Many Requests", hdrs={}, fp=None,
+            code=429,
+            msg="Too Many Requests",
+            hdrs={},
+            fp=None,
         )
 
     sleeps = []
@@ -245,8 +251,11 @@ def test_5xx_skips_immediately():
     def mock_urlopen(*args, **kwargs):
         call_count[0] += 1
         raise urllib.error.HTTPError(
-            url="http://export.arxiv.org/api/query", code=503, msg="SU",
-            hdrs={}, fp=None,
+            url="http://export.arxiv.org/api/query",
+            code=503,
+            msg="SU",
+            hdrs={},
+            fp=None,
         )
 
     with patch("urllib.request.urlopen", side_effect=mock_urlopen):
@@ -283,8 +292,10 @@ def test_malformed_xml_body_raises_unavailable():
     which is what an interrupted transfer actually produces."""
     from arxiv_client import ArxivClient, ArxivUnavailable
 
-    with patch("urllib.request.urlopen", return_value=_mock_resp(
-            b'<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>trunc')):
+    with patch(
+        "urllib.request.urlopen",
+        return_value=_mock_resp(b'<feed xmlns="http://www.w3.org/2005/Atom"><entry><title>trunc'),
+    ):
         client = ArxivClient()
         with pytest.raises(ArxivUnavailable):
             client.title_search("any title")
@@ -340,9 +351,7 @@ def test_truncated_read_raises_unavailable():
     from arxiv_client import ArxivClient, ArxivUnavailable
 
     mock_response = MagicMock()
-    mock_response.read.side_effect = http.client.IncompleteRead(
-        partial=b"<feed>", expected=200
-    )
+    mock_response.read.side_effect = http.client.IncompleteRead(partial=b"<feed>", expected=200)
     mock_response.__enter__ = MagicMock(return_value=mock_response)
     mock_response.__exit__ = MagicMock(return_value=None)
 
@@ -360,10 +369,10 @@ def test_throttle_uses_monotonic_clock(monkeypatch):
     monotonic_calls = []
     time_calls = []
 
-    monkeypatch.setattr("arxiv_client.time.monotonic",
-                        lambda: (monotonic_calls.append(1), 100.0)[1])
-    monkeypatch.setattr("arxiv_client.time.time",
-                        lambda: (time_calls.append(1), 100.0)[1])
+    monkeypatch.setattr(
+        "arxiv_client.time.monotonic", lambda: (monotonic_calls.append(1), 100.0)[1]
+    )
+    monkeypatch.setattr("arxiv_client.time.time", lambda: (time_calls.append(1), 100.0)[1])
 
     client = ArxivClient()
     client._throttle()  # no prior request -> short-circuit

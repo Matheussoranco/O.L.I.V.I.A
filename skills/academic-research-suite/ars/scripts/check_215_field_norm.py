@@ -51,7 +51,7 @@ def _block(text: str, header_re: str) -> str | None:
     if not m:
         return None
     start = m.start()
-    rest = text[m.end():]
+    rest = text[m.end() :]
     in_fence = False
     offset = 0
     for line in rest.splitlines(keepends=True):
@@ -71,15 +71,23 @@ def check() -> list[str]:
     dr = _read("academic-paper-reviewer/agents/domain_reviewer_agent.md")
     step5 = _block(dr, r"^### Step 5: Field-Norm Severity Discipline \(#215\)")
     if step5 is None:
-        errors.append("domain_reviewer_agent.md: missing '### Step 5: Field-Norm Severity Discipline (#215)' block")
+        errors.append(
+            "domain_reviewer_agent.md: missing '### Step 5: Field-Norm Severity Discipline (#215)' block"
+        )
     else:
         # The down-rate prohibition AND the load-bearing positive MUST-ground clause must
         # both survive. The positive clause binds the modal to the grounding requirement
         # ("MUST** ground the norm in an external"), so weakening MUST→SHOULD is caught — a
         # bare "ground the norm" substring would still pass under SHOULD (codex re-review P1).
-        for clause in ("MUST NOT", "[FIELD-NORM UNVERIFIED]", "MUST** ground the norm in an external"):
+        for clause in (
+            "MUST NOT",
+            "[FIELD-NORM UNVERIFIED]",
+            "MUST** ground the norm in an external",
+        ):
             if clause not in step5:
-                errors.append(f"domain_reviewer_agent.md Step 5: missing required clause {clause!r}")
+                errors.append(
+                    f"domain_reviewer_agent.md Step 5: missing required clause {clause!r}"
+                )
         # codex P1: evidence is NOT limited to a literature citation.
         if "not limited to a literature citation" not in step5:
             errors.append(
@@ -91,7 +99,9 @@ def check() -> list[str]:
     da = _read("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md")
     dim9 = _block(da, r"^### 9\. Field-Norm Severity Calibration \(#215\)")
     if dim9 is None:
-        errors.append("devils_advocate_reviewer_agent.md: missing '### 9. Field-Norm Severity Calibration (#215)' dimension")
+        errors.append(
+            "devils_advocate_reviewer_agent.md: missing '### 9. Field-Norm Severity Calibration (#215)' dimension"
+        )
     # The two required fields must land in the OUTPUT FORMAT block — that is what makes the
     # rule reach the actual review output. A file-wide check would pass on the prose mention
     # in the gating section even if the output-format columns were deleted (codex P1).
@@ -108,7 +118,9 @@ def check() -> list[str]:
         for severity in ("CRITICAL", "MAJOR"):
             sub = re.search(rf"^#### {severity}\n(.*?)(?=^#### |\Z)", output_fmt, re.M | re.S)
             if sub is None:
-                errors.append(f"devils_advocate_reviewer_agent.md Output Format: missing '#### {severity}' table")
+                errors.append(
+                    f"devils_advocate_reviewer_agent.md Output Format: missing '#### {severity}' table"
+                )
                 continue
             for column in ("Field-Norm Boundary", "Evidence-Crossing Rationale"):
                 if column not in sub.group(1):
@@ -121,7 +133,9 @@ def check() -> list[str]:
     # caught independently of the output-format columns.
     crit_block = _block(da, r"^### What Constitutes a CRITICAL Finding")
     if crit_block is None:
-        errors.append("devils_advocate_reviewer_agent.md: missing '### What Constitutes a CRITICAL Finding' block")
+        errors.append(
+            "devils_advocate_reviewer_agent.md: missing '### What Constitutes a CRITICAL Finding' block"
+        )
     else:
         for field in ("field_norm_boundary", "evidence_crossing_rationale"):
             if field not in crit_block:
@@ -139,7 +153,9 @@ def check() -> list[str]:
     cal = _read("academic-paper-reviewer/references/calibration_mode_protocol.md")
     phase35 = _block(cal, r"^### Phase 3\.5: Severity-miscalibration measurement \(#215\)")
     if phase35 is None:
-        errors.append("calibration_mode_protocol.md: missing '### Phase 3.5: Severity-miscalibration measurement (#215)' block")
+        errors.append(
+            "calibration_mode_protocol.md: missing '### Phase 3.5: Severity-miscalibration measurement (#215)' block"
+        )
     else:
         # Require the actual risk-level DEFINITIONS, not bare words. The intro line already
         # contains "low / med / high", so a substring check passes even if all three

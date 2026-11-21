@@ -20,10 +20,10 @@ evidence row's recomputed hash.
 from __future__ import annotations
 
 import argparse
-from datetime import datetime, timezone
 import json
-from pathlib import Path
 import sys
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from jsonschema import Draft202012Validator
@@ -32,15 +32,11 @@ try:
     from scripts import build_claim_standing_candidate_ledger as substrate
 except ImportError:  # direct script execution
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import build_claim_standing_candidate_ledger as substrate  # noqa: E402
+    import build_claim_standing_candidate_ledger as substrate
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-STANCE_RECORD_SCHEMA = (
-    REPO_ROOT / "shared/contracts/claim_standing/stance_record.schema.json"
-)
-EVIDENCE_ROW_SCHEMA = (
-    REPO_ROOT / "shared/contracts/evidence/evidence_row_v1_3.schema.json"
-)
+STANCE_RECORD_SCHEMA = REPO_ROOT / "shared/contracts/claim_standing/stance_record.schema.json"
+EVIDENCE_ROW_SCHEMA = REPO_ROOT / "shared/contracts/evidence/evidence_row_v1_3.schema.json"
 PROMPT_CONTRACT_VERSION = "claim-standing-stance-prompt-1.0"
 STANCE_RECORD_SUFFIX = ".stance-record.json"
 EVIDENCE_ROWS_SUFFIX = ".evidence-rows.json"
@@ -80,28 +76,19 @@ def _fail(message: str) -> None:
 
 
 def _now() -> str:
-    return (
-        datetime.now(timezone.utc)
-        .replace(microsecond=0)
-        .isoformat()
-        .replace("+00:00", "Z")
-    )
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _validate_schema(schema_path: Path, value: dict[str, Any], label: str) -> None:
     schema = json.loads(schema_path.read_bytes())
-    errors = sorted(
-        Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path)
-    )
+    errors = sorted(Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path))
     if errors:
         first = errors[0]
         _fail(f"{label} schema: {list(first.path)!r}: {first.message}")
 
 
 def _require_stance_consent(plan: dict[str, Any]) -> None:
-    substrate.validate_schema(
-        plan, substrate.plan_schema_filename(plan), "query plan"
-    )
+    substrate.validate_schema(plan, substrate.plan_schema_filename(plan), "query plan")
     substrate.validate_plan(plan)
     consent = plan["consent"]
     if (
@@ -134,9 +121,7 @@ def _require_transport_identity(plan: dict[str, Any], transport: Any) -> None:
 
 
 def _require_bound_ledger(plan: dict[str, Any], ledger_value: dict[str, Any]) -> None:
-    substrate.validate_schema(
-        ledger_value, "candidate_ledger.schema.json", "candidate ledger"
-    )
+    substrate.validate_schema(ledger_value, "candidate_ledger.schema.json", "candidate ledger")
     if ledger_value["candidate_ledger_sha256"] != substrate.bound_digest(
         ledger_value, "candidate_ledger_sha256"
     ):
@@ -251,9 +236,7 @@ def _evidence_row(
     return row
 
 
-def _stance_prompt(
-    plan: dict[str, Any], family: dict[str, Any], hit: dict[str, Any]
-) -> str:
+def _stance_prompt(plan: dict[str, Any], family: dict[str, Any], hit: dict[str, Any]) -> str:
     return PROMPT_TEMPLATE.format(
         claim=plan["claim"]["claim_text"],
         title=hit["title"] or "(untitled)",
@@ -312,9 +295,7 @@ def run_stance(
         assessment_input_sha = substrate.digest(
             {
                 "claim_sha256": plan["claim"]["claim_sha256"],
-                "candidate_content_sha256": substrate.text_digest(
-                    hit["abstract_text"]
-                ),
+                "candidate_content_sha256": substrate.text_digest(hit["abstract_text"]),
                 "prompt_contract_version": PROMPT_CONTRACT_VERSION,
                 "prompt_sha256": prompt_sha,
             }
@@ -349,7 +330,7 @@ def run_stance(
             transmission["result_state"] = "judge_timeout"
             rows.append(base_row)
             continue
-        except Exception:  # noqa: BLE001 — any provider failure is judge_error
+        except Exception:  # — any provider failure is judge_error
             base_row["failure_state"] = "judge_error"
             transmission["result_state"] = "judge_error"
             rows.append(base_row)
@@ -379,9 +360,7 @@ def run_stance(
             transmission["result_state"] = "parse_error"
             rows.append(base_row)
             continue
-        evidence = _evidence_row(
-            plan, ledger_value, family, hit, parsed["quote"], assessed_at
-        )
+        evidence = _evidence_row(plan, ledger_value, family, hit, parsed["quote"], assessed_at)
         evidence_rows.append(evidence)
         transmission["result_state"] = "performed"
         base_row.update(
@@ -429,17 +408,13 @@ def run_stance(
         "distribution": distribution,
         "completed_at": _now(),
     }
-    record["stance_record_sha256"] = substrate.bound_digest(
-        record, "stance_record_sha256"
-    )
+    record["stance_record_sha256"] = substrate.bound_digest(record, "stance_record_sha256")
     _validate_schema(STANCE_RECORD_SCHEMA, record, "stance record")
     validate_stance_record(plan, ledger_value, record, evidence_rows)
     return record, evidence_rows, transmissions
 
 
-def expected_identity(
-    plan: dict[str, Any], ledger_value: dict[str, Any]
-) -> dict[str, str]:
+def expected_identity(plan: dict[str, Any], ledger_value: dict[str, Any]) -> dict[str, str]:
     """The §7 probe-identity hash set one (plan, ledger) pair binds.
 
     Single authority for the identity comparison used by the semantic
@@ -450,9 +425,7 @@ def expected_identity(
         "consent_receipt_sha256": plan["consent"]["receipt_sha256"],
         "query_plan_sha256": plan["plan_sha256"],
         "adapter_registry_sha256": substrate.digest(plan["provider_roster"]),
-        "candidate_ledger_sha256": substrate.bound_digest(
-            ledger_value, "candidate_ledger_sha256"
-        ),
+        "candidate_ledger_sha256": substrate.bound_digest(ledger_value, "candidate_ledger_sha256"),
         "stance_plan_sha256": substrate.digest(plan.get("stance_plan")),
     }
 
@@ -467,38 +440,30 @@ def validate_stance_record(
     _require_stance_consent(plan)
     _require_bound_ledger(plan, ledger_value)
     _validate_schema(STANCE_RECORD_SCHEMA, record, "stance record")
-    if record["stance_record_sha256"] != substrate.bound_digest(
-        record, "stance_record_sha256"
-    ):
+    if record["stance_record_sha256"] != substrate.bound_digest(record, "stance_record_sha256"):
         _fail("stance_record_sha256 does not bind the record")
 
     identity = record["identity"]
     expected = expected_identity(plan, ledger_value)
     for field, value in expected.items():
         if identity[field] != value:
-            _fail(f"identity.{field} drifted: the record is stale (candidate_ledger, plan, or consent changed)")
+            _fail(
+                f"identity.{field} drifted: the record is stale (candidate_ledger, plan, or consent changed)"
+            )
     runtime = record["stance_runtime"]
     stance_plan = plan["stance_plan"]
     for field in ("provider_identity", "model_identity", "prompt_contract_version"):
         if runtime[field] != stance_plan[field]:
-            _fail(
-                f"stance_runtime.{field} does not match the consented "
-                "stance_plan"
-            )
+            _fail(f"stance_runtime.{field} does not match the consented " "stance_plan")
 
-    selected_ids = [
-        family["work_family_id"] for family in _selected_families(ledger_value)
-    ]
+    selected_ids = [family["work_family_id"] for family in _selected_families(ledger_value)]
     row_ids = [row["work_family_id"] for row in record["rows"]]
     if row_ids != selected_ids:
         _fail(
             "rows must cover exactly the ledger's selected work families, "
             "once each, in work_family_id order"
         )
-    ledger_families = {
-        family["work_family_id"]: family
-        for family in ledger_value["work_families"]
-    }
+    ledger_families = {family["work_family_id"]: family for family in ledger_value["work_families"]}
     for row in record["rows"]:
         family = ledger_families[row["work_family_id"]]
         if row["canonical_raw_hit_id"] != family["canonical_raw_hit_id"]:
@@ -520,10 +485,7 @@ def validate_stance_record(
         _fail("distribution.selected_total does not match the rows")
 
     hits_by_id = {hit["raw_hit_id"]: hit for hit in ledger_value["raw_hits"]}
-    families_by_id = {
-        family["work_family_id"]: family
-        for family in ledger_value["work_families"]
-    }
+    families_by_id = {family["work_family_id"]: family for family in ledger_value["work_families"]}
     rows_by_id = {}
     for row in evidence_rows:
         _validate_schema(EVIDENCE_ROW_SCHEMA, row, "evidence row")
@@ -540,8 +502,7 @@ def validate_stance_record(
                 _fail(f"evidence row {ref['row_id']} is referenced but absent")
             if evidence["row_sha256"] != ref["row_sha256"]:
                 _fail(
-                    f"evidence row {ref['row_id']}: row_sha256 does not bind "
-                    "the referenced row"
+                    f"evidence row {ref['row_id']}: row_sha256 does not bind " "the referenced row"
                 )
             referenced.add(ref["row_id"])
             # Replay the evidence against the exact ledger candidate: a row
@@ -555,9 +516,7 @@ def validate_stance_record(
             ):
                 _fail(f"evidence row {ref['row_id']}: claim binding drifted")
             candidate = evidence["candidate"]
-            if candidate["candidate_ledger_sha256"] != ledger_value[
-                "candidate_ledger_sha256"
-            ]:
+            if candidate["candidate_ledger_sha256"] != ledger_value["candidate_ledger_sha256"]:
                 _fail(f"evidence row {ref['row_id']}: ledger binding drifted")
             if (
                 candidate["work_family_id"] != row["work_family_id"]
@@ -592,8 +551,7 @@ def validate_stance_record(
                 if (
                     span["end"] > len(source_bytes)
                     or span["start"] >= span["end"]
-                    or evidence["source"]["source_content_utf8_bytes"]
-                    != len(source_bytes)
+                    or evidence["source"]["source_content_utf8_bytes"] != len(source_bytes)
                 ):
                     _fail(f"evidence row {ref['row_id']}: span is out of bounds")
                 try:
@@ -613,9 +571,9 @@ def validate_stance_record(
     # Symmetrically, a parse_error row whose retained output parses cleanly
     # is a downgrade forgery.
     for row in record["rows"]:
-        if row["raw_output"] is not None and row[
-            "raw_output_sha256"
-        ] != substrate.text_digest(row["raw_output"]):
+        if row["raw_output"] is not None and row["raw_output_sha256"] != substrate.text_digest(
+            row["raw_output"]
+        ):
             _fail(
                 f"row {row['work_family_id']}: raw_output_sha256 does not "
                 "bind the retained output"
@@ -642,9 +600,7 @@ def validate_stance_record(
                 # A transport-reaching failure row still binds exactly what
                 # was sent: its prompt hashes must replay from the frozen
                 # template (the transmission cross-check depends on this).
-                expected_prompt_sha = substrate.text_digest(
-                    _stance_prompt(plan, family, hit)
-                )
+                expected_prompt_sha = substrate.text_digest(_stance_prompt(plan, family, hit))
                 if row["prompt_sha256"] != expected_prompt_sha:
                     _fail(
                         f"row {row['work_family_id']}: prompt_sha256 does "
@@ -653,16 +609,13 @@ def validate_stance_record(
                 if row["assessment_input_sha256"] != substrate.digest(
                     {
                         "claim_sha256": plan["claim"]["claim_sha256"],
-                        "candidate_content_sha256": substrate.text_digest(
-                            hit["abstract_text"]
-                        ),
+                        "candidate_content_sha256": substrate.text_digest(hit["abstract_text"]),
                         "prompt_contract_version": PROMPT_CONTRACT_VERSION,
                         "prompt_sha256": expected_prompt_sha,
                     }
                 ):
                     _fail(
-                        f"row {row['work_family_id']}: "
-                        "assessment_input_sha256 does not replay"
+                        f"row {row['work_family_id']}: " "assessment_input_sha256 does not replay"
                     )
             else:
                 if row["failure_state"] != "abstract_missing":
@@ -671,9 +624,7 @@ def validate_stance_record(
                         "candidates are never dispatched, so only "
                         "abstract_missing can stand"
                     )
-                if row["prompt_sha256"] is not None or (
-                    row["assessment_input_sha256"] is not None
-                ):
+                if row["prompt_sha256"] is not None or (row["assessment_input_sha256"] is not None):
                     _fail(
                         f"row {row['work_family_id']}: an undispatched row "
                         "cannot carry prompt hashes"
@@ -707,17 +658,12 @@ def validate_stance_record(
         if row["assessment_input_sha256"] != substrate.digest(
             {
                 "claim_sha256": plan["claim"]["claim_sha256"],
-                "candidate_content_sha256": substrate.text_digest(
-                    hit["abstract_text"]
-                ),
+                "candidate_content_sha256": substrate.text_digest(hit["abstract_text"]),
                 "prompt_contract_version": PROMPT_CONTRACT_VERSION,
                 "prompt_sha256": expected_prompt_sha,
             }
         ):
-            _fail(
-                f"row {row['work_family_id']}: assessment_input_sha256 does "
-                "not replay"
-            )
+            _fail(f"row {row['work_family_id']}: assessment_input_sha256 does " "not replay")
         quoted = {ref["row_id"] for ref in row["evidence_row_refs"]}
         for ref_id in quoted:
             if rows_by_id[ref_id]["excerpt"]["text"] != parsed["quote"]:
@@ -730,9 +676,7 @@ def validate_stance_record(
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
-    run_parser = commands.add_parser(
-        "run", help="classify stance for every selected work family"
-    )
+    run_parser = commands.add_parser("run", help="classify stance for every selected work family")
     run_parser.add_argument("--query-plan", type=Path, required=True)
     parser_note = (
         "outputs are derived from the consent's authorized_output_path: "

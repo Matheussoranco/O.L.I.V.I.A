@@ -16,37 +16,23 @@ import argparse
 import hashlib
 import json
 import sys
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INPUT_SCHEMA_PATH = (
-    REPO_ROOT
-    / "shared"
-    / "contracts"
-    / "reviewer"
-    / "review_panel_provenance_input.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "reviewer" / "review_panel_provenance_input.schema.json"
 )
 ARTIFACT_SCHEMA_PATH = (
-    REPO_ROOT
-    / "shared"
-    / "contracts"
-    / "reviewer"
-    / "review_panel_provenance.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "reviewer" / "review_panel_provenance.schema.json"
 )
 CARRIER_SCHEMA_PATH = (
-    REPO_ROOT
-    / "shared"
-    / "contracts"
-    / "reviewer"
-    / "review_panel_provenance_carrier.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "reviewer" / "review_panel_provenance_carrier.schema.json"
 )
-FULL_CONTRACT_PATH = (
-    REPO_ROOT / "shared" / "contracts" / "reviewer" / "full.json"
-)
+FULL_CONTRACT_PATH = REPO_ROOT / "shared" / "contracts" / "reviewer" / "full.json"
 
 INPUT_VERSION = "review-panel-provenance-input/1.0"
 ARTIFACT_VERSION = "review-panel-provenance/1.0"
@@ -179,9 +165,7 @@ def _assert_canonical_contract_binding() -> None:
     try:
         actual = _raw_sha256(FULL_CONTRACT_PATH.read_bytes())
     except OSError as exc:
-        raise ProvenanceError(
-            f"cannot read canonical reviewer_full contract: {exc}"
-        ) from exc
+        raise ProvenanceError(f"cannot read canonical reviewer_full contract: {exc}") from exc
     if actual != CONTRACT_SHA256:
         raise ProvenanceError(
             "canonical reviewer_full contract raw-byte digest drifted from the "
@@ -228,8 +212,7 @@ def _semantic_manifest_errors(seats: Sequence[Mapping[str, Any]]) -> list[str]:
     actual_roster = tuple(seat["seat_id"] for seat in seats)
     if actual_roster != EXPECTED_ROSTER:
         errors.append(
-            "$.seats: reviewer_full roster must be ordered exactly as "
-            "EIC, R1, R2, R3, DA"
+            "$.seats: reviewer_full roster must be ordered exactly as " "EIC, R1, R2, R3, DA"
         )
     return errors
 
@@ -281,9 +264,7 @@ def _blind_axis(seats: Sequence[Mapping[str, Any]]) -> bool | str:
     return True
 
 
-def _model_distinct_axis(
-    seats: Sequence[Mapping[str, Any]], field: str
-) -> bool | str:
+def _model_distinct_axis(seats: Sequence[Mapping[str, Any]], field: str) -> bool | str:
     """Return whether at least two model identities are proven distinct.
 
     Two known values prove diversity even when another seat is unknown.  A
@@ -312,19 +293,13 @@ def _human_distinct_axis(seats: Sequence[Mapping[str, Any]]) -> bool | str:
     """Return whether at least two distinct human reviewers are proven present."""
 
     known_ids = {
-        seat["human_reviewer_id"]
-        for seat in seats
-        if seat["human_reviewer_id"] is not None
+        seat["human_reviewer_id"] for seat in seats if seat["human_reviewer_id"] is not None
     }
     if len(known_ids) >= 2:
         return True
 
-    possibly_human = [
-        seat for seat in seats if seat["actor_type"] in {"human", "hybrid", UNKNOWN}
-    ]
-    missing_identity = any(
-        seat["human_reviewer_id"] is None for seat in possibly_human
-    )
+    possibly_human = [seat for seat in seats if seat["actor_type"] in {"human", "hybrid", UNKNOWN}]
+    missing_identity = any(seat["human_reviewer_id"] is None for seat in possibly_human)
     if missing_identity:
         return UNKNOWN
     return False
@@ -415,16 +390,12 @@ def build_artifact(manifest: Mapping[str, Any]) -> dict[str, Any]:
         "contract_id": normalized["contract_id"],
         "contract_sha256": normalized["contract_sha256"],
         "normalized_manifest_sha256": _sha256(normalized),
-        "execution_topology_sha256": _sha256(
-            _execution_topology_projection(normalized, axes)
-        ),
+        "execution_topology_sha256": _sha256(_execution_topology_projection(normalized, axes)),
         "seats": seats,
         "axes": axes,
         "fresh_context_scope": FRESH_CONTEXT_SCOPE,
         "independence_claim": "not_computed_from_personas",
-        "correlated_error_disclosure": _correlated_error_disclosure(
-            axes["model_family_distinct"]
-        ),
+        "correlated_error_disclosure": _correlated_error_disclosure(axes["model_family_distinct"]),
     }
     errors = _schema_errors(artifact, ARTIFACT_SCHEMA_PATH)
     if errors:  # Defensive: a builder/schema drift is a hard failure.
@@ -490,14 +461,10 @@ def _validate_artifact_ref(artifact_ref: str) -> None:
     if not artifact_ref:
         raise ProvenanceError("artifact_path must not be empty")
     if "\\" in artifact_ref or "//" in artifact_ref:
-        raise ProvenanceError(
-            "artifact_path must use canonical single forward-slash separators"
-        )
+        raise ProvenanceError("artifact_path must use canonical single forward-slash separators")
     path = Path(artifact_ref)
     if path.is_absolute() or any(part in {".", "..", ""} for part in path.parts):
-        raise ProvenanceError(
-            "artifact_path must be a canonical relative path without traversal"
-        )
+        raise ProvenanceError("artifact_path must be a canonical relative path without traversal")
 
 
 def _resolve_artifact_ref(artifact_root: Path, artifact_ref: str) -> Path:
@@ -511,9 +478,7 @@ def _resolve_artifact_ref(artifact_root: Path, artifact_ref: str) -> Path:
     return candidate
 
 
-def build_carrier(
-    artifact_path: Path | None, *, artifact_ref: str | None = None
-) -> dict[str, Any]:
+def build_carrier(artifact_path: Path | None, *, artifact_ref: str | None = None) -> dict[str, Any]:
     """Build a valid carrier or one explicit invalid execution state.
 
     This helper computes ``artifact_sha256`` from exact raw bytes. It never
@@ -555,9 +520,7 @@ def build_carrier(
     return carrier
 
 
-def verify_carrier(
-    carrier: Any, artifact_root: Path
-) -> tuple[str | None, list[str]]:
+def verify_carrier(carrier: Any, artifact_root: Path) -> tuple[str | None, list[str]]:
     """Verify a Schema 6 carrier and classify any fail-visible state.
 
     ``None`` means the valid branch passed raw-byte, schema, deterministic
@@ -572,9 +535,7 @@ def verify_carrier(
         return carrier["reason"], []
 
     try:
-        artifact_path = _resolve_artifact_ref(
-            artifact_root, carrier["artifact_path"]
-        )
+        artifact_path = _resolve_artifact_ref(artifact_root, carrier["artifact_path"])
     except ProvenanceError as exc:
         return "schema_invalid", [str(exc)]
     try:
@@ -582,9 +543,7 @@ def verify_carrier(
     except OSError as exc:
         return "unreachable", [f"cannot read artifact_path: {exc}"]
     if _raw_sha256(raw) != carrier["artifact_sha256"]:
-        return "digest_mismatch", [
-            "artifact_sha256 does not match exact artifact bytes"
-        ]
+        return "digest_mismatch", ["artifact_sha256 does not match exact artifact bytes"]
     try:
         artifact = _parse_json_bytes(raw, carrier["artifact_path"])
     except ProvenanceError as exc:
@@ -657,9 +616,7 @@ def _parser() -> argparse.ArgumentParser:
     build.add_argument("--output", type=Path)
     validate = subparsers.add_parser("validate", help="replay-validate an artifact")
     validate.add_argument("artifact", type=Path)
-    carrier = subparsers.add_parser(
-        "build-carrier", help="build a fail-visible Schema 6 carrier"
-    )
+    carrier = subparsers.add_parser("build-carrier", help="build a fail-visible Schema 6 carrier")
     carrier.add_argument("artifact", type=Path, nargs="?")
     carrier.add_argument(
         "--artifact-ref",
@@ -722,9 +679,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             state, errors = verify_carrier(carrier, args.artifact_root)
         else:
             schema6 = load_json(args.schema6)
-            state, errors = validate_schema6_binding(
-                schema6, args.mode, args.artifact_root
-            )
+            state, errors = validate_schema6_binding(schema6, args.mode, args.artifact_root)
         if state is not None:
             for error in errors:
                 print(error, file=sys.stderr)

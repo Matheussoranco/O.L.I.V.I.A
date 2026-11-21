@@ -10,8 +10,6 @@ import copy
 import json
 
 import pytest
-from jsonschema import Draft202012Validator
-
 from check_439_format_profile import (
     FORMATTER,
     INTAKE,
@@ -26,6 +24,7 @@ from check_439_format_profile import (
     check_positioning_boundary,
     check_schema_valid,
 )
+from jsonschema import Draft202012Validator
 
 
 @pytest.fixture(scope="module")
@@ -34,6 +33,7 @@ def schema():
 
 
 # --- invariant 1: valid standalone schema, locked root ----------------------
+
 
 def test_schema_real_tree_passes(schema):
     assert check_schema_valid(schema) == []
@@ -46,6 +46,7 @@ def test_schema_open_root_fails(schema):
 
 
 # --- invariant 2: fixed_pt conditional --------------------------------------
+
 
 def test_fixed_pt_conditional_real_tree_passes(schema):
     assert check_fixed_pt_conditional(schema) == []
@@ -67,6 +68,7 @@ def test_fixed_pt_conditional_mode_not_required_fails(schema):
 
 # --- invariant 3: no provenance machinery -----------------------------------
 
+
 def test_no_provenance_real_tree_passes(schema):
     assert check_no_provenance(schema) == []
 
@@ -84,6 +86,7 @@ def test_inferred_marker_leak_fails(schema):
 
 
 # --- invariant 4: cut fields stay cut ---------------------------------------
+
 
 def test_cut_fields_real_tree_passes(schema):
     assert check_cut_fields_stay_cut(schema) == []
@@ -103,6 +106,7 @@ def test_caption_bold_reappears_fails(schema):
 
 # --- invariant 5: synthetic example fixture validates -----------------------
 
+
 def test_example_fixture_real_tree_passes(schema):
     assert check_example_fixture(schema) == []
 
@@ -116,6 +120,7 @@ def test_example_fixture_violation_fails(schema):
 
 
 # --- invariant 6: formatter wiring ------------------------------------------
+
 
 @pytest.fixture(scope="module")
 def formatter_text():
@@ -132,8 +137,9 @@ def test_formatter_wiring_real_tree_passes(formatter_text):
 
 
 def test_formatter_wiring_missing_section_fails():
-    assert check_formatter_wiring("# no format profile section here"), \
-        "a formatter without the Format Profile section must fire"
+    assert check_formatter_wiring(
+        "# no format profile section here"
+    ), "a formatter without the Format Profile section must fire"
 
 
 def test_formatter_wiring_dropped_guard_fails(formatter_text):
@@ -164,6 +170,7 @@ def test_formatter_wiring_dropped_best_effort_fails(formatter_text):
 
 # --- invariant 7: intake wiring ---------------------------------------------
 
+
 def test_intake_wiring_real_tree_passes(intake_text):
     assert check_intake_wiring(intake_text) == []
 
@@ -185,6 +192,7 @@ def test_intake_wiring_dropped_pcr_row_fails(intake_text):
 
 # --- invariant 8: POSITIONING boundary --------------------------------------
 
+
 @pytest.fixture(scope="module")
 def positioning_text():
     return POSITIONING.read_text(encoding="utf-8")
@@ -195,8 +203,9 @@ def test_positioning_boundary_real_tree_passes(positioning_text):
 
 
 def test_positioning_boundary_missing_note_fails():
-    assert check_positioning_boundary("# positioning without the boundary"), \
-        "a POSITIONING without the #439 boundary note must fire"
+    assert check_positioning_boundary(
+        "# positioning without the boundary"
+    ), "a POSITIONING without the #439 boundary note must fire"
 
 
 def test_positioning_boundary_dropped_review_criterion_fails(positioning_text):
@@ -208,6 +217,7 @@ def test_positioning_boundary_dropped_review_criterion_fails(positioning_text):
 # These assert the SCHEMA itself (not the lint) accepts/rejects the right shapes,
 # so the example profiles in the design doc stay valid and the cut/conditional
 # rules hold at the data layer.
+
 
 @pytest.fixture(scope="module")
 def validator(schema):
@@ -225,7 +235,13 @@ def _valid(validator, inst) -> bool:
         {"body_font": {"family": "SimSun", "size_pt": 10.5}},
         {"line_spacing": {"mode": "fixed_pt", "fixed_pt": 20}},
         {"line_spacing": {"mode": "double"}},
-        {"caption": {"placement": "below", "alignment": "center", "latin_font_family": "Times New Roman"}},
+        {
+            "caption": {
+                "placement": "below",
+                "alignment": "center",
+                "latin_font_family": "Times New Roman",
+            }
+        },
         {"margins_cm": {"top": 2.5, "bottom": 2.5, "left": 3.0, "right": 2.5}},
         {"table_border_style": "three_line"},
     ],
@@ -237,15 +253,15 @@ def test_schema_accepts_valid_profiles(validator, inst):
 @pytest.mark.parametrize(
     "inst",
     [
-        {"line_spacing": {"mode": "double", "fixed_pt": 20}},   # fixed_pt with wrong mode
-        {"line_spacing": {"mode": "fixed_pt"}},                  # fixed_pt mode missing value
-        {"profile_name": "Guangxi undergrad"},                   # cut field
-        {"caption": {"bold": True}},                             # cut field
-        {"heading_font": {"family": "x"}},                       # cut field
-        {"body_font": {"size_pt": 0}},                           # non-positive size
-        {"table_border_style": "dashed"},                        # not in enum
-        {"caption": {"placement": "middle"}},                    # not in enum
-        {"unknown_top_level": 1},                                # locked root
+        {"line_spacing": {"mode": "double", "fixed_pt": 20}},  # fixed_pt with wrong mode
+        {"line_spacing": {"mode": "fixed_pt"}},  # fixed_pt mode missing value
+        {"profile_name": "Guangxi undergrad"},  # cut field
+        {"caption": {"bold": True}},  # cut field
+        {"heading_font": {"family": "x"}},  # cut field
+        {"body_font": {"size_pt": 0}},  # non-positive size
+        {"table_border_style": "dashed"},  # not in enum
+        {"caption": {"placement": "middle"}},  # not in enum
+        {"unknown_top_level": 1},  # locked root
     ],
 )
 def test_schema_rejects_invalid_profiles(validator, inst):

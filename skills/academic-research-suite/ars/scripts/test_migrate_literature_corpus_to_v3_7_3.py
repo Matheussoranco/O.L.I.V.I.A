@@ -13,14 +13,13 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import migrate_literature_corpus_to_v3_7_3 as mig  # noqa: E402
-
 
 SAMPLE_PASSPORT_YAML = """\
 # Material Passport for the SLR run
@@ -67,8 +66,10 @@ def _make_ss_client(unmatched_for_keys=()):
     keys (so the entry gets semantic_scholar_unmatched: true) and match
     otherwise."""
     client = MagicMock()
+
     def lookup(entry):
         return {"matched": entry.get("citation_key") not in set(unmatched_for_keys)}
+
     client.lookup.side_effect = lookup
     return client
 
@@ -82,9 +83,7 @@ class SinglePassportMigrationTest(unittest.TestCase):
             p = Path(td) / "passport.yaml"
             p.write_text(SAMPLE_PASSPORT_YAML)
             before = p.read_text()
-            report = mig.migrate_passport(
-                p, ss_client=_make_ss_client(), dry_run=True
-            )
+            report = mig.migrate_passport(p, ss_client=_make_ss_client(), dry_run=True)
             after = p.read_text()
             self.assertEqual(before, after, "dry-run must not write")
             self.assertEqual(report["patched"], 3)
@@ -135,14 +134,13 @@ class SinglePassportMigrationTest(unittest.TestCase):
             p.write_text(SAMPLE_PASSPORT_YAML)
             mig.migrate_passport(p, ss_client=_make_ss_client(), dry_run=False)
             after_first = p.read_text()
-            report = mig.migrate_passport(
-                p, ss_client=_make_ss_client(), dry_run=False
-            )
+            report = mig.migrate_passport(p, ss_client=_make_ss_client(), dry_run=False)
             after_second = p.read_text()
             self.assertEqual(report["patched"], 0)
             self.assertEqual(report["skipped_already_migrated"], 3)
             self.assertEqual(
-                after_first, after_second,
+                after_first,
+                after_second,
                 "re-run on migrated passport must be byte-identical",
             )
 
@@ -167,9 +165,7 @@ literature_corpus:
         with tempfile.TemporaryDirectory() as td:
             p = Path(td) / "passport.yaml"
             p.write_text(yaml_no_venue)
-            report = mig.migrate_passport(
-                p, ss_client=_make_ss_client(), dry_run=False
-            )
+            report = mig.migrate_passport(p, ss_client=_make_ss_client(), dry_run=False)
             self.assertEqual(report["patched"], 1)
             self.assertEqual(report["skipped_insufficient_data"], 0)
             doc = mig.load_passport(p)
@@ -203,7 +199,8 @@ literature_corpus:
             p = Path(td) / "passport.yaml"
             p.write_text(partial_yaml)
             report = mig.migrate_passport(
-                p, ss_client=_make_ss_client(unmatched_for_keys=["chen2024ai"]),
+                p,
+                ss_client=_make_ss_client(unmatched_for_keys=["chen2024ai"]),
                 dry_run=False,
             )
             self.assertEqual(report["patched"], 1)
@@ -282,9 +279,7 @@ literature_corpus:
         with tempfile.TemporaryDirectory() as td:
             p = Path(td) / "passport.yaml"
             p.write_text(partial_with_ts)
-            mig.migrate_passport(
-                p, ss_client=_make_ss_client(), dry_run=False
-            )
+            mig.migrate_passport(p, ss_client=_make_ss_client(), dry_run=False)
             doc = mig.load_passport(p)
             self.assertEqual(
                 doc["literature_corpus"][0]["contamination_signals_backfilled_at"],
@@ -296,6 +291,7 @@ literature_corpus:
         stderr so users can audit what got patched / skipped / why."""
         import io
         from contextlib import redirect_stderr
+
         with tempfile.TemporaryDirectory() as td:
             p = Path(td) / "passport.yaml"
             p.write_text(SAMPLE_PASSPORT_YAML)
@@ -345,13 +341,13 @@ literature_corpus:
             before = p.read_text()
             # Simulate API still degraded — SS lookup raises
             from contamination_signals import SemanticScholarUnavailable
+
             bad_client = MagicMock()
             bad_client.lookup.side_effect = SemanticScholarUnavailable("still down")
             report = mig.migrate_passport(p, ss_client=bad_client, dry_run=False)
             after = p.read_text()
             self.assertEqual(report["patched"], 1)
-            self.assertNotEqual(
-                before, after, "first degraded run records the omission")
+            self.assertNotEqual(before, after, "first degraded run records the omission")
             self.assertIn("contamination_signal_omissions", after)
             self.assertIn("api_degraded", after)
             # Re-run with the API still down: omission already recorded,
@@ -361,7 +357,6 @@ literature_corpus:
             self.assertEqual(report2["patched"], 0)
             self.assertEqual(report2["skipped_already_migrated"], 1)
             self.assertEqual(after, after2, "no rewrite when nothing was added")
-
 
     def test_partial_fill_recovery_clears_stale_omission(self) -> None:
         """#511 Part A recovery (codex R2 witness): a degraded first run
@@ -397,8 +392,10 @@ literature_corpus:
             after = p.read_text()
             self.assertIn("semantic_scholar_unmatched: false", after)
             self.assertNotIn(
-                "contamination_signal_omissions", after,
-                "stale omission must be cleared once the signal computes")
+                "contamination_signal_omissions",
+                after,
+                "stale omission must be cleared once the signal computes",
+            )
 
     def test_manual_entry_with_only_preprint_signal_is_complete(self) -> None:
         """A manual entry permanently omits semantic_scholar_unmatched
@@ -424,9 +421,7 @@ literature_corpus:
         with tempfile.TemporaryDirectory() as td:
             p = Path(td) / "passport.yaml"
             p.write_text(manual_yaml)
-            report = mig.migrate_passport(
-                p, ss_client=_make_ss_client(), dry_run=False
-            )
+            report = mig.migrate_passport(p, ss_client=_make_ss_client(), dry_run=False)
             self.assertEqual(report["patched"], 0)
             self.assertEqual(report["skipped_already_migrated"], 1)
 
@@ -453,9 +448,7 @@ literature_corpus:
             # exercises the migration tool's defensive behavior, not the
             # schema validator. Real corpora won't reach here, but if they
             # do (e.g., user hand-edited their YAML), we degrade gracefully.
-            report = mig.migrate_passport(
-                p, ss_client=_make_ss_client(), dry_run=False
-            )
+            report = mig.migrate_passport(p, ss_client=_make_ss_client(), dry_run=False)
             self.assertEqual(report["patched"], 0)
             self.assertEqual(report["skipped_insufficient_data"], 1)
 
@@ -467,9 +460,7 @@ verification_status: VERIFIED
         with tempfile.TemporaryDirectory() as td:
             p = Path(td) / "passport.yaml"
             p.write_text(yaml_no_corpus)
-            report = mig.migrate_passport(
-                p, ss_client=_make_ss_client(), dry_run=False
-            )
+            report = mig.migrate_passport(p, ss_client=_make_ss_client(), dry_run=False)
             self.assertEqual(report["processed"], 0)
             self.assertEqual(report["patched"], 0)
 

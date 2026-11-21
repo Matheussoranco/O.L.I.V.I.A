@@ -7,7 +7,6 @@ import re
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PROTOCOL = "academic-paper-reviewer/references/calibration_mode_protocol.md"
 SKILL = "academic-paper-reviewer/SKILL.md"
@@ -178,17 +177,13 @@ def check(root: Path) -> tuple[list[str], bool]:
     for label, witnesses in CROSS_MODEL_WITNESSES.items():
         for witness in witnesses:
             if witness not in texts[CROSS_MODEL]:
-                errors.append(
-                    f"{CROSS_MODEL}: {label} lost witness {witness!r}"
-                )
+                errors.append(f"{CROSS_MODEL}: {label} lost witness {witness!r}")
     for forbidden in FORBIDDEN_PROTOCOL:
         if forbidden in protocol:
             errors.append(f"{PROTOCOL}: retired numeric calibration token {forbidden!r}")
     for forbidden in FORBIDDEN_FRESHNESS_CLAIMS:
         if forbidden in protocol:
-            errors.append(
-                f"{PROTOCOL}: overstated cross-replicate freshness claim {forbidden!r}"
-            )
+            errors.append(f"{PROTOCOL}: overstated cross-replicate freshness claim {forbidden!r}")
 
     # A score-to-decision mapping must never be smuggled into calibration mode.
     if re.search(
@@ -206,9 +201,7 @@ def check(root: Path) -> tuple[list[str], bool]:
             r"(?is)calibration_status:\s*NOT_CALIBRATED.{0,160}\bunless\b",
             texts[rel],
         ):
-            errors.append(
-                f"{rel}: live NOT_CALIBRATED status must be unconditional"
-            )
+            errors.append(f"{rel}: live NOT_CALIBRATED status must be unconditional")
     if "No empirical target profile matches this review" in protocol:
         errors.append(
             f"{PROTOCOL}: live disclosure must say application is NOT_WIRED, "

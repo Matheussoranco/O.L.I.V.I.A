@@ -14,8 +14,10 @@ Provides:
 - `load_yaml(path)` : convenience YAML loader.
 """
 from __future__ import annotations
-from pathlib import Path
+
 import copy
+from pathlib import Path
+
 import pytest
 import yaml
 
@@ -62,16 +64,20 @@ def clean_timestamps():
     explicitly. Adapters whose `source_pointer` is a deterministic logical
     URI (zotero://N, obsidian://path) should NOT widen, so broken pointers
     fail the golden test loudly."""
+
     def _clean(doc, extra_blank: set[str] | None = None):
         keys = _DEFAULT_BLANK | (extra_blank or set())
         return _strip_keys(copy.deepcopy(doc), keys)
+
     return _clean
 
 
 @pytest.fixture
 def load_yaml():
     """Return a function that loads a YAML file into a Python dict."""
+
     def _load(path: Path):
         with path.open("r", encoding="utf-8") as f:
             return yaml.safe_load(f)
+
     return _load

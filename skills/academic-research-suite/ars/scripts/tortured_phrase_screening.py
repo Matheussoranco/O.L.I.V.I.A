@@ -25,11 +25,12 @@ import re
 import sys
 import tempfile
 import unicodedata
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from functools import lru_cache
+from functools import cache
 from io import StringIO
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from jsonschema import Draft202012Validator
 from ruamel.yaml import YAML
@@ -45,19 +46,13 @@ else:
 
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-SNAPSHOT_SCHEMA_PATH = (
-    REPO_ROOT / "shared/contracts/audit/tortured_phrase_snapshot.schema.json"
-)
+SNAPSHOT_SCHEMA_PATH = REPO_ROOT / "shared/contracts/audit/tortured_phrase_snapshot.schema.json"
 MANIFEST_SCHEMA_PATH = (
-    REPO_ROOT
-    / "shared/contracts/audit/tortured_phrase_snapshot_manifest.schema.json"
+    REPO_ROOT / "shared/contracts/audit/tortured_phrase_snapshot_manifest.schema.json"
 )
-ADVISORY_SCHEMA_PATH = (
-    REPO_ROOT / "shared/contracts/audit/tortured_phrase_advisory.schema.json"
-)
+ADVISORY_SCHEMA_PATH = REPO_ROOT / "shared/contracts/audit/tortured_phrase_advisory.schema.json"
 SIGNAL_SCHEMA_PATH = (
-    REPO_ROOT
-    / "shared/contracts/passport/bibliographic_integrity_signal.schema.json"
+    REPO_ROOT / "shared/contracts/passport/bibliographic_integrity_signal.schema.json"
 )
 CORPUS_ENTRY_SCHEMA_PATH = (
     REPO_ROOT / "shared/contracts/passport/literature_corpus_entry.schema.json"
@@ -111,9 +106,7 @@ CONTEXTS = (
     "unknown",
     "cited_abstract",
 )
-PROTECTED_CONTEXTS = frozenset(
-    {"quote", "cited_title", "reference_entry", "code_or_verbatim"}
-)
+PROTECTED_CONTEXTS = frozenset({"quote", "cited_title", "reference_entry", "code_or_verbatim"})
 
 _RFC3339_RE = re.compile(
     r"^[0-9]{4}-[0-9]{2}-[0-9]{2}[Tt]"
@@ -185,9 +178,7 @@ class MatchWorkBudget:
 
     def spend(self, units: int) -> None:
         if units < 0 or units > self.remaining:
-            raise MatchLimitError(
-                f"matcher work exceeds {MAX_MATCH_WORK_UNITS} units"
-            )
+            raise MatchLimitError(f"matcher work exceeds {MAX_MATCH_WORK_UNITS} units")
         self.remaining -= units
 
 
@@ -199,9 +190,7 @@ class ParseWorkBudget:
 
     def spend(self, units: int = 1) -> None:
         if units < 0 or units > self.remaining:
-            raise MatchLimitError(
-                f"parser work exceeds {MAX_PARSE_WORK_UNITS} units"
-            )
+            raise MatchLimitError(f"parser work exceeds {MAX_PARSE_WORK_UNITS} units")
         self.remaining -= units
 
 
@@ -291,9 +280,9 @@ def _canonical_json(value: Any) -> str:
 
 def _pretty_json_bytes(value: Any) -> bytes:
     try:
-        return (
-            json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n"
-        ).encode("utf-8", errors="strict")
+        return (json.dumps(value, ensure_ascii=False, indent=2, allow_nan=False) + "\n").encode(
+            "utf-8", errors="strict"
+        )
     except (TypeError, ValueError, UnicodeError, RecursionError) as exc:
         raise ScreeningError(f"value cannot be serialized as strict JSON: {exc}") from exc
 
@@ -377,13 +366,9 @@ def _preflight_json_structure(text: str, *, label: str) -> None:
             while index < len(text) and text[index] not in " \t\r\n,]}:":
                 index += 1
         if depth > MAX_STRUCTURE_DEPTH:
-            raise MatchLimitError(
-                f"{label} structure exceeds depth {MAX_STRUCTURE_DEPTH}"
-            )
+            raise MatchLimitError(f"{label} structure exceeds depth {MAX_STRUCTURE_DEPTH}")
         if nodes > MAX_STRUCTURE_NODES:
-            raise MatchLimitError(
-                f"{label} structure exceeds {MAX_STRUCTURE_NODES} nodes"
-            )
+            raise MatchLimitError(f"{label} structure exceeds {MAX_STRUCTURE_NODES} nodes")
 
 
 def _preflight_yaml_structure(text: str, *, label: str) -> None:
@@ -405,13 +390,9 @@ def _preflight_yaml_structure(text: str, *, label: str) -> None:
             elif name == "AliasEvent":
                 raise ScreeningError("shared or recursive YAML aliases are forbidden")
             if depth > MAX_STRUCTURE_DEPTH:
-                raise MatchLimitError(
-                    f"{label} structure exceeds depth {MAX_STRUCTURE_DEPTH}"
-                )
+                raise MatchLimitError(f"{label} structure exceeds depth {MAX_STRUCTURE_DEPTH}")
             if nodes > MAX_STRUCTURE_NODES:
-                raise MatchLimitError(
-                    f"{label} structure exceeds {MAX_STRUCTURE_NODES} nodes"
-                )
+                raise MatchLimitError(f"{label} structure exceeds {MAX_STRUCTURE_NODES} nodes")
     except ScreeningError:
         raise
     except Exception as exc:
@@ -488,14 +469,12 @@ def _load_schema(path: Path) -> dict[str, Any]:
 def _schema_errors(instance: Any, schema_path: Path) -> list[str]:
     validator = _schema_validator(schema_path)
     return sorted(
-        (
-            f"/{'/'.join(str(item) for item in error.absolute_path)}: {error.message}"
-        )
+        (f"/{'/'.join(str(item) for item in error.absolute_path)}: {error.message}")
         for error in validator.iter_errors(instance)
     )
 
 
-@lru_cache(maxsize=None)
+@cache
 def _schema_validator(schema_path: Path) -> Draft202012Validator:
     return Draft202012Validator(
         _load_schema(schema_path),
@@ -567,9 +546,7 @@ def tokenize(value: str) -> list[Token]:
     index = 0
     while index < len(value):
         char = value[index]
-        if (start is None and _is_token_start(char)) or (
-            start is not None and _is_word_char(char)
-        ):
+        if (start is None and _is_token_start(char)) or (start is not None and _is_word_char(char)):
             if start is None:
                 start = index
             buffer.append(char)
@@ -587,22 +564,15 @@ def tokenize(value: str) -> list[Token]:
                 continue
         if char == "-" and start is not None:
             cursor = index + 1
-            previous_is_letter = (
-                index > 0 and unicodedata.category(value[index - 1]).startswith("L")
+            previous_is_letter = index > 0 and unicodedata.category(value[index - 1]).startswith(
+                "L"
             )
             if previous_is_letter and cursor < len(value) and value[cursor] in "\r\n":
-                if (
-                    value[cursor] == "\r"
-                    and cursor + 1 < len(value)
-                    and value[cursor + 1] == "\n"
-                ):
+                if value[cursor] == "\r" and cursor + 1 < len(value) and value[cursor + 1] == "\n":
                     cursor += 2
                 else:
                     cursor += 1
-                if (
-                    cursor < len(value)
-                    and unicodedata.category(value[cursor]).startswith("L")
-                ):
+                if cursor < len(value) and unicodedata.category(value[cursor]).startswith("L"):
                     index = cursor
                     continue
         flush()
@@ -619,9 +589,7 @@ def _literal_tokens(value: Any, field: str) -> tuple[str, ...]:
     if not tokens:
         raise ScreeningError(f"{field} must contain at least one token")
     if len(tokens) > MAX_LITERAL_TOKENS:
-        raise ScreeningError(
-            f"{field} exceeds {MAX_LITERAL_TOKENS} normalized tokens"
-        )
+        raise ScreeningError(f"{field} exceeds {MAX_LITERAL_TOKENS} normalized tokens")
     return tokens
 
 
@@ -632,21 +600,20 @@ def _semantic_expression(expression: Any, *, depth: int = 1) -> Any:
         raise ScreeningError("expression node must be an object")
     op = expression.get("op")
     if op == "literal":
-        return {"op": "literal", "tokens": _literal_tokens(expression.get("value"), "literal.value")}
+        return {
+            "op": "literal",
+            "tokens": _literal_tokens(expression.get("value"), "literal.value"),
+        }
     if op in {"all", "any"}:
         key = "terms" if op == "all" else "alternatives"
         children = expression.get(key)
         if not isinstance(children, list) or not 2 <= len(children) <= 8:
             raise ScreeningError(f"{op}.{key} must contain 2..8 expressions")
-        semantic_children = [
-            _semantic_expression(child, depth=depth + 1) for child in children
-        ]
+        semantic_children = [_semantic_expression(child, depth=depth + 1) for child in children]
         encoded = [_canonical_json(child) for child in semantic_children]
         if len(set(encoded)) != len(encoded):
             raise ScreeningError(f"{op} contains a duplicate semantic child")
-        semantic_children = [
-            json.loads(item) for item in sorted(encoded)
-        ]
+        semantic_children = [json.loads(item) for item in sorted(encoded)]
         result: dict[str, Any] = {"op": op, key: semantic_children}
         if op == "all":
             max_span = expression.get("max_span_tokens")
@@ -684,13 +651,9 @@ def _count_nodes(expression: Any) -> int:
     if op == "all":
         return 1 + sum(_count_nodes(item) for item in expression.get("terms", []))
     if op == "any":
-        return 1 + sum(
-            _count_nodes(item) for item in expression.get("alternatives", [])
-        )
+        return 1 + sum(_count_nodes(item) for item in expression.get("alternatives", []))
     if op == "near":
-        return 1 + _count_nodes(expression.get("left")) + _count_nodes(
-            expression.get("right")
-        )
+        return 1 + _count_nodes(expression.get("left")) + _count_nodes(expression.get("right"))
     return 1
 
 
@@ -709,16 +672,17 @@ def _compile_rules(snapshot: dict[str, Any]) -> tuple[CompiledRule, ...]:
             raise ScreeningError(f"rules[{index}].rule_id is not a safe identifier")
         folded = unicodedata.normalize("NFKC", rule_id).casefold()
         if folded in seen_ids:
-            raise ScreeningError(
-                f"rules[{index}].rule_id collides with {seen_ids[folded]!r}"
-            )
+            raise ScreeningError(f"rules[{index}].rule_id collides with {seen_ids[folded]!r}")
         seen_ids[folded] = rule_id
         expression = rule.get("expression")
         node_count = _count_nodes(expression)
         excludes = rule.get("exclude_if", [])
         if not isinstance(excludes, list):
             raise ScreeningError(f"rules[{index}].exclude_if must be an array")
-        node_count += sum(_count_nodes(item.get("expression")) if isinstance(item, dict) else 1 for item in excludes)
+        node_count += sum(
+            _count_nodes(item.get("expression")) if isinstance(item, dict) else 1
+            for item in excludes
+        )
         if node_count > MAX_AST_NODES:
             raise ScreeningError(
                 f"rules[{index}] AST contains {node_count} nodes; maximum is {MAX_AST_NODES}"
@@ -771,22 +735,16 @@ def load_snapshot(snapshot_path: Path, manifest_path: Path) -> SnapshotBundle:
     manifest_sha: str | None = None
     try:
         try:
-            snapshot_raw = _read_bounded_bytes(
-                snapshot_path, maximum=MAX_SNAPSHOT_BYTES
-            )
+            snapshot_raw = _read_bounded_bytes(snapshot_path, maximum=MAX_SNAPSHOT_BYTES)
             snapshot_sha = _sha256_bytes(snapshot_raw)
         except MatchLimitError as exc:
-            raise SnapshotLoadError(
-                "SNAPSHOT_RESOURCE_LIMIT", str(exc)
-            ) from exc
+            raise SnapshotLoadError("SNAPSHOT_RESOURCE_LIMIT", str(exc)) from exc
         except OSError as exc:
             raise SnapshotLoadError(
                 "SNAPSHOT_BYTES_INVALID", f"cannot read supplied snapshot: {exc}"
             ) from exc
         try:
-            manifest_raw = _read_bounded_bytes(
-                manifest_path, maximum=MAX_MANIFEST_BYTES
-            )
+            manifest_raw = _read_bounded_bytes(manifest_path, maximum=MAX_MANIFEST_BYTES)
             manifest_sha = _sha256_bytes(manifest_raw)
         except MatchLimitError as exc:
             raise SnapshotLoadError(
@@ -1021,9 +979,7 @@ def _minimal_witnesses(values: Iterable[Witness]) -> list[Witness]:
 
     unique = sorted(set(values))
     if len(unique) > MAX_NODE_WITNESSES:
-        raise MatchLimitError(
-            f"expression produced more than {MAX_NODE_WITNESSES} witnesses"
-        )
+        raise MatchLimitError(f"expression produced more than {MAX_NODE_WITNESSES} witnesses")
     return unique
 
 
@@ -1048,9 +1004,7 @@ def _literal_witnesses(
                 )
             )
             if len(result) > MAX_NODE_WITNESSES:
-                raise MatchLimitError(
-                    f"literal produced more than {MAX_NODE_WITNESSES} witnesses"
-                )
+                raise MatchLimitError(f"literal produced more than {MAX_NODE_WITNESSES} witnesses")
     return result
 
 
@@ -1094,9 +1048,7 @@ def evaluate_expression(
         return _minimal_witnesses(
             witness
             for child in alternatives
-            for witness in evaluate_expression(
-                child, tokens, depth=depth + 1, budget=budget
-            )
+            for witness in evaluate_expression(child, tokens, depth=depth + 1, budget=budget)
         )
     if op == "near":
         left_values = evaluate_expression(
@@ -1165,9 +1117,7 @@ def evaluate_rule(
         budget = MatchWorkBudget()
     included = evaluate_expression(rule.expression, tokens, budget=budget)
     for exclusion in rule.exclude_if:
-        excluded = evaluate_expression(
-            exclusion["expression"], tokens, budget=budget
-        )
+        excluded = evaluate_expression(exclusion["expression"], tokens, budget=budget)
         within = exclusion["within_tokens"]
         retained: list[Witness] = []
         for witness in included:
@@ -1255,9 +1205,7 @@ def _paired_environment_intervals(
                 break
             end = search_unexcluded(end_re, begin.end())
             if end is None:
-                _append_parse_interval(
-                    intervals, (begin.start(), len(text), "unknown")
-                )
+                _append_parse_interval(intervals, (begin.start(), len(text), "unknown"))
                 break
             _append_parse_interval(intervals, (begin.start(), end.end(), kind))
             cursor = end.end()
@@ -1314,9 +1262,7 @@ def _find_unescaped(
             return -1
         if budget is not None:
             budget.spend()
-        if not _is_backslash_escaped(text, found) and not _position_excluded(
-            found, excluded
-        ):
+        if not _is_backslash_escaped(text, found) and not _position_excluded(found, excluded):
             return found
         cursor = found + len(needle)
     return -1
@@ -1405,14 +1351,10 @@ def _select_source_order_opaque_intervals(
 
     indexed = [
         (start, sequence, end, kind)
-        for sequence, (start, end, kind) in enumerate(
-            item for group in groups for item in group
-        )
+        for sequence, (start, end, kind) in enumerate(item for group in groups for item in group)
     ]
     if len(indexed) > MAX_PARSE_INTERVALS:
-        raise MatchLimitError(
-            f"opaque parse candidates exceed {MAX_PARSE_INTERVALS} intervals"
-        )
+        raise MatchLimitError(f"opaque parse candidates exceed {MAX_PARSE_INTERVALS} intervals")
     selected: list[tuple[int, int, str]] = []
     covered_until = -1
     for start, _sequence, end, kind in sorted(indexed):
@@ -1423,19 +1365,13 @@ def _select_source_order_opaque_intervals(
     return selected
 
 
-def _append_opaque_opener(
-    openers: list[OpaqueOpener], opener: OpaqueOpener
-) -> None:
+def _append_opaque_opener(openers: list[OpaqueOpener], opener: OpaqueOpener) -> None:
     openers.append(opener)
     if len(openers) > MAX_PARSE_INTERVALS:
-        raise MatchLimitError(
-            f"opaque parse candidates exceed {MAX_PARSE_INTERVALS} intervals"
-        )
+        raise MatchLimitError(f"opaque parse candidates exceed {MAX_PARSE_INTERVALS} intervals")
 
 
-def _markdown_opaque_openers(
-    text: str, *, budget: ParseWorkBudget
-) -> list[OpaqueOpener]:
+def _markdown_opaque_openers(text: str, *, budget: ParseWorkBudget) -> list[OpaqueOpener]:
     """Collect only fixed-cost Markdown opener tokens.
 
     Pairing happens later, after the earliest opener has won.  This prevents an
@@ -1503,9 +1439,7 @@ def _markdown_opaque_openers(
     return openers
 
 
-def _latex_opaque_openers(
-    text: str, *, budget: ParseWorkBudget
-) -> list[OpaqueOpener]:
+def _latex_opaque_openers(text: str, *, budget: ParseWorkBudget) -> list[OpaqueOpener]:
     """Collect bounded LaTeX opaque openers without backreference searches."""
 
     openers: list[OpaqueOpener] = []
@@ -1516,9 +1450,7 @@ def _latex_opaque_openers(
                 openers,
                 OpaqueOpener(match.start(), 0, match.end(), "latex_comment"),
             )
-    environment_re = re.compile(
-        r"\\begin\{(verbatim|lstlisting|minted)\}"
-    )
+    environment_re = re.compile(r"\\begin\{(verbatim|lstlisting|minted)\}")
     for match in environment_re.finditer(text):
         budget.spend()
         if not _is_backslash_escaped(text, match.start()):
@@ -1553,9 +1485,7 @@ def _latex_opaque_openers(
                         (match.group(1),),
                     ),
                 )
-    malformed_verb_re = re.compile(
-        r"\\verb\*(?=\s|$)|\\verb(?![A-Za-z*])(?=\s|$)"
-    )
+    malformed_verb_re = re.compile(r"\\verb\*(?=\s|$)|\\verb(?![A-Za-z*])(?=\s|$)")
     for match in malformed_verb_re.finditer(text):
         budget.spend()
         if not _is_backslash_escaped(text, match.start()):
@@ -1627,45 +1557,25 @@ def _close_opaque_opener(
         end = text.find("-->", opener.opener_end)
         if end >= 0:
             budget.spend()
-        return (
-            (end + 3, "code_or_verbatim")
-            if end >= 0
-            else (len(text), "unknown")
-        )
+        return (end + 3, "code_or_verbatim") if end >= 0 else (len(text), "unknown")
     if syntax == "markdown_inline_code":
         marker = opener.payload[0]
         line_end = _line_end(text, opener.opener_end, include_newline=False)
-        end = _find_unescaped(
-            text, marker, opener.opener_end, line_end, budget=budget
-        )
-        return (
-            (end + len(marker), "code_or_verbatim")
-            if end >= 0
-            else (line_end, "unknown")
-        )
+        end = _find_unescaped(text, marker, opener.opener_end, line_end, budget=budget)
+        return (end + len(marker), "code_or_verbatim") if end >= 0 else (line_end, "unknown")
     if syntax == "latex_comment":
         return _line_end(text, opener.opener_end, include_newline=True), "code_or_verbatim"
     if syntax == "latex_environment":
         closer = rf"\end{{{opener.payload[0]}}}"
-        end = _find_unescaped(
-            text, closer, opener.opener_end, budget=budget
-        )
-        return (
-            (end + len(closer), "code_or_verbatim")
-            if end >= 0
-            else (len(text), "unknown")
-        )
+        end = _find_unescaped(text, closer, opener.opener_end, budget=budget)
+        return (end + len(closer), "code_or_verbatim") if end >= 0 else (len(text), "unknown")
     if syntax == "latex_verb":
         delimiter = opener.payload[0]
         line_end = _line_end(text, opener.opener_end, include_newline=False)
         end = text.find(delimiter, opener.opener_end, line_end)
         if end >= 0:
             budget.spend()
-        return (
-            (end + len(delimiter), "code_or_verbatim")
-            if end >= 0
-            else (line_end, "unknown")
-        )
+        return (end + len(delimiter), "code_or_verbatim") if end >= 0 else (line_end, "unknown")
     if syntax == "latex_verb_missing_delimiter":
         return _line_end(text, opener.opener_end, include_newline=False), "unknown"
     closer = {
@@ -1679,9 +1589,7 @@ def _close_opaque_opener(
         if syntax == "inline_math"
         else None
     )
-    end = _find_unescaped(
-        text, closer, opener.opener_end, line_end, budget=budget
-    )
+    end = _find_unescaped(text, closer, opener.opener_end, line_end, budget=budget)
     return (
         (end + len(closer), "code_or_verbatim")
         if end >= 0
@@ -1745,8 +1653,7 @@ def _quote_intervals(
                 (
                     index
                     for index in range(cursor, line_end)
-                    if text[index] in {'"', "“"}
-                    and not _is_backslash_escaped(text, index)
+                    if text[index] in {'"', "“"} and not _is_backslash_escaped(text, index)
                 ),
                 -1,
             )
@@ -1758,8 +1665,7 @@ def _quote_intervals(
                 (
                     index
                     for index in range(opener + 1, line_end)
-                    if text[index] in {'"', "”"}
-                    and not _is_backslash_escaped(text, index)
+                    if text[index] in {'"', "”"} and not _is_backslash_escaped(text, index)
                 ),
                 -1,
             )
@@ -1767,9 +1673,7 @@ def _quote_intervals(
                 break
             budget.spend()
             if closer > opener + 1:
-                _append_parse_interval(
-                    intervals, (opener, closer + 1, "quote")
-                )
+                _append_parse_interval(intervals, (opener, closer + 1, "quote"))
             cursor = closer + 1
     return intervals
 
@@ -1810,8 +1714,7 @@ def _doi_title_intervals(
                 (
                     value
                     for value in prefixes
-                    if text[target_start : target_start + len(value)].lower()
-                    == value
+                    if text[target_start : target_start + len(value)].lower() == value
                 ),
                 None,
             )
@@ -1823,9 +1726,7 @@ def _doi_title_intervals(
                 break
             budget.spend()
             if close > opener + 1:
-                _append_parse_interval(
-                    intervals, (opener + 1, close, "cited_title")
-                )
+                _append_parse_interval(intervals, (opener + 1, close, "cited_title"))
             cursor = target_end + 1
     return intervals
 
@@ -1854,9 +1755,7 @@ def _nested_environment_intervals(
         if action == "begin":
             stack.append((name, match.start()))
             if len(stack) > MAX_PARSE_INTERVALS:
-                raise MatchLimitError(
-                    f"environment nesting exceeds {MAX_PARSE_INTERVALS}"
-                )
+                raise MatchLimitError(f"environment nesting exceeds {MAX_PARSE_INTERVALS}")
         elif stack and stack[-1][0] == name:
             _name, start = stack.pop()
             if not stack:
@@ -1881,9 +1780,7 @@ def segment_document(text: str, artifact_format: str) -> list[Segment]:
         target.add(value)
         partition_boundaries.add(value)
         if len(partition_boundaries) > MAX_SEGMENTS + 1:
-            raise MatchLimitError(
-                f"document partition exceeds {MAX_SEGMENTS} output segments"
-            )
+            raise MatchLimitError(f"document partition exceeds {MAX_SEGMENTS} output segments")
 
     for match in re.finditer(r"\r?\n[ \t]*\r?\n", text):
         parse_budget.spend()
@@ -1893,18 +1790,14 @@ def segment_document(text: str, artifact_format: str) -> list[Segment]:
         for value in values:
             intervals.append(value)
             if len(intervals) > MAX_PARSE_INTERVALS:
-                raise MatchLimitError(
-                    f"parse interval count exceeds {MAX_PARSE_INTERVALS}"
-                )
+                raise MatchLimitError(f"parse interval count exceeds {MAX_PARSE_INTERVALS}")
 
     if artifact_format == "markdown":
         opaque_intervals = _source_order_opaque_intervals(
             text, artifact_format, budget=parse_budget
         )
         extend_bounded(opaque_intervals)
-        delimiter_exclusions = tuple(
-            (start, end) for start, end, _ in opaque_intervals
-        )
+        delimiter_exclusions = tuple((start, end) for start, end, _ in opaque_intervals)
         for match in re.finditer(r"(?m)^[ \t]*>[^\n]*(?:\n|$)", text):
             parse_budget.spend()
             marker = match.start() + match.group(0).find(">")
@@ -1922,9 +1815,7 @@ def segment_document(text: str, artifact_format: str) -> list[Segment]:
         if reference is not None:
             extend_bounded(((reference.start(), len(text), "reference_entry"),))
             reference_body_start = reference.end()
-            for line in re.finditer(
-                r"(?m)^[ \t]*(?=\S)", text[reference_body_start:]
-            ):
+            for line in re.finditer(r"(?m)^[ \t]*(?=\S)", text[reference_body_start:]):
                 parse_budget.spend()
                 add_partition_boundary(
                     reference_entry_boundaries,
@@ -1942,9 +1833,7 @@ def segment_document(text: str, artifact_format: str) -> list[Segment]:
             text, artifact_format, budget=parse_budget
         )
         extend_bounded(opaque_intervals)
-        delimiter_exclusions = tuple(
-            (start, end) for start, end, _ in opaque_intervals
-        )
+        delimiter_exclusions = tuple((start, end) for start, end, _ in opaque_intervals)
         extend_bounded(
             _nested_environment_intervals(
                 text,
@@ -1991,9 +1880,7 @@ def segment_document(text: str, artifact_format: str) -> list[Segment]:
         boundaries.add(start)
         boundaries.add(end)
         if len(boundaries) > MAX_SEGMENTS + 1:
-            raise MatchLimitError(
-                f"document partition exceeds {MAX_SEGMENTS} output segments"
-            )
+            raise MatchLimitError(f"document partition exceeds {MAX_SEGMENTS} output segments")
     ordered = sorted(boundaries)
     starts: dict[int, list[str]] = {}
     ends: dict[int, list[str]] = {}
@@ -2011,21 +1898,14 @@ def segment_document(text: str, artifact_format: str) -> list[Segment]:
                 active.pop(kind, None)
         for kind in starts.get(start, ()):
             active[kind] = active.get(kind, 0) + 1
-        kind = (
-            max(active, key=lambda item: _CONTEXT_PRIORITY[item])
-            if active
-            else "author_prose"
-        )
+        kind = max(active, key=lambda item: _CONTEXT_PRIORITY[item]) if active else "author_prose"
         if (
             raw_segments
             and raw_segments[-1][0] == kind
             and raw_segments[-1][2] == start
             and not (
                 (kind == "author_prose" and start in paragraph_boundaries)
-                or (
-                    kind == "reference_entry"
-                    and start in reference_entry_boundaries
-                )
+                or (kind == "reference_entry" and start in reference_entry_boundaries)
             )
         ):
             previous = raw_segments.pop()
@@ -2104,8 +1984,7 @@ def scan_segments(
         raise MatchLimitError(f"document exceeds {MAX_DOCUMENT_BYTES} bytes")
     if len(segments) * len(bundle.rules) > MAX_RULE_SEGMENT_EVALUATIONS:
         raise MatchLimitError(
-            "rule-by-segment evaluations exceed "
-            f"{MAX_RULE_SEGMENT_EVALUATIONS}"
+            "rule-by-segment evaluations exceed " f"{MAX_RULE_SEGMENT_EVALUATIONS}"
         )
     matches: list[dict[str, Any]] = []
     by_context = {context: 0 for context in CONTEXTS}
@@ -2116,9 +1995,7 @@ def scan_segments(
         segment_text = text[segment.start : segment.end]
         segment_tokens = tokenize(segment_text)
         for rule in bundle.rules:
-            for witness in evaluate_rule(
-                rule, segment_tokens, budget=work_budget
-            ):
+            for witness in evaluate_rule(rule, segment_tokens, budget=work_budget):
                 cp_start = segment.start + witness.codepoint_start
                 cp_end = segment.start + witness.codepoint_end
                 matched_text = text[cp_start:cp_end]
@@ -2410,9 +2287,7 @@ def _markdown_cell(value: Any, *, maximum: int = 1000) -> str:
         return "—"
     rendered = str(value).replace("\r", " ").replace("\n", " ")
     rendered = "".join(
-        char
-        if unicodedata.category(char) not in {"Cc", "Cf", "Zl", "Zp"}
-        else f"U+{ord(char):04X}"
+        char if unicodedata.category(char) not in {"Cc", "Cf", "Zl", "Zp"} else f"U+{ord(char):04X}"
         for char in rendered
     )
     if len(rendered) > maximum:
@@ -2659,9 +2534,7 @@ def build_cited_signal(
     evidence_value: Any = counts["rule_match_count"] if status == "checked" else reason_code
     signal = {
         "schema_version": SIGNAL_VERSION,
-        "signal_id": _signal_id(
-            citation_key, surface, state.snapshot_sha256, content_sha
-        ),
+        "signal_id": _signal_id(citation_key, surface, state.snapshot_sha256, content_sha),
         "signal_type": "tortured_phrase_match",
         "epistemic_class": "heuristic_advisory",
         "epistemic_label": "HEURISTIC-INDICATOR",
@@ -2760,9 +2633,7 @@ def validate_cited_signal_binding(signal: dict[str, Any], entry: dict[str, Any])
     if surface_binding.get("content_utf8_bytes") != expected_bytes:
         raise ScreeningError("tortured-phrase signal content byte length is stale")
     snapshot_sha = context.get("snapshot", {}).get("snapshot_sha256")
-    expected_id = _signal_id(
-        entry["citation_key"], surface, snapshot_sha, expected_sha
-    )
+    expected_id = _signal_id(entry["citation_key"], surface, snapshot_sha, expected_sha)
     if signal.get("signal_id") != expected_id:
         raise ScreeningError("tortured-phrase signal_id binding mismatch")
     matches = context.get("matches", [])
@@ -2772,8 +2643,7 @@ def validate_cited_signal_binding(signal: dict[str, Any], entry: dict[str, Any])
     endpoints = {
         endpoint
         for match in matches
-        if isinstance(match, dict)
-        and isinstance(match.get("source_span"), dict)
+        if isinstance(match, dict) and isinstance(match.get("source_span"), dict)
         for endpoint in (
             match["source_span"].get("codepoint_start"),
             match["source_span"].get("codepoint_end"),
@@ -2792,13 +2662,9 @@ def validate_cited_signal_binding(signal: dict[str, Any], entry: dict[str, Any])
     )
     for index, match in enumerate(matches):
         if match.get("segment_id") != "SEG-000001":
-            raise ScreeningError(
-                f"tortured-phrase matches[{index}] segment_id must be SEG-000001"
-            )
+            raise ScreeningError(f"tortured-phrase matches[{index}] segment_id must be SEG-000001")
         if match.get("context") != expected_context:
-            raise ScreeningError(
-                f"tortured-phrase matches[{index}] context does not match surface"
-            )
+            raise ScreeningError(f"tortured-phrase matches[{index}] context does not match surface")
         if match.get("disposition") != expected_disposition:
             raise ScreeningError(
                 f"tortured-phrase matches[{index}] disposition does not match surface"
@@ -2816,9 +2682,7 @@ def validate_cited_signal_binding(signal: dict[str, Any], entry: dict[str, Any])
             raise ScreeningError(f"tortured-phrase matches[{index}] has invalid codepoint span")
         matched = (value or "")[cp_start:cp_end]
         if len(matched) > MAX_EVIDENCE_CODEPOINTS or len(matched.split()) > MAX_EVIDENCE_WORDS:
-            raise ScreeningError(
-                f"tortured-phrase matches[{index}] exceeds the evidence bound"
-            )
+            raise ScreeningError(f"tortured-phrase matches[{index}] exceeds the evidence bound")
         if span.get("utf8_start") != offsets[cp_start] or span.get("utf8_end") != offsets[cp_end]:
             raise ScreeningError(f"tortured-phrase matches[{index}] UTF-8 span mismatch")
         if match.get("matched_text") != matched:
@@ -2826,20 +2690,23 @@ def validate_cited_signal_binding(signal: dict[str, Any], entry: dict[str, Any])
         if match.get("matched_text_sha256") != _sha256_text(matched):
             raise ScreeningError(f"tortured-phrase matches[{index}] text hash mismatch")
         match_id = match.get("match_id")
-        expected_match_id = "tpm-" + _sha256_text(
-            _canonical_json(
-                {
-                    "artifact_sha256": artifact_sha,
-                    "snapshot_sha256": snapshot_sha_for_match,
-                    "surface": surface,
-                    "segment_id": match.get("segment_id"),
-                    "context": match.get("context"),
-                    "rule_id": match.get("pattern_id"),
-                    "codepoint_start": cp_start,
-                    "codepoint_end": cp_end,
-                }
-            )
-        )[:24]
+        expected_match_id = (
+            "tpm-"
+            + _sha256_text(
+                _canonical_json(
+                    {
+                        "artifact_sha256": artifact_sha,
+                        "snapshot_sha256": snapshot_sha_for_match,
+                        "surface": surface,
+                        "segment_id": match.get("segment_id"),
+                        "context": match.get("context"),
+                        "rule_id": match.get("pattern_id"),
+                        "codepoint_start": cp_start,
+                        "codepoint_end": cp_end,
+                    }
+                )
+            )[:24]
+        )
         if match_id != expected_match_id:
             raise ScreeningError(f"tortured-phrase matches[{index}] match_id mismatch")
         if match_id in seen_match_ids:
@@ -2853,9 +2720,7 @@ def validate_cited_signal_binding(signal: dict[str, Any], entry: dict[str, Any])
     ):
         raise ScreeningError("tortured-phrase matched_rule_count mismatch")
     if counts.get("matched_rule_count", 0) > counts.get("rules_evaluated", 0):
-        raise ScreeningError(
-            "tortured-phrase matched_rule_count exceeds rules_evaluated"
-        )
+        raise ScreeningError("tortured-phrase matched_rule_count exceeds rules_evaluated")
     if counts.get("unique_instance_count") != _unique_instance_count(matches):
         raise ScreeningError("tortured-phrase unique_instance_count mismatch")
     matches_by_context = counts.get("matches_by_context")
@@ -2870,9 +2735,7 @@ def validate_cited_signal_binding(signal: dict[str, Any], entry: dict[str, Any])
     if not isinstance(snapshot, dict):
         raise ScreeningError("tortured-phrase snapshot binding must be an object")
     if expected_sha is None:
-        expected_reason = (
-            "ABSTRACT_MISSING" if value is None else "ABSTRACT_EMPTY"
-        )
+        expected_reason = "ABSTRACT_MISSING" if value is None else "ABSTRACT_EMPTY"
         if (
             surface != "cited_abstract"
             or status != "not_checked"
@@ -2937,9 +2800,7 @@ def validate_cited_signal_binding(signal: dict[str, Any], entry: dict[str, Any])
     row = evidence[0]
     if row.get("evidence_type") != expected_evidence_type:
         raise ScreeningError("tortured-phrase evidence_type mismatch")
-    if row.get("record_locator") != (
-        "title" if surface == "cited_title" else "abstract"
-    ):
+    if row.get("record_locator") != ("title" if surface == "cited_title" else "abstract"):
         raise ScreeningError("tortured-phrase evidence locator mismatch")
     if signal.get("check_status") == "checked" and (
         isinstance(row.get("observed_value"), bool)
@@ -2994,9 +2855,7 @@ def enrich_passport(
     if not isinstance(corpus, list):
         raise ScreeningError("passport must contain literature_corpus[]")
     if len(corpus) > MAX_CORPUS_ENTRIES:
-        raise MatchLimitError(
-            f"literature_corpus contains more than {MAX_CORPUS_ENTRIES} entries"
-        )
+        raise MatchLimitError(f"literature_corpus contains more than {MAX_CORPUS_ENTRIES} entries")
     existing_signal_count = sum(
         len(entry.get("bibliographic_integrity_signals", []))
         for entry in corpus
@@ -3005,8 +2864,7 @@ def enrich_passport(
     )
     if existing_signal_count > MAX_CORPUS_EXISTING_SIGNALS:
         raise MatchLimitError(
-            "existing bibliographic-integrity signals exceed "
-            f"{MAX_CORPUS_EXISTING_SIGNALS} rows"
+            "existing bibliographic-integrity signals exceed " f"{MAX_CORPUS_EXISTING_SIGNALS} rows"
         )
     output = copy.deepcopy(document)
     generated_match_count = 0
@@ -3032,13 +2890,11 @@ def enrich_passport(
             for surface in ("cited_title", "cited_abstract")
         ]
         generated_match_count += sum(
-            len(signal["tortured_phrase_context"]["matches"])
-            for signal in generated
+            len(signal["tortured_phrase_context"]["matches"]) for signal in generated
         )
         if generated_match_count > MAX_CORPUS_OUTPUT_MATCHES:
             raise MatchLimitError(
-                "corpus output match count exceeds "
-                f"{MAX_CORPUS_OUTPUT_MATCHES}"
+                "corpus output match count exceeds " f"{MAX_CORPUS_OUTPUT_MATCHES}"
             )
         existing = entry.get("bibliographic_integrity_signals", [])
         if not isinstance(existing, list):
@@ -3072,9 +2928,7 @@ def enrich_passport(
                 and context.get("surface") in current_by_surface
             ):
                 subject = signal.get("subject")
-                if not isinstance(subject, dict) or subject.get(
-                    "citation_key"
-                ) != citation_key:
+                if not isinstance(subject, dict) or subject.get("citation_key") != citation_key:
                     raise ScreeningError(
                         "current v1.2 tortured-phrase row citation_key does not "
                         f"belong to corpus entry {citation_key!r}"
@@ -3107,8 +2961,7 @@ def enrich_passport(
                 signal.get("schema_version") == SIGNAL_VERSION
                 and signal.get("signal_type") == "tortured_phrase_match"
                 and isinstance(signal.get("tortured_phrase_context"), dict)
-                and signal["tortured_phrase_context"].get("surface")
-                in current_by_surface
+                and signal["tortured_phrase_context"].get("surface") in current_by_surface
             )
         ]
         preserved_ids = {signal["signal_id"] for signal in preserved}
@@ -3186,13 +3039,9 @@ def _reject_nonfinite_recursive(
         item, item_path, depth = stack.pop()
         nodes_seen += 1
         if nodes_seen > MAX_STRUCTURE_NODES:
-            raise MatchLimitError(
-                f"{path} structure exceeds {MAX_STRUCTURE_NODES} nodes"
-            )
+            raise MatchLimitError(f"{path} structure exceeds {MAX_STRUCTURE_NODES} nodes")
         if depth > MAX_STRUCTURE_DEPTH:
-            raise MatchLimitError(
-                f"{path} structure exceeds depth {MAX_STRUCTURE_DEPTH}"
-            )
+            raise MatchLimitError(f"{path} structure exceeds depth {MAX_STRUCTURE_DEPTH}")
         if isinstance(item, float) and not math.isfinite(item):
             raise ScreeningError(f"{item_path} contains a non-finite number")
         if isinstance(item, dict):
@@ -3201,16 +3050,12 @@ def _reject_nonfinite_recursive(
                 raise ScreeningError("shared or recursive YAML aliases are forbidden")
             seen_containers.add(identity)
             if nodes_seen + len(stack) + 2 * len(item) > MAX_STRUCTURE_NODES:
-                raise MatchLimitError(
-                    f"{path} structure exceeds {MAX_STRUCTURE_NODES} nodes"
-                )
+                raise MatchLimitError(f"{path} structure exceeds {MAX_STRUCTURE_NODES} nodes")
             folded: dict[str, str] = {}
             children: list[tuple[Any, str, int]] = []
             for key, child in item.items():
                 if not isinstance(key, str):
-                    raise ScreeningError(
-                        f"{item_path} contains a non-string mapping key"
-                    )
+                    raise ScreeningError(f"{item_path} contains a non-string mapping key")
                 _reject_unsafe_text(key, f"{item_path} key")
                 nodes_seen += 1
                 normalized = unicodedata.normalize("NFKC", key).casefold()
@@ -3228,9 +3073,7 @@ def _reject_nonfinite_recursive(
                 raise ScreeningError("shared or recursive YAML aliases are forbidden")
             seen_containers.add(identity)
             if nodes_seen + len(stack) + len(item) > MAX_STRUCTURE_NODES:
-                raise MatchLimitError(
-                    f"{path} structure exceeds {MAX_STRUCTURE_NODES} nodes"
-                )
+                raise MatchLimitError(f"{path} structure exceeds {MAX_STRUCTURE_NODES} nodes")
             for index in range(len(item) - 1, -1, -1):
                 stack.append((item[index], f"{item_path}[{index}]", depth + 1))
         elif isinstance(item, str):
@@ -3240,14 +3083,10 @@ def _reject_nonfinite_recursive(
 def _load_passport(path: Path) -> tuple[dict[str, Any], str]:
     suffix = path.suffix.lower()
     if suffix == ".json":
-        value, _ = _strict_json_path(
-            path, label="passport", maximum=MAX_PASSPORT_BYTES
-        )
+        value, _ = _strict_json_path(path, label="passport", maximum=MAX_PASSPORT_BYTES)
         kind = "json"
     else:
-        text = _read_strict_text(
-            path, maximum=MAX_PASSPORT_BYTES, label="passport"
-        )
+        text = _read_strict_text(path, maximum=MAX_PASSPORT_BYTES, label="passport")
         _preflight_yaml_structure(text, label="passport")
         loader = YAML(typ="rt")
         loader.allow_duplicate_keys = False
@@ -3307,9 +3146,7 @@ def _atomic_write_passport(path: Path, value: dict[str, Any], kind: str) -> None
     emitter.dump(value, buffer)
     payload = buffer.getvalue().encode("utf-8")
     if len(payload) > MAX_PASSPORT_BYTES:
-        raise ScreeningError(
-            f"serialized passport exceeds {MAX_PASSPORT_BYTES} bytes"
-        )
+        raise ScreeningError(f"serialized passport exceeds {MAX_PASSPORT_BYTES} bytes")
     _atomic_write_bytes(path, payload)
 
 
@@ -3338,9 +3175,7 @@ def _add_draft_replay_args(parser: argparse.ArgumentParser) -> None:
 
 
 def _load_report(path: Path) -> dict[str, Any]:
-    value, _ = _strict_json_path(
-        path, label="own-draft advisory", maximum=MAX_ADVISORY_BYTES
-    )
+    value, _ = _strict_json_path(path, label="own-draft advisory", maximum=MAX_ADVISORY_BYTES)
     if not isinstance(value, dict):
         raise ScreeningError("own-draft advisory must be a JSON object")
     return value
@@ -3372,9 +3207,7 @@ def main(argv: list[str] | None = None) -> int:
         "validate-snapshot", help="Validate and hash-bind one local snapshot."
     )
     validate_snapshot_parser.add_argument("--snapshot", type=Path, required=True)
-    validate_snapshot_parser.add_argument(
-        "--snapshot-manifest", type=Path, required=True
-    )
+    validate_snapshot_parser.add_argument("--snapshot-manifest", type=Path, required=True)
 
     scan_parser = subparsers.add_parser(
         "scan-draft", help="Build a closed own-draft advisory report."
@@ -3429,9 +3262,7 @@ def main(argv: list[str] | None = None) -> int:
 
         state = _state_from_args(args)
         if args.command in {"scan-draft", "validate-draft", "render-draft"}:
-            text = _read_strict_text(
-                args.input, maximum=MAX_DOCUMENT_BYTES, label="draft"
-            )
+            text = _read_strict_text(args.input, maximum=MAX_DOCUMENT_BYTES, label="draft")
             if args.command == "scan-draft":
                 report = build_own_draft_report(
                     text,
@@ -3441,9 +3272,7 @@ def main(argv: list[str] | None = None) -> int:
                     checked_at=args.checked_at,
                     recorded_at=args.recorded_at,
                 )
-                _atomic_write_json(
-                    args.output, report, maximum=MAX_ADVISORY_BYTES
-                )
+                _atomic_write_json(args.output, report, maximum=MAX_ADVISORY_BYTES)
                 if report.get("check_status") == "degraded":
                     print(
                         "ERROR: wrote degraded advisory: "
@@ -3477,8 +3306,7 @@ def main(argv: list[str] | None = None) -> int:
             degraded_reasons = _degraded_corpus_reasons(output)
             if degraded_reasons:
                 print(
-                    "ERROR: wrote degraded corpus advisories: "
-                    + ", ".join(degraded_reasons),
+                    "ERROR: wrote degraded corpus advisories: " + ", ".join(degraded_reasons),
                     file=sys.stderr,
                 )
                 return 1

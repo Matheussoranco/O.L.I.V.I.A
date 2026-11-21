@@ -12,8 +12,13 @@ from __future__ import annotations
 from scripts import _eval_threshold_gate as gate
 
 
-def _task(task_name="citation_extraction", agg_metric="accuracy",
-          agg_passed=True, per_class=None, status="measured"):
+def _task(
+    task_name="citation_extraction",
+    agg_metric="accuracy",
+    agg_passed=True,
+    per_class=None,
+    status="measured",
+):
     entry = {
         "task_name": task_name,
         "status": status,
@@ -71,36 +76,43 @@ def test_per_class_fail_with_aggregate_pass_is_reported():
     e.g. citation_extraction.false.accuracy drops below 0.85 while the aggregate
     stays >= 0.90. The gate MUST surface it.
     """
-    report = _report(_task(
-        agg_passed=True,
-        per_class=[
-            {"class_name": "true", "metric": "accuracy", "passed": True},
-            {"class_name": "false", "metric": "accuracy", "passed": False},
-            {"class_name": "unresolvable", "metric": "accuracy", "passed": True},
-        ],
-    ))
+    report = _report(
+        _task(
+            agg_passed=True,
+            per_class=[
+                {"class_name": "true", "metric": "accuracy", "passed": True},
+                {"class_name": "false", "metric": "accuracy", "passed": False},
+                {"class_name": "unresolvable", "metric": "accuracy", "passed": True},
+            ],
+        )
+    )
     assert gate.failed_tasks(report) == ["citation_extraction.false.accuracy"]
 
 
 def test_per_class_key_shape_matches_lift_gate():
     """Per-class failures use the ``<task>.<class>.<metric>`` shape (matches the
     lift gate's key shape, not the aggregate's ``<task>.aggregate.<metric>``)."""
-    report = _report(_task(
-        task_name="rq_framing_patterns", agg_metric="balanced_accuracy",
-        agg_passed=True,
-        per_class=[
-            {"class_name": "fnr", "metric": "fnr", "passed": False},
-            {"class_name": "fpr", "metric": "fpr", "passed": True},
-        ],
-    ))
+    report = _report(
+        _task(
+            task_name="rq_framing_patterns",
+            agg_metric="balanced_accuracy",
+            agg_passed=True,
+            per_class=[
+                {"class_name": "fnr", "metric": "fnr", "passed": False},
+                {"class_name": "fpr", "metric": "fpr", "passed": True},
+            ],
+        )
+    )
     assert gate.failed_tasks(report) == ["rq_framing_patterns.fnr.fnr"]
 
 
 def test_both_aggregate_and_per_class_fail_reported():
-    report = _report(_task(
-        agg_passed=False,
-        per_class=[{"class_name": "false", "metric": "accuracy", "passed": False}],
-    ))
+    report = _report(
+        _task(
+            agg_passed=False,
+            per_class=[{"class_name": "false", "metric": "accuracy", "passed": False}],
+        )
+    )
     assert gate.failed_tasks(report) == [
         "citation_extraction.aggregate.accuracy",
         "citation_extraction.false.accuracy",
@@ -110,16 +122,21 @@ def test_both_aggregate_and_per_class_fail_reported():
 def test_per_class_without_threshold_not_gated():
     # a per_class row that carries no ``passed`` key (no per-class threshold) is
     # not gated — only ``passed is False`` blocks
-    report = _report(_task(
-        agg_passed=True,
-        per_class=[{"class_name": "true", "metric": "accuracy"}],
-    ))
+    report = _report(
+        _task(
+            agg_passed=True,
+            per_class=[{"class_name": "true", "metric": "accuracy"}],
+        )
+    )
     assert gate.failed_tasks(report) == []
 
 
 def test_per_class_on_pending_task_never_gated():
-    report = _report(_task(
-        status="pending", agg_passed=True,
-        per_class=[{"class_name": "false", "metric": "accuracy", "passed": False}],
-    ))
+    report = _report(
+        _task(
+            status="pending",
+            agg_passed=True,
+            per_class=[{"class_name": "false", "metric": "accuracy", "passed": False}],
+        )
+    )
     assert gate.failed_tasks(report) == []

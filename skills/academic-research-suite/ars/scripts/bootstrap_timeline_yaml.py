@@ -55,7 +55,9 @@ def _pdftotext_first_line(pdf_path: Path, dry_run: bool) -> str | None:
     try:
         result = subprocess.run(
             [pdftotext, "-f", "1", "-l", "1", str(pdf_path), "-"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode != 0:
             return None
@@ -89,8 +91,9 @@ def _bootstrap_entry(entry: dict, dry_run: bool) -> dict:
         if issued and issued[0]:
             precision_map = {1: "year", 2: "month", 3: "day"}
             precision = precision_map.get(len(issued), "year")
-            iso_parts = [f"{int(p):04d}" if i == 0 else f"{int(p):02d}"
-                         for i, p in enumerate(issued)]
+            iso_parts = [
+                f"{int(p):04d}" if i == 0 else f"{int(p):02d}" for i, p in enumerate(issued)
+            ]
             out["published_date"] = {
                 "value": "-".join(iso_parts),
                 "precision": precision,
@@ -120,13 +123,21 @@ def _bootstrap_entry(entry: dict, dry_run: bool) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="v3.9.4 bootstrap_timeline_yaml.py — opt-in Crossref + pdftotext")
-    parser.add_argument("--corpus", type=Path, required=True,
-                        help="Path to corpus YAML containing literature_corpus[]")
-    parser.add_argument("--output", type=Path, required=True,
-                        help="Path to write timeline.yaml")
-    parser.add_argument("--dry-run", action="store_true",
-                        help="Skip API and pdftotext calls (use corpus year fallback)")
+    parser = argparse.ArgumentParser(
+        description="v3.9.4 bootstrap_timeline_yaml.py — opt-in Crossref + pdftotext"
+    )
+    parser.add_argument(
+        "--corpus",
+        type=Path,
+        required=True,
+        help="Path to corpus YAML containing literature_corpus[]",
+    )
+    parser.add_argument("--output", type=Path, required=True, help="Path to write timeline.yaml")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Skip API and pdftotext calls (use corpus year fallback)",
+    )
     args = parser.parse_args(argv)
 
     corpus_data = yaml.safe_load(args.corpus.read_text())

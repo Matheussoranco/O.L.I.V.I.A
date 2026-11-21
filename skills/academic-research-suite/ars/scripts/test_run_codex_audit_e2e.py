@@ -36,7 +36,6 @@ import os
 import shutil
 import stat
 import subprocess
-import sys
 import textwrap
 from pathlib import Path
 
@@ -46,6 +45,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 WRAPPER = REPO_ROOT / "scripts" / "run_codex_audit.sh"
 SCHEMA_DIR_PASSPORT = REPO_ROOT / "shared" / "contracts" / "passport"
 SCHEMA_DIR_AUDIT = REPO_ROOT / "shared" / "contracts" / "audit"
+
 
 # Skip on hosts without Bash 4+. macOS stock /bin/bash is 3.2; CI ubuntu has 5.x.
 def _bash_major_version() -> int:
@@ -167,9 +167,7 @@ def _stage_repo_clone(work_dir: Path) -> Path:
     subprocess.run(["git", "config", "user.email", "test@local"], cwd=clone, check=True)
     subprocess.run(["git", "config", "user.name", "test"], cwd=clone, check=True)
     subprocess.run(["git", "add", "-A"], cwd=clone, check=True)
-    subprocess.run(
-        ["git", "commit", "-q", "-m", "stub for e2e test"], cwd=clone, check=True
-    )
+    subprocess.run(["git", "commit", "-q", "-m", "stub for e2e test"], cwd=clone, check=True)
     return clone
 
 
@@ -207,12 +205,18 @@ def test_wrapper_dispatches_end_to_end(tmp_path):
         [
             "bash",
             str(repo / "scripts" / "run_codex_audit.sh"),
-            "--stage", "2",
-            "--agent", "synthesis_agent",
-            "--deliverable", str(deliverable_rel),
-            "--round", "1",
-            "--target-rounds", "3",
-            "--output-dir", output_dir_rel,
+            "--stage",
+            "2",
+            "--agent",
+            "synthesis_agent",
+            "--deliverable",
+            str(deliverable_rel),
+            "--round",
+            "1",
+            "--target-rounds",
+            "3",
+            "--output-dir",
+            output_dir_rel,
         ],
         cwd=repo,
         env=env,
@@ -227,9 +231,9 @@ def test_wrapper_dispatches_end_to_end(tmp_path):
 
     # Locate the run_id by looking at the produced files.
     contract_files = sorted(output_dir.glob("*.jsonl"))
-    assert len(contract_files) == 1, (
-        f"Expected exactly one .jsonl contract file; got {[p.name for p in contract_files]}"
-    )
+    assert (
+        len(contract_files) == 1
+    ), f"Expected exactly one .jsonl contract file; got {[p.name for p in contract_files]}"
     run_id = contract_files[0].stem
 
     # Four contract files exist.
@@ -252,12 +256,12 @@ def test_wrapper_dispatches_end_to_end(tmp_path):
         SCHEMA_DIR_PASSPORT / "audit_artifact_entry.schema.json",
         mode="proposal",
     )
-    assert "verified_at" not in proposal_doc.get("verdict", {}), (
-        "proposal must NOT carry verdict.verified_at (Pattern C3 attack surface)"
-    )
-    assert "verified_by" not in proposal_doc.get("verdict", {}), (
-        "proposal must NOT carry verdict.verified_by"
-    )
+    assert "verified_at" not in proposal_doc.get(
+        "verdict", {}
+    ), "proposal must NOT carry verdict.verified_at (Pattern C3 attack surface)"
+    assert "verified_by" not in proposal_doc.get(
+        "verdict", {}
+    ), "proposal must NOT carry verdict.verified_by"
 
     # Verdict file validates against audit_verdict.schema.json.
     import yaml as pyyaml
@@ -283,9 +287,7 @@ def test_wrapper_dispatches_end_to_end(tmp_path):
     assert sidecar_doc["process"]["exit_code"] == 0
 
     # JSONL events each validate against audit_jsonl.schema.json's row schema.
-    jsonl_lines = [
-        json.loads(ln) for ln in jsonl_path.read_text().splitlines() if ln.strip()
-    ]
+    jsonl_lines = [json.loads(ln) for ln in jsonl_path.read_text().splitlines() if ln.strip()]
     assert len(jsonl_lines) >= 4, "expected canonical 4-event minimum stream"
     assert jsonl_lines[0]["type"] == "thread.started"
     assert jsonl_lines[-1]["type"] == "turn.completed"
@@ -309,11 +311,16 @@ def test_wrapper_dry_run_writes_nothing(tmp_path):
         [
             "bash",
             str(repo / "scripts" / "run_codex_audit.sh"),
-            "--stage", "2",
-            "--agent", "synthesis_agent",
-            "--deliverable", str(deliverable.relative_to(repo)),
-            "--round", "1",
-            "--output-dir", output_dir_rel,
+            "--stage",
+            "2",
+            "--agent",
+            "synthesis_agent",
+            "--deliverable",
+            str(deliverable.relative_to(repo)),
+            "--round",
+            "1",
+            "--output-dir",
+            output_dir_rel,
             "--dry-run",
         ],
         cwd=repo,
@@ -330,9 +337,7 @@ def test_wrapper_dry_run_writes_nothing(tmp_path):
         artifacts = list(output_dir.glob("*.jsonl")) + list(
             output_dir.glob("*.audit_artifact_entry.json")
         )
-        assert not artifacts, (
-            f"--dry-run leaked contract artifacts: {[p.name for p in artifacts]}"
-        )
+        assert not artifacts, f"--dry-run leaked contract artifacts: {[p.name for p in artifacts]}"
 
 
 def test_wrapper_rejects_round_2_without_previous_findings(tmp_path):
@@ -351,12 +356,18 @@ def test_wrapper_rejects_round_2_without_previous_findings(tmp_path):
         [
             "bash",
             str(repo / "scripts" / "run_codex_audit.sh"),
-            "--stage", "2",
-            "--agent", "synthesis_agent",
-            "--deliverable", str(deliverable.relative_to(repo)),
-            "--round", "2",
-            "--target-rounds", "3",
-            "--output-dir", "audit_artifacts",
+            "--stage",
+            "2",
+            "--agent",
+            "synthesis_agent",
+            "--deliverable",
+            str(deliverable.relative_to(repo)),
+            "--round",
+            "2",
+            "--target-rounds",
+            "3",
+            "--output-dir",
+            "audit_artifacts",
         ],
         cwd=repo,
         env=env,
@@ -364,6 +375,6 @@ def test_wrapper_rejects_round_2_without_previous_findings(tmp_path):
         text=True,
     )
     # EX_USAGE = 64
-    assert result.returncode == 64, (
-        f"expected exit 64 (EX_USAGE); got {result.returncode}\nstderr: {result.stderr}"
-    )
+    assert (
+        result.returncode == 64
+    ), f"expected exit 64 (EX_USAGE); got {result.returncode}\nstderr: {result.stderr}"

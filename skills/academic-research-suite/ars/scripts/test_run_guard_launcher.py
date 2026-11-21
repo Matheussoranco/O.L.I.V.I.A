@@ -33,7 +33,6 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from pathlib import Path
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LAUNCHER = os.path.join(REPO_ROOT, "hooks", "run_guard.sh")
@@ -146,7 +145,9 @@ class LauncherNoPythonTest(unittest.TestCase):
 
     def _assert_clean_passthrough(self, code, out, err):
         self.assertEqual(code, 0, f"must exit 0, got {code}; stderr={err!r}")
-        self.assertEqual(json.loads(out), PASS_THROUGH, f"must emit canonical pass-through; got {out!r}")
+        self.assertEqual(
+            json.loads(out), PASS_THROUGH, f"must emit canonical pass-through; got {out!r}"
+        )
         self.assertEqual(err.strip(), "", f"must be SILENT on hot-path stderr; got {err!r}")
 
     def test_only_silent_stubs_on_path(self):
@@ -156,7 +157,9 @@ class LauncherNoPythonTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as bin_dir:
             for name in ("py", "python3", "python"):
                 _stub(os.path.join(bin_dir, name))
-            code, out, err = _run_launcher(bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}})
+            code, out, err = _run_launcher(
+                bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}}
+            )
             self._assert_clean_passthrough(code, out, err)
 
     def test_stubs_that_print_error_to_stderr(self):
@@ -165,9 +168,13 @@ class LauncherNoPythonTest(unittest.TestCase):
         # are still rejected. Confirms the launcher keys on the stdout marker, not exit text.
         with tempfile.TemporaryDirectory() as bin_dir:
             for name in ("py", "python3", "python"):
-                _write_exec(os.path.join(bin_dir, name),
-                            "#!/bin/sh\necho 'not a real python' 1>&2\nexit 9\n")
-            code, out, err = _run_launcher(bin_dir, {"tool_name": "Write", "tool_input": {"file_path": "/x", "content": "y"}})
+                _write_exec(
+                    os.path.join(bin_dir, name),
+                    "#!/bin/sh\necho 'not a real python' 1>&2\nexit 9\n",
+                )
+            code, out, err = _run_launcher(
+                bin_dir, {"tool_name": "Write", "tool_input": {"file_path": "/x", "content": "y"}}
+            )
             self._assert_clean_passthrough(code, out, err)
 
     def test_marker_printed_but_nonzero_exit_rejected(self):
@@ -178,9 +185,10 @@ class LauncherNoPythonTest(unittest.TestCase):
             for name in ("py", "python3", "python"):
                 # Print the marker to stdout (what a REAL probe would print) but exit 9.
                 # Must still be rejected because the exit status is non-zero.
-                _write_exec(os.path.join(bin_dir, name),
-                            "#!/bin/sh\nprintf 'ARS_PY_OK'\nexit 9\n")
-            code, out, err = _run_launcher(bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}})
+                _write_exec(os.path.join(bin_dir, name), "#!/bin/sh\nprintf 'ARS_PY_OK'\nexit 9\n")
+            code, out, err = _run_launcher(
+                bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}}
+            )
             self._assert_clean_passthrough(code, out, err)
 
     def test_no_timeout_binary_present(self):
@@ -189,8 +197,11 @@ class LauncherNoPythonTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as bin_dir:
             for name in ("py", "python3", "python"):
                 _stub(os.path.join(bin_dir, name))
-            code, out, err = _run_launcher(bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
-                                           extra_env={"ARS_GUARD_FORCE_WATCHDOG": "1"})
+            code, out, err = _run_launcher(
+                bin_dir,
+                {"tool_name": "Bash", "tool_input": {"command": "ls"}},
+                extra_env={"ARS_GUARD_FORCE_WATCHDOG": "1"},
+            )
             self._assert_clean_passthrough(code, out, err)
 
 
@@ -203,8 +214,11 @@ class LauncherRealPythonForwardsTest(unittest.TestCase):
             # research_architect_agent's allowed dir — an in-scope write should pass through.
             # Use the agent's actual allowed glob area; a clearly in-scope path: workspace root file
             # owned by main session is simplest, but we want the guard to RUN and say pass-through.
-            payload = {"tool_name": "Write", "cwd": ws,
-                       "tool_input": {"file_path": os.path.join(ws, "notes.md"), "content": "x"}}
+            payload = {
+                "tool_name": "Write",
+                "cwd": ws,
+                "tool_input": {"file_path": os.path.join(ws, "notes.md"), "content": "x"},
+            }
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0)
             decision = json.loads(out)
@@ -218,14 +232,21 @@ class LauncherRealPythonForwardsTest(unittest.TestCase):
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0, f"guard always exits 0; got {code} err={err!r}")
             decision = json.loads(out)
-            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
-                             f"out-of-scope Bucket A write must be denied via forwarded JSON; got {out!r}")
+            self.assertEqual(
+                decision["hookSpecificOutput"].get("permissionDecision"),
+                "deny",
+                f"out-of-scope Bucket A write must be denied via forwarded JSON; got {out!r}",
+            )
 
     def test_bash_denied_for_bucket_a_forwarded(self):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
             _fake_real_python(os.path.join(bin_dir, "python3"))
-            payload = {"tool_name": "Bash", "cwd": ws, "agent_type": "research_architect_agent",
-                       "tool_input": {"command": "rm -rf /"}}
+            payload = {
+                "tool_name": "Bash",
+                "cwd": ws,
+                "agent_type": "research_architect_agent",
+                "tool_input": {"command": "rm -rf /"},
+            }
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0)
             decision = json.loads(out)
@@ -237,14 +258,17 @@ class LauncherStubSkipOrderingTest(unittest.TestCase):
 
     def test_py_stub_python3_real(self):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
-            _stub(os.path.join(bin_dir, "py"))          # py -3 fails (stub)
+            _stub(os.path.join(bin_dir, "py"))  # py -3 fails (stub)
             _fake_real_python(os.path.join(bin_dir, "python3"))  # python3 is real
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0)
             decision = json.loads(out)
-            self.assertEqual(decision["hookSpecificOutput"].get("permissionDecision"), "deny",
-                             "must skip the py stub and use the real python3")
+            self.assertEqual(
+                decision["hookSpecificOutput"].get("permissionDecision"),
+                "deny",
+                "must skip the py stub and use the real python3",
+            )
 
 
 class LauncherPyDashThreeArgTest(unittest.TestCase):
@@ -254,12 +278,15 @@ class LauncherPyDashThreeArgTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
             argv_log = os.path.join(bin_dir, "py_argv.log")
             # fake `py` that only succeeds when given -3 as the first arg; logs argv.
-            _write_exec(os.path.join(bin_dir, "py"), (
-                "#!/bin/sh\n"
-                f'echo "$@" >> "{argv_log}"\n'
-                'if [ "$1" = "-3" ]; then shift; exec "' + REAL_PY + '" "$@"; fi\n'
-                "exit 1\n"
-            ))
+            _write_exec(
+                os.path.join(bin_dir, "py"),
+                (
+                    "#!/bin/sh\n"
+                    f'echo "$@" >> "{argv_log}"\n'
+                    'if [ "$1" = "-3" ]; then shift; exec "' + REAL_PY + '" "$@"; fi\n'
+                    "exit 1\n"
+                ),
+            )
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0)
@@ -270,7 +297,9 @@ class LauncherPyDashThreeArgTest(unittest.TestCase):
             self.assertTrue(os.path.exists(argv_log), "py was never invoked")
             with open(argv_log) as fh:
                 first = fh.readline().strip()
-            self.assertTrue(first.startswith("-3"), f"py must be called with -3 first; got {first!r}")
+            self.assertTrue(
+                first.startswith("-3"), f"py must be called with -3 first; got {first!r}"
+            )
 
 
 class LauncherSelfResolveTest(unittest.TestCase):
@@ -284,12 +313,13 @@ class LauncherSelfResolveTest(unittest.TestCase):
             # _run_launcher deliberately does not set CLAUDE_PLUGIN_ROOT.
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0)
-            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny")
+            self.assertEqual(
+                json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny"
+            )
 
     def test_plugin_path_with_spaces(self):
         # Copy the launcher + guard into a path containing spaces, run from there.
-        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as bin_dir, \
-                tempfile.TemporaryDirectory() as ws:
+        with tempfile.TemporaryDirectory() as base, tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
             spaced = os.path.join(base, "plugin dir with spaces")
             os.makedirs(os.path.join(spaced, "hooks"))
             os.makedirs(os.path.join(spaced, "scripts"))
@@ -300,14 +330,25 @@ class LauncherSelfResolveTest(unittest.TestCase):
             shutil.copy(manifest, os.path.join(spaced, "scripts", "ars_phase_scope_manifest.json"))
             _fake_real_python(os.path.join(bin_dir, "python3"))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            env = {"PATH": bin_dir + os.pathsep + _SYS_PATH, "CLAUDE_PROJECT_DIR": ws,
-                   "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND}
-            proc = subprocess.run([_SH, os.path.join(spaced, "hooks", "run_guard.sh")],
-                                  input=json.dumps(payload), env=env, capture_output=True,
-                                  text=True, timeout=_LAUNCHER_TIMEOUT)
+            env = {
+                "PATH": bin_dir + os.pathsep + _SYS_PATH,
+                "CLAUDE_PROJECT_DIR": ws,
+                "ARS_PROBE_BOUND": _DEFAULT_PROBE_BOUND,
+            }
+            proc = subprocess.run(
+                [_SH, os.path.join(spaced, "hooks", "run_guard.sh")],
+                input=json.dumps(payload),
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=_LAUNCHER_TIMEOUT,
+            )
             self.assertEqual(proc.returncode, 0, f"stderr={proc.stderr!r}")
-            self.assertEqual(json.loads(proc.stdout)["hookSpecificOutput"].get("permissionDecision"),
-                             "deny", "launcher must resolve guard via its own path even under spaces")
+            self.assertEqual(
+                json.loads(proc.stdout)["hookSpecificOutput"].get("permissionDecision"),
+                "deny",
+                "launcher must resolve guard via its own path even under spaces",
+            )
 
 
 class LauncherGuardBrokeTest(unittest.TestCase):
@@ -323,7 +364,8 @@ class LauncherGuardBrokeTest(unittest.TestCase):
             _fake_real_python(os.path.join(bin_dir, "python3"))
             launcher_copy = _make_plugin_layout(base, guard_body)
             return _run_launcher(
-                bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
+                bin_dir,
+                {"tool_name": "Bash", "tool_input": {"command": "ls"}},
                 launcher=launcher_copy,
             )
 
@@ -365,7 +407,8 @@ class LauncherGuardBrokeTest(unittest.TestCase):
             launcher_copy = _make_plugin_layout(base, "pass\n")
             os.remove(os.path.join(base, "scripts", "ars_write_scope_guard.py"))
             code, out, err = _run_launcher(
-                bin_dir, {"tool_name": "Bash", "tool_input": {"command": "ls"}},
+                bin_dir,
+                {"tool_name": "Bash", "tool_input": {"command": "ls"}},
                 launcher=launcher_copy,
             )
             self.assertEqual(code, 0, f"missing guard -> pass-through, not block; err={err!r}")
@@ -385,11 +428,15 @@ class LauncherHangingCandidateTest(unittest.TestCase):
             _write_exec(os.path.join(bin_dir, "py"), "#!/bin/sh\nsleep 60\n")
             _fake_real_python(os.path.join(bin_dir, "python3"))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            code, out, err = _run_launcher(bin_dir, payload,
-                                           extra_env={"CLAUDE_PROJECT_DIR": ws, **self._HANG_BOUND})
+            code, out, err = _run_launcher(
+                bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws, **self._HANG_BOUND}
+            )
             self.assertEqual(code, 0, f"must not hang/error on a hanging candidate; err={err!r}")
-            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
-                             "must kill the hanging py and use the real python3")
+            self.assertEqual(
+                json.loads(out)["hookSpecificOutput"].get("permissionDecision"),
+                "deny",
+                "must kill the hanging py and use the real python3",
+            )
 
     def test_hanging_py_killed_via_watchdog_path(self):
         """P2-d: same hanging-candidate scenario, but ARS_GUARD_FORCE_WATCHDOG=1 forces the
@@ -400,17 +447,24 @@ class LauncherHangingCandidateTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
             # py spawns a long-sleeping grandchild then waits — a bare-pid TERM would leak the
             # child; the process-group kill must take down the whole group.
-            _write_exec(os.path.join(bin_dir, "py"),
-                        "#!/bin/sh\nsleep 60 &\nwait\n")
+            _write_exec(os.path.join(bin_dir, "py"), "#!/bin/sh\nsleep 60 &\nwait\n")
             _fake_real_python(os.path.join(bin_dir, "python3"))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            code, out, err = _run_launcher(bin_dir, payload,
-                                           extra_env={"CLAUDE_PROJECT_DIR": ws,
-                                                      "ARS_GUARD_FORCE_WATCHDOG": "1",
-                                                      **self._HANG_BOUND})
+            code, out, err = _run_launcher(
+                bin_dir,
+                payload,
+                extra_env={
+                    "CLAUDE_PROJECT_DIR": ws,
+                    "ARS_GUARD_FORCE_WATCHDOG": "1",
+                    **self._HANG_BOUND,
+                },
+            )
             self.assertEqual(code, 0, f"watchdog must reap the hung probe; err={err!r}")
-            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
-                             "watchdog must kill the hanging py and fall through to python3")
+            self.assertEqual(
+                json.loads(out)["hookSpecificOutput"].get("permissionDecision"),
+                "deny",
+                "watchdog must kill the hanging py and fall through to python3",
+            )
 
 
 class LauncherSlowInterpreterTest(unittest.TestCase):
@@ -421,13 +475,17 @@ class LauncherSlowInterpreterTest(unittest.TestCase):
 
     def test_slow_but_working_python_forwards_deny(self):
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
-            _write_exec(os.path.join(bin_dir, "python3"),
-                        f'#!/bin/sh\nsleep 1.5\nexec "{REAL_PY}" "$@"\n')
+            _write_exec(
+                os.path.join(bin_dir, "python3"), f'#!/bin/sh\nsleep 1.5\nexec "{REAL_PY}" "$@"\n'
+            )
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PROJECT_DIR": ws})
             self.assertEqual(code, 0, f"err={err!r}")
-            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
-                             "a slow-but-real interpreter must not be false-degraded to pass-through")
+            self.assertEqual(
+                json.loads(out)["hookSpecificOutput"].get("permissionDecision"),
+                "deny",
+                "a slow-but-real interpreter must not be false-degraded to pass-through",
+            )
 
 
 class LauncherWatchdogRobustnessTest(unittest.TestCase):
@@ -442,18 +500,25 @@ class LauncherWatchdogRobustnessTest(unittest.TestCase):
         (where the temp files live) via ARS_GUARD_FORCE_WATCHDOG."""
         with tempfile.TemporaryDirectory() as bin_dir, tempfile.TemporaryDirectory() as ws:
             _fake_real_python(os.path.join(bin_dir, "python3"))
-            _write_exec(os.path.join(bin_dir, "mktemp"), "#!/bin/sh\nexit 1\n")  # mktemp always fails
+            _write_exec(
+                os.path.join(bin_dir, "mktemp"), "#!/bin/sh\nexit 1\n"
+            )  # mktemp always fails
             # A Bucket A out-of-scope write would normally be DENIED — proving we don't fail open,
             # the launcher must NOT emit deny here (it can't run the guard without a temp), it must
             # cleanly pass through instead of erroring or blocking.
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
-            code, out, err = _run_launcher(bin_dir, payload,
-                                           extra_env={"CLAUDE_PROJECT_DIR": ws,
-                                                      "ARS_GUARD_FORCE_WATCHDOG": "1"})
+            code, out, err = _run_launcher(
+                bin_dir,
+                payload,
+                extra_env={"CLAUDE_PROJECT_DIR": ws, "ARS_GUARD_FORCE_WATCHDOG": "1"},
+            )
             self.assertEqual(code, 0, f"mktemp failure must not crash/block; err={err!r}")
-            self.assertEqual(json.loads(out), PASS_THROUGH,
-                             "mktemp failure must degrade to canonical pass-through, never a "
-                             "predictable-temp path that fails open")
+            self.assertEqual(
+                json.loads(out),
+                PASS_THROUGH,
+                "mktemp failure must degrade to canonical pass-through, never a "
+                "predictable-temp path that fails open",
+            )
             self.assertEqual(err.strip(), "", f"degraded path must be silent; got {err!r}")
 
     def test_fast_guard_not_falsely_timed_out_on_watchdog_path(self):
@@ -465,14 +530,18 @@ class LauncherWatchdogRobustnessTest(unittest.TestCase):
             _fake_real_python(os.path.join(bin_dir, "python3"))
             payload = _bucket_a_payload(ws, os.path.join(ws, "out_of_scope", "x.md"))
             for i in range(5):
-                code, out, err = _run_launcher(bin_dir, payload,
-                                               extra_env={"CLAUDE_PROJECT_DIR": ws,
-                                                          "ARS_GUARD_FORCE_WATCHDOG": "1"})
+                code, out, err = _run_launcher(
+                    bin_dir,
+                    payload,
+                    extra_env={"CLAUDE_PROJECT_DIR": ws, "ARS_GUARD_FORCE_WATCHDOG": "1"},
+                )
                 self.assertEqual(code, 0, f"run {i}: err={err!r}")
-                self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"),
-                                 "deny",
-                                 f"run {i}: fast guard decision must be forwarded, not lost to a "
-                                 f"false timeout; got {out!r}")
+                self.assertEqual(
+                    json.loads(out)["hookSpecificOutput"].get("permissionDecision"),
+                    "deny",
+                    f"run {i}: fast guard decision must be forwarded, not lost to a "
+                    f"false timeout; got {out!r}",
+                )
 
 
 class LauncherInfraProtectionTest(unittest.TestCase):
@@ -490,10 +559,15 @@ class LauncherInfraProtectionTest(unittest.TestCase):
                 "agent_type": "research_architect_agent",
                 "tool_input": {"file_path": LAUNCHER, "content": "evil"},
             }
-            code, out, err = _run_launcher(bin_dir, payload, extra_env={"CLAUDE_PLUGIN_ROOT": REPO_ROOT})
+            code, out, err = _run_launcher(
+                bin_dir, payload, extra_env={"CLAUDE_PLUGIN_ROOT": REPO_ROOT}
+            )
             self.assertEqual(code, 0)
-            self.assertEqual(json.loads(out)["hookSpecificOutput"].get("permissionDecision"), "deny",
-                             "writing the launcher itself must be infra-denied")
+            self.assertEqual(
+                json.loads(out)["hookSpecificOutput"].get("permissionDecision"),
+                "deny",
+                "writing the launcher itself must be infra-denied",
+            )
 
 
 if __name__ == "__main__":

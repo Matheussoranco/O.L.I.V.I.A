@@ -62,8 +62,7 @@ SHIPPED_EXAMPLE_ANCHOR_RE = re.compile(
 TEMPLATE_EXAMPLE_ANCHOR_COUNT = 3
 TEMPLATE_EXAMPLE_ANCHOR_TYPES = ("text", "table", "absence")
 TEMPLATE_EXAMPLE_ANCHOR_RE = re.compile(
-    r"^Evidence Anchor: "
-    r"(?P<anchor>(?:text|table|figure|equation|dataset|absence): \S.*)$",
+    r"^Evidence Anchor: " r"(?P<anchor>(?:text|table|figure|equation|dataset|absence): \S.*)$",
     re.IGNORECASE | re.MULTILINE,
 )
 SPRINT = "## v3.6.2 Sprint Contract Protocol"
@@ -87,7 +86,7 @@ PHASE1_TERMINAL_PREFLIGHT_WITNESS = (
     "exact text you are about to send: "
     "1. The only H2 sections are exactly one `## Contract Paraphrase` followed "
     "by exactly one `## Scoring Plan`. The paraphrase meets "
-    "`measurement_procedure.paraphrase_minimum_dimensions`: `\"all\"` means "
+    '`measurement_procedure.paraphrase_minimum_dimensions`: `"all"` means '
     "one paragraph per contract dimension; integer `k` means at least `k` "
     "paragraphs tied to distinct dimensions. "
     "2. Every `### <Dn>: <name>` heading copies the contract ID and name "
@@ -206,7 +205,7 @@ ANCHOR_VALUE_GRAMMAR_WITNESS = (
     "are both invalid. Wrapper-like characters inside a locator are content "
     "and must be locally balanced — a bracketed locator such as "
     "`equation: Eq. [3]` and a locator naming inline code such as "
-    "``text: §3 \"quote\" per `df``` are valid. A `text:` anchor contains one "
+    '``text: §3 "quote" per `df``` are valid. A `text:` anchor contains one '
     "or more verbatim excerpts, each inside a balanced pair of straight or "
     "curly double quotes, and every quoted excerpt is at most 25 words. Before "
     "output, confirm at least one quoted excerpt exists, count each quoted "
@@ -231,8 +230,7 @@ PROTOCOL_PHASE2_LIVE_WITNESSES = (
     "Each report declares its dispatch role exactly once on one "
     "`contract_role: <role>` line immediately before `## Dimension Scores`; "
     "never repeat that report-level line inside dimension subsections",
-    "Strength subsections never carry a `Severity` field or a "
-    "`Severity: Strength` sentinel",
+    "Strength subsections never carry a `Severity` field or a " "`Severity: Strength` sentinel",
 )
 PROTOCOL_DA_TABLE_GATE_WITNESS = (
     "The two tables are the terminal suffix of `## Review Body`: every prose "
@@ -245,7 +243,8 @@ TEMPLATE_STRENGTH_SEVERITY_WITNESS = (
     "Severity is weakness-only"
 )
 ANCHOR_VALIDATOR_REGEX_WITNESS = (
-    r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"' "\n"
+    r'r"^(?P<type>text|table|figure|equation|dataset|absence):\s*"'
+    "\n"
     r'        r"(?P<tail>\S.*)$"'
 )
 ANCHOR_SQUARE_BALANCE_WITNESS = '''def _balanced_square_brackets(text: str) -> bool:
@@ -278,12 +277,9 @@ ANCHOR_QUOTE_SCANNER_WITNESS = '''def _quoted_excerpts(text: str) -> list[str] |
             else:
                 stack.append(("straight", index + 1))
     return None if stack else excerpts'''
-ANCHOR_QUOTE_USAGE_WITNESS = (
-    "quote_texts = _quoted_excerpts(tail)"
-)
+ANCHOR_QUOTE_USAGE_WITNESS = "quote_texts = _quoted_excerpts(tail)"
 ANCHOR_QUOTE_LIMIT_WITNESS = (
-    "any(not text.strip() or len(text.split()) > 25\n"
-    "                   for text in quote_texts)"
+    "any(not text.strip() or len(text.split()) > 25\n" "                   for text in quote_texts)"
 )
 ANCHOR_ABSENCE_PARSER_WITNESS = '''def _absence_parts(text: str) -> tuple[str, str, str] | None:
     """Parse the two reserved absence separators without regex backtracking."""
@@ -312,7 +308,7 @@ ANCHOR_WRAPPER_WITNESSES = (
     "if backtick_inner != backtick_inner.strip():",
 )
 ANCHOR_CONTENT_BALANCE_WITNESSES = (
-    "if not _balanced_square_brackets(tail) or tail.count(\"`\") % 2:",
+    'if not _balanced_square_brackets(tail) or tail.count("`") % 2:',
 )
 TEMPLATE_ANCHOR_PLACEHOLDER_WITNESSES = (
     "**Evidence Anchor**: [`<type>: <locator>`]\n"
@@ -383,19 +379,22 @@ EXECUTABLE_PATTERN_WITNESSES = (
 PHASE_FINDING_REGEX_WITNESSES = (
     r'r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Severity\*\*:\s*"',
     r'r"(?:^|\|\s*)\s*(?:[-*]\s*)?\*\*Evidence Anchor\*\*:\s*"',
-    '_SEVERITY_DECL_RE = re.compile(\n'
-    r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n"
+    "_SEVERITY_DECL_RE = re.compile(\n"
+    r'    r"\*\*Severity(?:\*\*)?\s*:",'
+    "\n"
     "    re.IGNORECASE,\n"
     ")",
-    '_ANCHOR_DECL_RE = re.compile(\n'
-    r'    r"\*\*Evidence Anchor(?:\*\*)?\s*:",' "\n"
+    "_ANCHOR_DECL_RE = re.compile(\n"
+    r'    r"\*\*Evidence Anchor(?:\*\*)?\s*:",'
+    "\n"
     "    re.IGNORECASE,\n"
     ")",
     r'_FINDING_H3_RE = re.compile(r"^W[1-9]\d*: \S.*$")',
 )
 DA_PARSER_WITNESSES = (
-    '_DA_SEVERITY_DECL_RE = re.compile(\n'
-    r'    r"\*\*Severity(?:\*\*)?\s*:",' "\n"
+    "_DA_SEVERITY_DECL_RE = re.compile(\n"
+    r'    r"\*\*Severity(?:\*\*)?\s*:",'
+    "\n"
     "    re.IGNORECASE,\n"
     ")",
     "_DA_SEVERITY_DECL_RE.search(line)",
@@ -414,8 +413,7 @@ DA_PARSER_WITNESSES = (
     r'rendered = re.sub(r"\[([^\]]+)\]", r"\1", rendered)',
     "parser = _VisibleTextHTMLParser()",
     "parser.feed(rendered)",
-    'rendered = unicodedata.normalize("NFKC", rendered)\n'
-    '    rendered = "".join(',
+    'rendered = unicodedata.normalize("NFKC", rendered)\n' '    rendered = "".join(',
     "def _is_default_ignorable(char: str) -> bool:",
     "for start, end in _DEFAULT_IGNORABLE_RANGES",
     DEFAULT_IGNORABLE_RANGES_WITNESS,
@@ -430,14 +428,13 @@ DA_PARSER_WITNESSES = (
     "            or _DA_TYPED_ANCHOR_RE.search(cell)\n"
     "            for cell in cells\n"
     "        )",
-    '_RAW_HTML_TABLE_RE = re.compile(\n'
+    "_RAW_HTML_TABLE_RE = re.compile(\n"
     '    r"<\\s*/?\\s*(?:table|thead|tbody|tr|th|td)\\b", re.IGNORECASE\n'
     ")",
     "_RAW_HTML_TABLE_RE.search(candidate)",
     r'_HTML_COMMENT_RE = re.compile(r"<!--")',
     r'_DA_FENCED_BLOCK_SENTINEL = "\0DA_FENCED_BLOCK\0"',
-    "if preserve_fenced_blocks:\n"
-    "                    out.append(_DA_FENCED_BLOCK_SENTINEL)",
+    "if preserve_fenced_blocks:\n" "                    out.append(_DA_FENCED_BLOCK_SENTINEL)",
     "raw_lines = _COMMONMARK_LINE_END_RE.split(text)",
     "_HTML_COMMENT_RE.search(line)",
     "lines = strip_fences(text, preserve_fenced_blocks=True)",
@@ -455,8 +452,8 @@ DA_PARSER_WITNESSES = (
     're.fullmatch(r"C[1-9]\\d*", finding_id)',
     "if finding_id in rows:",
     "if not cells[major_id_col]:",
-    "validate_evidence_anchor(anchor, f\"{path}:{finding_id}\")",
-    "validate_evidence_anchor(anchor, f\"{path}:DA MAJOR\")",
+    'validate_evidence_anchor(anchor, f"{path}:{finding_id}")',
+    'validate_evidence_anchor(anchor, f"{path}:DA MAJOR")',
 )
 
 
@@ -473,9 +470,7 @@ def check(root: Path) -> list[str]:
             for dim in contract["acceptance_dimensions"]
         }
         if actual != expected:
-            errors.append(
-                f"{rel}: eligibility map drift; expected={expected}, actual={actual}"
-            )
+            errors.append(f"{rel}: eligibility map drift; expected={expected}, actual={actual}")
 
     for rel, role in AGENTS.items():
         raw = _read(root, rel)
@@ -499,9 +494,7 @@ def check(root: Path) -> list[str]:
             errors.append(f"{rel}: Phase 1 live-grammar witness missing")
         if norm_ws(PHASE1_TERMINAL_PREFLIGHT_WITNESS) not in phase1_norm:
             errors.append(f"{rel}: Phase 1 terminal-preflight witness missing")
-        if not phase1_norm.endswith(
-            norm_ws(PHASE1_TERMINAL_PREFLIGHT_WITNESS)
-        ):
+        if not phase1_norm.endswith(norm_ws(PHASE1_TERMINAL_PREFLIGHT_WITNESS)):
             errors.append(f"{rel}: Phase 1 terminal preflight is not terminal")
         score_scope = (
             "Score only dimensions whose `eligible_roles` includes "
@@ -523,24 +516,17 @@ def check(root: Path) -> list[str]:
         ):
             if norm_ws(witness) not in phase2_norm:
                 errors.append(f"{rel}: Phase 2 live-grammar witness missing")
-        finding_witness = (
-            DA_FINDING_WITNESS if role == "da" else SCORING_FINDING_WITNESS
-        )
+        finding_witness = DA_FINDING_WITNESS if role == "da" else SCORING_FINDING_WITNESS
         if norm_ws(finding_witness) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 per-finding grammar witness missing")
         if role != "da" and norm_ws(SCORING_FIELD_VARIANT_WITNESS) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 finding-field variant witness missing")
-        if (
-            role != "da"
-            and norm_ws(SCORING_STRENGTH_SEVERITY_WITNESS) not in phase2_norm
-        ):
+        if role != "da" and norm_ws(SCORING_STRENGTH_SEVERITY_WITNESS) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 strength-Severity witness missing")
         if norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in phase2_norm:
             errors.append(f"{rel}: Phase 2 anchor-value grammar witness missing")
         phase2_content_norm = phase2_norm.removesuffix(" ---")
-        if not phase2_content_norm.endswith(
-            norm_ws(PHASE2_TERMINAL_PREFLIGHT_WITNESS)
-        ):
+        if not phase2_content_norm.endswith(norm_ws(PHASE2_TERMINAL_PREFLIGHT_WITNESS)):
             errors.append(f"{rel}: Phase 2 terminal preflight is not terminal")
 
     da = _read(root, "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md")
@@ -567,26 +553,23 @@ def check(root: Path) -> list[str]:
     # A third, independent surface witness: pin executable regex source, not
     # merely the stable tuple identifiers surrounding it.
     for token in (
-        '"fatal_priority"', '"fatal_dim"', '"any_all"',
-        '"dim_threshold"', '"every_all"',
+        '"fatal_priority"',
+        '"fatal_dim"',
+        '"any_all"',
+        '"dim_threshold"',
+        '"every_all"',
     ):
         if token not in checker:
             errors.append(f"{PANEL_CHECKER}: executable pattern token missing: {token}")
     for witness in EXECUTABLE_PATTERN_WITNESSES:
         if witness not in checker:
-            errors.append(
-                f"{PANEL_CHECKER}: executable regex witness missing: {witness}"
-            )
+            errors.append(f"{PANEL_CHECKER}: executable regex witness missing: {witness}")
     for witness in PHASE_FINDING_REGEX_WITNESSES:
         if witness not in phase_checker:
-            errors.append(
-                f"{PHASE_CHECKER}: finding regex witness missing: {witness}"
-            )
+            errors.append(f"{PHASE_CHECKER}: finding regex witness missing: {witness}")
     for witness in DA_PARSER_WITNESSES:
         if witness not in checker:
-            errors.append(
-                f"{PANEL_CHECKER}: DA parser witness missing: {witness}"
-            )
+            errors.append(f"{PANEL_CHECKER}: DA parser witness missing: {witness}")
     if ANCHOR_VALIDATOR_REGEX_WITNESS not in checker:
         errors.append(f"{PANEL_CHECKER}: anchor-validator regex witness missing")
     if ANCHOR_SQUARE_BALANCE_WITNESS not in checker:
@@ -603,17 +586,12 @@ def check(root: Path) -> list[str]:
         errors.append(f"{PANEL_CHECKER}: anchor-absence parser usage missing")
     for witness in ANCHOR_WRAPPER_WITNESSES:
         if witness not in checker:
-            errors.append(
-                f"{PANEL_CHECKER}: anchor-wrapper witness missing: {witness}"
-            )
+            errors.append(f"{PANEL_CHECKER}: anchor-wrapper witness missing: {witness}")
     for witness in ANCHOR_CONTENT_BALANCE_WITNESSES:
         if witness not in checker:
-            errors.append(
-                f"{PANEL_CHECKER}: anchor-content-balance witness missing: {witness}"
-            )
-    if (
-        protocol_phase2 is None
-        or norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(protocol_phase2)
+            errors.append(f"{PANEL_CHECKER}: anchor-content-balance witness missing: {witness}")
+    if protocol_phase2 is None or norm_ws(ANCHOR_VALUE_GRAMMAR_WITNESS) not in norm_ws(
+        protocol_phase2
     ):
         errors.append(f"{PROTOCOL}: Phase 2 anchor-value grammar witness missing")
     if protocol_phase1 is None:
@@ -644,17 +622,14 @@ def check(root: Path) -> list[str]:
         if witness not in template:
             errors.append(f"{TEMPLATE}: anchor placeholder witness missing")
     template_anchors = [
-        match.group("anchor")
-        for match in TEMPLATE_EXAMPLE_ANCHOR_RE.finditer(template)
+        match.group("anchor") for match in TEMPLATE_EXAMPLE_ANCHOR_RE.finditer(template)
     ]
     if len(template_anchors) != TEMPLATE_EXAMPLE_ANCHOR_COUNT:
         errors.append(
             f"{TEMPLATE}: expected {TEMPLATE_EXAMPLE_ANCHOR_COUNT} canonical "
             f"anchor examples, found {len(template_anchors)}"
         )
-    template_anchor_types = tuple(
-        anchor.partition(":")[0].lower() for anchor in template_anchors
-    )
+    template_anchor_types = tuple(anchor.partition(":")[0].lower() for anchor in template_anchors)
     if template_anchor_types != TEMPLATE_EXAMPLE_ANCHOR_TYPES:
         errors.append(
             f"{TEMPLATE}: expected ordered canonical anchor types "
@@ -667,15 +642,11 @@ def check(root: Path) -> list[str]:
             errors.append(str(exc))
     for rel in SHIPPED_EXAMPLES:
         example = _read(root, rel)
-        anchors = [
-            match.group("anchor")
-            for match in SHIPPED_EXAMPLE_ANCHOR_RE.finditer(example)
-        ]
+        anchors = [match.group("anchor") for match in SHIPPED_EXAMPLE_ANCHOR_RE.finditer(example)]
         expected_count = SHIPPED_EXAMPLE_ANCHOR_COUNTS[rel]
         if len(anchors) != expected_count:
             errors.append(
-                f"{rel}: expected {expected_count} shipped typed anchors, "
-                f"found {len(anchors)}"
+                f"{rel}: expected {expected_count} shipped typed anchors, " f"found {len(anchors)}"
             )
         for index, anchor in enumerate(anchors, 1):
             try:

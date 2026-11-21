@@ -39,8 +39,7 @@ REPLACEMENT_CLAIM = "The treatment causes improved outcomes."
 
 def _raw(value: dict) -> bytes:
     return (
-        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode("utf-8")
 
 
@@ -71,9 +70,7 @@ class RevisionFixture:
         self.root = Path(tempfile.mkdtemp())
         self.base_path = self.root / "base.md"
         self.base = anchorize_text(
-            "# Study\n\n"
-            f"{ORIGINAL_CLAIM}\n\n"
-            "A separate reporting sentence.\n"
+            "# Study\n\n" f"{ORIGINAL_CLAIM}\n\n" "A separate reporting sentence.\n"
         )
         self.base_raw = self.base.encode("utf-8")
         self.base_path.write_bytes(self.base_raw)
@@ -103,17 +100,9 @@ class RevisionFixture:
         self.claim_intent_path = self.root / "claim-intent.json"
         self.claim_intent_raw = _write(self.claim_intent_path, self.claim_intent)
 
-        items = [
-            self._roadmap_item(
-                "REV-001", 1, self.claim_block_id, "replace_block"
-            )
-        ]
+        items = [self._roadmap_item("REV-001", 1, self.claim_block_id, "replace_block")]
         if declined_overlap:
-            items.append(
-                self._roadmap_item(
-                    "REV-002", 2, self.claim_block_id, "replace_block"
-                )
-            )
+            items.append(self._roadmap_item("REV-002", 2, self.claim_block_id, "replace_block"))
         self.roadmap = {
             "schema_version": "revision-roadmap/1.0",
             "revision_round": 1,
@@ -428,18 +417,16 @@ class TestImmutableRoadmap(unittest.TestCase):
             with self.subTest(field=field, value=value):
                 mutated = copy.deepcopy(fixture.roadmap)
                 if field == "consequence_locator":
-                    mutated["items"][0]["consequence_if_unaddressed"]["target"][
-                        "locator"
-                    ] = value
+                    mutated["items"][0]["consequence_if_unaddressed"]["target"]["locator"] = value
                 else:
                     mutated["items"][0][field] = value
                 with self.assertRaisesRegex(ContractError, expected):
                     validate_roadmap(mutated)
 
         transported = copy.deepcopy(fixture.roadmap)
-        transported["items"][0]["description"] = (
-            "The study ranks outcomes observed after two weeks."
-        )
+        transported["items"][0][
+            "description"
+        ] = "The study ranks outcomes observed after two weeks."
         validate_roadmap(transported)
 
     def test_builder_uses_only_explicit_choice_input_and_computed_bindings(self):
@@ -477,9 +464,9 @@ class TestImmutableRoadmap(unittest.TestCase):
     def test_will_address_author_reason_is_rejected_at_authority_boundary(self):
         fixture = RevisionFixture()
         mutated = copy.deepcopy(fixture.author)
-        mutated["author_adjudications"][0]["author_reason"] = (
-            "A producer-authored explanation must not masquerade as author input."
-        )
+        mutated["author_adjudications"][0][
+            "author_reason"
+        ] = "A producer-authored explanation must not masquerade as author input."
         with self.assertRaises(ContractError):
             validate_author_adjudication(
                 mutated,
@@ -516,9 +503,9 @@ class TestExactAuthority(unittest.TestCase):
         fixture = RevisionFixture()
         patch = copy.deepcopy(fixture.patch)
         patch["ops"][0]["block_id"] = fixture.other_block_id
-        patch["ops"][0]["old_hash"] = parse_document(fixture.base).block_by_id()[
-            fixture.other_block_id
-        ].norm_hash
+        patch["ops"][0]["old_hash"] = (
+            parse_document(fixture.base).block_by_id()[fixture.other_block_id].norm_hash
+        )
         with self.assertRaisesRegex(ContractError, "outside accepted item"):
             fixture.validate_authority(patch)
 
@@ -541,9 +528,7 @@ class TestExactAuthority(unittest.TestCase):
         fixture.author_raw = _raw(fixture.author)
         fixture.patch["author_adjudication_sha256"] = bytes_hash(fixture.author_raw)
         fixture.patch["author_decision_digest"] = author_decision_digest(fixture.author)
-        fixture.patch["ops"][0]["collateral_authorization_ids"] = [
-            collateral["authorization_id"]
-        ]
+        fixture.patch["ops"][0]["collateral_authorization_ids"] = [collateral["authorization_id"]]
         self.assertEqual(fixture.validate_authority()["status"], "pass")
 
         fixture.patch["ops"][0]["op"] = "delete_block"
@@ -583,9 +568,7 @@ class TestExactAuthority(unittest.TestCase):
     def test_distinct_authorization_ids_cannot_target_one_claim_surface(self):
         fixture = RevisionFixture(claim_authorized=True)
         duplicate = copy.deepcopy(
-            fixture.author["author_adjudications"][0][
-                "claim_strength_authorizations"
-            ][0]
+            fixture.author["author_adjudications"][0]["claim_strength_authorizations"][0]
         )
         duplicate["authorization_id"] = "CLAIM-AUTH-002"
         duplicate["replacement_text"] = "The treatment may improve outcomes."
@@ -594,9 +577,7 @@ class TestExactAuthority(unittest.TestCase):
         )
         duplicate["to_rung"] = "qualified-association"
         duplicate["direction"] = "weaken"
-        fixture.author["author_adjudications"][0][
-            "claim_strength_authorizations"
-        ].append(duplicate)
+        fixture.author["author_adjudications"][0]["claim_strength_authorizations"].append(duplicate)
         with self.assertRaisesRegex(ContractError, "surface_id .* authorized more than once"):
             validate_author_adjudication(
                 fixture.author,
@@ -667,9 +648,9 @@ class TestExactAuthority(unittest.TestCase):
                 {
                     "op": "replace_block",
                     "block_id": fixture.claim_block_id,
-                    "old_hash": parse_document(fixture.base).block_by_id()[
-                        fixture.claim_block_id
-                    ].norm_hash,
+                    "old_hash": parse_document(fixture.base)
+                    .block_by_id()[fixture.claim_block_id]
+                    .norm_hash,
                     "new_text": ORIGINAL_CLAIM,
                     "roadmap_item_ids": ["REV-001"],
                 }
@@ -679,9 +660,7 @@ class TestExactAuthority(unittest.TestCase):
         fixture.patch_path.write_bytes(_raw(legacy))
         with self.assertRaises(ApplyRejection) as captured:
             fixture.apply()
-        self.assertTrue(
-            all(row["kind"] == "schema_invalid" for row in captured.exception.failures)
-        )
+        self.assertTrue(all(row["kind"] == "schema_invalid" for row in captured.exception.failures))
 
 
 class TestRendering(unittest.TestCase):
@@ -742,9 +721,7 @@ class TestRendering(unittest.TestCase):
         )
         mutations.append((duplicate, "duplicate item_id|exactly one record"))
         nonresolving = copy.deepcopy(fixture.author)
-        nonresolving["author_adjudications"][0]["author_event_id"] = (
-            "AUTHOR-EVENT-nonresolving"
-        )
+        nonresolving["author_adjudications"][0]["author_event_id"] = "AUTHOR-EVENT-nonresolving"
         mutations.append((nonresolving, "author_event_id does not resolve"))
         wrong_surface = copy.deepcopy(fixture.author)
         wrong_surface["claim_surface_manifest_sha256"] = "f" * 64
@@ -787,9 +764,7 @@ class TestIntegrityCorrectionAuthority(unittest.TestCase):
                 {
                     "correction_id": correction_id,
                     "description": "Correct the reporting sentence.",
-                    "proposed_targets": [
-                        _target(fixture.other_block_id, "replace_block")
-                    ],
+                    "proposed_targets": [_target(fixture.other_block_id, "replace_block")],
                 }
             ],
         }
@@ -805,9 +780,9 @@ class TestIntegrityCorrectionAuthority(unittest.TestCase):
                 {
                     "op": "replace_block",
                     "block_id": fixture.other_block_id,
-                    "old_hash": parse_document(fixture.base).block_by_id()[
-                        fixture.other_block_id
-                    ].norm_hash,
+                    "old_hash": parse_document(fixture.base)
+                    .block_by_id()[fixture.other_block_id]
+                    .norm_hash,
                     "new_text": "A corrected reporting sentence.",
                     "roadmap_item_ids": [correction_id],
                     "claim_strength_changes": [],
@@ -837,9 +812,7 @@ class TestIntegrityCorrectionAuthority(unittest.TestCase):
                     "correction_id": correction_id,
                     "author_event_id": event_id,
                     "decision": "authorize",
-                    "authorized_targets": [
-                        _target(fixture.other_block_id, "replace_block")
-                    ],
+                    "authorized_targets": [_target(fixture.other_block_id, "replace_block")],
                 }
             ],
         }
@@ -1000,14 +973,10 @@ class TestIntegrityCorrectionAuthority(unittest.TestCase):
         missing["author_decisions"] = []
         mutations.append(missing)
         duplicate = copy.deepcopy(case["authorization"])
-        duplicate["author_decisions"].append(
-            copy.deepcopy(duplicate["author_decisions"][0])
-        )
+        duplicate["author_decisions"].append(copy.deepcopy(duplicate["author_decisions"][0]))
         mutations.append(duplicate)
         bad_event = copy.deepcopy(case["authorization"])
-        bad_event["author_decisions"][0]["author_event_id"] = (
-            "AUTHOR-EVENT-missing"
-        )
+        bad_event["author_decisions"][0]["author_event_id"] = "AUTHOR-EVENT-missing"
         mutations.append(bad_event)
         bad_base = copy.deepcopy(case["authorization"])
         bad_base["base_draft_sha256"] = "f" * 64
@@ -1062,25 +1031,19 @@ class TestIntegrityCorrectionAuthority(unittest.TestCase):
             "chain_start": {
                 "first_revision_round": 1,
                 "draft": _artifact(fixture.base_path, fixture.root),
-                "block_manifest": _artifact(
-                    fixture.block_manifest_path, fixture.root
-                ),
+                "block_manifest": _artifact(fixture.block_manifest_path, fixture.root),
                 "integrity_pass_receipt": _artifact(receipt_path, fixture.root),
             },
             "rounds": [
                 {
                     "kind": "integrity_correction",
                     "revision_round": 1,
-                    "pre_round_draft": _artifact(
-                        fixture.base_path, fixture.root
-                    ),
+                    "pre_round_draft": _artifact(fixture.base_path, fixture.root),
                     "pre_round_block_manifest": _artifact(
                         fixture.block_manifest_path, fixture.root
                     ),
                     "issue_list": _artifact(case["issue_path"], fixture.root),
-                    "integrity_authorization": _artifact(
-                        case["authorization_path"], fixture.root
-                    ),
+                    "integrity_authorization": _artifact(case["authorization_path"], fixture.root),
                     "revision_patch": _artifact(case["patch_path"], fixture.root),
                     "apply_report": _artifact(report, fixture.root),
                     "post_round_draft": _artifact(output, fixture.root),
@@ -1106,9 +1069,7 @@ class TestIntegrityCorrectionAuthority(unittest.TestCase):
         stopped_path = fixture.root / "stopped-integrity-authorization.json"
         _write(stopped_path, stopped)
         swapped = copy.deepcopy(bundle)
-        swapped["rounds"][0]["integrity_authorization"] = _artifact(
-            stopped_path, fixture.root
-        )
+        swapped["rounds"][0]["integrity_authorization"] = _artifact(stopped_path, fixture.root)
         with self.assertRaisesRegex(ContractError, "stop_without_write"):
             validate_bundle(swapped, root=fixture.root)
 
@@ -1150,9 +1111,7 @@ class TestRevisionEvidenceBundle(unittest.TestCase):
                         fixture.block_manifest_path, fixture.root
                     ),
                     "revision_roadmap": _artifact(fixture.roadmap_path, fixture.root),
-                    "claim_surface_manifest": _artifact(
-                        fixture.claim_surface_path, fixture.root
-                    ),
+                    "claim_surface_manifest": _artifact(fixture.claim_surface_path, fixture.root),
                     "author_adjudication": _artifact(fixture.author_path, fixture.root),
                     "revision_patch": _artifact(fixture.patch_path, fixture.root),
                     "apply_report": _artifact(fixture.report_path, fixture.root),
@@ -1181,12 +1140,8 @@ class TestRevisionEvidenceBundle(unittest.TestCase):
         report["output_draft_hash"] = base_draft_hash(forged_post.read_bytes())
         _write(forged_report, report)
         forged_bundle = copy.deepcopy(bundle)
-        forged_bundle["rounds"][0]["post_round_draft"] = _artifact(
-            forged_post, fixture.root
-        )
-        forged_bundle["rounds"][0]["apply_report"] = _artifact(
-            forged_report, fixture.root
-        )
+        forged_bundle["rounds"][0]["post_round_draft"] = _artifact(forged_post, fixture.root)
+        forged_bundle["rounds"][0]["apply_report"] = _artifact(forged_report, fixture.root)
         forged_bundle["final_draft"] = _artifact(forged_post, fixture.root)
         with self.assertRaisesRegex(ContractError, "deterministic patch output bytes"):
             validate_bundle(forged_bundle, root=fixture.root)
@@ -1213,9 +1168,7 @@ class TestRevisionEvidenceBundle(unittest.TestCase):
                         fixture.block_manifest_path, fixture.root
                     ),
                     "revision_roadmap": _artifact(fixture.roadmap_path, fixture.root),
-                    "claim_surface_manifest": _artifact(
-                        fixture.claim_surface_path, fixture.root
-                    ),
+                    "claim_surface_manifest": _artifact(fixture.claim_surface_path, fixture.root),
                     "author_adjudication": _artifact(fixture.author_path, fixture.root),
                     "post_round_draft": _artifact(fixture.base_path, fixture.root),
                 }

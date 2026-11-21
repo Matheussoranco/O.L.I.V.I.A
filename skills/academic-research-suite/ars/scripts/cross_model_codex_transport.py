@@ -14,7 +14,6 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
 import queue
 import re
 import shutil
@@ -25,10 +24,10 @@ import sys
 import tempfile
 import threading
 import time
-from typing import Any
 import unicodedata
+from pathlib import Path
+from typing import Any
 from urllib.parse import urlsplit, urlunsplit
-
 
 REQUEST_SCHEMA_VERSION = "ars-codex-citation-request/1.0"
 RECEIPT_SCHEMA_VERSION = "ars-codex-citation-receipt/1.0"
@@ -278,10 +277,7 @@ def load_request_stdin(stream: Any = None) -> dict[str, str]:
 def _canonical_url(value: Any) -> str | None:
     if not isinstance(value, str) or len(value) > 2048:
         return None
-    if any(
-        ord(ch) <= 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF
-        for ch in value
-    ):
+    if any(ord(ch) <= 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in value):
         return None
     try:
         parsed = urlsplit(value)
@@ -912,9 +908,7 @@ def run_app_server(
             )
             terminal_observed_at = time.monotonic()
             _close_app_server_stdin(proc)
-            drain_deadline = min(
-                deadline, terminal_observed_at + APP_SERVER_DRAIN_GRACE_SECONDS
-            )
+            drain_deadline = min(deadline, terminal_observed_at + APP_SERVER_DRAIN_GRACE_SECONDS)
             _drain_app_server_after_turn(
                 proc,
                 reader,
@@ -1055,6 +1049,7 @@ def parse_app_server_messages(
         model_output = _validate_model_output(strict_json_loads(text))
     except (UnicodeError, ValueError, json.JSONDecodeError):
         return _empty_receipt(request, model, event_digest, "FINAL_OUTPUT_INVALID")
+
     # codex-cli 0.147.0 also emits webSearch items for follow-up page
     # activity. The app-server protocol's WebSearchAction is a CLOSED oneOf —
     # {"search", "openPage", "findInPage", "other"} (Responses-API spelling
@@ -1120,7 +1115,11 @@ def parse_app_server_messages(
             # schema evidence). Known fields, when present, are still
             # type-checked below.
             for opt_field in ("url", "pattern", "query"):
-                if opt_field in action and action[opt_field] is not None and not isinstance(action[opt_field], str):
+                if (
+                    opt_field in action
+                    and action[opt_field] is not None
+                    and not isinstance(action[opt_field], str)
+                ):
                     return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
             if "queries" in action and action["queries"] is not None:
                 if not isinstance(action["queries"], list) or any(
@@ -1142,9 +1141,7 @@ def parse_app_server_messages(
         query = item.get("query")
         if not isinstance(query, str) or not query or len(query) > 2048:
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
-        if any(
-            ord(ch) < 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in query
-        ):
+        if any(ord(ch) < 32 or ord(ch) == 127 or 0xD800 <= ord(ch) <= 0xDFFF for ch in query):
             return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
         results_shape = item.get("results")
         if results_shape is not None and not isinstance(results_shape, list):
@@ -1162,9 +1159,7 @@ def parse_app_server_messages(
     all_searches = [
         (index, item)
         for index, item in completed_items
-        if index < final_index
-        and item["type"] == "webSearch"
-        and not _is_page_open(item)
+        if index < final_index and item["type"] == "webSearch" and not _is_page_open(item)
     ]
     if len(all_searches) > MAX_SEARCH_ITEMS:
         return _empty_receipt(request, model, event_digest, "EVENT_STREAM_INVALID")
@@ -1256,9 +1251,7 @@ def parse_app_server_messages(
         # (#788 round-9 P2).
         if model_output["sources"]:
             return _empty_receipt(request, model, event_digest, "FINAL_OUTPUT_INVALID")
-        receipt = _empty_receipt(
-            request, model, event_digest, "MODEL_RETURNED_NOT_SEARCHED"
-        )
+        receipt = _empty_receipt(request, model, event_digest, "MODEL_RETURNED_NOT_SEARCHED")
         receipt["detail"] = model_output["detail"]
         return receipt
 

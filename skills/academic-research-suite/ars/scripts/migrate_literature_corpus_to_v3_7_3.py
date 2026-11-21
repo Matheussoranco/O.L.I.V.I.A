@@ -18,8 +18,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+from collections.abc import Iterable, Mapping
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any
 
 # Dual-path import: see openalex_client.py comment.
 try:
@@ -149,8 +150,7 @@ def migrate_passport(
             # degraded on this run get their omission reason recorded
             # (idempotent — an already-recorded omission is not a change).
             for field in omissions:
-                if field not in existing and cs.record_signal_omission(
-                        entry, field):
+                if field not in existing and cs.record_signal_omission(entry, field):
                     added_any = True
             if not added_any:
                 report[_SKIP_ALREADY_MIGRATED] += 1
@@ -201,9 +201,7 @@ def migrate_directory(
     agg = {"files_processed": 0, "entries_processed": 0, "entries_patched": 0}
     for path in discover_passports(directory):
         agg["files_processed"] += 1
-        r = migrate_passport(
-            path, ss_client=ss_client, dry_run=dry_run, verbose=verbose
-        )
+        r = migrate_passport(path, ss_client=ss_client, dry_run=dry_run, verbose=verbose)
         agg["entries_processed"] += r["processed"]
         agg["entries_patched"] += r["patched"]
         cs.reset_client_outage_latch(ss_client)
@@ -216,6 +214,7 @@ def _build_default_ss_client() -> cs.SemanticScholarClient:
     var optional). Lazy-imported so test code (which injects a mock)
     doesn't trigger a network-dependent module load."""
     from semantic_scholar_client import SemanticScholarClient
+
     return SemanticScholarClient()
 
 
@@ -231,9 +230,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument(
         "--dry-run", action="store_true", help="Show proposed changes, write nothing"
     )
-    parser.add_argument(
-        "--verbose", action="store_true", help="Per-entry logging to stderr"
-    )
+    parser.add_argument("--verbose", action="store_true", help="Per-entry logging to stderr")
     return parser.parse_args(argv)
 
 

@@ -1,8 +1,8 @@
 """Tests for scripts/adapters/zotero.py."""
-from pathlib import Path
+import json
 import subprocess
 import sys
-import json
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 ADAPTER = REPO_ROOT / "scripts/adapters/zotero.py"
@@ -124,6 +124,7 @@ def test_unparseable_date_rejected(tmp_path, load_yaml):
 # P1 — schema-violating empty values
 # ---------------------------------------------------------------------------
 
+
 def test_blank_corporate_author_rejected(tmp_path, load_yaml):
     """Blank literal author (name='') must be rejected, not emit literal: ''."""
     data = [
@@ -204,6 +205,7 @@ def test_missing_citation_key_rejected(tmp_path, load_yaml):
 # P2-A — duplicate citekey handling
 # ---------------------------------------------------------------------------
 
+
 def test_duplicate_citekey_disambiguated(tmp_path, load_yaml):
     """Two items with the same citationKey must both be accepted with suffixed keys."""
     data = [
@@ -243,6 +245,7 @@ def test_duplicate_citekey_disambiguated(tmp_path, load_yaml):
 # ---------------------------------------------------------------------------
 # P2-B — issued fallback + seasonal date rejection + source_pointer contract
 # ---------------------------------------------------------------------------
+
 
 def test_issued_fallback_no_date_field(tmp_path, load_yaml):
     """Item with only `issued` (no `date`) must resolve year from issued."""
@@ -397,6 +400,7 @@ def test_zotero_key_used_as_source_pointer(tmp_path, load_yaml):
 # P3 — all-rejected corpus
 # ---------------------------------------------------------------------------
 
+
 def test_all_rejected_corpus(tmp_path, load_yaml):
     """When every item is rejected, passport must be empty and rejection_log populated."""
     data = [
@@ -431,8 +435,10 @@ def test_all_rejected_corpus(tmp_path, load_yaml):
 
 # --- v3.10 venue_type mapping (spec §3 PR-B item 13) ---
 
+
 def _import_zotero():
     import importlib.util
+
     spec = importlib.util.spec_from_file_location("zotero_adapter", ADAPTER)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)

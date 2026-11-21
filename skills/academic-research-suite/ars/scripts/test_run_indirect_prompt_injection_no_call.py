@@ -2,21 +2,18 @@ from __future__ import annotations
 
 import argparse
 import base64
-import copy
-from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
-from pathlib import Path
 import shutil
 import unicodedata
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
-from jsonschema import Draft202012Validator
 import pytest
-
+from jsonschema import Draft202012Validator
 from scripts import check_indirect_prompt_injection_no_call as ast_guard
 from scripts import run_indirect_prompt_injection_no_call as runner
-
 
 MODULE_PATH = Path(runner.__file__)
 
@@ -93,8 +90,7 @@ def _authorization_file(tmp_path: Path, plan: dict) -> Path:
 def _event(index: int, kind: str, payload: bytes, cell: dict) -> dict:
     external_session_id = f"automated-fresh-session-{cell['cell_id']}"
     native_type = next(
-        native for native, derived in runner.RAW_NATIVE_EVENT_TYPES.items()
-        if derived == kind
+        native for native, derived in runner.RAW_NATIVE_EVENT_TYPES.items() if derived == kind
     )
     raw = runner._canonical(
         {
@@ -197,7 +193,9 @@ def _transcript(
             "complete": not partial,
             "blocked": False,
             "partial": partial,
-            "status_detail": "automated complete fixture" if not partial else "automated partial fixture",
+            "status_detail": "automated complete fixture"
+            if not partial
+            else "automated partial fixture",
         },
         "response": {
             "raw_response_utf8": response_text,
@@ -268,9 +266,7 @@ def _ingest_one(
     response_text: str | None = None,
 ) -> dict:
     transcript = tmp_path / "external-transcript.json"
-    transcript.write_bytes(
-        runner._json_bytes(_transcript(plan, cell, response_text=response_text))
-    )
+    transcript.write_bytes(runner._json_bytes(_transcript(plan, cell, response_text=response_text)))
     return runner.ingest(
         _command_args(
             run_dir,
@@ -368,7 +364,10 @@ def test_materializer_is_exclusive_hash_bound_and_non_dispatching(tmp_path):
     assert result == {"materialized_files": 128, "cells": 64, "dispatch_available": False}
     assert len([path for path in (run_dir / "materials").rglob("*") if path.is_file()]) == 128
     first = plan["cells"][0]
-    assert hashlib.sha256((run_dir / first["prompt_path"]).read_bytes()).hexdigest() == first["prompt_sha256"]
+    assert (
+        hashlib.sha256((run_dir / first["prompt_path"]).read_bytes()).hexdigest()
+        == first["prompt_sha256"]
+    )
     envelope = json.loads((run_dir / first["call_envelope_path"]).read_bytes())
     assert envelope["runner_transport"] == "none"
     assert envelope["dispatch_available"] is False
@@ -377,19 +376,13 @@ def test_materializer_is_exclusive_hash_bound_and_non_dispatching(tmp_path):
     assert envelope["execution"]["web_enabled"] is False
     assert "command" not in envelope and "subject_output" not in envelope
     armed = run_dir / runner._journal_ref("armed", "cell-001")
-    blind_armed = run_dir / runner._journal_ref(
-        "armed", runner.BLIND_TRANSACTION_ID
-    )
-    preload_armed = run_dir / runner._journal_ref(
-        "armed", runner.PRELOAD_TRANSACTION_ID
-    )
+    blind_armed = run_dir / runner._journal_ref("armed", runner.BLIND_TRANSACTION_ID)
+    preload_armed = run_dir / runner._journal_ref("armed", runner.PRELOAD_TRANSACTION_ID)
     assert armed.is_file() and blind_armed.is_file() and preload_armed.is_file()
     assert (run_dir / runner.JOURNAL_ROOT / "completed").is_dir()
     assert not (run_dir / runner._journal_ref("claimed", "cell-001")).exists()
     assert not (run_dir / runner._journal_ref("completed", "cell-001")).exists()
-    assert not (
-        run_dir / runner._journal_ref("claimed", runner.PRELOAD_TRANSACTION_ID)
-    ).exists()
+    assert not (run_dir / runner._journal_ref("claimed", runner.PRELOAD_TRANSACTION_ID)).exists()
     with pytest.raises(runner.EnvelopeError, match="exactly once"):
         runner.materialize(_command_args(run_dir, plan_sha))
 
@@ -397,9 +390,17 @@ def test_materializer_is_exclusive_hash_bound_and_non_dispatching(tmp_path):
 def test_ast_guard_rejects_transport_process_and_extra_command_surfaces():
     source = MODULE_PATH.read_text(encoding="utf-8")
     assert ast_guard.check_source(source) == []
-    assert any("forbidden transport" in error for error in ast_guard.check_source("import subprocess\n" + source))
-    assert any("forbidden transport" in error for error in ast_guard.check_source("import httpx\n" + source))
-    assert any("exact allowlist" in error for error in ast_guard.check_source("exec('pass')\n" + source))
+    assert any(
+        "forbidden transport" in error
+        for error in ast_guard.check_source("import subprocess\n" + source)
+    )
+    assert any(
+        "forbidden transport" in error
+        for error in ast_guard.check_source("import httpx\n" + source)
+    )
+    assert any(
+        "exact allowlist" in error for error in ast_guard.check_source("exec('pass')\n" + source)
+    )
     mutated = source.replace(
         'sub = parser.add_subparsers(dest="command", required=True)',
         'sub = parser.add_subparsers(dest="command", required=True)\n    sub.add_parser("dispatch")',
@@ -416,7 +417,7 @@ def test_ast_guard_rejects_transport_process_and_extra_command_surfaces():
         'from sys import _getframe\n_getframe().f_globals["os"].system("x")\n',
         'from builtins import open as hidden_open\nhidden_open("x")\n',
         'system = os\nsystem.open("x", 0)\n',
-        'escape = json.loads.__globals__\n',
+        "escape = json.loads.__globals__\n",
         'import os as system\nsystem.spawnl(0, "x")\n',
     ),
 )
@@ -495,12 +496,8 @@ def test_preload_quarantine_write_failure_claims_before_transcript_and_restore(
         nonlocal transcript_reads
         if path == source:
             transcript_reads += 1
-            armed = run_dir / runner._journal_ref(
-                "armed", runner.PRELOAD_TRANSACTION_ID
-            )
-            claimed = run_dir / runner._journal_ref(
-                "claimed", runner.PRELOAD_TRANSACTION_ID
-            )
+            armed = run_dir / runner._journal_ref("armed", runner.PRELOAD_TRANSACTION_ID)
+            claimed = run_dir / runner._journal_ref("claimed", runner.PRELOAD_TRANSACTION_ID)
             assert claimed.is_file()
             assert (armed.stat().st_dev, armed.stat().st_ino) == (
                 claimed.stat().st_dev,
@@ -532,9 +529,7 @@ def test_preload_claim_failure_never_reads_submitted_transcript(tmp_path, monkey
     run_dir, plan_sha, plan = _materialized(tmp_path)
     source = tmp_path / "transcript.json"
     source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
-    (run_dir / "run-plan.json").write_bytes(
-        (run_dir / "run-plan.json").read_bytes() + b"\n"
-    )
+    (run_dir / "run-plan.json").write_bytes((run_dir / "run-plan.json").read_bytes() + b"\n")
     original_read = runner._read_file
     transcript_reads = 0
 
@@ -698,9 +693,7 @@ def test_transcript_acquisition_failure_claims_once_and_stops_before_retry(
     source = tmp_path / "submitted-transcript.json"
     if acquisition_failure == "symlink":
         target = tmp_path / "symlink-target.json"
-        target.write_bytes(
-            runner._json_bytes(_transcript(plan, plan["cells"][0]))
-        )
+        target.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
         source.symlink_to(target)
     elif acquisition_failure == "oversize":
         source.write_bytes(b"x" * (runner.MAX_TRANSCRIPT_BYTES + 1))
@@ -728,14 +721,10 @@ def test_transcript_acquisition_failure_claims_once_and_stops_before_retry(
         runner.ingest(args)
 
 
-def test_primary_stop_intent_failure_leaves_prearmed_terminal_fallback(
-    tmp_path, monkeypatch
-):
+def test_primary_stop_intent_failure_leaves_prearmed_terminal_fallback(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     source = tmp_path / "partial.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     args = _command_args(
         run_dir,
         plan_sha,
@@ -791,9 +780,7 @@ def test_stopped_tree_snapshot_binds_unregistered_empty_directory(tmp_path):
 def test_stop_intent_is_committed_before_stopped_manifest_replacement(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     source = tmp_path / "partial.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     original = runner._replace_json
     observed: list[str] = []
 
@@ -896,7 +883,9 @@ def test_invalid_authorization_stops_and_preserves_raw(tmp_path, mutation):
         authorization_raw = runner._json_bytes(authorization)
     authorization_path.write_bytes(authorization_raw)
     transcript = _transcript(plan, plan["cells"][0])
-    transcript["source"]["authorization_record_sha256"] = hashlib.sha256(authorization_raw).hexdigest()
+    transcript["source"]["authorization_record_sha256"] = hashlib.sha256(
+        authorization_raw
+    ).hexdigest()
     source = tmp_path / "transcript.json"
     raw = runner._json_bytes(transcript)
     source.write_bytes(raw)
@@ -944,9 +933,7 @@ def test_raw_native_tool_type_cannot_be_hidden_by_outer_runtime_kind(tmp_path):
     _, plan_sha, plan = _initialize(tmp_path)
     cell = plan["cells"][0]
     transcript = _transcript(plan, cell)
-    _mutate_raw_event(
-        transcript, 0, native_event_type="action.tool"
-    )
+    _mutate_raw_event(transcript, 0, native_event_type="action.tool")
     transcript["events"][0]["event_kind"] = "runtime_event"
     with pytest.raises(runner.StopViolation) as caught:
         runner._validate_transcript(transcript, cell, plan, plan_sha)
@@ -963,9 +950,7 @@ def test_raw_native_tool_type_cannot_be_hidden_by_outer_runtime_kind(tmp_path):
         ("event_id", "automated-fresh-session-cell-001:event-9999"),
     ),
 )
-def test_raw_events_are_closed_bound_to_one_session_cell_and_event_identity(
-    tmp_path, field, value
-):
+def test_raw_events_are_closed_bound_to_one_session_cell_and_event_identity(tmp_path, field, value):
     _, plan_sha, plan = _initialize(tmp_path)
     cell = plan["cells"][0]
     transcript = _transcript(plan, cell)
@@ -979,9 +964,7 @@ def test_observed_token_usage_and_conservative_output_bytes_are_enforced(tmp_pat
     _, plan_sha, plan = _initialize(tmp_path)
     cell = plan["cells"][0]
     transcript = _transcript(plan, cell)
-    transcript["observed_usage"]["output_tokens"] = (
-        plan["execution"]["output_token_cap"] + 1
-    )
+    transcript["observed_usage"]["output_tokens"] = plan["execution"]["output_token_cap"] + 1
     with pytest.raises(runner.StopViolation) as caught:
         runner._validate_transcript(transcript, cell, plan, plan_sha)
     assert caught.value.code == "provider_auth_model_drift"
@@ -1065,9 +1048,7 @@ def test_stop_manifest_write_failure_creates_replayable_write_once_stop_intent(
 ):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     source = tmp_path / "partial.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     args = _command_args(
         run_dir,
         plan_sha,
@@ -1104,9 +1085,7 @@ def test_stop_manifest_write_failure_creates_replayable_write_once_stop_intent(
     assert manifest["status"] == "stopped"
 
 
-def test_post_replace_fsync_failure_leaves_claimed_manifest_unretryable(
-    tmp_path, monkeypatch
-):
+def test_post_replace_fsync_failure_leaves_claimed_manifest_unretryable(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     source = tmp_path / "post-replace-transcript.json"
     source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
@@ -1146,9 +1125,7 @@ def test_post_replace_fsync_failure_leaves_claimed_manifest_unretryable(
         runner.validate_run(_command_args(run_dir, plan_sha))
 
     next_source = tmp_path / "must-not-read-cell-002.json"
-    next_source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][1]))
-    )
+    next_source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][1])))
     original_read = runner._read_file
     next_transcript_reads = 0
 
@@ -1173,9 +1150,7 @@ def test_post_replace_fsync_failure_leaves_claimed_manifest_unretryable(
     assert unchanged["next_sequence_index"] == 2
 
 
-def test_completion_destination_fsync_failure_leaves_both_states_terminal(
-    tmp_path, monkeypatch
-):
+def test_completion_destination_fsync_failure_leaves_both_states_terminal(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     source = tmp_path / "completion-destination.json"
     source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0])))
@@ -1230,9 +1205,7 @@ def test_completion_recovers_after_durable_destination_and_source_fsync_error(
             raise OSError("AUTOMATED CLAIMED-DIRECTORY FSYNC FAILURE")
         return original_fsync_directory(path)
 
-    monkeypatch.setattr(
-        runner, "_fsync_directory", fail_source_directory_after_completed
-    )
+    monkeypatch.setattr(runner, "_fsync_directory", fail_source_directory_after_completed)
     result = runner.ingest(args)
     assert result["ingested"] == 1
     monkeypatch.setattr(runner, "_fsync_directory", original_fsync_directory)
@@ -1264,9 +1237,7 @@ def test_journal_lifecycle_matrix_rejects_ambiguous_states(tmp_path, mutation):
         _ingest_one(tmp_path, run_dir, plan_sha, plan, cell)
     elif mutation == "blocked_completed":
         source = tmp_path / "blocked-matrix.json"
-        source.write_bytes(
-            runner._json_bytes(_transcript(plan, cell, partial=True))
-        )
+        source.write_bytes(runner._json_bytes(_transcript(plan, cell, partial=True)))
         with pytest.raises(runner.StopViolation):
             runner.ingest(
                 _command_args(
@@ -1278,9 +1249,7 @@ def test_journal_lifecycle_matrix_rejects_ambiguous_states(tmp_path, mutation):
             )
 
     if mutation == "pending_claimed":
-        runner._claim_journal_token(
-            run_dir, plan_sha, cell["cell_id"], cell["sequence_index"]
-        )
+        runner._claim_journal_token(run_dir, plan_sha, cell["cell_id"], cell["sequence_index"])
     elif mutation == "pending_completed":
         os.link(armed, completed)
     elif mutation == "ingested_claimed":
@@ -1303,9 +1272,7 @@ def test_journal_lifecycle_matrix_rejects_ambiguous_states(tmp_path, mutation):
 def test_partial_or_tampered_stop_intent_never_reopens_run(tmp_path):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     source = tmp_path / "partial.json"
-    source.write_bytes(
-        runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True))
-    )
+    source.write_bytes(runner._json_bytes(_transcript(plan, plan["cells"][0], partial=True)))
     with pytest.raises(runner.StopViolation):
         runner.ingest(
             _command_args(
@@ -1421,9 +1388,7 @@ def test_blind_packet_rejects_mapping_or_prior_human_evidence_free_text(tmp_path
     _replace_response(transcript, leak)
     receipt = runner._external_session_receipt(transcript, plan["cells"][0])
     with pytest.raises(runner.EnvelopeError, match="leaks|prior label"):
-        runner._assert_blindable_transcript(
-            plan, transcript, plan["cells"][0], receipt
-        )
+        runner._assert_blindable_transcript(plan, transcript, plan["cells"][0], receipt)
 
 
 @pytest.mark.parametrize(
@@ -1444,23 +1409,16 @@ def test_blind_packet_rejects_mapping_or_prior_human_evidence_free_text(tmp_path
         "The readjudicationx token is ordinary prose.",
     ),
 )
-def test_blind_identifier_and_phrase_compaction_keeps_boundaries(
-    tmp_path, ordinary_text
-):
+def test_blind_identifier_and_phrase_compaction_keeps_boundaries(tmp_path, ordinary_text):
     _, _plan_sha, plan = _initialize(tmp_path)
     transcript = _transcript(plan, plan["cells"][0])
     _replace_response(transcript, ordinary_text)
     receipt = runner._external_session_receipt(transcript, plan["cells"][0])
-    runner._assert_blindable_transcript(
-        plan, transcript, plan["cells"][0], receipt
-    )
+    runner._assert_blindable_transcript(plan, transcript, plan["cells"][0], receipt)
 
 
 def test_all_frozen_compact_phrases_resist_symbol_and_separator_insertion():
-    phrases = (
-        runner.MAPPING_LEAK_COMPACT_PHRASES
-        + runner.HUMAN_EVIDENCE_COMPACT_PHRASES
-    )
+    phrases = runner.MAPPING_LEAK_COMPACT_PHRASES + runner.HUMAN_EVIDENCE_COMPACT_PHRASES
     assert len(phrases) == len(set(phrases))
     for phrase in phrases:
         split_at = next(
@@ -1488,9 +1446,7 @@ def test_unicode_screen_rejects_all_assigned_separator_class_identifier_splits()
         }:
             continue
         tested += 1
-        if not runner._contains_complete_compact_identifier(
-            f"c{character}ell-001", "cell-001"
-        ):
+        if not runner._contains_complete_compact_identifier(f"c{character}ell-001", "cell-001"):
             failures.append((codepoint, category))
     assert tested > 11000
     assert failures == []
@@ -1505,16 +1461,13 @@ def test_unicode_screen_keeps_compatibility_letter_number_adjacency_atomic():
             continue
         decomposition = unicodedata.normalize("NFKD", character)
         if not any(
-            unicodedata.category(item)[0] in {"M", "C", "P", "S", "Z"}
-            for item in decomposition
+            unicodedata.category(item)[0] in {"M", "C", "P", "S", "Z"} for item in decomposition
         ):
             continue
         tested += 1
         if runner._contains_complete_compact_identifier(
             f"{character}Cell-001", "cell-001"
-        ) or runner._contains_complete_compact_identifier(
-            f"Cell-001{character}", "cell-001"
-        ):
+        ) or runner._contains_complete_compact_identifier(f"Cell-001{character}", "cell-001"):
             failures.append(codepoint)
     assert tested > 1000
     assert failures == []
@@ -1548,9 +1501,7 @@ def test_unicode_screen_keeps_compatibility_letter_number_adjacency_atomic():
         "先♥前回應",
     ),
 )
-def test_nfkc_format_and_punctuation_obfuscated_mapping_leak_stops_at_ingest(
-    tmp_path, leak
-):
+def test_nfkc_format_and_punctuation_obfuscated_mapping_leak_stops_at_ingest(tmp_path, leak):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     transcript = _transcript(plan, plan["cells"][0])
     _replace_response(transcript, leak)
@@ -1602,9 +1553,7 @@ def test_evidence_write_failure_stops_and_preserves_blocked_raw(tmp_path, monkey
     assert (run_dir / manifest["stop_receipt"]["raw_ref"]).read_bytes() == raw
 
 
-def test_partial_success_path_bytes_are_registered_and_replayed_exactly(
-    tmp_path, monkeypatch
-):
+def test_partial_success_path_bytes_are_registered_and_replayed_exactly(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     source = tmp_path / "transcript.json"
     raw = runner._json_bytes(_transcript(plan, plan["cells"][0]))
@@ -1660,9 +1609,7 @@ def test_preexisting_current_transcript_path_is_inventoried_before_stop(tmp_path
     assert manifest["status"] == "stopped"
     assert manifest["stop_receipt"]["preserved_auxiliary_artifacts"] == []
     assert manifest["stop_receipt"]["preserved_unregistered_tree"] == (
-        runner._unregistered_tree_snapshot(
-            run_dir, {"transcripts/cell-001.json"}, set()
-        )
+        runner._unregistered_tree_snapshot(run_dir, {"transcripts/cell-001.json"}, set())
     )
     assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "stopped"
 
@@ -1702,9 +1649,7 @@ def _walk_keys(value):
             yield from _walk_keys(item)
 
 
-def test_full_ingestion_creates_64_isolated_write_once_label_free_packets(
-    tmp_path, monkeypatch
-):
+def test_full_ingestion_creates_64_isolated_write_once_label_free_packets(tmp_path, monkeypatch):
     run_dir, plan_sha, plan = _materialized(tmp_path)
     _ingest_all(tmp_path, run_dir, plan_sha, plan)
     assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == "complete"
@@ -1713,27 +1658,20 @@ def test_full_ingestion_creates_64_isolated_write_once_label_free_packets(
     # copytree copies hard-linked journal names as distinct files. Recreate the
     # production same-inode completion invariant before testing blind staging.
     for cell in plan["cells"]:
-        completed = quarantined_run / runner._journal_ref(
-            "completed", cell["cell_id"]
-        )
+        completed = quarantined_run / runner._journal_ref("completed", cell["cell_id"])
         completed.unlink()
         os.link(
             quarantined_run / runner._journal_ref("armed", cell["cell_id"]),
             completed,
         )
-    incomplete_staging = (
-        quarantined_run.parent / f".{quarantined_run.name}.blind-next"
-    )
+    incomplete_staging = quarantined_run.parent / f".{quarantined_run.name}.blind-next"
     (incomplete_staging / "private").mkdir(parents=True, mode=0o700)
     residue = incomplete_staging / "private/map.json"
     residue.write_bytes(b"AUTOMATED INCOMPLETE PRIVATE MAP RESIDUE\n")
     residue.chmod(0o600)
     with pytest.raises(runner.EnvelopeError, match="forbids regeneration"):
         runner.prepare_blind_packet(_command_args(quarantined_run, plan_sha))
-    assert (
-        quarantined_run
-        / runner._journal_ref("claimed", runner.BLIND_TRANSACTION_ID)
-    ).is_file()
+    assert (quarantined_run / runner._journal_ref("claimed", runner.BLIND_TRANSACTION_ID)).is_file()
     preserved_residue = residue.read_bytes()
     with pytest.raises(runner.EnvelopeError, match="forbids regeneration"):
         runner.prepare_blind_packet(_command_args(quarantined_run, plan_sha))
@@ -1825,9 +1763,7 @@ def test_full_ingestion_creates_64_isolated_write_once_label_free_packets(
     )
     recovered = runner.prepare_blind_packet(_command_args(run_dir, plan_sha))
     assert recovered["recovered_existing_atomic_bundle"] is True
-    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == (
-        "blind_finalized"
-    )
+    assert runner.validate_run(_command_args(run_dir, plan_sha))["status"] == ("blind_finalized")
     private_map_path.chmod(0o644)
     with pytest.raises(runner.EnvelopeError, match="private map file mode"):
         runner.validate_run(_command_args(run_dir, plan_sha))

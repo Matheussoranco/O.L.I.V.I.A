@@ -44,13 +44,12 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import os
 import re
 import subprocess
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 try:
     import yaml
@@ -63,15 +62,9 @@ except ImportError as e:  # pragma: no cover
 # load just to get a pattern. Keep regex pair in sync with shared/contracts/.
 # ---------------------------------------------------------------------------
 
-RUN_ID_RE = re.compile(
-    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z-[0-9a-f]{4}$"
-)
-RFC3339_MS_RE = re.compile(
-    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$"
-)
-THREAD_UUID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+RUN_ID_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z-[0-9a-f]{4}$")
+RFC3339_MS_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z$")
+THREAD_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 SHA256_RE = re.compile(r"^[a-f0-9]{64}$")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -127,6 +120,7 @@ def _load_stream_shape_validator():
 # ---------------------------------------------------------------------------
 # Data structures
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class LintError:
@@ -271,8 +265,9 @@ def _bare_run_id_from_basename(filename: str, ext: str) -> str | None:
 # ---------------------------------------------------------------------------
 
 
-def check_a1(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
-             location: str = "<entry>") -> list[LintError]:
+def check_a1(
+    entry: dict[str, Any] | None, verdict: dict[str, Any] | None, location: str = "<entry>"
+) -> list[LintError]:
     """A1 — verdict.status agrees with finding_counts and failure_reason.
 
     Applies to BOTH the entry's verdict block and the verdict file. We
@@ -300,11 +295,13 @@ def check_a1(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
         loc = f"{location}:{label}"
         if status == "PASS":
             if not (p1 == 0 and p2 == 0 and p3 == 0):
-                findings.append(LintError("A1",
-                    f"PASS requires p1==p2==p3==0 (got p1={p1},p2={p2},p3={p3})", loc))
+                findings.append(
+                    LintError(
+                        "A1", f"PASS requires p1==p2==p3==0 (got p1={p1},p2={p2},p3={p3})", loc
+                    )
+                )
             if has_failure:
-                findings.append(LintError("A1",
-                    "PASS forbids failure_reason", loc))
+                findings.append(LintError("A1", "PASS forbids failure_reason", loc))
         elif status == "MINOR":
             # Codex round 10 P2 closure: spec §3.2 cross-field rule for MINOR
             # is "p1==0 AND p2==0 AND p3<=3" — but PASS already covers
@@ -316,32 +313,46 @@ def check_a1(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
             # no findings to show. Require p3>=1 for MINOR — the lower
             # bound that distinguishes MINOR from PASS.
             if not (p1 == 0 and p2 == 0 and 1 <= p3 <= 3):
-                findings.append(LintError("A1",
-                    f"MINOR requires p1==0 AND p2==0 AND 1<=p3<=3 (got p1={p1},p2={p2},p3={p3}); "
-                    f"zero-count MINOR is malformed — wrapper classifies zero findings as PASS",
-                    loc))
+                findings.append(
+                    LintError(
+                        "A1",
+                        f"MINOR requires p1==0 AND p2==0 AND 1<=p3<=3 (got p1={p1},p2={p2},p3={p3}); "
+                        f"zero-count MINOR is malformed — wrapper classifies zero findings as PASS",
+                        loc,
+                    )
+                )
             if has_failure:
-                findings.append(LintError("A1",
-                    "MINOR forbids failure_reason", loc))
+                findings.append(LintError("A1", "MINOR forbids failure_reason", loc))
         elif status == "MATERIAL":
             if not (p1 > 0 or p2 > 0 or p3 > 3):
-                findings.append(LintError("A1",
-                    f"MATERIAL requires p1>0 OR p2>0 OR p3>3 (got p1={p1},p2={p2},p3={p3})", loc))
+                findings.append(
+                    LintError(
+                        "A1",
+                        f"MATERIAL requires p1>0 OR p2>0 OR p3>3 (got p1={p1},p2={p2},p3={p3})",
+                        loc,
+                    )
+                )
             if has_failure:
-                findings.append(LintError("A1",
-                    "MATERIAL forbids failure_reason", loc))
+                findings.append(LintError("A1", "MATERIAL forbids failure_reason", loc))
         elif status == "AUDIT_FAILED":
             if not (p1 == 0 and p2 == 0 and p3 == 0):
-                findings.append(LintError("A1",
-                    f"AUDIT_FAILED requires p1==p2==p3==0 (got p1={p1},p2={p2},p3={p3})", loc))
+                findings.append(
+                    LintError(
+                        "A1",
+                        f"AUDIT_FAILED requires p1==p2==p3==0 (got p1={p1},p2={p2},p3={p3})",
+                        loc,
+                    )
+                )
             if not has_failure:
-                findings.append(LintError("A1",
-                    "AUDIT_FAILED requires failure_reason (non-empty)", loc))
+                findings.append(
+                    LintError("A1", "AUDIT_FAILED requires failure_reason (non-empty)", loc)
+                )
     return findings
 
 
-def check_a2(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
-             location: str = "<entry>") -> list[LintError]:
+def check_a2(
+    entry: dict[str, Any] | None, verdict: dict[str, Any] | None, location: str = "<entry>"
+) -> list[LintError]:
     """A2 — failure_reason required iff status == AUDIT_FAILED.
 
     Mostly redundant with A1 when both sides provide a status, but A2
@@ -358,16 +369,17 @@ def check_a2(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
         has_failure = isinstance(failure_reason, str) and len(failure_reason) > 0
         loc = f"{location}:{label}"
         if status == "AUDIT_FAILED" and not has_failure:
-            findings.append(LintError("A2",
-                "AUDIT_FAILED requires non-empty failure_reason", loc))
+            findings.append(LintError("A2", "AUDIT_FAILED requires non-empty failure_reason", loc))
         if status != "AUDIT_FAILED" and has_failure:
-            findings.append(LintError("A2",
-                f"failure_reason forbidden when status={status!r}", loc))
+            findings.append(
+                LintError("A2", f"failure_reason forbidden when status={status!r}", loc)
+            )
     return findings
 
 
-def check_a3(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
-             location: str = "<entry>") -> list[LintError]:
+def check_a3(
+    entry: dict[str, Any] | None, verdict: dict[str, Any] | None, location: str = "<entry>"
+) -> list[LintError]:
     """A3 — round <= target_rounds (entry-side and verdict-file)."""
     findings: list[LintError] = []
     for label, doc in (("entry.verdict", _safe_get(entry, "verdict")), ("verdict_file", verdict)):
@@ -378,13 +390,13 @@ def check_a3(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
         if not isinstance(rnd, int) or not isinstance(target, int):
             continue
         if rnd > target:
-            findings.append(LintError("A3",
-                f"round={rnd} > target_rounds={target}", f"{location}:{label}"))
+            findings.append(
+                LintError("A3", f"round={rnd} > target_rounds={target}", f"{location}:{label}")
+            )
     return findings
 
 
-def check_a4(entry: dict[str, Any] | None, mode: str,
-             location: str = "<entry>") -> list[LintError]:
+def check_a4(entry: dict[str, Any] | None, mode: str, location: str = "<entry>") -> list[LintError]:
     """A4 — acknowledgement allowed only on persisted MATERIAL entries.
 
     Proposal arm forbids acknowledgement entirely (per JSON Schema sketch).
@@ -396,20 +408,23 @@ def check_a4(entry: dict[str, Any] | None, mode: str,
         return []
     findings: list[LintError] = []
     if mode == "proposal":
-        findings.append(LintError("A4",
-            "proposal arm forbids acknowledgement", location))
+        findings.append(LintError("A4", "proposal arm forbids acknowledgement", location))
         return findings
     if mode != "persisted":
         return []
     status = _safe_get(entry, "verdict", "status")
     if status != "MATERIAL":
-        findings.append(LintError("A4",
-            f"acknowledgement requires verdict.status==MATERIAL (got {status!r})", location))
+        findings.append(
+            LintError(
+                "A4",
+                f"acknowledgement requires verdict.status==MATERIAL (got {status!r})",
+                location,
+            )
+        )
     return findings
 
 
-def check_a5(verdict: dict[str, Any] | None,
-             location: str = "<verdict>") -> list[LintError]:
+def check_a5(verdict: dict[str, Any] | None, location: str = "<verdict>") -> list[LintError]:
     """A5 — verdict file's finding_counts.pN == count(findings[severity == PN]).
 
     Verdict-file rule only (entry's verdict block is a counts-only mirror per C1).
@@ -430,28 +445,34 @@ def check_a5(verdict: dict[str, Any] | None,
         declared = counts.get(f"p{n}")
         seen = actual[f"P{n}"]
         if isinstance(declared, int) and declared != seen:
-            out.append(LintError("A5",
-                f"finding_counts.p{n}={declared} disagrees with findings[severity==P{n}].count={seen}",
-                location))
+            out.append(
+                LintError(
+                    "A5",
+                    f"finding_counts.p{n}={declared} disagrees with findings[severity==P{n}].count={seen}",
+                    location,
+                )
+            )
     return out
 
 
-def check_a6(verdict: dict[str, Any] | None,
-             location: str = "<verdict>") -> list[LintError]:
+def check_a6(verdict: dict[str, Any] | None, location: str = "<verdict>") -> list[LintError]:
     """A6 — when verdict_status==AUDIT_FAILED, findings == []."""
     if verdict is None:
         return []
     status = verdict.get("verdict_status")
     findings_list = verdict.get("findings")
     if status == "AUDIT_FAILED" and isinstance(findings_list, list) and len(findings_list) > 0:
-        return [LintError("A6",
-            f"AUDIT_FAILED requires findings==[] (got {len(findings_list)} entries)",
-            location)]
+        return [
+            LintError(
+                "A6",
+                f"AUDIT_FAILED requires findings==[] (got {len(findings_list)} entries)",
+                location,
+            )
+        ]
     return []
 
 
-def check_a7(events: list[dict[str, Any]] | None,
-             location: str = "<jsonl>") -> list[LintError]:
+def check_a7(events: list[dict[str, Any]] | None, location: str = "<jsonl>") -> list[LintError]:
     """A7 — JSONL stream tool-event pairing.
 
     For every NON-agent_message item.started, exactly one matching
@@ -464,9 +485,9 @@ def check_a7(events: list[dict[str, Any]] | None,
     if events is None:
         return []
     findings: list[LintError] = []
-    started: dict[str, int] = {}      # item.id -> row
+    started: dict[str, int] = {}  # item.id -> row
     started_dups: list[tuple[str, int]] = []
-    completed: dict[str, int] = {}    # item.id -> row (non-agent_message only)
+    completed: dict[str, int] = {}  # item.id -> row (non-agent_message only)
     completed_dups: list[tuple[str, int]] = []
 
     for idx, ev in enumerate(events):
@@ -499,33 +520,47 @@ def check_a7(events: list[dict[str, Any]] | None,
 
     # Duplicates
     for iid, row in started_dups:
-        findings.append(LintError("A7",
-            f"duplicate item.started for item.id={iid!r} at row {row}", location))
+        findings.append(
+            LintError("A7", f"duplicate item.started for item.id={iid!r} at row {row}", location)
+        )
     for iid, row in completed_dups:
-        findings.append(LintError("A7",
-            f"duplicate item.completed for item.id={iid!r} at row {row}", location))
+        findings.append(
+            LintError("A7", f"duplicate item.completed for item.id={iid!r} at row {row}", location)
+        )
 
     # Orphan completions (no prior started)
     for iid, row in completed.items():
         if iid not in started:
-            findings.append(LintError("A7",
-                f"orphan item.completed for item.id={iid!r} at row {row} (no prior item.started)",
-                location))
+            findings.append(
+                LintError(
+                    "A7",
+                    f"orphan item.completed for item.id={iid!r} at row {row} (no prior item.started)",
+                    location,
+                )
+            )
 
     # Unmatched starts (no completion)
     for iid, row in started.items():
         if iid not in completed:
-            findings.append(LintError("A7",
-                f"unmatched item.started for item.id={iid!r} at row {row} (no item.completed)",
-                location))
+            findings.append(
+                LintError(
+                    "A7",
+                    f"unmatched item.started for item.id={iid!r} at row {row} (no item.completed)",
+                    location,
+                )
+            )
         else:
             # ordering — completed-row must exceed started-row
             crow = completed[iid]
             srow = started[iid]
             if crow <= srow:
-                findings.append(LintError("A7",
-                    f"item.completed (row {crow}) precedes or equals item.started (row {srow}) for id={iid!r}",
-                    location))
+                findings.append(
+                    LintError(
+                        "A7",
+                        f"item.completed (row {crow}) precedes or equals item.started (row {srow}) for id={iid!r}",
+                        location,
+                    )
+                )
     return findings
 
 
@@ -534,8 +569,12 @@ def check_a7(events: list[dict[str, Any]] | None,
 # ---------------------------------------------------------------------------
 
 
-def check_b1(sidecar: dict[str, Any] | None, events: list[dict[str, Any]] | None,
-             verdict: dict[str, Any] | None, location: str = "<sidecar/jsonl>") -> list[LintError]:
+def check_b1(
+    sidecar: dict[str, Any] | None,
+    events: list[dict[str, Any]] | None,
+    verdict: dict[str, Any] | None,
+    location: str = "<sidecar/jsonl>",
+) -> list[LintError]:
     """B1 — sidecar.stream.jsonl_thread_id matches JSONL's thread.started.thread_id.
 
     SUSPENDED when companion verdict.verdict_status == AUDIT_FAILED (per
@@ -545,8 +584,7 @@ def check_b1(sidecar: dict[str, Any] | None, events: list[dict[str, Any]] | None
         return []
     side_tid = _safe_get(sidecar, "stream", "jsonl_thread_id")
     # AUDIT_FAILED suspension
-    v_status = (_safe_get(verdict, "verdict_status")
-                if verdict is not None else None)
+    v_status = _safe_get(verdict, "verdict_status") if verdict is not None else None
     if v_status == "AUDIT_FAILED":
         # rule suspended; empty string allowed
         return []
@@ -557,18 +595,28 @@ def check_b1(sidecar: dict[str, Any] | None, events: list[dict[str, Any]] | None
             jsonl_tid = ev.get("thread_id")
             break
     if side_tid is None or jsonl_tid is None:
-        return [LintError("B1",
-            f"missing thread_id (sidecar={side_tid!r}, jsonl={jsonl_tid!r})",
-            location)]
+        return [
+            LintError(
+                "B1", f"missing thread_id (sidecar={side_tid!r}, jsonl={jsonl_tid!r})", location
+            )
+        ]
     if side_tid != jsonl_tid:
-        return [LintError("B1",
-            f"sidecar.stream.jsonl_thread_id={side_tid!r} != JSONL.thread.started.thread_id={jsonl_tid!r}",
-            location)]
+        return [
+            LintError(
+                "B1",
+                f"sidecar.stream.jsonl_thread_id={side_tid!r} != JSONL.thread.started.thread_id={jsonl_tid!r}",
+                location,
+            )
+        ]
     return []
 
 
-def check_b2(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
-             repo_root: Path, location: str = "<entry/sidecar>") -> list[LintError]:
+def check_b2(
+    entry: dict[str, Any] | None,
+    sidecar: dict[str, Any] | None,
+    repo_root: Path,
+    location: str = "<entry/sidecar>",
+) -> list[LintError]:
     """B2 — entry.deliverable_sha == sidecar's matching primary sha
     == current SHA-256 of deliverable file on disk."""
     if entry is None or sidecar is None:
@@ -583,32 +631,46 @@ def check_b2(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
             side_sha = p.get("sha")
             break
     if side_sha is None:
-        return [LintError("B2",
-            f"sidecar.prompt.bundle.primary_deliverables has no entry for {deliv_path!r}",
-            location)]
+        return [
+            LintError(
+                "B2",
+                f"sidecar.prompt.bundle.primary_deliverables has no entry for {deliv_path!r}",
+                location,
+            )
+        ]
     if entry_sha != side_sha:
-        findings.append(LintError("B2",
-            f"entry.deliverable_sha={entry_sha!r} != sidecar primary[{deliv_path!r}].sha={side_sha!r}",
-            location))
+        findings.append(
+            LintError(
+                "B2",
+                f"entry.deliverable_sha={entry_sha!r} != sidecar primary[{deliv_path!r}].sha={side_sha!r}",
+                location,
+            )
+        )
     # Verify against on-disk file
     if isinstance(deliv_path, str):
         disk_path = repo_root / deliv_path
         if disk_path.exists():
             disk_sha = _sha256_file(disk_path)
             if disk_sha is not None and disk_sha != entry_sha:
-                findings.append(LintError("B2",
-                    f"current_file_SHA256({deliv_path!r})={disk_sha!r} != entry.deliverable_sha={entry_sha!r}",
-                    location))
+                findings.append(
+                    LintError(
+                        "B2",
+                        f"current_file_SHA256({deliv_path!r})={disk_sha!r} != entry.deliverable_sha={entry_sha!r}",
+                        location,
+                    )
+                )
         # Missing file is not a B2 failure if entry/sidecar agree — caller
         # may be running against synthetic fixtures. Spec allows lint to
         # detect mutation; absence of file is a separate concern.
     return findings
 
 
-def compute_bundle_manifest(primary: list[dict[str, Any]],
-                            supporting: list[dict[str, Any]],
-                            template_path: str,
-                            template_sha: str) -> tuple[str, str]:
+def compute_bundle_manifest(
+    primary: list[dict[str, Any]],
+    supporting: list[dict[str, Any]],
+    template_path: str,
+    template_sha: str,
+) -> tuple[str, str]:
     """Compute (manifest_text, manifest_sha) per spec §3.6.
 
     Manifest format: '<role>:<path>:<sha>' lines, sorted lex by (role, path),
@@ -628,8 +690,9 @@ def compute_bundle_manifest(primary: list[dict[str, Any]],
     return text, sha
 
 
-def check_b3(sidecar: dict[str, Any] | None, repo_root: Path,
-             location: str = "<sidecar>") -> list[LintError]:
+def check_b3(
+    sidecar: dict[str, Any] | None, repo_root: Path, location: str = "<sidecar>"
+) -> list[LintError]:
     """B3 — sidecar.prompt.bundle.bundle_manifest_sha == recomputed_sha.
 
     Recomputes over the CURRENT on-disk SHA-256 of every primary +
@@ -653,16 +716,19 @@ def check_b3(sidecar: dict[str, Any] | None, repo_root: Path,
     template_path = _safe_get(sidecar, "prompt", "audit_template_path") or AUDIT_TEMPLATE_PATH
     template_sha = _safe_get(sidecar, "prompt", "audit_template_sha")
     if template_sha is None:
-        return [LintError("B3",
-            "sidecar.prompt.audit_template_sha missing", location)]
+        return [LintError("B3", "sidecar.prompt.audit_template_sha missing", location)]
 
     # Step 1 — recompute against the SHAs the sidecar itself declares.
     _, sha_from_declared = compute_bundle_manifest(primary, supporting, template_path, template_sha)
     findings: list[LintError] = []
     if declared_sha != sha_from_declared:
-        findings.append(LintError("B3",
-            f"declared bundle_manifest_sha={declared_sha!r} disagrees with manifest of declared file SHAs (computed={sha_from_declared!r})",
-            location))
+        findings.append(
+            LintError(
+                "B3",
+                f"declared bundle_manifest_sha={declared_sha!r} disagrees with manifest of declared file SHAs (computed={sha_from_declared!r})",
+                location,
+            )
+        )
 
     # Step 2 — verify against live disk SHAs. Codex round 2 P2 closure:
     # a missing bundle file must NOT fall back to the sidecar-declared SHA
@@ -678,7 +744,10 @@ def check_b3(sidecar: dict[str, Any] | None, repo_root: Path,
     live_primary: list[dict[str, Any]] = []
     live_supporting: list[dict[str, Any]] = []
     missing_bundle_files: list[str] = []
-    for role, items, sink in (("primary", primary, live_primary), ("supporting", supporting, live_supporting)):
+    for role, items, sink in (
+        ("primary", primary, live_primary),
+        ("supporting", supporting, live_supporting),
+    ):
         for p in items:
             if not isinstance(p, dict):
                 continue
@@ -701,23 +770,34 @@ def check_b3(sidecar: dict[str, Any] | None, repo_root: Path,
     if missing_bundle_files:
         # File-level mutation evidence (deletion / move) — flag explicitly so
         # the auditor sees which file is gone, not just a manifest SHA mismatch.
-        findings.append(LintError("B3",
-            f"bundle file(s) missing on disk; cannot verify live manifest: "
-            f"{missing_bundle_files} — treat as stale/unverifiable",
-            location))
+        findings.append(
+            LintError(
+                "B3",
+                f"bundle file(s) missing on disk; cannot verify live manifest: "
+                f"{missing_bundle_files} — treat as stale/unverifiable",
+                location,
+            )
+        )
         return findings
 
     # All files present — recompute live manifest and compare.
-    _, sha_live = compute_bundle_manifest(live_primary, live_supporting, template_path, live_template_sha)
+    _, sha_live = compute_bundle_manifest(
+        live_primary, live_supporting, template_path, live_template_sha
+    )
     if declared_sha != sha_live:
-        findings.append(LintError("B3",
-            f"declared bundle_manifest_sha={declared_sha!r} disagrees with live bundle (computed={sha_live!r}) — bundle file changed since audit",
-            location))
+        findings.append(
+            LintError(
+                "B3",
+                f"declared bundle_manifest_sha={declared_sha!r} disagrees with live bundle (computed={sha_live!r}) — bundle file changed since audit",
+                location,
+            )
+        )
     return findings
 
 
-def check_b4(sidecar: dict[str, Any] | None, repo_root: Path,
-             location: str = "<sidecar>") -> list[LintError]:
+def check_b4(
+    sidecar: dict[str, Any] | None, repo_root: Path, location: str = "<sidecar>"
+) -> list[LintError]:
     """B4 — sidecar.runner.git_sha resolves to a real commit."""
     if sidecar is None:
         return []
@@ -735,28 +815,32 @@ def check_b4(sidecar: dict[str, Any] | None, repo_root: Path,
     # nested vendored roots inside a larger checkout are still checked.
     inside = subprocess.run(
         ["git", "-C", str(repo_root), "rev-parse", "--is-inside-work-tree"],
-        capture_output=True, text=True, timeout=10,
+        capture_output=True,
+        text=True,
+        timeout=10,
     )
     if inside.returncode != 0 or inside.stdout.strip() != "true":
         return []
     try:
         result = subprocess.run(
             ["git", "-C", str(repo_root), "cat-file", "-e", f"{git_sha}^{{commit}}"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True,
+            text=True,
+            timeout=10,
         )
         if result.returncode != 0:
-            return [LintError("B4",
-                f"runner.git_sha={git_sha!r} does not resolve to a real commit",
-                location)]
+            return [
+                LintError(
+                    "B4", f"runner.git_sha={git_sha!r} does not resolve to a real commit", location
+                )
+            ]
     except (subprocess.SubprocessError, OSError) as e:
         # Internal — don't fail the whole lint over a git error
-        return [LintError("B4",
-            f"git resolve failed for {git_sha!r}: {e}", location)]
+        return [LintError("B4", f"git resolve failed for {git_sha!r}: {e}", location)]
     return []
 
 
-def check_b5(sidecar: dict[str, Any] | None,
-             location: str = "<sidecar>") -> list[LintError]:
+def check_b5(sidecar: dict[str, Any] | None, location: str = "<sidecar>") -> list[LintError]:
     """B5 — ended_at - started_at == duration_seconds (±1s)."""
     if sidecar is None:
         return []
@@ -769,14 +853,14 @@ def check_b5(sidecar: dict[str, Any] | None,
     try:
         duration = float(duration_raw)
     except (TypeError, ValueError):
-        return [LintError("B5",
-            f"duration_seconds not numeric: {duration_raw!r}", location)]
+        return [LintError("B5", f"duration_seconds not numeric: {duration_raw!r}", location)]
     # Parse RFC3339 ms strings
     if not (RFC3339_MS_RE.match(started) and RFC3339_MS_RE.match(ended)):
         # Schema-level rejection territory; B5 still flags arithmetic mismatch
         # but only if we can parse. Skip non-RFC3339-ms here.
         return []
     from datetime import datetime, timezone
+
     fmt = "%Y-%m-%dT%H:%M:%S.%fZ"
     try:
         dt_s = datetime.strptime(started, fmt).replace(tzinfo=timezone.utc)
@@ -785,14 +869,21 @@ def check_b5(sidecar: dict[str, Any] | None,
         return []
     delta = (dt_e - dt_s).total_seconds()
     if abs(delta - duration) > 1.0:
-        return [LintError("B5",
-            f"timing arithmetic: ended_at - started_at = {delta:.3f}s, duration_seconds = {duration:.3f}s (±1s tolerance exceeded)",
-            location)]
+        return [
+            LintError(
+                "B5",
+                f"timing arithmetic: ended_at - started_at = {delta:.3f}s, duration_seconds = {duration:.3f}s (±1s tolerance exceeded)",
+                location,
+            )
+        ]
     return []
 
 
-def check_b6(sidecar: dict[str, Any] | None, verdict: dict[str, Any] | None,
-             location: str = "<sidecar/verdict>") -> list[LintError]:
+def check_b6(
+    sidecar: dict[str, Any] | None,
+    verdict: dict[str, Any] | None,
+    location: str = "<sidecar/verdict>",
+) -> list[LintError]:
     """B6 — sidecar.process.exit_code == 0 for non-AUDIT_FAILED entries.
 
     Non-zero exit_code allowed only when verdict_status == AUDIT_FAILED.
@@ -804,9 +895,13 @@ def check_b6(sidecar: dict[str, Any] | None, verdict: dict[str, Any] | None,
         return []
     v_status = _safe_get(verdict, "verdict_status") if verdict else None
     if exit_code != 0 and v_status != "AUDIT_FAILED":
-        return [LintError("B6",
-            f"process.exit_code={exit_code} non-zero with verdict_status={v_status!r} (only AUDIT_FAILED permits non-zero exit)",
-            location)]
+        return [
+            LintError(
+                "B6",
+                f"process.exit_code={exit_code} non-zero with verdict_status={v_status!r} (only AUDIT_FAILED permits non-zero exit)",
+                location,
+            )
+        ]
     if exit_code == 0 and v_status == "AUDIT_FAILED":
         # Spec doesn't strictly forbid; AUDIT_FAILED can come from JSONL parse
         # error even when codex exited 0. Don't flag.
@@ -814,12 +909,18 @@ def check_b6(sidecar: dict[str, Any] | None, verdict: dict[str, Any] | None,
     return []
 
 
-def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
-             entry_path: Path | None, sidecar_path: Path | None,
-             jsonl_path: Path | None, verdict_path: Path | None,
-             mode: str, location: str = "<artifacts>",
-             repo_root: Path | None = None,
-             verdict: dict[str, Any] | None = None) -> list[LintError]:
+def check_b7(
+    entry: dict[str, Any] | None,
+    sidecar: dict[str, Any] | None,
+    entry_path: Path | None,
+    sidecar_path: Path | None,
+    jsonl_path: Path | None,
+    verdict_path: Path | None,
+    mode: str,
+    location: str = "<artifacts>",
+    repo_root: Path | None = None,
+    verdict: dict[str, Any] | None = None,
+) -> list[LintError]:
     """B7 — entry.run_id == sidecar.run_id == verdict.run_id == bare basename of every co-located file.
 
     Proposal mode: 4 files (jsonl + meta.json + verdict.yaml + entry.json).
@@ -845,19 +946,25 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
     entry_run_id = entry.get("run_id")
     side_run_id = sidecar.get("run_id")
     if entry_run_id != side_run_id:
-        findings.append(LintError("B7",
-            f"entry.run_id={entry_run_id!r} != sidecar.run_id={side_run_id!r}",
-            location))
+        findings.append(
+            LintError(
+                "B7", f"entry.run_id={entry_run_id!r} != sidecar.run_id={side_run_id!r}", location
+            )
+        )
     # Codex round 15 P1 closure: also verify verdict.run_id matches.
     if verdict is not None:
         v_run_id = verdict.get("run_id")
         if v_run_id is not None and v_run_id != side_run_id:
-            findings.append(LintError("B7",
-                f"verdict.run_id={v_run_id!r} != sidecar.run_id={side_run_id!r} "
-                f"(swap-one-verdict-file forgery seam — verdict file was renamed "
-                f"into <run_id>.verdict.yaml but internal run_id belongs to a "
-                f"different run)",
-                location))
+            findings.append(
+                LintError(
+                    "B7",
+                    f"verdict.run_id={v_run_id!r} != sidecar.run_id={side_run_id!r} "
+                    f"(swap-one-verdict-file forgery seam — verdict file was renamed "
+                    f"into <run_id>.verdict.yaml but internal run_id belongs to a "
+                    f"different run)",
+                    location,
+                )
+            )
 
     # File basename checks (only when we have actual paths)
     canonical = side_run_id if isinstance(side_run_id, str) else entry_run_id
@@ -877,13 +984,17 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
     for path, ext, role in files_to_check:
         bare = _bare_run_id_from_basename(path.name, ext)
         if bare is None:
-            findings.append(LintError("B7",
-                f"{role} file {path.name!r} does not end with {ext!r}",
-                location))
+            findings.append(
+                LintError("B7", f"{role} file {path.name!r} does not end with {ext!r}", location)
+            )
         elif bare != canonical:
-            findings.append(LintError("B7",
-                f"{role} file basename stem={bare!r} != canonical run_id={canonical!r}",
-                location))
+            findings.append(
+                LintError(
+                    "B7",
+                    f"{role} file basename stem={bare!r} != canonical run_id={canonical!r}",
+                    location,
+                )
+            )
 
     # Codex round 4 P2 closure: entry["artifact_paths"] is the contract the
     # orchestrator follows post-merge. A hand-edited entry that points its
@@ -899,24 +1010,34 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
         "verdict": verdict_path,
     }
     if isinstance(artifact_paths, dict):
-        for key, ext in (("jsonl", ".jsonl"),
-                         ("sidecar", ".meta.json"),
-                         ("verdict", ".verdict.yaml")):
+        for key, ext in (
+            ("jsonl", ".jsonl"),
+            ("sidecar", ".meta.json"),
+            ("verdict", ".verdict.yaml"),
+        ):
             recorded = artifact_paths.get(key)
             if not isinstance(recorded, str) or not recorded:
                 continue  # schema validation already covers missing/non-str
             recorded_basename = recorded.rsplit("/", 1)[-1]
             bare = _bare_run_id_from_basename(recorded_basename, ext)
             if bare is None:
-                findings.append(LintError("B7",
-                    f"entry.artifact_paths.{key}={recorded!r} basename does not end with {ext!r}",
-                    location))
+                findings.append(
+                    LintError(
+                        "B7",
+                        f"entry.artifact_paths.{key}={recorded!r} basename does not end with {ext!r}",
+                        location,
+                    )
+                )
                 continue
             if bare != canonical:
-                findings.append(LintError("B7",
-                    f"entry.artifact_paths.{key}={recorded!r} basename stem={bare!r} "
-                    f"!= canonical run_id={canonical!r} (artifact-paths forgery seam)",
-                    location))
+                findings.append(
+                    LintError(
+                        "B7",
+                        f"entry.artifact_paths.{key}={recorded!r} basename stem={bare!r} "
+                        f"!= canonical run_id={canonical!r} (artifact-paths forgery seam)",
+                        location,
+                    )
+                )
                 continue
             # Codex round 8 P2 closure: basename match alone leaves the path
             # forgery seam open — entry can record paths pointing at a
@@ -927,27 +1048,34 @@ def check_b7(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
             if repo_root is not None:
                 resolved = (repo_root / recorded).resolve()
                 if not resolved.exists():
-                    findings.append(LintError("B7",
-                        f"entry.artifact_paths.{key}={recorded!r} resolves to "
-                        f"{resolved} which does not exist on disk — recorded "
-                        f"path is the contract orchestrator follows post-merge",
-                        location))
+                    findings.append(
+                        LintError(
+                            "B7",
+                            f"entry.artifact_paths.{key}={recorded!r} resolves to "
+                            f"{resolved} which does not exist on disk — recorded "
+                            f"path is the contract orchestrator follows post-merge",
+                            location,
+                        )
+                    )
                     continue
                 cli_path = cli_loaded_paths.get(key)
                 if cli_path is not None and cli_path.exists():
                     cli_resolved = cli_path.resolve()
                     if resolved != cli_resolved and not resolved.samefile(cli_resolved):
-                        findings.append(LintError("B7",
-                            f"entry.artifact_paths.{key}={recorded!r} resolves to "
-                            f"{resolved} but CLI loaded {cli_resolved} — declared "
-                            f"path is the evidence the orchestrator will verify; "
-                            f"loading from a different location masks divergence",
-                            location))
+                        findings.append(
+                            LintError(
+                                "B7",
+                                f"entry.artifact_paths.{key}={recorded!r} resolves to "
+                                f"{resolved} but CLI loaded {cli_resolved} — declared "
+                                f"path is the evidence the orchestrator will verify; "
+                                f"loading from a different location masks divergence",
+                                location,
+                            )
+                        )
     return findings
 
 
-def check_b8(entry: dict[str, Any] | None, mode: str,
-             location: str = "<entry>") -> list[LintError]:
+def check_b8(entry: dict[str, Any] | None, mode: str, location: str = "<entry>") -> list[LintError]:
     """B8 — persisted ack: verdict.verified_at == acknowledgement.acknowledged_at."""
     if entry is None or mode != "persisted":
         return []
@@ -957,14 +1085,19 @@ def check_b8(entry: dict[str, Any] | None, mode: str,
     verified_at = _safe_get(entry, "verdict", "verified_at")
     ack_at = ack.get("acknowledged_at")
     if verified_at != ack_at:
-        return [LintError("B8",
-            f"verified_at={verified_at!r} != acknowledgement.acknowledged_at={ack_at!r} (must be same instant by D3 construction)",
-            location)]
+        return [
+            LintError(
+                "B8",
+                f"verified_at={verified_at!r} != acknowledgement.acknowledged_at={ack_at!r} (must be same instant by D3 construction)",
+                location,
+            )
+        ]
     return []
 
 
-def check_b9(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
-             location: str = "<entry/sidecar>") -> list[LintError]:
+def check_b9(
+    entry: dict[str, Any] | None, sidecar: dict[str, Any] | None, location: str = "<entry/sidecar>"
+) -> list[LintError]:
     """B9 — when entry.bundle_id present, equals sidecar.prompt.bundle.bundle_id."""
     if entry is None or sidecar is None:
         return []
@@ -973,14 +1106,22 @@ def check_b9(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
     entry_bid = entry.get("bundle_id")
     side_bid = _safe_get(sidecar, "prompt", "bundle", "bundle_id")
     if entry_bid != side_bid:
-        return [LintError("B9",
-            f"entry.bundle_id={entry_bid!r} != sidecar.prompt.bundle.bundle_id={side_bid!r}",
-            location)]
+        return [
+            LintError(
+                "B9",
+                f"entry.bundle_id={entry_bid!r} != sidecar.prompt.bundle.bundle_id={side_bid!r}",
+                location,
+            )
+        ]
     return []
 
 
-def check_b10(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
-              mode: str, location: str = "<entry/verdict>") -> list[LintError]:
+def check_b10(
+    entry: dict[str, Any] | None,
+    verdict: dict[str, Any] | None,
+    mode: str,
+    location: str = "<entry/verdict>",
+) -> list[LintError]:
     """B10 — persisted ack acknowledgement.finding_ids: non-empty, all exist
     in verdict.findings[].id, full coverage (set equality)."""
     if entry is None or verdict is None or mode != "persisted":
@@ -990,26 +1131,37 @@ def check_b10(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
         return []
     declared = ack.get("finding_ids")
     if not isinstance(declared, list):
-        return [LintError("B10",
-            f"acknowledgement.finding_ids must be array (got {type(declared).__name__})",
-            location)]
+        return [
+            LintError(
+                "B10",
+                f"acknowledgement.finding_ids must be array (got {type(declared).__name__})",
+                location,
+            )
+        ]
     if len(declared) == 0:
-        return [LintError("B10",
-            "acknowledgement.finding_ids must be non-empty", location)]
+        return [LintError("B10", "acknowledgement.finding_ids must be non-empty", location)]
     findings_list = verdict.get("findings") or []
     real_ids = {f.get("id") for f in findings_list if isinstance(f, dict)}
     declared_set = set(declared)
     out: list[LintError] = []
     missing_in_real = declared_set - real_ids
     if missing_in_real:
-        out.append(LintError("B10",
-            f"acknowledgement.finding_ids contains unknown ids {sorted(missing_in_real)} (not in verdict.findings[].id)",
-            location))
+        out.append(
+            LintError(
+                "B10",
+                f"acknowledgement.finding_ids contains unknown ids {sorted(missing_in_real)} (not in verdict.findings[].id)",
+                location,
+            )
+        )
     missing_in_declared = real_ids - declared_set
     if missing_in_declared:
-        out.append(LintError("B10",
-            f"acknowledgement.finding_ids missing full coverage: {sorted(missing_in_declared)} not acknowledged",
-            location))
+        out.append(
+            LintError(
+                "B10",
+                f"acknowledgement.finding_ids missing full coverage: {sorted(missing_in_declared)} not acknowledged",
+                location,
+            )
+        )
     return out
 
 
@@ -1018,8 +1170,9 @@ def check_b10(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
 # ---------------------------------------------------------------------------
 
 
-def check_c1(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
-             location: str = "<entry/verdict>") -> list[LintError]:
+def check_c1(
+    entry: dict[str, Any] | None, verdict: dict[str, Any] | None, location: str = "<entry/verdict>"
+) -> list[LintError]:
     """C1 — entry.verdict.{status, round, target_rounds, finding_counts, failure_reason}
     mirrors verdict file's matching fields (verdict file wins)."""
     if entry is None or verdict is None:
@@ -1041,37 +1194,57 @@ def check_c1(entry: dict[str, Any] | None, verdict: dict[str, Any] | None,
         # compare presence consistency too.
         if entry_key == "failure_reason":
             if (ev_val is None) != (vf_val is None):
-                findings.append(LintError("C1",
-                    f"failure_reason presence drift: entry={ev_val!r}, verdict_file={vf_val!r}",
-                    location))
+                findings.append(
+                    LintError(
+                        "C1",
+                        f"failure_reason presence drift: entry={ev_val!r}, verdict_file={vf_val!r}",
+                        location,
+                    )
+                )
             elif ev_val is not None and ev_val != vf_val:
-                findings.append(LintError("C1",
-                    f"failure_reason drift: entry={ev_val!r}, verdict_file={vf_val!r}",
-                    location))
+                findings.append(
+                    LintError(
+                        "C1",
+                        f"failure_reason drift: entry={ev_val!r}, verdict_file={vf_val!r}",
+                        location,
+                    )
+                )
             continue
         if ev_val != vf_val:
-            findings.append(LintError("C1",
-                f"{entry_key} drift: entry={ev_val!r}, verdict_file={vf_val!r} (verdict file wins)",
-                location))
+            findings.append(
+                LintError(
+                    "C1",
+                    f"{entry_key} drift: entry={ev_val!r}, verdict_file={vf_val!r} (verdict file wins)",
+                    location,
+                )
+            )
     return findings
 
 
-def check_c2(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
-             location: str = "<entry/sidecar>") -> list[LintError]:
+def check_c2(
+    entry: dict[str, Any] | None, sidecar: dict[str, Any] | None, location: str = "<entry/sidecar>"
+) -> list[LintError]:
     """C2 — entry.bundle_manifest_sha == sidecar.prompt.bundle.bundle_manifest_sha."""
     if entry is None or sidecar is None:
         return []
     e_sha = entry.get("bundle_manifest_sha")
     s_sha = _safe_get(sidecar, "prompt", "bundle", "bundle_manifest_sha")
     if e_sha != s_sha:
-        return [LintError("C2",
-            f"entry.bundle_manifest_sha={e_sha!r} != sidecar.bundle_manifest_sha={s_sha!r}",
-            location)]
+        return [
+            LintError(
+                "C2",
+                f"entry.bundle_manifest_sha={e_sha!r} != sidecar.bundle_manifest_sha={s_sha!r}",
+                location,
+            )
+        ]
     return []
 
 
-def check_c3(new_entry: dict[str, Any] | None, prior_entry: dict[str, Any] | None,
-             location: str = "<entry/prior>") -> list[LintError]:
+def check_c3(
+    new_entry: dict[str, Any] | None,
+    prior_entry: dict[str, Any] | None,
+    location: str = "<entry/prior>",
+) -> list[LintError]:
     """C3 — Acknowledgement append entry copies prior entry's
     (stage, agent, deliverable_path, deliverable_sha, run_id,
      bundle_manifest_sha, artifact_paths) AND inner verdict shape
@@ -1081,33 +1254,54 @@ def check_c3(new_entry: dict[str, Any] | None, prior_entry: dict[str, Any] | Non
     if new_entry is None or prior_entry is None:
         return []
     findings: list[LintError] = []
-    copied_fields = ("stage", "agent", "deliverable_path", "deliverable_sha",
-                     "run_id", "bundle_manifest_sha", "artifact_paths")
+    copied_fields = (
+        "stage",
+        "agent",
+        "deliverable_path",
+        "deliverable_sha",
+        "run_id",
+        "bundle_manifest_sha",
+        "artifact_paths",
+    )
     for f in copied_fields:
         if new_entry.get(f) != prior_entry.get(f):
-            findings.append(LintError("C3",
-                f"ack entry must copy {f} byte-for-byte: prior={prior_entry.get(f)!r}, new={new_entry.get(f)!r}",
-                location))
+            findings.append(
+                LintError(
+                    "C3",
+                    f"ack entry must copy {f} byte-for-byte: prior={prior_entry.get(f)!r}, new={new_entry.get(f)!r}",
+                    location,
+                )
+            )
     # Inner verdict shape
     new_v = new_entry.get("verdict") or {}
     prior_v = prior_entry.get("verdict") or {}
     inner_fields = ("status", "round", "target_rounds", "finding_counts", "failure_reason")
     for f in inner_fields:
         if new_v.get(f) != prior_v.get(f):
-            findings.append(LintError("C3",
-                f"ack entry must copy verdict.{f} byte-for-byte: prior={prior_v.get(f)!r}, new={new_v.get(f)!r}",
-                location))
+            findings.append(
+                LintError(
+                    "C3",
+                    f"ack entry must copy verdict.{f} byte-for-byte: prior={prior_v.get(f)!r}, new={new_v.get(f)!r}",
+                    location,
+                )
+            )
     # verified_at must be FRESHLY SET (different from prior).
-    if (new_v.get("verified_at") is not None and
-        new_v.get("verified_at") == prior_v.get("verified_at")):
-        findings.append(LintError("C3",
-            f"ack entry verified_at={new_v.get('verified_at')!r} must be freshly set (>= prior + 1ms via D3); equals prior",
-            location))
+    if new_v.get("verified_at") is not None and new_v.get("verified_at") == prior_v.get(
+        "verified_at"
+    ):
+        findings.append(
+            LintError(
+                "C3",
+                f"ack entry verified_at={new_v.get('verified_at')!r} must be freshly set (>= prior + 1ms via D3); equals prior",
+                location,
+            )
+        )
     return findings
 
 
-def check_c4(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
-             location: str = "<entry/sidecar>") -> list[LintError]:
+def check_c4(
+    entry: dict[str, Any] | None, sidecar: dict[str, Any] | None, location: str = "<entry/sidecar>"
+) -> list[LintError]:
     """C4 — entry.deliverable_sha == sidecar primary_deliverables[].sha
     for matching primary deliverable (entry-side half of B2)."""
     # We reuse the same check as B2 minus the disk verification; emit C4 not B2.
@@ -1123,13 +1317,21 @@ def check_c4(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
             side_sha = p.get("sha")
             break
     if side_sha is None:
-        findings.append(LintError("C4",
-            f"sidecar.prompt.bundle.primary_deliverables has no entry for {deliv_path!r}",
-            location))
+        findings.append(
+            LintError(
+                "C4",
+                f"sidecar.prompt.bundle.primary_deliverables has no entry for {deliv_path!r}",
+                location,
+            )
+        )
     elif entry_sha != side_sha:
-        findings.append(LintError("C4",
-            f"entry.deliverable_sha={entry_sha!r} != sidecar primary[{deliv_path!r}].sha={side_sha!r}",
-            location))
+        findings.append(
+            LintError(
+                "C4",
+                f"entry.deliverable_sha={entry_sha!r} != sidecar primary[{deliv_path!r}].sha={side_sha!r}",
+                location,
+            )
+        )
     return findings
 
 
@@ -1138,8 +1340,9 @@ def check_c4(entry: dict[str, Any] | None, sidecar: dict[str, Any] | None,
 # ---------------------------------------------------------------------------
 
 
-def check_d1(passport_audit_artifacts: list[dict[str, Any]] | None,
-             location: str = "<passport>") -> list[LintError]:
+def check_d1(
+    passport_audit_artifacts: list[dict[str, Any]] | None, location: str = "<passport>"
+) -> list[LintError]:
     """D1 — Latest persisted entry by max(verdict.verified_at) per (stage, agent,
     deliverable_sha) tuple. Lint flags duplicate verified_at within group as
     ordering ambiguity (D3 should make this impossible).
@@ -1153,22 +1356,31 @@ def check_d1(passport_audit_artifacts: list[dict[str, Any]] | None,
     for entry in passport_audit_artifacts:
         if not isinstance(entry, dict):
             continue
-        key = (entry.get("stage"), entry.get("agent"),
-               entry.get("deliverable_sha"), entry.get("run_id"))
+        key = (
+            entry.get("stage"),
+            entry.get("agent"),
+            entry.get("deliverable_sha"),
+            entry.get("run_id"),
+        )
         va = _safe_get(entry, "verdict", "verified_at")
         if va is None:
             continue
         seen.setdefault(key, []).append(va)
     for key, vas in seen.items():
         if len(vas) != len(set(vas)):
-            findings.append(LintError("D1",
-                f"duplicate verified_at in (stage,agent,sha,run_id)={key}: {vas} — D3 monotonic helper should prevent this",
-                location))
+            findings.append(
+                LintError(
+                    "D1",
+                    f"duplicate verified_at in (stage,agent,sha,run_id)={key}: {vas} — D3 monotonic helper should prevent this",
+                    location,
+                )
+            )
     return findings
 
 
-def check_d2(proposals: list[dict[str, Any]] | None,
-             location: str = "<output-dir>") -> list[LintError]:
+def check_d2(
+    proposals: list[dict[str, Any]] | None, location: str = "<output-dir>"
+) -> list[LintError]:
     """D2 — Path B proposal selection determinism check.
 
     Lint surface: detect proposals sharing identical sidecar.timing.started_at
@@ -1187,14 +1399,19 @@ def check_d2(proposals: list[dict[str, Any]] | None,
         by_started.setdefault(st, []).append(rid)
     for st, rids in by_started.items():
         if len(rids) > 1:
-            findings.append(LintError("D2",
-                f"proposals share started_at={st!r}: {sorted(rids)} — falling back to run_id lex-max tie-breaker",
-                location))
+            findings.append(
+                LintError(
+                    "D2",
+                    f"proposals share started_at={st!r}: {sorted(rids)} — falling back to run_id lex-max tie-breaker",
+                    location,
+                )
+            )
     return findings
 
 
-def check_d3(passport_audit_artifacts: list[dict[str, Any]] | None,
-             location: str = "<passport>") -> list[LintError]:
+def check_d3(
+    passport_audit_artifacts: list[dict[str, Any]] | None, location: str = "<passport>"
+) -> list[LintError]:
     """D3 — every persisted verified_at strictly greater than every prior.
 
     Validates monotonicity over the ledger as ordered. A correctly-running
@@ -1215,16 +1432,21 @@ def check_d3(passport_audit_artifacts: list[dict[str, Any]] | None,
             continue
         for prior_idx, prior_va in enumerate(seen):
             if va <= prior_va:
-                findings.append(LintError("D3",
-                    f"audit_artifact[{idx}].verified_at={va!r} not > audit_artifact[{prior_idx}].verified_at={prior_va!r}",
-                    location))
+                findings.append(
+                    LintError(
+                        "D3",
+                        f"audit_artifact[{idx}].verified_at={va!r} not > audit_artifact[{prior_idx}].verified_at={prior_va!r}",
+                        location,
+                    )
+                )
                 break
         seen.append(va)
     return findings
 
 
-def check_d4(persisted_round: int | None, proposal_round: int | None,
-             location: str = "<entry>") -> list[LintError]:
+def check_d4(
+    persisted_round: int | None, proposal_round: int | None, location: str = "<entry>"
+) -> list[LintError]:
     """D4 — higher-round unmerged proposals supersede lower-round persisted entries.
 
     Lint surface: when an unmerged proposal exists alongside a persisted
@@ -1239,10 +1461,14 @@ def check_d4(persisted_round: int | None, proposal_round: int | None,
     if persisted_round is None or proposal_round is None:
         return []
     if proposal_round > persisted_round:
-        return [LintError("D4",
-            f"unmerged proposal round={proposal_round} supersedes persisted round={persisted_round} "
-            f"— orchestrator must preempt Path A and run Path B with supersession_required=true",
-            location)]
+        return [
+            LintError(
+                "D4",
+                f"unmerged proposal round={proposal_round} supersedes persisted round={persisted_round} "
+                f"— orchestrator must preempt Path A and run Path B with supersession_required=true",
+                location,
+            )
+        ]
     return []
 
 
@@ -1251,8 +1477,9 @@ def check_d4(persisted_round: int | None, proposal_round: int | None,
 # ---------------------------------------------------------------------------
 
 
-def check_e1_e2_e6(passport_audit_artifacts: list[dict[str, Any]] | None,
-                   location: str = "<passport>") -> list[LintError]:
+def check_e1_e2_e6(
+    passport_audit_artifacts: list[dict[str, Any]] | None, location: str = "<passport>"
+) -> list[LintError]:
     """E1/E2/E6 — post-hoc passport-shape checks.
 
     Detect non-orchestrator-emitted entries by looking for entries that lack
@@ -1264,23 +1491,39 @@ def check_e1_e2_e6(passport_audit_artifacts: list[dict[str, Any]] | None,
     findings: list[LintError] = []
     for idx, entry in enumerate(passport_audit_artifacts):
         if not isinstance(entry, dict):
-            findings.append(LintError("E1/E2/E6",
-                f"audit_artifact[{idx}] is not an object (type={type(entry).__name__})",
-                location))
+            findings.append(
+                LintError(
+                    "E1/E2/E6",
+                    f"audit_artifact[{idx}] is not an object (type={type(entry).__name__})",
+                    location,
+                )
+            )
             continue
         verdict = entry.get("verdict") or {}
         if "verified_at" not in verdict:
-            findings.append(LintError("E1/E2/E6",
-                f"audit_artifact[{idx}].verdict missing verified_at — non-orchestrator writer suspected",
-                location))
+            findings.append(
+                LintError(
+                    "E1/E2/E6",
+                    f"audit_artifact[{idx}].verdict missing verified_at — non-orchestrator writer suspected",
+                    location,
+                )
+            )
         if "verified_by" not in verdict:
-            findings.append(LintError("E1/E2/E6",
-                f"audit_artifact[{idx}].verdict missing verified_by — non-orchestrator writer suspected",
-                location))
+            findings.append(
+                LintError(
+                    "E1/E2/E6",
+                    f"audit_artifact[{idx}].verdict missing verified_by — non-orchestrator writer suspected",
+                    location,
+                )
+            )
         elif verdict.get("verified_by") != "pipeline_orchestrator_agent":
-            findings.append(LintError("E1/E2/E6",
-                f"audit_artifact[{idx}].verdict.verified_by={verdict.get('verified_by')!r} not 'pipeline_orchestrator_agent'",
-                location))
+            findings.append(
+                LintError(
+                    "E1/E2/E6",
+                    f"audit_artifact[{idx}].verdict.verified_by={verdict.get('verified_by')!r} not 'pipeline_orchestrator_agent'",
+                    location,
+                )
+            )
         # Codex round 3 P2 closure: §3.2 lifecycle-conditional table
         # excludes AUDIT_FAILED from the persisted arm. A hand-edited
         # passport entry with verified_at + verified_by + AUDIT_FAILED
@@ -1289,16 +1532,21 @@ def check_e1_e2_e6(passport_audit_artifacts: list[dict[str, Any]] | None,
         # persisted oneOf arm; passport scan needs the same enforcement
         # because AUDIT_FAILED entries are forbidden in `audit_artifact[]`).
         if verdict.get("status") == "AUDIT_FAILED":
-            findings.append(LintError("E5",
-                f"audit_artifact[{idx}].verdict.status='AUDIT_FAILED' is forbidden in "
-                f"passport audit_artifact[] (§3.2: AUDIT_FAILED is proposal-arm only; "
-                f"persisted ledger never carries failed-audit entries)",
-                location))
+            findings.append(
+                LintError(
+                    "E5",
+                    f"audit_artifact[{idx}].verdict.status='AUDIT_FAILED' is forbidden in "
+                    f"passport audit_artifact[] (§3.2: AUDIT_FAILED is proposal-arm only; "
+                    f"persisted ledger never carries failed-audit entries)",
+                    location,
+                )
+            )
     return findings
 
 
-def check_e3_e4(entry: dict[str, Any] | None, mode: str,
-                location: str = "<entry>") -> list[LintError]:
+def check_e3_e4(
+    entry: dict[str, Any] | None, mode: str, location: str = "<entry>"
+) -> list[LintError]:
     """E3/E4 — wrapper-emitted proposals carrying verified_at/verified_by are rejected.
 
     Defense-in-depth on top of schema oneOf.proposal arm.
@@ -1308,26 +1556,37 @@ def check_e3_e4(entry: dict[str, Any] | None, mode: str,
     findings: list[LintError] = []
     verdict = entry.get("verdict") or {}
     if "verified_at" in verdict:
-        findings.append(LintError("E3/E4",
-            "proposal entry carries verdict.verified_at (Pattern C3 attack surface)",
-            location))
+        findings.append(
+            LintError(
+                "E3/E4",
+                "proposal entry carries verdict.verified_at (Pattern C3 attack surface)",
+                location,
+            )
+        )
     if "verified_by" in verdict:
-        findings.append(LintError("E3/E4",
-            "proposal entry carries verdict.verified_by (Pattern C3 attack surface)",
-            location))
+        findings.append(
+            LintError(
+                "E3/E4",
+                "proposal entry carries verdict.verified_by (Pattern C3 attack surface)",
+                location,
+            )
+        )
     return findings
 
 
-def check_e5(entry: dict[str, Any] | None, mode: str,
-             location: str = "<entry>") -> list[LintError]:
+def check_e5(entry: dict[str, Any] | None, mode: str, location: str = "<entry>") -> list[LintError]:
     """E5 — --mode persisted rejects AUDIT_FAILED status."""
     if entry is None or mode != "persisted":
         return []
     status = _safe_get(entry, "verdict", "status")
     if status == "AUDIT_FAILED":
-        return [LintError("E5",
-            "persisted entry MUST NOT carry status=AUDIT_FAILED (proposal-arm only)",
-            location)]
+        return [
+            LintError(
+                "E5",
+                "persisted entry MUST NOT carry status=AUDIT_FAILED (proposal-arm only)",
+                location,
+            )
+        ]
     return []
 
 
@@ -1340,9 +1599,13 @@ def check_e7(entry: dict[str, Any] | None, location: str = "<entry>") -> list[Li
         return []
     status = _safe_get(entry, "verdict", "status")
     if status != "MATERIAL":
-        return [LintError("E7",
-            f"ack entry must keep verdict.status='MATERIAL'; got {status!r} (no synthetic MATERIAL_ACKNOWLEDGED)",
-            location)]
+        return [
+            LintError(
+                "E7",
+                f"ack entry must keep verdict.status='MATERIAL'; got {status!r} (no synthetic MATERIAL_ACKNOWLEDGED)",
+                location,
+            )
+        ]
     return []
 
 
@@ -1354,19 +1617,22 @@ def check_e7(entry: dict[str, Any] | None, location: str = "<entry>") -> list[Li
 def check_f1(run_id: Any, location: str = "<entry>") -> list[LintError]:
     """F1 — run_id format <ISO-8601-Z>-<4-hex>."""
     if not isinstance(run_id, str):
-        return [LintError("F1",
-            f"run_id missing or not string (got {type(run_id).__name__})",
-            location)]
+        return [
+            LintError("F1", f"run_id missing or not string (got {type(run_id).__name__})", location)
+        ]
     if not RUN_ID_RE.match(run_id):
-        return [LintError("F1",
-            f"run_id={run_id!r} does not match {RUN_ID_RE.pattern}",
-            location)]
+        return [LintError("F1", f"run_id={run_id!r} does not match {RUN_ID_RE.pattern}", location)]
     return []
 
 
-def check_f2(jsonl_path: Path | None, sidecar_path: Path | None,
-             verdict_path: Path | None, entry_path: Path | None,
-             mode: str, location: str = "<artifacts>") -> list[LintError]:
+def check_f2(
+    jsonl_path: Path | None,
+    sidecar_path: Path | None,
+    verdict_path: Path | None,
+    entry_path: Path | None,
+    mode: str,
+    location: str = "<artifacts>",
+) -> list[LintError]:
     """F2 — 4 (proposal) or 3 (persisted) artifact basenames use bare run_id stem with
     extensions .jsonl / .meta.json / .verdict.yaml / .audit_artifact_entry.json.
     No stage/agent/deliverable prefix.
@@ -1384,33 +1650,42 @@ def check_f2(jsonl_path: Path | None, sidecar_path: Path | None,
         if path is None:
             continue
         if not path.name.endswith(ext):
-            findings.append(LintError("F2",
-                f"{role} file {path.name!r} does not end with {ext!r}",
-                location))
+            findings.append(
+                LintError("F2", f"{role} file {path.name!r} does not end with {ext!r}", location)
+            )
             continue
         bare = path.name[: -len(ext)]
         if not RUN_ID_RE.match(bare):
-            findings.append(LintError("F2",
-                f"{role} file basename stem={bare!r} not bare run_id (no stage/agent prefix allowed)",
-                location))
+            findings.append(
+                LintError(
+                    "F2",
+                    f"{role} file basename stem={bare!r} not bare run_id (no stage/agent prefix allowed)",
+                    location,
+                )
+            )
     return findings
 
 
-def check_f3(sidecar: dict[str, Any] | None, sidecar_path: Path | None,
-             location: str = "<sidecar>") -> list[LintError]:
+def check_f3(
+    sidecar: dict[str, Any] | None, sidecar_path: Path | None, location: str = "<sidecar>"
+) -> list[LintError]:
     """F3 — sidecar.run_id == file basename (with .meta.json stripped)."""
     if sidecar is None or sidecar_path is None:
         return []
     side_run_id = sidecar.get("run_id")
     bare = _bare_run_id_from_basename(sidecar_path.name, ".meta.json")
     if bare is None:
-        return [LintError("F3",
-            f"sidecar file {sidecar_path.name!r} does not end with .meta.json",
-            location)]
+        return [
+            LintError(
+                "F3", f"sidecar file {sidecar_path.name!r} does not end with .meta.json", location
+            )
+        ]
     if side_run_id != bare:
-        return [LintError("F3",
-            f"sidecar.run_id={side_run_id!r} != file basename stem={bare!r}",
-            location)]
+        return [
+            LintError(
+                "F3", f"sidecar.run_id={side_run_id!r} != file basename stem={bare!r}", location
+            )
+        ]
     return []
 
 
@@ -1477,13 +1752,15 @@ def run_checks(ctx: LintContext) -> list[LintError]:
             try:
                 module.validate_stream_shape(ctx.jsonl_events)
             except ParseError as e:
-                findings.append(LintError(
-                    "L2-3/L2-4",
-                    f"jsonl stream-shape rejected: {e} — non-AUDIT_FAILED "
-                    f"verdict requires a complete stream (thread.started → "
-                    f"turn.started → … → turn.completed with valid usage)",
-                    str(ctx.jsonl_path or "<jsonl>"),
-                ))
+                findings.append(
+                    LintError(
+                        "L2-3/L2-4",
+                        f"jsonl stream-shape rejected: {e} — non-AUDIT_FAILED "
+                        f"verdict requires a complete stream (thread.started → "
+                        f"turn.started → … → turn.completed with valid usage)",
+                        str(ctx.jsonl_path or "<jsonl>"),
+                    )
+                )
             else:
                 # Codex round 8 P1 closure: stream-shape alone validates
                 # ordering / usage / canonical UUID but does NOT verify the
@@ -1500,12 +1777,14 @@ def run_checks(ctx: LintContext) -> list[LintError]:
                 try:
                     verdict_text = module.extract_verdict_text(ctx.jsonl_events)
                 except ParseError as e:
-                    findings.append(LintError(
-                        "L2-4",
-                        f"verdict text extraction failed: {e} — non-AUDIT_FAILED "
-                        f"bundle requires a parseable agent_message in the JSONL",
-                        str(ctx.jsonl_path or "<jsonl>"),
-                    ))
+                    findings.append(
+                        LintError(
+                            "L2-4",
+                            f"verdict text extraction failed: {e} — non-AUDIT_FAILED "
+                            f"bundle requires a parseable agent_message in the JSONL",
+                            str(ctx.jsonl_path or "<jsonl>"),
+                        )
+                    )
                 else:
                     try:
                         # Probe-style: pass current_round=None to accept any
@@ -1513,13 +1792,15 @@ def run_checks(ctx: LintContext) -> list[LintError]:
                         # already covered by A5 against the verdict.yaml.
                         module.parse_section6(verdict_text, current_round=None)
                     except ParseError as e:
-                        findings.append(LintError(
-                            "L2-4",
-                            f"verdict text Section 6 parse failed: {e} — "
-                            f"agent_message did not contain a parseable "
-                            f"audit-template Section 6 verdict block",
-                            str(ctx.jsonl_path or "<jsonl>"),
-                        ))
+                        findings.append(
+                            LintError(
+                                "L2-4",
+                                f"verdict text Section 6 parse failed: {e} — "
+                                f"agent_message did not contain a parseable "
+                                f"audit-template Section 6 verdict block",
+                                str(ctx.jsonl_path or "<jsonl>"),
+                            )
+                        )
 
     # Codex round 9 P2 closure: §3.4 + §5.6 Path B5 + §3.7 family B note say
     # "Layer 3 verification is suspended for AUDIT_FAILED" — the orchestrator
@@ -1544,9 +1825,20 @@ def run_checks(ctx: LintContext) -> list[LintError]:
         findings.extend(check_b5(ctx.sidecar, location=sidecar_loc))
     findings.extend(check_b6(ctx.sidecar, ctx.verdict, location=sidecar_loc))
     if not is_audit_failed:
-        findings.extend(check_b7(ctx.entry, ctx.sidecar, ctx.entry_path, ctx.sidecar_path,
-                                  ctx.jsonl_path, ctx.verdict_path, mode, location=entry_loc,
-                                  repo_root=ctx.repo_root, verdict=ctx.verdict))
+        findings.extend(
+            check_b7(
+                ctx.entry,
+                ctx.sidecar,
+                ctx.entry_path,
+                ctx.sidecar_path,
+                ctx.jsonl_path,
+                ctx.verdict_path,
+                mode,
+                location=entry_loc,
+                repo_root=ctx.repo_root,
+                verdict=ctx.verdict,
+            )
+        )
     findings.extend(check_b8(ctx.entry, mode, location=entry_loc))
     findings.extend(check_b9(ctx.entry, ctx.sidecar, location=entry_loc))
     findings.extend(check_b10(ctx.entry, ctx.verdict, mode, location=entry_loc))
@@ -1559,8 +1851,7 @@ def run_checks(ctx: LintContext) -> list[LintError]:
     # MATERIAL non-ack entry of the same (stage, agent, deliverable_sha).
     if mode == "persisted" and ctx.passport_audit_artifacts is not None and ctx.entry is not None:
         if "acknowledgement" in ctx.entry:
-            prior = _find_latest_material_entry_for_ack(
-                ctx.passport_audit_artifacts, ctx.entry)
+            prior = _find_latest_material_entry_for_ack(ctx.passport_audit_artifacts, ctx.entry)
             if prior is None:
                 # Codex round 5 P1 closure: an ack entry without a prior
                 # MATERIAL entry of the same (stage, agent, deliverable_sha,
@@ -1569,26 +1860,36 @@ def run_checks(ctx: LintContext) -> list[LintError]:
                 # whose copied fields were altered to break the tuple match
                 # would silently pass C3 if `prior is None` skipped the
                 # check. Surface as C3 finding.
-                findings.append(LintError(
-                    "C3",
-                    f"acknowledgement entry has no prior MATERIAL entry to copy "
-                    f"from: no passport entry matches "
-                    f"(stage={ctx.entry.get('stage')!r}, "
-                    f"agent={ctx.entry.get('agent')!r}, "
-                    f"deliverable_sha={ctx.entry.get('deliverable_sha')!r}, "
-                    f"run_id={ctx.entry.get('run_id')!r}) — §5.4 ack mechanism "
-                    f"requires the prior MATERIAL entry to exist before append",
-                    entry_loc,
-                ))
+                findings.append(
+                    LintError(
+                        "C3",
+                        f"acknowledgement entry has no prior MATERIAL entry to copy "
+                        f"from: no passport entry matches "
+                        f"(stage={ctx.entry.get('stage')!r}, "
+                        f"agent={ctx.entry.get('agent')!r}, "
+                        f"deliverable_sha={ctx.entry.get('deliverable_sha')!r}, "
+                        f"run_id={ctx.entry.get('run_id')!r}) — §5.4 ack mechanism "
+                        f"requires the prior MATERIAL entry to exist before append",
+                        entry_loc,
+                    )
+                )
             else:
                 findings.extend(check_c3(ctx.entry, prior, location=entry_loc))
     findings.extend(check_c4(ctx.entry, ctx.sidecar, location=entry_loc))
 
     # Family D
     if ctx.passport_audit_artifacts is not None:
-        findings.extend(check_d1(ctx.passport_audit_artifacts, location=str(ctx.passport_path or "<passport>")))
-        findings.extend(check_d3(ctx.passport_audit_artifacts, location=str(ctx.passport_path or "<passport>")))
-        findings.extend(check_e1_e2_e6(ctx.passport_audit_artifacts, location=str(ctx.passport_path or "<passport>")))
+        findings.extend(
+            check_d1(ctx.passport_audit_artifacts, location=str(ctx.passport_path or "<passport>"))
+        )
+        findings.extend(
+            check_d3(ctx.passport_audit_artifacts, location=str(ctx.passport_path or "<passport>"))
+        )
+        findings.extend(
+            check_e1_e2_e6(
+                ctx.passport_audit_artifacts, location=str(ctx.passport_path or "<passport>")
+            )
+        )
 
     # Codex round 13 P2 closure: D2/D4 supersession is only meaningful in
     # persisted mode (proposal mode is itself the unmerged proposal). When
@@ -1599,19 +1900,25 @@ def run_checks(ctx: LintContext) -> list[LintError]:
     #     started_at where run_id lex-max would be the only tie-breaker)
     #   - D4: detect supersession requirement — a higher-round unmerged
     #     proposal preempts the persisted entry's Path A selection
-    if mode == "persisted" and ctx.output_dir is not None and ctx.output_dir.is_dir() and ctx.entry is not None:
-        proposals = _scan_unmerged_proposals(ctx.output_dir, ctx.entry,
-                                              exclude_path=ctx.entry_path)
+    if (
+        mode == "persisted"
+        and ctx.output_dir is not None
+        and ctx.output_dir.is_dir()
+        and ctx.entry is not None
+    ):
+        proposals = _scan_unmerged_proposals(ctx.output_dir, ctx.entry, exclude_path=ctx.entry_path)
         if proposals:
             findings.extend(check_d2(proposals, location=str(ctx.output_dir)))
             persisted_round = _safe_get(ctx.entry, "verdict", "round")
             for p in proposals:
                 proposal_round = _safe_get(p, "entry", "verdict", "round")
-                findings.extend(check_d4(
-                    persisted_round if isinstance(persisted_round, int) else None,
-                    proposal_round if isinstance(proposal_round, int) else None,
-                    location=str(p.get("entry_path") or "<proposal-entry>"),
-                ))
+                findings.extend(
+                    check_d4(
+                        persisted_round if isinstance(persisted_round, int) else None,
+                        proposal_round if isinstance(proposal_round, int) else None,
+                        location=str(p.get("entry_path") or "<proposal-entry>"),
+                    )
+                )
 
     # Family E
     findings.extend(check_e3_e4(ctx.entry, mode, location=entry_loc))
@@ -1621,8 +1928,16 @@ def run_checks(ctx: LintContext) -> list[LintError]:
     # Family F
     if ctx.entry is not None:
         findings.extend(check_f1(ctx.entry.get("run_id"), location=entry_loc))
-    findings.extend(check_f2(ctx.jsonl_path, ctx.sidecar_path, ctx.verdict_path,
-                              ctx.entry_path, mode, location=entry_loc))
+    findings.extend(
+        check_f2(
+            ctx.jsonl_path,
+            ctx.sidecar_path,
+            ctx.verdict_path,
+            ctx.entry_path,
+            mode,
+            location=entry_loc,
+        )
+    )
     findings.extend(check_f3(ctx.sidecar, ctx.sidecar_path, location=sidecar_loc))
 
     return findings
@@ -1633,16 +1948,19 @@ def _find_latest_material_entry_for_ack(
 ) -> dict[str, Any] | None:
     """Find the prior MATERIAL entry (no acknowledgement) matching the ack
     entry's (stage, agent, deliverable_sha, run_id) tuple, latest by verified_at."""
-    key = (ack_entry.get("stage"), ack_entry.get("agent"),
-           ack_entry.get("deliverable_sha"), ack_entry.get("run_id"))
+    key = (
+        ack_entry.get("stage"),
+        ack_entry.get("agent"),
+        ack_entry.get("deliverable_sha"),
+        ack_entry.get("run_id"),
+    )
     candidates = []
     for e in artifacts:
         if not isinstance(e, dict):
             continue
         if "acknowledgement" in e:
             continue
-        if (e.get("stage"), e.get("agent"), e.get("deliverable_sha"),
-                e.get("run_id")) != key:
+        if (e.get("stage"), e.get("agent"), e.get("deliverable_sha"), e.get("run_id")) != key:
             continue
         if _safe_get(e, "verdict", "status") != "MATERIAL":
             continue
@@ -1653,7 +1971,8 @@ def _find_latest_material_entry_for_ack(
 
 
 def _scan_unmerged_proposals(
-    output_dir: Path, persisted_entry: dict[str, Any],
+    output_dir: Path,
+    persisted_entry: dict[str, Any],
     exclude_path: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Scan output_dir for unmerged proposal entries matching the persisted
@@ -1672,8 +1991,11 @@ def _scan_unmerged_proposals(
     via validate_against_schema if they were the target of --mode
     proposal in a separate invocation.
     """
-    key = (persisted_entry.get("stage"), persisted_entry.get("agent"),
-           persisted_entry.get("deliverable_sha"))
+    key = (
+        persisted_entry.get("stage"),
+        persisted_entry.get("agent"),
+        persisted_entry.get("deliverable_sha"),
+    )
     proposals: list[dict[str, Any]] = []
     try:
         candidates = sorted(output_dir.glob("*.audit_artifact_entry.json"))
@@ -1697,12 +2019,16 @@ def _scan_unmerged_proposals(
         verdict = entry_data.get("verdict") or {}
         if "verified_at" in verdict or "verified_by" in verdict:
             continue
-        if (entry_data.get("stage"), entry_data.get("agent"),
-                entry_data.get("deliverable_sha")) != key:
+        if (
+            entry_data.get("stage"),
+            entry_data.get("agent"),
+            entry_data.get("deliverable_sha"),
+        ) != key:
             continue
         # Try to load companion sidecar (for D2 started_at)
         sidecar_path = entry_path.parent / entry_path.name.replace(
-            ".audit_artifact_entry.json", ".meta.json")
+            ".audit_artifact_entry.json", ".meta.json"
+        )
         sidecar_data: dict[str, Any] = {}
         if sidecar_path.exists():
             try:
@@ -1711,11 +2037,13 @@ def _scan_unmerged_proposals(
                     sidecar_data = {}
             except Exception:
                 sidecar_data = {}
-        proposals.append({
-            "entry": entry_data,
-            "sidecar": sidecar_data,
-            "entry_path": entry_path,
-        })
+        proposals.append(
+            {
+                "entry": entry_data,
+                "sidecar": sidecar_data,
+                "entry_path": entry_path,
+            }
+        )
     return proposals
 
 
@@ -1728,16 +2056,19 @@ def validate_against_schema(doc: Any, schema_path: Path) -> list[LintError]:
     """Validate a document against a JSON Schema; return findings (one per error)."""
     try:
         from jsonschema import Draft202012Validator
+
         with schema_path.open("r", encoding="utf-8") as f:
             schema = json.load(f)
-        validator = Draft202012Validator(
-            schema, format_checker=Draft202012Validator.FORMAT_CHECKER
-        )
+        validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
         out: list[LintError] = []
         for err in validator.iter_errors(doc):
-            out.append(LintError("SCHEMA",
-                f"{err.message} (path={list(err.absolute_path)})",
-                str(schema_path.name)))
+            out.append(
+                LintError(
+                    "SCHEMA",
+                    f"{err.message} (path={list(err.absolute_path)})",
+                    str(schema_path.name),
+                )
+            )
         return out
     except Exception as e:  # pragma: no cover
         return [LintError("SCHEMA", f"validator error: {e}", str(schema_path.name))]
@@ -1784,8 +2115,9 @@ def run_example_harness(repo_root: Path) -> list[LintError]:
                     buffer = []
                 else:
                     block = "\n".join(buffer)
-                    findings.extend(_classify_and_validate_block(
-                        block, fence_lang, md_path, fence_start))
+                    findings.extend(
+                        _classify_and_validate_block(block, fence_lang, md_path, fence_start)
+                    )
                     in_fence = False
                     fence_lang = None
                     buffer = []
@@ -1805,20 +2137,21 @@ def _classify_and_validate_block(
         return []
 
     # JSONL detection — multiple lines each starting with `{"type":`
-    looks_like_jsonl = (
-        ("\n" in stripped) and all(
-            s.strip().startswith("{") for s in stripped.splitlines() if s.strip()
-        )
+    looks_like_jsonl = ("\n" in stripped) and all(
+        s.strip().startswith("{") for s in stripped.splitlines() if s.strip()
     )
     # heuristic guard: at least one line looks like a JSON object with a "type" field
-    if looks_like_jsonl and ('"type":"thread.started"' in stripped or
-                             '"type":"turn.started"' in stripped or
-                             '"type":"item.completed"' in stripped):
+    if looks_like_jsonl and (
+        '"type":"thread.started"' in stripped
+        or '"type":"turn.started"' in stripped
+        or '"type":"item.completed"' in stripped
+    ):
         # Validate each line against jsonl schema
         try:
             with JSONL_SCHEMA_PATH.open("r", encoding="utf-8") as fh:
                 jsonl_schema = json.load(fh)
             from jsonschema import Draft202012Validator
+
             validator = Draft202012Validator(
                 jsonl_schema, format_checker=Draft202012Validator.FORMAT_CHECKER
             )
@@ -1830,22 +2163,30 @@ def _classify_and_validate_block(
                 # `..."input_tokens":...,...`
                 if "..." in line:
                     # Mark as "schematic, not validated" if it contains literal '...'
-                    out.append(LintError("F4",
-                        f"schematic JSONL line contains '...' placeholder (skipped from validation)",
-                        f"{md_path}:{ln_idx}",
-                        severity="info"))
+                    out.append(
+                        LintError(
+                            "F4",
+                            "schematic JSONL line contains '...' placeholder (skipped from validation)",
+                            f"{md_path}:{ln_idx}",
+                            severity="info",
+                        )
+                    )
                     continue
                 try:
                     row = json.loads(line)
                 except json.JSONDecodeError as e:
-                    out.append(LintError("F4",
-                        f"invalid JSON in fenced JSONL: {e}",
-                        f"{md_path}:{ln_idx}"))
+                    out.append(
+                        LintError("F4", f"invalid JSON in fenced JSONL: {e}", f"{md_path}:{ln_idx}")
+                    )
                     continue
                 for err in validator.iter_errors(row):
-                    out.append(LintError("F4",
-                        f"jsonl row drift from schema: {err.message}",
-                        f"{md_path}:{ln_idx}"))
+                    out.append(
+                        LintError(
+                            "F4",
+                            f"jsonl row drift from schema: {err.message}",
+                            f"{md_path}:{ln_idx}",
+                        )
+                    )
         except Exception as e:  # pragma: no cover
             out.append(LintError("F4", f"jsonl harness error: {e}", location))
         return out
@@ -1855,8 +2196,11 @@ def _classify_and_validate_block(
         # The harness's job is to surface drift in §3.1/§3.3/§3.4/§3.5
         # examples, not lint every YAML fence in every design doc.
         audit_signature_keys = (
-            "audit_artifact:", "verdict_status:", "codex_cli_version:",
-            "primary_deliverables:", "audit_template_path:",
+            "audit_artifact:",
+            "verdict_status:",
+            "codex_cli_version:",
+            "primary_deliverables:",
+            "audit_template_path:",
         )
         if not any(sig in stripped for sig in audit_signature_keys):
             return out
@@ -1872,13 +2216,18 @@ def _classify_and_validate_block(
         # Classify
         if "verdict_status" in doc:
             # verdict file
-            out.extend([_relabel(f, "F4") for f in
-                        validate_against_schema(doc, VERDICT_SCHEMA_PATH)])
-            out[-len(out) or 0:] = [_with_location(f, location) for f in out[-len(out) or 0:]]
+            out.extend(
+                [_relabel(f, "F4") for f in validate_against_schema(doc, VERDICT_SCHEMA_PATH)]
+            )
+            out[-len(out) or 0 :] = [_with_location(f, location) for f in out[-len(out) or 0 :]]
         elif "codex_cli_version" in doc:
             # sidecar — but note this section may have hyphen drift in timestamps
-            out.extend([_with_location(_relabel(f, "F4"), location) for f in
-                        validate_against_schema(doc, SIDECAR_SCHEMA_PATH)])
+            out.extend(
+                [
+                    _with_location(_relabel(f, "F4"), location)
+                    for f in validate_against_schema(doc, SIDECAR_SCHEMA_PATH)
+                ]
+            )
         elif "audit_artifact" in doc:
             # Schema 9 list of persisted entries
             entries = doc.get("audit_artifact") or []
@@ -1886,12 +2235,20 @@ def _classify_and_validate_block(
                 for idx, e in enumerate(entries):
                     if isinstance(e, dict):
                         loc = f"{location}:audit_artifact[{idx}]"
-                        out.extend([_with_location(_relabel(f, "F4"), loc) for f in
-                                    validate_against_schema(e, ENTRY_SCHEMA_PATH)])
+                        out.extend(
+                            [
+                                _with_location(_relabel(f, "F4"), loc)
+                                for f in validate_against_schema(e, ENTRY_SCHEMA_PATH)
+                            ]
+                        )
         elif {"stage", "agent", "deliverable_path", "run_id"} <= set(doc.keys()):
             # bare entry block
-            out.extend([_with_location(_relabel(f, "F4"), location) for f in
-                        validate_against_schema(doc, ENTRY_SCHEMA_PATH)])
+            out.extend(
+                [
+                    _with_location(_relabel(f, "F4"), location)
+                    for f in validate_against_schema(doc, ENTRY_SCHEMA_PATH)
+                ]
+            )
         return out
 
     if lang == "json":
@@ -1903,14 +2260,26 @@ def _classify_and_validate_block(
             return out
         # Same classification
         if "verdict_status" in doc:
-            out.extend([_with_location(_relabel(f, "F4"), location) for f in
-                        validate_against_schema(doc, VERDICT_SCHEMA_PATH)])
+            out.extend(
+                [
+                    _with_location(_relabel(f, "F4"), location)
+                    for f in validate_against_schema(doc, VERDICT_SCHEMA_PATH)
+                ]
+            )
         elif "codex_cli_version" in doc:
-            out.extend([_with_location(_relabel(f, "F4"), location) for f in
-                        validate_against_schema(doc, SIDECAR_SCHEMA_PATH)])
+            out.extend(
+                [
+                    _with_location(_relabel(f, "F4"), location)
+                    for f in validate_against_schema(doc, SIDECAR_SCHEMA_PATH)
+                ]
+            )
         elif {"stage", "agent", "deliverable_path", "run_id"} <= set(doc.keys()):
-            out.extend([_with_location(_relabel(f, "F4"), location) for f in
-                        validate_against_schema(doc, ENTRY_SCHEMA_PATH)])
+            out.extend(
+                [
+                    _with_location(_relabel(f, "F4"), location)
+                    for f in validate_against_schema(doc, ENTRY_SCHEMA_PATH)
+                ]
+            )
         return out
 
     return out
@@ -1946,34 +2315,52 @@ class _ExUsageParser(argparse.ArgumentParser):
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = _ExUsageParser(
-        description="Lint audit-artifact contract per ARS v3.6.7 §3.7 invariants.")
+    p = _ExUsageParser(description="Lint audit-artifact contract per ARS v3.6.7 §3.7 invariants.")
     p.add_argument("--mode", choices=("proposal", "persisted", "jsonl-stream"))
-    p.add_argument("--example-validation-harness", action="store_true",
-                   help="Walk docs/design/*.md and validate fenced example payloads.")
-    p.add_argument("--entry", type=Path,
-                   help="Path to entry JSON (proposal or persisted).")
-    p.add_argument("--sidecar", type=Path,
-                   help="Path to sidecar .meta.json. Auto-discovered via run_id when --output-dir given.")
-    p.add_argument("--verdict", type=Path,
-                   help="Path to verdict .verdict.yaml. Auto-discovered.")
-    p.add_argument("--jsonl", type=Path,
-                   help="Path to JSONL file. Auto-discovered, or explicitly required by jsonl-stream mode.")
-    p.add_argument("--output-dir", type=Path,
-                   help="Directory containing the four artifact files (used for auto-discovery).")
-    p.add_argument("--passport-path", type=Path,
-                   help="Passport YAML/JSON. Enables D1/D3/E2/E6 ledger checks.")
-    p.add_argument("--run-id", type=str,
-                   help="Used with --output-dir for auto-discovery.")
-    p.add_argument("--repo-root", type=Path, default=REPO_ROOT,
-                   help="Repo root for B2/B3/B4 disk verification.")
+    p.add_argument(
+        "--example-validation-harness",
+        action="store_true",
+        help="Walk docs/design/*.md and validate fenced example payloads.",
+    )
+    p.add_argument("--entry", type=Path, help="Path to entry JSON (proposal or persisted).")
+    p.add_argument(
+        "--sidecar",
+        type=Path,
+        help="Path to sidecar .meta.json. Auto-discovered via run_id when --output-dir given.",
+    )
+    p.add_argument("--verdict", type=Path, help="Path to verdict .verdict.yaml. Auto-discovered.")
+    p.add_argument(
+        "--jsonl",
+        type=Path,
+        help="Path to JSONL file. Auto-discovered, or explicitly required by jsonl-stream mode.",
+    )
+    p.add_argument(
+        "--output-dir",
+        type=Path,
+        help="Directory containing the four artifact files (used for auto-discovery).",
+    )
+    p.add_argument(
+        "--passport-path", type=Path, help="Passport YAML/JSON. Enables D1/D3/E2/E6 ledger checks."
+    )
+    p.add_argument("--run-id", type=str, help="Used with --output-dir for auto-discovery.")
+    p.add_argument(
+        "--repo-root",
+        type=Path,
+        default=REPO_ROOT,
+        help="Repo root for B2/B3/B4 disk verification.",
+    )
     return p
 
 
-def _autodiscover(output_dir: Path | None, run_id: str | None,
-                  jsonl: Path | None, sidecar: Path | None,
-                  verdict: Path | None, entry: Path | None,
-                  mode: str) -> tuple[Path | None, Path | None, Path | None, Path | None]:
+def _autodiscover(
+    output_dir: Path | None,
+    run_id: str | None,
+    jsonl: Path | None,
+    sidecar: Path | None,
+    verdict: Path | None,
+    entry: Path | None,
+    mode: str,
+) -> tuple[Path | None, Path | None, Path | None, Path | None]:
     """Fill missing artifact paths from --output-dir + --run-id."""
     if output_dir is None:
         return jsonl, sidecar, verdict, entry
@@ -2028,8 +2415,7 @@ def main(argv: list[str] | None = None) -> int:
         # calls sys.exit(2), which would silently downgrade our usage errors;
         # print + return 64 keeps the exit-code contract aligned with
         # scripts/audit_snapshot.py and scripts/run_codex_audit.sh.
-        print("ERROR: either --mode or --example-validation-harness is required",
-              file=sys.stderr)
+        print("ERROR: either --mode or --example-validation-harness is required", file=sys.stderr)
         return 64
 
     # jsonl-stream mode — orchestrator §5.2 L2-5 invocation
@@ -2045,8 +2431,12 @@ def main(argv: list[str] | None = None) -> int:
         except ValueError as e:
             print(f"ERROR: {e}", file=sys.stderr)
             return 2
-        ctx = LintContext(mode="jsonl-stream", jsonl_events=events,
-                          jsonl_path=args.jsonl, repo_root=args.repo_root or REPO_ROOT)
+        ctx = LintContext(
+            mode="jsonl-stream",
+            jsonl_events=events,
+            jsonl_path=args.jsonl,
+            repo_root=args.repo_root or REPO_ROOT,
+        )
         findings = run_checks(ctx)
         # Per spec §5.2 L2-5 the orchestrator wants the offending item.id and
         # reason on stderr when pairing fails. We mirror to stdout too so the
@@ -2058,8 +2448,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # proposal / persisted modes
     jsonl, sidecar, verdict, entry = _autodiscover(
-        args.output_dir, args.run_id, args.jsonl, args.sidecar,
-        args.verdict, args.entry, args.mode,
+        args.output_dir,
+        args.run_id,
+        args.jsonl,
+        args.sidecar,
+        args.verdict,
+        args.entry,
+        args.mode,
     )
 
     if entry is None:
@@ -2093,9 +2488,7 @@ def main(argv: list[str] | None = None) -> int:
     # Schema validation on the entry first (defense in depth — the oneOf
     # proposal/persisted arms enforce verified_at presence + AUDIT_FAILED
     # exclusion at this layer, before any cross-field rule fires).
-    schema_findings: list[LintError] = list(
-        validate_against_schema(entry_data, ENTRY_SCHEMA_PATH)
-    )
+    schema_findings: list[LintError] = list(validate_against_schema(entry_data, ENTRY_SCHEMA_PATH))
 
     # Codex round 2 P1 closure: --mode persisted MUST enforce the persisted
     # oneOf arm specifically. JSON Schema oneOf accepts EITHER arm by
@@ -2110,39 +2503,63 @@ def main(argv: list[str] | None = None) -> int:
         if args.mode == "persisted":
             # persisted arm requires verified_at + verified_by, forbids AUDIT_FAILED
             if "verified_at" not in verdict_block:
-                schema_findings.append(LintError(
-                    "E3", "--mode persisted: entry.verdict.verified_at is required "
-                          "(entry has proposal-arm shape; orchestrator-side fields missing)",
-                    str(entry)))
+                schema_findings.append(
+                    LintError(
+                        "E3",
+                        "--mode persisted: entry.verdict.verified_at is required "
+                        "(entry has proposal-arm shape; orchestrator-side fields missing)",
+                        str(entry),
+                    )
+                )
             if "verified_by" not in verdict_block:
-                schema_findings.append(LintError(
-                    "E3", "--mode persisted: entry.verdict.verified_by is required "
-                          "(entry has proposal-arm shape; orchestrator-side fields missing)",
-                    str(entry)))
+                schema_findings.append(
+                    LintError(
+                        "E3",
+                        "--mode persisted: entry.verdict.verified_by is required "
+                        "(entry has proposal-arm shape; orchestrator-side fields missing)",
+                        str(entry),
+                    )
+                )
             if verdict_block.get("status") == "AUDIT_FAILED":
-                schema_findings.append(LintError(
-                    "E5", "--mode persisted: entry.verdict.status='AUDIT_FAILED' is "
-                          "forbidden (AUDIT_FAILED entries are proposal-arm only per "
-                          "§3.2 lifecycle-conditional table)",
-                    str(entry)))
+                schema_findings.append(
+                    LintError(
+                        "E5",
+                        "--mode persisted: entry.verdict.status='AUDIT_FAILED' is "
+                        "forbidden (AUDIT_FAILED entries are proposal-arm only per "
+                        "§3.2 lifecycle-conditional table)",
+                        str(entry),
+                    )
+                )
         elif args.mode == "proposal":
             # proposal arm forbids verified_at + verified_by + acknowledgement
             if "verified_at" in verdict_block:
-                schema_findings.append(LintError(
-                    "E4", "--mode proposal: entry.verdict.verified_at must be absent "
-                          "(orchestrator-only field; wrapper-emitted proposal carrying it "
-                          "is Pattern C3 attack surface)",
-                    str(entry)))
+                schema_findings.append(
+                    LintError(
+                        "E4",
+                        "--mode proposal: entry.verdict.verified_at must be absent "
+                        "(orchestrator-only field; wrapper-emitted proposal carrying it "
+                        "is Pattern C3 attack surface)",
+                        str(entry),
+                    )
+                )
             if "verified_by" in verdict_block:
-                schema_findings.append(LintError(
-                    "E4", "--mode proposal: entry.verdict.verified_by must be absent "
-                          "(orchestrator-only field; Pattern C3 attack surface)",
-                    str(entry)))
+                schema_findings.append(
+                    LintError(
+                        "E4",
+                        "--mode proposal: entry.verdict.verified_by must be absent "
+                        "(orchestrator-only field; Pattern C3 attack surface)",
+                        str(entry),
+                    )
+                )
             if "acknowledgement" in entry_data:
-                schema_findings.append(LintError(
-                    "A4", "--mode proposal: entry.acknowledgement must be absent "
-                          "(orchestrator-only write per §5.4)",
-                    str(entry)))
+                schema_findings.append(
+                    LintError(
+                        "A4",
+                        "--mode proposal: entry.acknowledgement must be absent "
+                        "(orchestrator-only write per §5.4)",
+                        str(entry),
+                    )
+                )
 
     # Companion artifacts (sidecar + verdict + jsonl) are REQUIRED in
     # Codex round 16 P2 closure: spec §5.2 says the orchestrator follows
@@ -2177,20 +2594,24 @@ def main(argv: list[str] | None = None) -> int:
     # bundle is supposed to be complete by §4.9 step 9).
     def _missing_companion(role: str, path: Path | None) -> None:
         if path is None:
-            schema_findings.append(LintError(
-                "B7",
-                f"audit bundle missing {role} (auto-discover failed and no explicit "
-                f"--{role} given) — proposal/persisted mode requires {role} for "
-                f"Layer 2/3 verification",
-                f"<{args.mode}>",
-            ))
+            schema_findings.append(
+                LintError(
+                    "B7",
+                    f"audit bundle missing {role} (auto-discover failed and no explicit "
+                    f"--{role} given) — proposal/persisted mode requires {role} for "
+                    f"Layer 2/3 verification",
+                    f"<{args.mode}>",
+                )
+            )
         elif not path.exists():
-            schema_findings.append(LintError(
-                "B7",
-                f"audit bundle missing {role} at {path} — proposal/persisted mode "
-                f"requires {role} for Layer 2/3 verification",
-                str(path),
-            ))
+            schema_findings.append(
+                LintError(
+                    "B7",
+                    f"audit bundle missing {role} at {path} — proposal/persisted mode "
+                    f"requires {role} for Layer 2/3 verification",
+                    str(path),
+                )
+            )
 
     _missing_companion("sidecar", sidecar)
     _missing_companion("verdict", verdict)
@@ -2210,9 +2631,7 @@ def main(argv: list[str] | None = None) -> int:
         # renders. Coerce non-dict to None so cross-field rules see "no
         # companion" and skip cleanly; the SCHEMA finding still surfaces
         # the rejection and exit code remains 1.
-        schema_findings.extend(
-            validate_against_schema(sidecar_data, SIDECAR_SCHEMA_PATH)
-        )
+        schema_findings.extend(validate_against_schema(sidecar_data, SIDECAR_SCHEMA_PATH))
         if not isinstance(sidecar_data, dict):
             sidecar_data = None
 
@@ -2223,9 +2642,7 @@ def main(argv: list[str] | None = None) -> int:
         except Exception as e:
             print(f"ERROR: cannot load verdict {verdict}: {e}", file=sys.stderr)
             return 2
-        schema_findings.extend(
-            validate_against_schema(verdict_data, VERDICT_SCHEMA_PATH)
-        )
+        schema_findings.extend(validate_against_schema(verdict_data, VERDICT_SCHEMA_PATH))
         if not isinstance(verdict_data, dict):
             verdict_data = None
 
@@ -2263,11 +2680,12 @@ def main(argv: list[str] | None = None) -> int:
             # run separately in the family A check; the per-row schema gate
             # ensures malformed rows don't reach those stream checks.
             for row_idx, row in enumerate(events, start=1):
-                schema_findings.extend([
-                    LintError(err.rule_id, err.message,
-                              f"{jsonl}:row={row_idx}")
-                    for err in validate_against_schema(row, JSONL_SCHEMA_PATH)
-                ])
+                schema_findings.extend(
+                    [
+                        LintError(err.rule_id, err.message, f"{jsonl}:row={row_idx}")
+                        for err in validate_against_schema(row, JSONL_SCHEMA_PATH)
+                    ]
+                )
 
     passport_audit_artifacts = None
     if args.passport_path is not None and args.passport_path.exists():
@@ -2283,10 +2701,14 @@ def main(argv: list[str] | None = None) -> int:
 
     ctx = LintContext(
         mode=args.mode,
-        entry=entry_data, entry_path=entry,
-        sidecar=sidecar_data, sidecar_path=sidecar,
-        verdict=verdict_data, verdict_path=verdict,
-        jsonl_events=events, jsonl_path=jsonl,
+        entry=entry_data,
+        entry_path=entry,
+        sidecar=sidecar_data,
+        sidecar_path=sidecar,
+        verdict=verdict_data,
+        verdict_path=verdict,
+        jsonl_events=events,
+        jsonl_path=jsonl,
         output_dir=args.output_dir,
         passport_audit_artifacts=passport_audit_artifacts,
         passport_path=args.passport_path,
@@ -2305,9 +2727,7 @@ def main(argv: list[str] | None = None) -> int:
     # the schema rejection is itself the lint result; the cross-field
     # rules have nothing to add when the input doesn't match the schema
     # contract they presuppose.
-    has_schema_error = any(
-        f.rule_id == "SCHEMA" and f.severity == "error" for f in schema_findings
-    )
+    has_schema_error = any(f.rule_id == "SCHEMA" and f.severity == "error" for f in schema_findings)
     if has_schema_error:
         for f in schema_findings:
             print(f.render())

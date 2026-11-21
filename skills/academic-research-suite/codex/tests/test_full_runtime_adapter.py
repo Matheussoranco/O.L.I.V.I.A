@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 CODEX_ROOT = Path(__file__).resolve().parents[1]
 SUITE_ROOT = CODEX_ROOT.parent
 PLANNER_PATH = CODEX_ROOT / "scripts" / "ars_codex_full_runtime.py"
@@ -71,8 +70,7 @@ def _inventory_gate_fixture(
         entry.write_text(f"# {name}\n", encoding="utf-8")
 
     router_rows = "\n".join(
-        f"| {name} intent | `ars/{name}/WORKFLOW.md` |"
-        for name in sorted(router_names)
+        f"| {name} intent | `ars/{name}/WORKFLOW.md` |" for name in sorted(router_names)
     )
     (suite_root / "SKILL.md").write_text(
         "# Fixture router\n\n"
@@ -190,7 +188,9 @@ def test_ars_3w_alias_routes_to_deep_research_three_way_scan() -> None:
 
 def test_ars_rebuttal_audit_alias_routes_to_academic_paper() -> None:
     planner = _load_planner()
-    plan = planner.plan_request("ars-rebuttal-audit check my response draft against these reviewer comments", env={})
+    plan = planner.plan_request(
+        "ars-rebuttal-audit check my response draft against these reviewer comments", env={}
+    )
     assert plan["command_alias"] == "ars-rebuttal-audit"
     assert plan["workflow"] == "academic-paper"
     assert plan["mode"] == "rebuttal-audit"
@@ -216,7 +216,9 @@ def test_korean_review_routes_to_reviewer_not_revision() -> None:
 
 def test_model_tiering_is_surfaced_without_forcing_a_codex_model() -> None:
     planner = _load_planner()
-    inline = planner.plan_request("ars-plan Research question: Why?", env={"ARS_MODEL_TIERING": "economy"})
+    inline = planner.plan_request(
+        "ars-plan Research question: Why?", env={"ARS_MODEL_TIERING": "economy"}
+    )
     assert inline["profile"]["model_tiering_status"] == "inline_noop"
 
     delegated = planner.plan_request(
@@ -227,16 +229,15 @@ def test_model_tiering_is_surfaced_without_forcing_a_codex_model() -> None:
             "ARS_MODEL_TIERING": "quality-boost",
         },
     )
-    assert delegated["profile"]["model_tiering_status"] == "advisory_requires_runtime_model_override"
+    assert (
+        delegated["profile"]["model_tiering_status"] == "advisory_requires_runtime_model_override"
+    )
     assert delegated["profile"]["model_tiering_requested"] == "quality-boost"
 
 
 def test_command_model_hints_match_upstream_frontmatter_semantics() -> None:
     manifest = json.loads((CODEX_ROOT / "full-runtime-manifest.json").read_text(encoding="utf-8"))
-    hints = {
-        command["aliases"][1]: command["model_hint"]
-        for command in manifest["commands"]
-    }
+    hints = {command["aliases"][1]: command["model_hint"] for command in manifest["commands"]}
 
     for alias in ("ars-full", "ars-reviewer", "ars-revision-coach"):
         assert hints.pop(alias) == "inherit"
@@ -267,9 +268,7 @@ def test_cross_model_configuration_requires_dispatcher_consent_gate() -> None:
         "dispatcher_transport_requires_explicit_request_and_consent"
     )
     reviewer_2 = next(
-        item
-        for item in delegated["agent_team_plan"]
-        if item["agent"] == "domain_reviewer_agent"
+        item for item in delegated["agent_team_plan"] if item["agent"] == "domain_reviewer_agent"
     )
     assert reviewer_2["cross_model_reviewer_track"] == (
         "configured_requires_explicit_content_consent"
@@ -325,13 +324,9 @@ def test_codex_transport_is_citation_only_and_excluded_from_reviewer_plan() -> N
     }
 
     reviewer_2 = next(
-        item
-        for item in plan["agent_team_plan"]
-        if item["agent"] == "domain_reviewer_agent"
+        item for item in plan["agent_team_plan"] if item["agent"] == "domain_reviewer_agent"
     )
-    assert reviewer_2["cross_model_reviewer_track"] == (
-        "excluded_codex_transport_is_citation_only"
-    )
+    assert reviewer_2["cross_model_reviewer_track"] == ("excluded_codex_transport_is_citation_only")
     devil = next(
         item
         for item in plan["agent_team_plan"]
@@ -421,7 +416,9 @@ def test_ars_full_starts_pipeline_and_stops_at_dashboard_checkpoint() -> None:
     ]
     topology = plan["topology_plan"]
     assert topology["arm_id"] == "workflow-current"
-    integrity = next(node for node in topology["nodes"] if node["id"] == "integrity_verification_agent")
+    integrity = next(
+        node for node in topology["nodes"] if node["id"] == "integrity_verification_agent"
+    )
     assert integrity["phase"] == "checkpoint_2_5_or_4_5"
 
 
@@ -434,7 +431,7 @@ def test_reviewer_full_agent_team_records_field_then_blind_panel_then_synthesis(
     agents = [item["agent"] for item in plan["agent_team_plan"]]
     assert plan["workflow"] == "academic-paper-reviewer"
     assert plan["mode"] == "full"
-    assert "editorial_synthesizer_agent" == agents[-1]
+    assert agents[-1] == "editorial_synthesizer_agent"
     assert "methodology_reviewer_agent" in agents[:-1]
     assert "devils_advocate_reviewer_agent" in agents[:-1]
     topology = plan["topology_plan"]
@@ -540,9 +537,7 @@ def test_v320_manifest_registers_only_hermetic_runtime_contract_gates() -> None:
     assert (SUITE_ROOT / pdf["dependency_file"]).is_file()
 
     gates = {
-        gate["id"]: gate
-        for gate in manifest["quality_gates"]
-        if gate["id"].startswith("v320_")
+        gate["id"]: gate for gate in manifest["quality_gates"] if gate["id"].startswith("v320_")
     }
     required = {
         "v320_codex_subscription_transport_contract",
@@ -576,9 +571,7 @@ def test_v320_manifest_registers_only_hermetic_runtime_contract_gates() -> None:
 
 
 def test_v3211_manifest_registers_bounded_hermetic_contracts() -> None:
-    manifest = json.loads(
-        (CODEX_ROOT / "full-runtime-manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((CODEX_ROOT / "full-runtime-manifest.json").read_text(encoding="utf-8"))
     options = manifest["runtime_options"]
 
     transport = options["cross_model_transport"]
@@ -606,9 +599,7 @@ def test_v3211_manifest_registers_bounded_hermetic_contracts() -> None:
     assert ledger["outcome_claims"] == "none"
 
     gates = {
-        gate["id"]: gate
-        for gate in manifest["quality_gates"]
-        if gate["id"].startswith("v3211_")
+        gate["id"]: gate for gate in manifest["quality_gates"] if gate["id"].startswith("v3211_")
     }
     required = {
         "v3211_research_workflow_profile",
@@ -627,12 +618,11 @@ def test_v3211_manifest_registers_bounded_hermetic_contracts() -> None:
             assert (SUITE_ROOT / runner.removeprefix("upstream:")).is_file(), runner
 
     active_runners = {gate["runner"] for gate in manifest["quality_gates"]}
-    assert (
-        "upstream:ars/scripts/check_promotion_bakeoff_preregistration.py"
-        not in active_runners
-    )
+    assert "upstream:ars/scripts/check_promotion_bakeoff_preregistration.py" not in active_runners
     assert not any("cross_model_smoke_test_codex.sh" in runner for runner in active_runners)
-    assert not any("run_review_criteria_constructive_value.py" in runner for runner in active_runners)
+    assert not any(
+        "run_review_criteria_constructive_value.py" in runner for runner in active_runners
+    )
     assert not any("run_fleet.py" in runner for runner in active_runners)
     assert not any("alternative_explanation_register" in runner for runner in active_runners)
 
@@ -656,9 +646,7 @@ def test_quality_gates_all_pass() -> None:
     assert all(item["ok"] for item in payload.values()), payload
 
 
-def test_single_root_inventory_matches_all_codex_surfaces(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_single_root_inventory_matches_all_codex_surfaces(tmp_path: Path, monkeypatch) -> None:
     gates = _inventory_gate_fixture(tmp_path, monkeypatch)
     messages = gates.check_single_root_skill()
     assert any("4 core workflows match" in message for message in messages)
@@ -796,9 +784,7 @@ def test_incidental_table_does_not_count_as_root_router_enumeration(
         gates.check_single_root_skill()
 
 
-def test_incidental_table_before_router_table_is_rejected(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_incidental_table_before_router_table_is_rejected(tmp_path: Path, monkeypatch) -> None:
     gates = _inventory_gate_fixture(
         tmp_path,
         monkeypatch,
@@ -815,9 +801,7 @@ def test_incidental_table_before_router_table_is_rejected(
         gates.check_single_root_skill()
 
 
-def test_route_like_path_outside_read_first_column_is_rejected(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_route_like_path_outside_read_first_column_is_rejected(tmp_path: Path, monkeypatch) -> None:
     gates = _inventory_gate_fixture(tmp_path, monkeypatch)
     root_skill = gates.SUITE_ROOT / "SKILL.md"
     text = root_skill.read_text(encoding="utf-8")

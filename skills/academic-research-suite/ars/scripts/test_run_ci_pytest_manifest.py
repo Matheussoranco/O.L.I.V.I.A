@@ -19,7 +19,6 @@ from pathlib import Path
 
 import pytest
 
-
 SCRIPT = Path(__file__).resolve().parent / "run_ci_pytest_manifest.py"
 
 
@@ -45,26 +44,40 @@ def _write(path: Path, content: str) -> None:
 def workdir(tmp_path: Path) -> Path:
     (tmp_path / "scripts").mkdir()
     # Two passing test files, one failing test file.
-    _write(tmp_path / "scripts" / "test_pass_a.py", """
+    _write(
+        tmp_path / "scripts" / "test_pass_a.py",
+        """
     def test_alpha(): assert True
-    """)
-    _write(tmp_path / "scripts" / "test_pass_b.py", """
+    """,
+    )
+    _write(
+        tmp_path / "scripts" / "test_pass_b.py",
+        """
     def test_beta(): assert 1 + 1 == 2
-    """)
-    _write(tmp_path / "scripts" / "test_fail.py", """
+    """,
+    )
+    _write(
+        tmp_path / "scripts" / "test_fail.py",
+        """
     def test_should_fail(): assert False, "boom"
-    """)
-    _write(tmp_path / "scripts" / "test_marked.py", """
+    """,
+    )
+    _write(
+        tmp_path / "scripts" / "test_marked.py",
+        """
     def test_unit_one(): assert True
     def test_unit_two(): assert True
     def test_integration_alpha(): assert True
-    """)
+    """,
+    )
     return tmp_path
 
 
 def test_runs_all_passing_entries(workdir: Path) -> None:
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "pass-a"
     path = "scripts/test_pass_a.py"
@@ -72,7 +85,8 @@ def test_runs_all_passing_entries(workdir: Path) -> None:
     [[pytest]]
     id = "pass-b"
     path = "scripts/test_pass_b.py"
-    """)
+    """,
+    )
 
     result = _run(manifest, root=workdir)
 
@@ -87,7 +101,9 @@ def test_fails_when_any_entry_fails(workdir: Path) -> None:
     """Runner accumulates failures: every entry runs even if an earlier one
     failed, then the aggregate exit code reports the failure."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "pass-a"
     path = "scripts/test_pass_a.py"
@@ -99,7 +115,8 @@ def test_fails_when_any_entry_fails(workdir: Path) -> None:
     [[pytest]]
     id = "pass-b"
     path = "scripts/test_pass_b.py"
-    """)
+    """,
+    )
 
     result = _run(manifest, root=workdir)
 
@@ -116,12 +133,15 @@ def test_fails_when_any_entry_fails(workdir: Path) -> None:
 def test_args_passed_through_to_pytest(workdir: Path) -> None:
     """Args like `-k <expr>` must reach pytest verbatim."""
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "unit-only"
     path = "scripts/test_marked.py"
     args = ["-k", "unit"]
-    """)
+    """,
+    )
 
     result = _run(manifest, root=workdir)
 
@@ -135,7 +155,9 @@ def test_args_passed_through_to_pytest(workdir: Path) -> None:
 
 def test_id_filter_runs_only_named_entry(workdir: Path) -> None:
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "pass-a"
     path = "scripts/test_pass_a.py"
@@ -143,7 +165,8 @@ def test_id_filter_runs_only_named_entry(workdir: Path) -> None:
     [[pytest]]
     id = "fail"
     path = "scripts/test_fail.py"
-    """)
+    """,
+    )
 
     # Explicitly run only pass-a — even though the manifest contains a failing
     # entry, --id filter should isolate the run.
@@ -158,11 +181,14 @@ def test_id_filter_runs_only_named_entry(workdir: Path) -> None:
 
 def test_unknown_id_filter_fails(workdir: Path) -> None:
     manifest = workdir / "scripts" / "_ci_pytest_manifest.toml"
-    _write(manifest, """
+    _write(
+        manifest,
+        """
     [[pytest]]
     id = "pass-a"
     path = "scripts/test_pass_a.py"
-    """)
+    """,
+    )
 
     result = _run(manifest, root=workdir, only_id="nope")
 
