@@ -11,6 +11,13 @@ from __future__ import annotations
 import math
 import re
 from fractions import Fraction
+from typing import TypedDict
+
+class _ElementBreakdown(TypedDict):
+    element: str
+    count: int
+    mass: float
+    percent: float
 
 # symbol → (atomic number, standard atomic weight in g/mol).  Bracketed IUPAC
 # values (no stable isotope) use a representative mass number.
@@ -201,11 +208,11 @@ def molar_mass(formula: str) -> dict:
     if not counts:
         return {"ok": False, "error": f"could not parse formula '{formula}'"}
     total = 0.0
-    breakdown = []
+    breakdown: list[_ElementBreakdown] = []
     for element, count in counts.items():
         mass = ELEMENTS[element][1] * count
         total += mass
-        breakdown.append({"element": element, "count": count, "mass": round(mass, 4)})
+        breakdown.append({"element": element, "count": count, "mass": round(mass, 4), "percent": 0.0})
     for item in breakdown:
         item["percent"] = round(100 * item["mass"] / total, 2) if total else 0.0
     return {
@@ -297,9 +304,9 @@ def balance_equation(equation: str) -> dict:
     for value in vector:
         denom_lcm = _lcm(denom_lcm, value.denominator)
     integers = [int(value * denom_lcm) for value in vector]
-    divisor = 0
-    for value in integers:
-        divisor = math.gcd(divisor, abs(value))
+    divisor: int = 0
+    for val in integers:
+        divisor = math.gcd(divisor, abs(val))
     if divisor:
         integers = [value // divisor for value in integers]
     if all(value <= 0 for value in integers):
