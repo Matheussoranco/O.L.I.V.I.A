@@ -20,14 +20,16 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - `olivia solve` no longer answers prose as algebra: `the value 2x = 4` was
   "solved" as `x = 2*exp(-2)/(a*h*l*t*u*v)` (implicit multiplication of the
   letters, with `e` read as Euler's number) at confidence 0.9; it now abstains.
+- `solve v = u + a*t for t` answered for the wrong unknown
+  (`a = (-u + v)/t`); a trailing `for <unknown>` is now honoured.
 - `x + 1 = x + 1` reported "no solution"; identities and contradictions are now
   told apart.
 - `solve 3j = 6` reported "no solution" (Python lexed `3j` as the complex
   number 3i) and `solve 0x + y = 1 and x + 0y = 2` failed (`0x` lexed as a hex
   prefix); a digit glued to a name is now always a product.
 - Equations with a literal exponent above 64 (`x^1000000 = 1`,
-  `2^999999999 = x`) stalled the solver for over a minute; they are now refused
-  before sympy is called.
+  `2^999999999 = x`) stalled the solver for 40 s to over 60 s in measured
+  runs; they are now refused before sympy is called.
 
 - `MetaLearner` closes every SQLite connection, and expert routing only blends
   historical win-rates for strategies that have observed outcomes.

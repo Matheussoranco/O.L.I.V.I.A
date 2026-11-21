@@ -1,0 +1,20 @@
+# tree: origin/main 3295f408fedeca09724175ca37b2df8d1f3374d9
+'the system 2x + y = 10 and x - y = 2'                  -> none      ''
+'solve 2x + y = 10, x - y = 2'                          -> symbolic  'x = 4, y = 2'
+'x^2 - 5x + 6 = 0'                                      -> symbolic  'x = 2, x = 3'
+'2*x + 3 = 7'                                           -> symbolic  'x = 2'
+'solve 2x + y = 10; x - y = 2'                          -> none      ''
+'solve for x and y: 2x + y = 10, x - y = 2'             -> none      ''
+'solve x + y + z = 6, 2x - y + z = 3, x + 2y - z = 2'   -> none      ''
+'x² − 5x + 6 = 0'                                       -> none      ''
+'2×x + 3 = 7'                                           -> none      ''
+'solve x1 + x2 = 3 and x1 - x2 = 1'                     -> none      ''
+'solve v = u + a*t for t'                               -> symbolic  'a = (-u + v)/t'
+'the value 2x = 4'                                      -> symbolic  'x = 2*exp(-2)/(a*h*l*t*u*v)'
+'solve x + 1 = x + 1'                                   -> symbolic  'no solution'
+'solve 3j = 6'                                          -> symbolic  'no solution'
+'solve 0x + y = 1 and x + 0y = 2'                       -> none      ''
+'balance H2 + O2 = H2O'                                 -> chemistry '2 H2 + O2 -> 2 H2O'
+"If f(x) = 3x^2 + 2x, what is f'(x)?"                   -> symbolic  '6*x + 2'
+'solve x^1000000 = 1' -> exit=124 after 60s  (124 = killed by 'timeout 60')
+'solve 2^999999999 = x' -> exit=0 after 40s  (124 = killed by 'timeout 60')
