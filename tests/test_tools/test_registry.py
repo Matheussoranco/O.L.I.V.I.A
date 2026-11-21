@@ -23,3 +23,42 @@ def test_non_finite_numbers_are_rejected():
     assert validate_arguments(schema, {"x": float("nan")}) == "argument 'x' must be finite"
     assert validate_arguments(schema, {"x": float("inf")}) == "argument 'x' must be finite"
     assert validate_arguments(schema, {"x": 1.5}) is None
+
+
+def test_registry_list_and_names_are_consistent():
+    registry = ToolRegistry()
+    registry.register(Tool(name="beta", description="", fn=lambda: "b"))
+    registry.register(Tool(name="alpha", description="", fn=lambda: "a"))
+    assert registry.names() == ["alpha", "beta"]
+    assert {tool.name for tool in registry.list()} == {"alpha", "beta"}
+
+
+def test_validate_arguments_handles_union_and_unsupported_types():
+    schema = {
+        "properties": {
+            "untyped": {},
+            "nullable_str": {"type": ["string", "null"]},
+        }
+    }
+    # Positive cases: untyped accepts values; union accepts declared members only.
+    assert validate_arguments(schema, {"untyped": 42, "nullable_str": "ok"}) is None
+    assert validate_arguments(schema, {"nullable_str": None}) is None
+    # Negative cases: union rejects undeclared types (e.g. int, bool).
+    assert (
+        validate_arguments(schema, {"nullable_str": 42})
+        == "argument 'nullable_str' must be one of types ['string', 'null']"
+    )
+    assert (
+        validate_arguments(schema, {"nullable_str": True})
+        == "argument 'nullable_str' must be one of types ['string', 'null']"
+    )
+    # Unsupported or malformed union / non-string type declarations fail closed.
+    assert "unsupported schema type" in (
+        validate_arguments({"properties": {"x": {"type": []}}}, {"x": "a"}) or ""
+    )
+    assert "unsupported schema type" in (
+        validate_arguments({"properties": {"x": {"type": ["string", "custom"]}}}, {"x": "a"}) or ""
+    )
+    assert "unsupported schema type" in (
+        validate_arguments({"properties": {"x": {"type": 123}}}, {"x": "a"}) or ""
+    )
