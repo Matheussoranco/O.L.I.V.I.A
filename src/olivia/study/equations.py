@@ -26,7 +26,9 @@ expression is broken; otherwise return a ``WorkedSolution``.
 
 from __future__ import annotations
 
+import ast
 import logging
+import math
 import re
 from dataclasses import dataclass
 from functools import lru_cache
@@ -40,10 +42,17 @@ MAX_EQUATIONS = 8
 """More equations than this is not a study problem; refuse rather than grind."""
 
 MAX_EXPONENT = 64
-"""Largest integer power accepted.  ``x^1000000 = 1`` would make ``sympy.solve``
-build a million roots, and ``2^999999999`` stalls inside sympify itself, so the
-bound is enforced on the tokens *before* any sympy call, then again on the
-parsed expression (``x^(8*8*8)``)."""
+"""Largest power of an *unknown* accepted: ``x^1000000 = 1`` would make
+``sympy.solve`` build a million roots."""
+
+MAX_RESULT_DIGITS = 1000
+"""Largest *number* an expression may denote.  sympy evaluates ``Integer **
+Integer`` the moment text is parsed, so ``2^3^20`` (= 2^3486784401) stalls inside
+sympify and ``2^2^2^2^2`` (19 729 digits) later trips Python's int→str limit.
+Both are refused structurally, before any evaluation (``_check_growth``)."""
+
+MAX_COMBINATORIAL_ARGUMENT = 1000
+"""``factorial``/``fibonacci``/… evaluate eagerly; larger arguments are refused."""
 
 MAX_ELIMINATION_UNKNOWNS = 4
 """Show row-by-row elimination up to this size; larger systems get a summary."""
@@ -251,20 +260,146 @@ def _tokenise(side: str) -> list[tuple[str, str]] | None:
     return tokens
 
 
-def _exponents_bounded(tokens: list[tuple[str, str]]) -> bool:
-    """False if a literal exponent (``^ 99999`` / ``** (-99999)``) is too large."""
-    significant = [(kind, text) for kind, text in tokens if kind != "space"]
-    for i, (_, text) in enumerate(significant):
-        if text not in {"^", "**"}:
-            continue
-        rest = [t for _, t in significant[i + 1 : i + 4] if t not in {"(", "-", "+"}]
-        if rest and re.fullmatch(r"[\d.eE+-]+", rest[0]):
-            try:
-                if abs(float(rest[0])) > MAX_EXPONENT:
-                    return False
-            except ValueError:
-                return False
-    return True
+# ---------------------------------------------------------------------------
+# Growth guard: bound every number *before* sympy evaluates anything
+# ---------------------------------------------------------------------------
+
+_NUMBER_CONSTRUCTORS = frozenset({"Integer", "Float", "Rational", "Number"})
+_SYMBOLIC_CONSTRUCTORS = frozenset({"Symbol", "Function", "Dummy", "Wild"})
+_NUMERIC_CONSTANTS = {"pi": 4.0, "E": 3.0, "e": 3.0, "I": 1.0, "oo": math.inf}
+_COMBINATORIAL = frozenset(
+    {
+        "factorial", "factorial2", "subfactorial", "binomial", "fibonacci",
+        "lucas", "tribonacci", "bell", "catalan", "partition", "harmonic",
+        "bernoulli", "euler", "genocchi", "andre", "motzkin", "primepi",
+        "multigamma", "ff", "rf",
+    }
+)  # fmt: skip
+
+
+class _TooLarge(Exception):
+    """The expression denotes a number or degree beyond the offline limits."""
+
+
+@lru_cache(maxsize=1)
+def _parser_context() -> tuple[dict, tuple]:
+    """The namespace and transformations ``safe_sympify`` parses with."""
+    import sympy
+    from sympy.parsing.sympy_parser import (
+        implicit_multiplication_application,
+        standard_transformations,
+    )
+
+    # Exactly what ``from sympy import *`` binds (parse_expr's default), with no exec.
+    namespace = {name: getattr(sympy, name) for name in sympy.__all__}
+    return namespace, (*standard_transformations, implicit_multiplication_application)
+
+
+def _magnitude(node: ast.AST) -> float | None:
+    """Upper bound on ``|value|`` of a numeric subtree; ``None`` if symbolic.
+
+    Walks the code sympy *would* evaluate, so the bound sees exactly what the
+    evaluator would: right-associative towers, any parenthesis depth, unary
+    signs, products in exponents.  Raises ``_TooLarge`` where evaluation would
+    explode.  A numeric subtree whose size cannot be bounded is ``inf``.
+    """
+    if isinstance(node, ast.Expression):
+        return _magnitude(node.body)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, bool) or not isinstance(node.value, (int, float, str)):
+            return None
+        try:
+            return abs(float(node.value))
+        except ValueError:
+            return None
+    if isinstance(node, ast.Name):
+        return _NUMERIC_CONSTANTS.get(node.id)
+    if isinstance(node, ast.UnaryOp):
+        return _magnitude(node.operand)
+    if isinstance(node, ast.BinOp):
+        return _binop_magnitude(node)
+    if isinstance(node, ast.Call):
+        return _call_magnitude(node)
+    for child in ast.iter_child_nodes(node):  # anything else: still inspect inside
+        _magnitude(child)
+    return None
+
+
+def _binop_magnitude(node: ast.BinOp) -> float | None:
+    left, right = _magnitude(node.left), _magnitude(node.right)
+    if isinstance(node.op, ast.Pow):
+        if right is None:
+            return None  # symbolic exponent (2^x): sympy cannot evaluate it
+        if left is None:
+            if right > MAX_EXPONENT:
+                raise _TooLarge(f"a power of {right:g} exceeds the limit of {MAX_EXPONENT}")
+            return None
+        if left in (0.0, 1.0):
+            return left
+        scale = max(left, 1.0 / left)  # a negative exponent inverts a small base
+        digits = right * math.log10(scale)
+        if digits > MAX_RESULT_DIGITS:
+            raise _TooLarge(f"a number of about 10^{digits:.3g} exceeds {MAX_RESULT_DIGITS} digits")
+        return math.inf if digits > 300 else scale**right
+    if left is None or right is None:
+        return None
+    if isinstance(node.op, (ast.Add, ast.Sub)):
+        return left + right
+    if isinstance(node.op, ast.Mult):
+        return left * right
+    if isinstance(node.op, ast.Div) and _is_literal(node.right) and right >= 1:
+        return left / right
+    return math.inf  # numeric but not boundable here (e.g. 1/(1/10^9))
+
+
+def _call_magnitude(node: ast.Call) -> float | None:
+    name = node.func.id if isinstance(node.func, ast.Name) else ""
+    args = [_magnitude(arg) for arg in node.args]  # always descend: checks nested powers
+    if name in _SYMBOLIC_CONSTRUCTORS:
+        return None
+    if name in _NUMBER_CONSTRUCTORS:
+        if name == "Rational" and len(args) == 2 and None not in args:
+            return args[0]  # |p/q| <= |p| for integer q
+        return args[0] if args else None
+    known = [arg for arg in args if arg is not None]
+    if not known or len(known) != len(args):
+        return None  # a symbolic argument: sympy keeps the call unevaluated
+    largest = max(known)
+    if name in _COMBINATORIAL:
+        if largest > MAX_COMBINATORIAL_ARGUMENT:
+            raise _TooLarge(
+                f"{name}({largest:g}) exceeds the limit of {MAX_COMBINATORIAL_ARGUMENT}"
+            )
+        return math.exp(min(math.lgamma(largest + 1), 700.0))  # n! bounds every listed one
+    return largest  # value-preserving or unevaluated (Abs, floor, sqrt, sin, log, exp…)
+
+
+def _is_literal(node: ast.AST) -> bool:
+    return isinstance(node, ast.Constant) or (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in _NUMBER_CONSTRUCTORS
+    )
+
+
+def _check_growth(machine_text: str) -> None:
+    """Raise ``_TooLarge`` if evaluating ``machine_text`` could explode.
+
+    Uses sympy's own tokenizer and transformations to produce the code it would
+    run, then bounds it — nothing is evaluated.  Text sympy cannot even
+    tokenise is left for ``safe_sympify`` to reject with a parse error.
+    """
+    from tokenize import TokenError
+
+    from sympy.parsing.sympy_parser import stringify_expr
+
+    namespace, transformations = _parser_context()
+    try:
+        code = stringify_expr(machine_text.replace("^", "**"), {}, namespace, transformations)
+        tree = ast.parse(code, mode="eval")
+    except (SyntaxError, TokenError, ValueError, TypeError):
+        return
+    _magnitude(tree)
 
 
 def _is_known_word(name: str) -> bool:
@@ -323,6 +458,10 @@ def parse_equations(text: str) -> EquationProblem | None:
 
     try:
         equations = _read_equations(body)
+        written = {name for eq in equations for side in (eq.lhs, eq.rhs) for name in _names(side)}
+        missing = [name for name in unknowns if name not in written]
+        if missing:  # checked on the text, so it holds even when terms cancel
+            raise _Rejected(f"unknown {', '.join(missing)} does not appear in the equations")
     except _Rejected as rejected:
         # The one decision point: an instruction makes broken maths an error;
         # without one, the text was simply never ours.
@@ -353,14 +492,22 @@ def _read_equations(body: str) -> tuple[Equation, ...]:
             tokens = _tokenise(half.strip())
             if tokens is None:
                 raise _Rejected(f"{half.strip()!r} is not a mathematical expression")
-            if not _exponents_bounded(tokens):
-                raise _Rejected(f"an exponent in {half.strip()!r} exceeds {MAX_EXPONENT}")
             sides.append(tokens)
     if not _prose_free(sides):
         raise _Rejected("the text contains words, not just mathematics")
 
     rebuilt = ["".join(text for _, text in tokens).strip() for tokens in sides]
+    for side in rebuilt:
+        try:
+            _check_growth(_machine_form(side))
+        except _TooLarge as too_large:
+            raise _Rejected(f"{side!r}: {too_large}") from None
     return tuple(Equation(lhs=rebuilt[i], rhs=rebuilt[i + 1]) for i in range(0, len(rebuilt), 2))
+
+
+def _names(side: str) -> set[str]:
+    """Identifiers written on one side of an equation (already canonical)."""
+    return {text for kind, text in _tokenise(side) or [] if kind == "name"}
 
 
 # ---------------------------------------------------------------------------
@@ -649,8 +796,13 @@ def solve_parsed(problem: str, parsed: EquationProblem) -> WorkedSolution:
     _check_powers(exprs, parsed)
 
     steps: list[SolutionStep] = []
-    single = len(exprs) == 1
-    _new_step(steps, "Restate the equation" if single else "Restate the system", parsed.describe())
+    one_equation = len(exprs) == 1
+    # "solve x + y = 5 for x and y" asks for two unknowns: the system path
+    # reports y as a free parameter instead of silently dropping it.
+    single = one_equation and len(parsed.unknowns) <= 1
+    _new_step(
+        steps, "Restate the equation" if one_equation else "Restate the system", parsed.describe()
+    )
 
     if not any(expr.free_symbols for expr in exprs):
         # Everything cancelled: an identity (0 = 0) or a contradiction (1 = 0).
@@ -678,6 +830,14 @@ def solve_parsed(problem: str, parsed: EquationProblem) -> WorkedSolution:
     except NotImplementedError as exc:  # sympy: no algorithm for this form
         raise SolverParseError(
             f"no symbolic method for: {parsed.describe()}", expression=parsed.describe()
+        ) from exc
+    except ValueError as exc:
+        # Defence in depth behind _check_growth: Python refuses to print an int
+        # of more than 4300 digits.  Never let that escape as a bare ValueError.
+        if "integer string conversion" not in str(exc):
+            raise
+        raise SolverParseError(
+            f"result too large to display: {parsed.describe()}", expression=parsed.describe()
         ) from exc
 
     if answer != "no solution":

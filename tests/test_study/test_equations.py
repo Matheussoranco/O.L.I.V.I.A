@@ -8,7 +8,10 @@ letters), worked steps, degenerate systems and resource bounds.
 
 from __future__ import annotations
 
+import os
 import random
+import subprocess
+import sys
 import time
 
 import pytest
@@ -290,6 +293,95 @@ def test_huge_exponents_are_refused_before_sympy(problem):
 def test_computed_huge_power_is_refused():
     with pytest.raises(SolverParseError, match="exceeds"):
         solve_equations("solve x^(8*8*8) = 1")
+
+
+# Review of PR #22 (Gemini, 36e0eb3): the token lookahead could be blinded by
+# parentheses, and power towers whose every literal is small still explode,
+# because sympy evaluates Integer**Integer the moment the text is parsed.
+_EXPLOSIVE = [
+    "solve 2^(((999999999))) = x",  # parens exhausted the 3-token lookahead
+    "solve 2^(-(-(999999999))) = x",
+    "solve 2^3^20 = x",  # right-associative: 2^(3^20), 3.5e9 exponent
+    "solve 2^2^2^2^2 = x",  # 2^65536: computes, then str() overflowed
+    "solve x = (10^10)^(10^10)",
+    "solve 9**9**9 = x",
+    "solve x = 2^(64*64*64)",  # every literal small, product huge
+    "solve x = factorial(10^6)",  # eager combinatorial evaluation
+    "solve x = fibonacci(10^9)",
+]
+_CHILD = """
+import sys, time
+from olivia.core.errors import SolverParseError
+from olivia.study.equations import solve_equations
+for problem in sys.argv[1:]:
+    started = time.perf_counter()
+    try:
+        solve_equations(problem)
+        outcome = "NOT-REFUSED"
+    except SolverParseError:
+        outcome = "refused"
+    except Exception as exc:  # anything else escaping is a contract break
+        outcome = "ESCAPED-" + type(exc).__name__
+    print(f"{outcome}\\t{time.perf_counter() - started:.3f}\\t{problem}", flush=True)
+"""
+
+
+def test_explosive_numeric_powers_are_refused_before_evaluation():
+    # A child process with a hard timeout: if this guard ever regresses, the
+    # suite fails in seconds instead of hanging CI inside sympy.
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
+    try:
+        child = subprocess.run(
+            [sys.executable, "-c", _CHILD, *_EXPLOSIVE],
+            capture_output=True,
+            text=True,
+            timeout=90,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        done = (exc.stdout or b"").decode() if isinstance(exc.stdout, bytes) else exc.stdout
+        pytest.fail(f"hung after:\n{done}")
+    rows = [line.split("\t") for line in child.stdout.splitlines() if line.strip()]
+    assert len(rows) == len(_EXPLOSIVE), child.stderr[-2000:]
+    for outcome, seconds, problem in rows:
+        assert outcome == "refused", problem
+        assert float(seconds) < 2.0, problem
+
+
+@pytest.mark.parametrize(
+    ("problem", "answer"),
+    [
+        ("solve x = 2^10", "x = 1024"),
+        ("solve x = 2^(3^2)", "x = 512"),  # a small tower is still fine
+        ("solve 2^x = 1024", "x = 10"),  # symbolic exponent: nothing to bound
+        ("solve x = factorial(5)", "x = 120"),
+        ("solve x^(1/2) = 3", "x = 9"),
+        ("solve x = 10^(-3)", "x = 1/1000"),
+    ],
+)
+def test_bounded_powers_still_solve(problem, answer):
+    assert _solve(problem).final_answer == answer
+
+
+def test_bare_explosive_power_is_left_alone_not_raised():
+    # Without an instruction the text is simply not claimed (contract: None).
+    assert parse_equations("2^3^20 = x") is None
+
+
+def test_single_equation_with_several_requested_unknowns_keeps_them():
+    # Review NB1: "for x and y" on one equation used to drop y silently.
+    sol = _solve("solve x + y = 5 for x and y")
+    assert sol.final_answer == "x = 5 - y"
+    assert any("y is a free parameter" in step.result for step in sol.steps)
+
+
+def test_identity_still_validates_requested_unknown():
+    # Review NB2: consistent with "solve 2x = 4 for y".
+    with pytest.raises(SolverParseError, match="does not appear"):
+        solve_equations("solve x + 1 = x + 1 for y")
+    assert (
+        _solve("solve x + 1 = x + 1 for x").final_answer == "every value is a solution (identity)"
+    )
 
 
 def test_too_many_equations_is_refused():
