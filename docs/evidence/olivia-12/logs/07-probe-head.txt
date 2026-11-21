@@ -1,0 +1,20 @@
+# tree: HEAD 37c184b84688160cc8156153e73f6bef8b6c8e09
+'the system 2x + y = 10 and x - y = 2'                  -> symbolic  'x = 4, y = 2'
+'solve 2x + y = 10, x - y = 2'                          -> symbolic  'x = 4, y = 2'
+'x^2 - 5x + 6 = 0'                                      -> symbolic  'x = 2, x = 3'
+'2*x + 3 = 7'                                           -> symbolic  'x = 2'
+'solve 2x + y = 10; x - y = 2'                          -> symbolic  'x = 4, y = 2'
+'solve for x and y: 2x + y = 10, x - y = 2'             -> symbolic  'x = 4, y = 2'
+'solve x + y + z = 6, 2x - y + z = 3, x + 2y - z = 2'   -> symbolic  'x = 1, y = 2, z = 3'
+'x² − 5x + 6 = 0'                                       -> symbolic  'x = 2, x = 3'
+'2×x + 3 = 7'                                           -> symbolic  'x = 2'
+'solve x1 + x2 = 3 and x1 - x2 = 1'                     -> symbolic  'x_1 = 2, x_2 = 1'
+'solve v = u + a*t for t'                               -> symbolic  't = (-u + v)/a'
+'the value 2x = 4'                                      -> none      ''
+'solve x + 1 = x + 1'                                   -> symbolic  'every value is a solution (identity)'
+'solve 3j = 6'                                          -> symbolic  'j = 2'
+'solve 0x + y = 1 and x + 0y = 2'                       -> symbolic  'x = 2, y = 1'
+'balance H2 + O2 = H2O'                                 -> chemistry '2 H2 + O2 -> 2 H2O'
+"If f(x) = 3x^2 + 2x, what is f'(x)?"                   -> symbolic  '6*x + 2'
+'solve x^1000000 = 1'                                   -> none      ''  [exit=0 after 1s]
+'solve 2^999999999 = x'                                 -> none      ''  [exit=0 after 1s]

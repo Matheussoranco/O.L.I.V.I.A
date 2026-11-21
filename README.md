@@ -46,6 +46,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 ```bash
 olivia ask "Why is the sky blue?"                 # Mixture-of-Experts answer
 olivia solve "solve x**2 - 5x + 6 = 0 for x"      # GPAI-style worked solution
+olivia solve "the system 2x + y = 10 and x - y = 2"  # systems, with elimination steps
 olivia solve "molar mass of C6H12O6"              # chemistry, physics, units too
 olivia research "Does spaced repetition beat massed practice?"
 olivia research "Does spaced repetition beat massed practice?" --network
@@ -67,6 +68,13 @@ olivia info                                       # backend/config status
 and works with no LLM backend:
 
 - **Maths** (sympy) — solve/factor equations, differentiate, integrate, evaluate.
+  Equations are read as people write them: systems of any size separated by
+  `,` `;` `and` or new lines (`solve for x and y: …`, `the system …`), caret or
+  Unicode powers (`x^2`, `x²`), `−` `×` `÷` `√` `π`, explicit or implicit
+  multiplication, and indexed unknowns (`x1`). Square linear systems show
+  Gaussian elimination; quadratics show the discriminant; every answer is
+  checked by substitution. Text with words in it (`the value 2x = 4`) is never
+  "solved" as a product of letters — it abstains instead.
 - **Chemistry** — molar mass from a 118-element table (groups & hydrates), and
   equation balancing by exact conservation of atoms (`H2 + O2 → 2 H2O ... 2 H2 + O2`).
 - **Physics** — CODATA constant lookup (`speed of light`, `Planck constant`, `N_A`).

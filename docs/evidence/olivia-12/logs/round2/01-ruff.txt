@@ -1,0 +1,7 @@
+# HEAD f3a329cbf3a02b2d12bc3c873ce4909990f2decc
+$ ruff check src/ tests/
+All checks passed!
+exit=0
+$ ruff format --check src/ tests/
+90 files already formatted
+exit=0
