@@ -13,7 +13,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import build_claim_standing_candidate_ledger as substrate
 from scripts import build_claim_standing_query_plan as plan_builder
 from scripts import check_claim_standing_freshness as freshness
@@ -39,17 +38,13 @@ def _setup() -> tuple[dict, dict, dict]:
     retained = _retained()
     _rehash_input(retained, plan)
     ledger_value = substrate.build_ledger(plan, retained)
-    record, _, _ = runner.run_stance(
-        plan, ledger_value, transport=FakeTransport()
-    )
+    record, _, _ = runner.run_stance(plan, ledger_value, transport=FakeTransport())
     return plan, ledger_value, record
 
 
 def _assess(plan: dict, ledger_value: dict | None, record: dict | None, **kw):
     return freshness.assess_freshness(
-        current_claim_text=kw.pop(
-            "current_claim_text", plan["claim"]["claim_text"]
-        ),
+        current_claim_text=kw.pop("current_claim_text", plan["claim"]["claim_text"]),
         plan=plan,
         candidate_ledger=ledger_value,
         stance_record=record,
@@ -92,9 +87,7 @@ def test_resealed_runtime_identity_swap_is_stale() -> None:
     plan, ledger_value, record = _setup()
     swapped = copy.deepcopy(record)
     swapped["stance_runtime"]["model_identity"] = "synthetic-stance-model-9"
-    swapped["stance_record_sha256"] = substrate.bound_digest(
-        swapped, "stance_record_sha256"
-    )
+    swapped["stance_record_sha256"] = substrate.bound_digest(swapped, "stance_record_sha256")
     verdict = _assess(plan, ledger_value, swapped)
     assert verdict["status"] == "stale"
     assert "stance_configuration_changed" in verdict["stale_reasons"]
@@ -142,9 +135,7 @@ def test_changed_candidate_ledger_is_stale() -> None:
     plan, ledger_value, record = _setup()
     mutated = copy.deepcopy(ledger_value)
     mutated["completed_at"] = "2026-08-14T09:00:00Z"
-    mutated["candidate_ledger_sha256"] = substrate.bound_digest(
-        mutated, "candidate_ledger_sha256"
-    )
+    mutated["candidate_ledger_sha256"] = substrate.bound_digest(mutated, "candidate_ledger_sha256")
     verdict = _assess(plan, mutated, record)
     assert verdict["status"] == "stale"
     assert "candidate_ledger_changed" in verdict["stale_reasons"]
@@ -164,9 +155,7 @@ def test_prompt_contract_drift_is_stale() -> None:
     plan, ledger_value, record = _setup()
     drifted = copy.deepcopy(record)
     drifted["stance_runtime"]["prompt_contract_version"] = "legacy-prompt-0.9"
-    drifted["stance_record_sha256"] = substrate.bound_digest(
-        drifted, "stance_record_sha256"
-    )
+    drifted["stance_record_sha256"] = substrate.bound_digest(drifted, "stance_record_sha256")
     verdict = _assess(plan, ledger_value, drifted)
     assert verdict["status"] == "stale"
     assert "stance_configuration_changed" in verdict["stale_reasons"]
@@ -239,16 +228,17 @@ def _write_json(path: Path, value: object) -> Path:
 def test_cli_prints_verdict_for_stale_probe(tmp_path, capsys) -> None:
     plan, ledger_value, record = _setup()
     claim_file = tmp_path / "claim.txt"
-    claim_file.write_text(
-        plan["claim"]["claim_text"] + " Revised.", encoding="utf-8"
-    )
+    claim_file.write_text(plan["claim"]["claim_text"] + " Revised.", encoding="utf-8")
     rc = freshness.main(
         [
-            "--current-claim-file", str(claim_file),
-            "--query-plan", str(_write_json(tmp_path / "plan.json", plan)),
+            "--current-claim-file",
+            str(claim_file),
+            "--query-plan",
+            str(_write_json(tmp_path / "plan.json", plan)),
             "--candidate-ledger",
             str(_write_json(tmp_path / "ledger.json", ledger_value)),
-            "--stance-record", str(_write_json(tmp_path / "record.json", record)),
+            "--stance-record",
+            str(_write_json(tmp_path / "record.json", record)),
         ]
     )
     assert rc == 0
@@ -265,8 +255,10 @@ def test_cli_errors_on_corrupt_record(tmp_path, capsys) -> None:
     claim_file.write_text(plan["claim"]["claim_text"], encoding="utf-8")
     rc = freshness.main(
         [
-            "--current-claim-file", str(claim_file),
-            "--query-plan", str(_write_json(tmp_path / "plan.json", plan)),
+            "--current-claim-file",
+            str(claim_file),
+            "--query-plan",
+            str(_write_json(tmp_path / "plan.json", plan)),
             "--candidate-ledger",
             str(_write_json(tmp_path / "ledger.json", ledger_value)),
             "--stance-record",

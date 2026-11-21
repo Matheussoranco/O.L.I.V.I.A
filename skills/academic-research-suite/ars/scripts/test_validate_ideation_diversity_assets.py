@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parent.parent
 MODULE_PATH = ROOT / "scripts" / "validate_ideation_diversity_assets.py"
 SPEC = importlib.util.spec_from_file_location("ideation_assets", MODULE_PATH)
@@ -17,9 +16,7 @@ SPEC.loader.exec_module(assets)
 
 
 def _loaded():
-    return assets.load_json_strict(assets.SET_PATH), assets.load_json_strict(
-        assets.VARIANT_PATH
-    )
+    return assets.load_json_strict(assets.SET_PATH), assets.load_json_strict(assets.VARIANT_PATH)
 
 
 def test_real_assets_validate_and_freeze_six_bilingual_role_cards():
@@ -56,9 +53,7 @@ def test_each_role_has_one_initial_and_two_unexpressed_owned_framings():
     heldout, _ = _loaded()
     for scenario in heldout["scenarios"]:
         initial = [
-            row["framing_key"]
-            for row in scenario["owned_framings"]
-            if row["initially_expressed"]
+            row["framing_key"] for row in scenario["owned_framings"] if row["initially_expressed"]
         ]
         assert initial == ["F1"]
         assert [row["framing_key"] for row in scenario["owned_framings"]] == [
@@ -181,9 +176,7 @@ def test_variant_replacement_must_match_exactly_once():
 def test_variant_replacement_ids_must_be_unique():
     _, variant = _loaded()
     mutated = copy.deepcopy(variant)
-    mutated["replacements"][1]["replacement_id"] = mutated["replacements"][0][
-        "replacement_id"
-    ]
+    mutated["replacements"][1]["replacement_id"] = mutated["replacements"][0]["replacement_id"]
     with pytest.raises(assets.AssetError, match="duplicate replacement_id"):
         assets.render_variant(mutated)
 
@@ -223,8 +216,6 @@ def test_cli_contains_no_model_network_or_subprocess_transport():
 
 def test_suite_registry_declares_paired_controls():
     registry = json.loads(
-        (ROOT / "evals" / "heldout" / "suite_registry.json").read_text(
-            encoding="utf-8"
-        )
+        (ROOT / "evals" / "heldout" / "suite_registry.json").read_text(encoding="utf-8")
     )
     assert registry["within_session_ideation_diversity"] == "paired_controls"

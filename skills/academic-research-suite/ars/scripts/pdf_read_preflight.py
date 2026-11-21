@@ -291,13 +291,8 @@ def _validate_worker_result(payload: dict[str, Any], page_count: int) -> dict[st
     try:
         normalized_confidence = float(confidence)
     except (TypeError, ValueError, OverflowError) as exc:
-        raise _ClassifierProtocolError(
-            "confidence is not finite and bounded"
-        ) from exc
-    if (
-        not math.isfinite(normalized_confidence)
-        or not 0.0 <= normalized_confidence <= 1.0
-    ):
+        raise _ClassifierProtocolError("confidence is not finite and bounded") from exc
+    if not math.isfinite(normalized_confidence) or not 0.0 <= normalized_confidence <= 1.0:
         raise _ClassifierProtocolError("confidence is not finite and bounded")
     if not isinstance(pages, list) or len(pages) > CLASSIFIER_MAX_PAGE_ENTRIES:
         raise _ClassifierProtocolError("OCR page list is not bounded")
@@ -605,9 +600,7 @@ def _reject_cli_write_aliases(
     if output_path is None and diagnostic_path is None:
         return
 
-    write_paths = [
-        path for path in (output_path, diagnostic_path) if path is not None
-    ]
+    write_paths = [path for path in (output_path, diagnostic_path) if path is not None]
     try:
         resolved_writes = {path: _resolved_cli_path(path) for path in write_paths}
     except (OSError, RuntimeError) as exc:
@@ -649,13 +642,10 @@ def _reject_cli_write_aliases(
 
     if output_path is not None and diagnostic_path is not None:
         if (
-            _canonical_cli_path_key(output_path)
-            == _canonical_cli_path_key(diagnostic_path)
+            _canonical_cli_path_key(output_path) == _canonical_cli_path_key(diagnostic_path)
             or _canonical_cli_path_key(resolved_writes[output_path])
             == _canonical_cli_path_key(resolved_writes[diagnostic_path])
-            or _existing_paths_share_inode_or_error(
-                parser, output_path, diagnostic_path
-            )
+            or _existing_paths_share_inode_or_error(parser, output_path, diagnostic_path)
         ):
             parser.error("--output and --classifier-diagnostics must not alias")
 
@@ -670,9 +660,8 @@ def _require_open_inode_at(
     """Fail if a dirfd-relative name no longer denotes the already-opened inode."""
     current = os.stat(name, dir_fd=directory_fd, follow_symlinks=False)
     expected_kind = stat.S_ISDIR if require_directory else stat.S_ISREG
-    if (
-        (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino)
-        or not expected_kind(current.st_mode)
+    if (opened.st_dev, opened.st_ino) != (current.st_dev, current.st_ino) or not expected_kind(
+        current.st_mode
     ):
         raise OSError(errno.ESTALE, "anchored staging inode changed")
 
@@ -707,9 +696,7 @@ class _BoundSidecarOutput:
             resolved_parent = _resolved_cli_path(path.parent)
             bound.parent_fd = os.open(
                 resolved_parent,
-                os.O_RDONLY
-                | getattr(os, "O_DIRECTORY", 0)
-                | getattr(os, "O_NOFOLLOW", 0),
+                os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
             )
             bound.parent_identity = os.fstat(bound.parent_fd)
             if not stat.S_ISDIR(bound.parent_identity.st_mode):
@@ -730,9 +717,7 @@ class _BoundSidecarOutput:
 
             bound.stage_dir_fd = os.open(
                 bound.stage_dir_name,
-                os.O_RDONLY
-                | getattr(os, "O_DIRECTORY", 0)
-                | getattr(os, "O_NOFOLLOW", 0),
+                os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
                 dir_fd=bound.parent_fd,
             )
             os.fchmod(bound.stage_dir_fd, 0o700)
@@ -774,10 +759,7 @@ class _BoundSidecarOutput:
 
         self.stage_file_fd = os.open(
             self._STAGE_FILE,
-            os.O_WRONLY
-            | os.O_CREAT
-            | os.O_EXCL
-            | getattr(os, "O_NOFOLLOW", 0),
+            os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0),
             0o600,
             dir_fd=self.stage_dir_fd,
         )
@@ -870,8 +852,7 @@ def _write_local_diagnostic(path: Path, payload: dict[str, Any]) -> None:
     if os.name != "posix" or not callable(getattr(os, "fchmod", None)):
         raise OSError("private classifier diagnostics require POSIX fchmod")
     raw = (
-        json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False, sort_keys=True)
-        + "\n"
+        json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False, sort_keys=True) + "\n"
     ).encode("utf-8")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0)
     fd = os.open(path, flags, 0o600)
@@ -907,9 +888,7 @@ class _BoundDiagnosticOutput:
             resolved_parent = _resolved_cli_path(path.parent)
             bound.parent_fd = os.open(
                 resolved_parent,
-                os.O_RDONLY
-                | getattr(os, "O_DIRECTORY", 0)
-                | getattr(os, "O_NOFOLLOW", 0),
+                os.O_RDONLY | getattr(os, "O_DIRECTORY", 0) | getattr(os, "O_NOFOLLOW", 0),
             )
             bound.parent_identity = os.fstat(bound.parent_fd)
             if not stat.S_ISDIR(bound.parent_identity.st_mode):
@@ -1025,9 +1004,7 @@ class _BoundDiagnosticOutput:
 
 def _kid_key(kid):
     """Stable identity for a /Kids entry (indirect ref when available)."""
-    ref = getattr(kid, "indirect_reference", None) or (
-        kid if hasattr(kid, "idnum") else None
-    )
+    ref = getattr(kid, "indirect_reference", None) or (kid if hasattr(kid, "idnum") else None)
     if ref is not None:
         return ("ref", ref.idnum, ref.generation)
     return ("id", id(kid))
@@ -1190,7 +1167,18 @@ def _run_structural_preflight(path) -> tuple[dict[str, Any], bytes | None]:
                 _num = rb"[+-]?0*\d{1,10}"
                 raw_offsets: dict[int, list[int]] = {}
                 for m in re.finditer(
-                    rb"(?:^|" + _sep + rb")" + _sep + rb"*(" + _num + rb")" + _sep + rb"+" + _num + _sep + rb"+obj\b",
+                    rb"(?:^|"
+                    + _sep
+                    + rb")"
+                    + _sep
+                    + rb"*("
+                    + _num
+                    + rb")"
+                    + _sep
+                    + rb"+"
+                    + _num
+                    + _sep
+                    + rb"+obj\b",
                     data,
                 ):
                     raw_offsets.setdefault(int(m.group(1)), []).append(m.start(1))
@@ -1221,9 +1209,7 @@ def _run_structural_preflight(path) -> tuple[dict[str, Any], bytes | None]:
                     off in raw_offsets[n] for n, off in direct_offsets.items()
                 ):
                     superseded = sorted(
-                        n
-                        for n, off in direct_offsets.items()
-                        if max(raw_offsets[n]) > off
+                        n for n, off in direct_offsets.items() if max(raw_offsets[n]) > off
                     )
                     if superseded:
                         warnings.append(
@@ -1397,9 +1383,7 @@ def main(argv=None) -> int:
             # directory before any optional worker starts.
             bound_output = _BoundSidecarOutput.bind(Path(args.output))
         if args.classifier_diagnostics:
-            bound_diagnostic = _BoundDiagnosticOutput.bind(
-                Path(args.classifier_diagnostics)
-            )
+            bound_diagnostic = _BoundDiagnosticOutput.bind(Path(args.classifier_diagnostics))
     except OSError as exc:
         if bound_diagnostic is not None:
             bound_diagnostic.cleanup(suppress_errors=True)

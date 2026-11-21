@@ -12,6 +12,7 @@ Usage:
       --input <bbt_export.json> --passport <out.yaml> --rejection-log <out.yaml>
 """
 from __future__ import annotations
+
 import argparse
 import json
 import re
@@ -28,9 +29,9 @@ if str(_REPO_ROOT) not in sys.path:
 
 from scripts.adapters._common import (  # noqa: E402
     ensure_unique_citekey,
+    now_iso,
     write_passport,
     write_rejection_log,
-    now_iso,
 )
 
 ADAPTER_NAME = "zotero.py"
@@ -64,6 +65,7 @@ def map_venue_type(item_type: str | None) -> tuple[str, str]:
         return "unknown", "unknown"
     return vt, "adapter_declared"
 
+
 RE_YEAR = re.compile(r"\b((?:19|20)\d{2})\b")
 RE_STRIP_HTML = re.compile(r"<[^>]+>")
 
@@ -82,8 +84,9 @@ _SEASONAL_PREFIXES = re.compile(
 class _AuthorsResult(NamedTuple):
     """Structured return from extract_authors — avoids leaking a sentinel into
     the type system while still conveying why the result is empty."""
+
     authors: list[dict] | None  # None = no valid authors
-    had_blank_literal: bool     # True = a corporate-author entry had an empty name
+    had_blank_literal: bool  # True = a corporate-author entry had an empty name
 
 
 def extract_authors(creators: list[dict]) -> _AuthorsResult:
@@ -163,7 +166,7 @@ def strip_doi(doi: str | None) -> str | None:
     doi = doi.strip()
     for prefix in ("doi:", "DOI:", "https://doi.org/", "http://doi.org/"):
         if doi.lower().startswith(prefix.lower()):
-            doi = doi[len(prefix):]
+            doi = doi[len(prefix) :]
             break
     return doi.strip() or None
 
@@ -236,12 +239,14 @@ def main() -> int:
                 reason = "year_unparseable"
             else:
                 reason = "missing_required_field"
-            rejected.append({
-                "source": source_key,
-                "reason": reason,
-                "raw": item,
-                "missing_fields": missing,
-            })
+            rejected.append(
+                {
+                    "source": source_key,
+                    "reason": reason,
+                    "raw": item,
+                    "missing_fields": missing,
+                }
+            )
             continue
 
         # Both branches below are only reached when missing is empty, so all
@@ -292,9 +297,7 @@ def main() -> int:
         notes = item.get("notes") or []
         if notes:
             plain = "\n\n".join(
-                RE_STRIP_HTML.sub("", n.get("note", ""))
-                for n in notes
-                if n.get("note")
+                RE_STRIP_HTML.sub("", n.get("note", "")) for n in notes if n.get("note")
             )
             if plain.strip():
                 entry["user_notes"] = plain

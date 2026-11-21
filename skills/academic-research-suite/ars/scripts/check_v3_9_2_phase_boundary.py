@@ -88,23 +88,23 @@ BUCKET_A_AGENTS = [
 # B (4): multi-phase; C (8): phase-orthogonal; D (4): cross-phase-meta.
 BUCKET_BCD_AGENTS = [
     # Bucket B — multi-phase (4)
-    "deep-research/agents/devils_advocate_agent.md",          # P1, 3, 5 + Socratic L2, 4
-    "deep-research/agents/report_compiler_agent.md",          # P4, 6
-    "academic-paper/agents/argument_builder_agent.md",        # P3 + Plan Step 3
-    "academic-paper/agents/visualization_agent.md",           # P4 + P7
+    "deep-research/agents/devils_advocate_agent.md",  # P1, 3, 5 + Socratic L2, 4
+    "deep-research/agents/report_compiler_agent.md",  # P4, 6
+    "academic-paper/agents/argument_builder_agent.md",  # P3 + Plan Step 3
+    "academic-paper/agents/visualization_agent.md",  # P4 + P7
     # Bucket C — phase-orthogonal (8)
-    "deep-research/agents/socratic_mentor_agent.md",          # Socratic Layer 1-5
-    "academic-paper/agents/socratic_mentor_agent.md",         # Plan Step 0-3
-    "deep-research/agents/monitoring_agent.md",               # post-pipeline
-    "academic-paper/agents/revision_coach_agent.md",          # Revision-Coach standalone
+    "deep-research/agents/socratic_mentor_agent.md",  # Socratic Layer 1-5
+    "academic-paper/agents/socratic_mentor_agent.md",  # Plan Step 0-3
+    "deep-research/agents/monitoring_agent.md",  # post-pipeline
+    "academic-paper/agents/revision_coach_agent.md",  # Revision-Coach standalone
     "academic-pipeline/agents/integrity_verification_agent.md",  # Stage 2.5 / 4.5 gates
     "academic-pipeline/agents/collaboration_depth_agent.md",  # FULL/SLIM advisory
     "academic-pipeline/agents/claim_ref_alignment_audit_agent.md",  # opt-in audit
-    "shared/agents/compliance_agent.md",                      # cross-skill stage gates
+    "shared/agents/compliance_agent.md",  # cross-skill stage gates
     # Bucket D — cross-phase / meta (4)
-    "academic-paper/agents/intake_agent.md",                  # Phase 0 cross-phase config
+    "academic-paper/agents/intake_agent.md",  # Phase 0 cross-phase config
     "academic-pipeline/agents/pipeline_orchestrator_agent.md",  # orchestrator
-    "academic-pipeline/agents/state_tracker_agent.md",        # meta state
+    "academic-pipeline/agents/state_tracker_agent.md",  # meta state
     "academic-paper-reviewer/agents/field_analyst_agent.md",  # Phase 0 configures panel
 ]
 
@@ -260,9 +260,11 @@ def main() -> int:
             print(f"  - {err}", file=sys.stderr)
         return 1
 
-    print(f"v3.9.2/v3.9.4 Phase Boundary lint PASSED: "
-          f"{len(BUCKET_A_AGENTS)} Bucket A agents have block, "
-          f"{len(BUCKET_BCD_AGENTS)} Bucket B/C/D agents excluded.")
+    print(
+        f"v3.9.2/v3.9.4 Phase Boundary lint PASSED: "
+        f"{len(BUCKET_A_AGENTS)} Bucket A agents have block, "
+        f"{len(BUCKET_BCD_AGENTS)} Bucket B/C/D agents excluded."
+    )
     return 0
 
 

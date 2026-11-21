@@ -16,6 +16,7 @@ Exit codes:
   2 — invocation error (schema or target missing)
 """
 from __future__ import annotations
+
 import argparse
 import json
 import re

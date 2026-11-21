@@ -19,8 +19,9 @@ from __future__ import annotations
 import hashlib
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 # Allow both CLI invocations (`python3 scripts/claim_audit_pipeline.py`) AND
 # package-style invocations (`python -m unittest scripts.test_*`) to resolve
@@ -93,9 +94,7 @@ def _tag_pdf_read_integrity(entry: dict[str, Any]) -> None:
     if PDF_READ_INTEGRITY_TAG in rationale:
         return
     if rationale:
-        clamped = _clamp_to_rationale_budget(
-            rationale, reserved=len(PDF_READ_INTEGRITY_TAG) + 1
-        )
+        clamped = _clamp_to_rationale_budget(rationale, reserved=len(PDF_READ_INTEGRITY_TAG) + 1)
         entry["rationale"] = f"{clamped} {PDF_READ_INTEGRITY_TAG}"
     else:
         entry["rationale"] = PDF_READ_INTEGRITY_TAG
@@ -171,7 +170,9 @@ def _active_constraints_for_claim(
     """
     constraints: list[dict[str, Any]] = []
     for mnc in mncs_by_manifest_id.get(scoped_manifest_id, []):
-        constraints.append({"constraint_id": mnc["constraint_id"], "rule": mnc["rule"], "scope": "MNC"})
+        constraints.append(
+            {"constraint_id": mnc["constraint_id"], "rule": mnc["rule"], "scope": "MNC"}
+        )
     claim = claim_by_mc_id.get((scoped_manifest_id, claim_id))
     if claim is not None:
         for nc in claim.get("negative_constraints", []) or []:
@@ -200,7 +201,12 @@ def _cache_key(
         "anchor_value_hash": _hash_text(anchor_value),
         "retrieved_excerpt_hash": _hash_text(retrieved_excerpt),
         "active_constraints_hash": _hash_text(
-            _stable_json([{"constraint_id": c["constraint_id"], "rule": c["rule"]} for c in active_constraints])
+            _stable_json(
+                [
+                    {"constraint_id": c["constraint_id"], "rule": c["rule"]}
+                    for c in active_constraints
+                ]
+            )
         ),
         "judge_model": judge_model,
         # #361: a judge-prompt revision partitions the keyspace — a verdict
@@ -387,8 +393,10 @@ def _invoke_judge(
     except TimeoutError as exc:
         raise JudgeInvocationError("judge_timeout", str(exc) or "judge timed out") from exc
     except (json.JSONDecodeError, ValueError) as exc:
-        raise JudgeInvocationError("judge_parse_error", str(exc) or "judge returned malformed payload") from exc
-    except Exception as exc:  # noqa: BLE001 — translation boundary; the source class is captured
+        raise JudgeInvocationError(
+            "judge_parse_error", str(exc) or "judge returned malformed payload"
+        ) from exc
+    except Exception as exc:  # — translation boundary; the source class is captured
         raise JudgeInvocationError("judge_api_error", f"{type(exc).__name__}: {exc}") from exc
 
     return _validate_judge_dict(
@@ -422,7 +430,9 @@ def _invoke_retrieve(
     try:
         result = retrieve_fn(citation)
     except TimeoutError as exc:
-        raise RetrievalInvocationError("retrieval_timeout", str(exc) or "retrieve_fn timed out") from exc
+        raise RetrievalInvocationError(
+            "retrieval_timeout", str(exc) or "retrieve_fn timed out"
+        ) from exc
     except (ConnectionError, OSError) as exc:
         raise RetrievalInvocationError(
             "retrieval_network_error",
@@ -433,8 +443,10 @@ def _invoke_retrieve(
             "retrieval_api_error",
             str(exc) or "retrieve_fn returned malformed payload",
         ) from exc
-    except Exception as exc:  # noqa: BLE001 — translation boundary
-        raise RetrievalInvocationError("retrieval_api_error", f"{type(exc).__name__}: {exc}") from exc
+    except Exception as exc:  # — translation boundary
+        raise RetrievalInvocationError(
+            "retrieval_api_error", f"{type(exc).__name__}: {exc}"
+        ) from exc
 
     if not isinstance(result, dict):
         raise RetrievalInvocationError(
@@ -482,7 +494,9 @@ def _invoke_retrieve(
 # ---------------------------------------------------------------------------
 
 
-def _anchorless_entry(citation: dict[str, Any], *, audit_run_id: str, now_iso: str, judge_model: str) -> dict[str, Any]:
+def _anchorless_entry(
+    citation: dict[str, Any], *, audit_run_id: str, now_iso: str, judge_model: str
+) -> dict[str, Any]:
     """§4 Step 1: anchor=none short-circuits to RETRIEVAL_FAILED+inconclusive+not_applicable+not_attempted.
 
     INV-6 sentinel: anchor_kind=none MUST carry anchor_value="" (empty sentinel
@@ -1206,9 +1220,7 @@ def run_audit_pipeline(
         if pdf_preflight_sidecars is not None and anchor_kind == "page":
             _sc = pdf_preflight_sidecars.get(citation["ref_slug"])
             retrieval_citation = dict(citation)
-            retrieval_citation["pdf_preflight_verdict"] = (
-                _sc.get("verdict") if _sc else "MISSING"
-            )
+            retrieval_citation["pdf_preflight_verdict"] = _sc.get("verdict") if _sc else "MISSING"
         try:
             retrieval = _invoke_retrieve(retrieve_fn, retrieval_citation)
         except RetrievalInvocationError as ret_err:
@@ -1331,11 +1343,7 @@ def run_audit_pipeline(
         # wired the preflight layer → byte-equivalent legacy behavior; a provided
         # dict (even empty) means the orchestrator ran the layer, so a missing or
         # non-PASS sidecar for a manual_pdf page-anchor row is tagged.
-        if (
-            pdf_preflight_sidecars is not None
-            and method == "manual_pdf"
-            and anchor_kind == "page"
-        ):
+        if pdf_preflight_sidecars is not None and method == "manual_pdf" and anchor_kind == "page":
             sidecar = pdf_preflight_sidecars.get(citation["ref_slug"])
             if not (sidecar and sidecar.get("verdict") == "PASS"):
                 _tag_pdf_read_integrity(entry)
@@ -1355,9 +1363,7 @@ def run_audit_pipeline(
                 for claim in manifest.get("claims", []) or []:
                     cid_in_manifest = claim.get("claim_id")
                     if cid_in_manifest:
-                        constraint_absorbed_claim_ids.add(
-                            (scoped_manifest_id, cid_in_manifest)
-                        )
+                        constraint_absorbed_claim_ids.add((scoped_manifest_id, cid_in_manifest))
             # Also absorb the emitted citation's own (manifest, claim) pair
             # so a drifted-yet-violated citation does not produce a
             # companion EMITTED_NOT_INTENDED row.
@@ -1434,7 +1440,11 @@ def run_audit_pipeline(
         # Decide which manifests this sentence is constraint-judged against.
         # Caller-pinned scope → that one manifest. Otherwise every manifest.
         if scoped_manifest_id_for_sentence:
-            target_manifest_ids = [scoped_manifest_id_for_sentence] if scoped_manifest_id_for_sentence in manifest_mncs_by_id else []
+            target_manifest_ids = (
+                [scoped_manifest_id_for_sentence]
+                if scoped_manifest_id_for_sentence in manifest_mncs_by_id
+                else []
+            )
         else:
             target_manifest_ids = list(manifest_mncs_by_id.keys())
 

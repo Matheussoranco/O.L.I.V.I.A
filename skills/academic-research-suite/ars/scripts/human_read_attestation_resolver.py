@@ -21,18 +21,13 @@ from typing import Any
 
 import yaml
 
-
 SIGNAL_TYPE = "USER_ATTESTED_READ"
 SCHEMA_VERSION = "user-attested-read-resolution/1.0"
 ARTIFACT_ROLE = "transient_routing_decision"
 MAX_REASON_CHARS = 1000
 ANCHOR_KINDS = frozenset({"quote", "page", "section", "paragraph", "none"})
-READ_SCOPE_LEVELS = frozenset(
-    {"full_text", "sections", "abstract_only", "toc_only", "unknown"}
-)
-_RFC3339_UTC = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$"
-)
+READ_SCOPE_LEVELS = frozenset({"full_text", "sections", "abstract_only", "toc_only", "unknown"})
+_RFC3339_UTC = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?Z$")
 _PAGE_RANGE = re.compile(
     r"(?:pages?|p\.|pp\.)\s*:?\s*(\d+)\s*(?:-\s*(\d+))?\s*",
     re.IGNORECASE,
@@ -95,9 +90,7 @@ def _result(
     marked_at: str | None = None,
 ) -> dict[str, Any]:
     bounded_reason = (
-        reason
-        if len(reason) <= MAX_REASON_CHARS
-        else reason[: MAX_REASON_CHARS - 3] + "..."
+        reason if len(reason) <= MAX_REASON_CHARS else reason[: MAX_REASON_CHARS - 3] + "..."
     )
     out: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -144,9 +137,7 @@ def _closed_object(
     return value
 
 
-def _bounded_string(
-    value: Any, *, label: str, minimum: int = 1, maximum: int | None = None
-) -> str:
+def _bounded_string(value: Any, *, label: str, minimum: int = 1, maximum: int | None = None) -> str:
     if not isinstance(value, str) or len(value) < minimum:
         raise LedgerValidationError(f"{label} must be a non-empty string")
     if maximum is not None and len(value) > maximum:
@@ -166,9 +157,7 @@ def _validate_scope(value: Any, *, label: str) -> dict[str, Any]:
         raise LedgerValidationError(f"{label}.level is outside the closed enum")
     if "locators" in scope:
         if level != "sections":
-            raise LedgerValidationError(
-                f"{label}.locators are legal only when level=sections"
-            )
+            raise LedgerValidationError(f"{label}.locators are legal only when level=sections")
         locators = scope["locators"]
         if not isinstance(locators, list) or not locators:
             raise LedgerValidationError(f"{label}.locators must be a non-empty array")
@@ -230,9 +219,7 @@ def _validated_rows(
                     f"{label}.rescinded_at must be an RFC3339 UTC timestamp ending in Z"
                 )
             if rescinded < marked:
-                raise LedgerValidationError(
-                    f"{label}.rescinded_at precedes marked_at"
-                )
+                raise LedgerValidationError(f"{label}.rescinded_at precedes marked_at")
 
         has_type = "attestation_type" in row
         has_scope = "read_scope" in row
@@ -243,18 +230,14 @@ def _validated_rows(
             )
         if has_type:
             if row["attestation_type"] != SIGNAL_TYPE:
-                raise LedgerValidationError(
-                    f"{label}.attestation_type must equal {SIGNAL_TYPE}"
-                )
+                raise LedgerValidationError(f"{label}.attestation_type must equal {SIGNAL_TYPE}")
             _validate_scope(row["read_scope"], label=f"{label}.read_scope")
         validated.append((row, marked, rescinded))
     return validated
 
 
 def _normalize(value: str) -> str:
-    return " ".join(
-        value.casefold().replace("–", "-").replace("—", "-").split()
-    )
+    return " ".join(value.casefold().replace("–", "-").replace("—", "-").split())
 
 
 def _page_locator_covers(locator: str, anchor_value: str) -> bool:
@@ -295,11 +278,7 @@ def _anchor_precedence_result(
             "anchor_unresolved",
             f"anchor kind {anchor_kind!r} is outside the closed enum",
         )
-    if (
-        anchor_kind == "none"
-        or not isinstance(anchor_value, str)
-        or not anchor_value.strip()
-    ):
+    if anchor_kind == "none" or not isinstance(anchor_value, str) or not anchor_value.strip():
         return _result(
             citation_key,
             "anchor_unresolved",
@@ -316,15 +295,11 @@ def resolve_user_attested_read(
     anchor_value: str,
 ) -> dict[str, Any]:
     """Return a closed resolution object; only ``covered`` is ok-eligible."""
-    anchor_failure = _anchor_precedence_result(
-        citation_key, anchor_kind, anchor_value
-    )
+    anchor_failure = _anchor_precedence_result(citation_key, anchor_kind, anchor_value)
     if anchor_failure is not None:
         return anchor_failure
     if ledger is None:
-        return _result(
-            citation_key, "not_attested", "no read ledger exists for this passport"
-        )
+        return _result(citation_key, "not_attested", "no read ledger exists for this passport")
 
     try:
         rows = _validated_rows(ledger)
@@ -340,13 +315,9 @@ def resolve_user_attested_read(
             events.append((rescinded, index, 1, "rescind", row))
 
     if not events:
-        return _result(
-            citation_key, "not_attested", "no matching user attestation"
-        )
+        return _result(citation_key, "not_attested", "no matching user attestation")
 
-    _, _, _, event_kind, row = max(
-        events, key=lambda item: (item[0], item[1], item[2])
-    )
+    _, _, _, event_kind, row = max(events, key=lambda item: (item[0], item[1], item[2]))
     marked_at = row["marked_at"]
     if event_kind == "rescind":
         return _result(
@@ -395,10 +366,7 @@ def resolve_user_attested_read(
             "quote anchors require full_text scope",
             marked_at=marked_at,
         )
-    if any(
-        _locator_covers(anchor_kind, anchor_value, locator)
-        for locator in locators
-    ):
+    if any(_locator_covers(anchor_kind, anchor_value, locator) for locator in locators):
         return _result(
             citation_key,
             "covered",

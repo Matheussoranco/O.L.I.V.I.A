@@ -95,8 +95,8 @@ CONTRACT_PREFIX = "heldout-measurement/"
 MARKER_KEY = "measurement_contract"
 RATE_TOLERANCE = 0.005
 FROZEN_V1_0_ROWS = {
-    HELDOUT_ROOT / "revision_claim_drift/measurement-2026-08-07.json":
-        "1af137c798e6cf3a5d0a742e379a8af78fe802cb924b4ece22cdf57cb881f573",
+    HELDOUT_ROOT
+    / "revision_claim_drift/measurement-2026-08-07.json": "1af137c798e6cf3a5d0a742e379a8af78fe802cb924b4ece22cdf57cb881f573",
 }
 
 
@@ -172,9 +172,7 @@ def _suite_registry() -> tuple[dict, tuple[str, ...]]:
     valid_classes = set(_suite_class_enum())
     for suite, klass in registry.items():
         if klass not in valid_classes:
-            errors.append(
-                f"I5: suite_registry.json maps {suite!r} to unknown class {klass!r}"
-            )
+            errors.append(f"I5: suite_registry.json maps {suite!r} to unknown class {klass!r}")
     return registry, tuple(errors)
 
 
@@ -245,8 +243,8 @@ def _has_affirmed_claim(text: str, pattern: str) -> bool:
     match, so "not run concurrently" cannot create a concurrency attestation.
     """
     for match in re.finditer(pattern, text):
-        prefix = text[max(0, match.start() - 100):match.start()]
-        clause = re.split(r'''[.;:!?",\[\]{}]|\b(?:but|however)\b''', prefix)[-1]
+        prefix = text[max(0, match.start() - 100) : match.start()]
+        clause = re.split(r"""[.;:!?",\[\]{}]|\b(?:but|however)\b""", prefix)[-1]
         words = re.findall(r"[a-z]+", clause)
         if not set(words[-6:]) & {"no", "not", "never", "without", "neither"}:
             return True
@@ -273,23 +271,17 @@ def _execution_claim_errors(manifest: dict, claims: set[str]) -> list[str]:
         except (TypeError, ValueError):
             # Normally caught by the schema format checker; keep this helper
             # fail-closed when unit-called or when parser behavior changes.
-            errors.append(
-                f"R5: call {call.get('call_id')!r} has an invalid timestamp"
-            )
+            errors.append(f"R5: call {call.get('call_id')!r} has an invalid timestamp")
             continue
         if completed < started:
-            errors.append(
-                f"R5: call {call['call_id']!r} completed before it started"
-            )
+            errors.append(f"R5: call {call['call_id']!r} completed before it started")
         parsed_calls.append((call, started, completed))
 
     if not claims or errors:
         return errors
     if len(parsed_calls) < 2:
         for claim in sorted(claims):
-            errors.append(
-                f"R5: {claim!r} requires evidence from at least two calls"
-            )
+            errors.append(f"R5: {claim!r} requires evidence from at least two calls")
         return errors
 
     if "ordering" in claims:
@@ -314,7 +306,7 @@ def _execution_claim_errors(manifest: dict, claims: set[str]) -> list[str]:
             max(a_start, b_start) < min(a_end, b_end)
             for intervals in groups.values()
             for index, (a_start, a_end) in enumerate(intervals)
-            for b_start, b_end in intervals[index + 1:]
+            for b_start, b_end in intervals[index + 1 :]
         )
         if not supported:
             errors.append(
@@ -325,9 +317,7 @@ def _execution_claim_errors(manifest: dict, claims: set[str]) -> list[str]:
     if "same_window" in claims:
         window = manifest.get("execution_window")
         if not isinstance(window, dict):
-            errors.append(
-                "R5: 'same_window' requires a declared execution_window"
-            )
+            errors.append("R5: 'same_window' requires a declared execution_window")
         else:
             try:
                 window_start = _parse_timestamp(window["started_at"])
@@ -366,9 +356,9 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
     config_pairs: dict[tuple[str, str], list[str]] = {}
     for j in judges:
         model_to_families.setdefault(_fold(j["model_id"]), set()).add(_fold(j["model_family"]))
-        config_pairs.setdefault(
-            (_fold(j["model_id"]), _fold(j["prompt_ref"])), []
-        ).append(j["judge_id"])
+        config_pairs.setdefault((_fold(j["model_id"]), _fold(j["prompt_ref"])), []).append(
+            j["judge_id"]
+        )
     for model_id, families in model_to_families.items():
         if len(families) > 1:
             errors.append(
@@ -400,8 +390,7 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
                 )
             if fid in seen_in_judge:
                 errors.append(
-                    f"I9: judge {judge['judge_id']!r} lists item {raw_id!r} more "
-                    "than once"
+                    f"I9: judge {judge['judge_id']!r} lists item {raw_id!r} more " "than once"
                 )
                 continue
             seen_in_judge.add(fid)
@@ -437,16 +426,10 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
                 f"{expected:.3f} (1 - {len(divergent)}/{len(comparable)})"
             )
     elif rate is not None:
-        errors.append(
-            "I1: agreement.rate must be null when no item is judged by >=2 judges"
-        )
+        errors.append("I1: agreement.rate must be null when no item is judged by >=2 judges")
 
     # ---- I2: derived judge minimum + family diversity ----------------------
-    if (
-        report["decision_relevant"]
-        and suite_class != "mechanical_match"
-        and exception == "none"
-    ):
+    if report["decision_relevant"] and suite_class != "mechanical_match" and exception == "none":
         families = {_fold(j["model_family"]) for j in judges}
         if len(judges) < 2:
             errors.append(
@@ -482,9 +465,7 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
     for override in adjudication.get("overrides", []):
         o_item, o_judge = _fold(override["item_id"]), override["judge_id"]
         if o_judge not in judge_index:
-            errors.append(
-                f"I4: override references unknown judge {o_judge!r}"
-            )
+            errors.append(f"I4: override references unknown judge {o_judge!r}")
         elif o_item not in by_item or judge_index[o_judge] not in by_item[o_item]:
             errors.append(
                 f"I4: override targets item {override['item_id']!r} which judge "
@@ -538,20 +519,14 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
             )
 
     # ---- I11 / W1: partial judge coverage ----------------------------------
-    per_judge_sets = [
-        {_fold(row["item_id"]) for row in j["per_item"]} for j in judges
-    ]
+    per_judge_sets = [{_fold(row["item_id"]) for row in j["per_item"]} for j in judges]
     if per_judge_sets:
         union = set().union(*per_judge_sets)
         gaps = {i for s in per_judge_sets for i in union - s}
         if gaps:
             if report["decision_relevant"]:
                 blocked = report["attempts"]["blocked_runs"]
-                uncovered = {
-                    g
-                    for g in gaps
-                    if not any(_names_item(_fold(b), g) for b in blocked)
-                }
+                uncovered = {g for g in gaps if not any(_names_item(_fold(b), g) for b in blocked)}
                 if uncovered:
                     errors.append(
                         f"I11: items {sorted(uncovered)!r} are missing from some "
@@ -559,8 +534,7 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
                     )
                 if report["attempts"]["partial_published"] is not True:
                     errors.append(
-                        "I11: partial judge coverage requires "
-                        "attempts.partial_published=true"
+                        "I11: partial judge coverage requires " "attempts.partial_published=true"
                     )
             else:
                 warnings.append(
@@ -573,8 +547,7 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
         _dt.date.fromisoformat(report["measurement_date"])
     except ValueError:
         errors.append(
-            f"I12: measurement_date {report['measurement_date']!r} is not a real "
-            "calendar date"
+            f"I12: measurement_date {report['measurement_date']!r} is not a real " "calendar date"
         )
 
     # ---- I13: adjudication direction and lower-bound honesty (v1.1) -------
@@ -603,13 +576,11 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
         if adjudication.get("applies") is True:
             if prereg.get("rubric_ref") != adjudication.get("rubric_ref"):
                 errors.append(
-                    "I14: preregistration.rubric_ref must equal "
-                    "adjudication.rubric_ref"
+                    "I14: preregistration.rubric_ref must equal " "adjudication.rubric_ref"
                 )
             if prereg.get("rubric_sha256") != adjudication.get("rubric_sha256"):
                 errors.append(
-                    "I14: preregistration.rubric_sha256 must equal "
-                    "adjudication.rubric_sha256"
+                    "I14: preregistration.rubric_sha256 must equal " "adjudication.rubric_sha256"
                 )
 
         amendment_ids: set[str] = set()
@@ -622,14 +593,11 @@ def _invariant_findings(report: dict) -> tuple[list[str], list[str]]:
             try:
                 recorded = _parse_timestamp(amendment["recorded_at"])
             except (TypeError, ValueError):
-                errors.append(
-                    f"I14: amendment {aid!r} has an invalid recorded_at timestamp"
-                )
+                errors.append(f"I14: amendment {aid!r} has an invalid recorded_at timestamp")
                 continue
             if prior_time is not None and recorded < prior_time:
                 errors.append(
-                    "I14: preregistration amendments must be append-ordered by "
-                    "recorded_at"
+                    "I14: preregistration amendments must be append-ordered by " "recorded_at"
                 )
             prior_time = recorded
 
@@ -758,22 +726,16 @@ def _resolution_findings(report: dict) -> list[str]:
                         )
                     experts = panel.get("experts")
                     if not isinstance(experts, list) or len(experts) < 2:
-                        errors.append(
-                            "R6: human_expert_panel requires at least two experts"
-                        )
+                        errors.append("R6: human_expert_panel requires at least two experts")
                     else:
                         expert_ids: list[str] = []
                         for index, expert in enumerate(experts):
                             if not isinstance(expert, dict):
-                                errors.append(
-                                    f"R6: experts[{index}] must be an object"
-                                )
+                                errors.append(f"R6: experts[{index}] must be an object")
                                 continue
                             expert_id = expert.get("expert_id")
                             if not isinstance(expert_id, str) or not expert_id.strip():
-                                errors.append(
-                                    f"R6: experts[{index}].expert_id must be non-empty"
-                                )
+                                errors.append(f"R6: experts[{index}].expert_id must be non-empty")
                             else:
                                 expert_ids.append(_fold(expert_id))
                             if expert.get("expert_type") != "human":
@@ -781,9 +743,7 @@ def _resolution_findings(report: dict) -> list[str]:
                                     f"R6: experts[{index}] must declare expert_type='human'"
                                 )
                             if expert.get("independent") is not True:
-                                errors.append(
-                                    f"R6: experts[{index}] must attest independent=true"
-                                )
+                                errors.append(f"R6: experts[{index}] must attest independent=true")
                             blinded = expert.get("blinded_to")
                             required_blinding = {"arm_identity", "mechanism_state"}
                             if not isinstance(blinded, list) or not required_blinding.issubset(
@@ -802,17 +762,13 @@ def _resolution_findings(report: dict) -> list[str]:
                         errors.append("R6: expert panel adjudication must be an object")
                     else:
                         if panel_adjudication.get("adjudicator_type") != "human":
-                            errors.append(
-                                "R6: expert panel adjudicator_type must be 'human'"
-                            )
+                            errors.append("R6: expert panel adjudicator_type must be 'human'")
                         if panel_adjudication.get("arm_blind") is not True:
                             errors.append(
                                 "R6: expert panel adjudication must attest arm_blind=true"
                             )
                         if panel_adjudication.get("disagreements_retained") is not True:
-                            errors.append(
-                                "R6: expert panel adjudication must retain disagreements"
-                            )
+                            errors.append("R6: expert panel adjudication must retain disagreements")
 
     commit = report["subject"]["config"]["suite_commit"]
     try:
@@ -828,8 +784,7 @@ def _resolution_findings(report: dict) -> list[str]:
         missing = False
     if missing:
         errors.append(
-            f"R3: subject.config.suite_commit {commit!r} is not a commit in this "
-            "repository"
+            f"R3: subject.config.suite_commit {commit!r} is not a commit in this " "repository"
         )
 
     if report[MARKER_KEY] == "heldout-measurement/1.1":
@@ -883,9 +838,7 @@ def _resolution_findings(report: dict) -> list[str]:
                 )
                 if not schema_errors:
                     if manifest["suite"] != report["suite"]:
-                        errors.append(
-                            "R5: execution manifest suite does not match the report"
-                        )
+                        errors.append("R5: execution manifest suite does not match the report")
                     call_ids: set[str] = set()
                     sequence_indexes: set[int] = set()
                     for call in manifest["calls"]:
@@ -943,15 +896,11 @@ def _validate_report(
     """
     validator = _validator()
     schema_errors = [
-        f"schema {list(e.absolute_path)}: {e.message}"
-        for e in validator.iter_errors(report)
+        f"schema {list(e.absolute_path)}: {e.message}" for e in validator.iter_errors(report)
     ]
     if schema_errors:
         return schema_errors, []
-    if (
-        report[MARKER_KEY] == "heldout-measurement/1.0"
-        and not allow_frozen_v1_0
-    ):
+    if report[MARKER_KEY] == "heldout-measurement/1.0" and not allow_frozen_v1_0:
         return [
             "I15: heldout-measurement/1.0 is frozen; only the exact allowlisted "
             "path and SHA-256 may use it"
@@ -962,9 +911,7 @@ def _validate_report(
     return errors, warnings
 
 
-def validate_report(
-    report: dict, *, resolve_refs: bool = False
-) -> tuple[list[str], list[str]]:
+def validate_report(report: dict, *, resolve_refs: bool = False) -> tuple[list[str], list[str]]:
     """Validate a newly authored report; the weaker frozen v1.0 is rejected.
 
     Only the path-aware CLI entry point can authorize the one frozen row after
@@ -1048,10 +995,7 @@ def _walk_json_files(root: Path) -> tuple[list[Path], list[str]]:
                     file_real = p.resolve()
                 except OSError:
                     file_real = p
-                if not (
-                    file_real.is_relative_to(root_real)
-                    or file_real.is_relative_to(repo_real)
-                ):
+                if not (file_real.is_relative_to(root_real) or file_real.is_relative_to(repo_real)):
                     walk_errors.append(
                         f"{p}: file symlink resolves outside the repository — "
                         "not scanned (repo-published rows cannot live there)"
@@ -1099,8 +1043,7 @@ def _scan_all() -> int:
         except (ValueError, RecursionError) as exc:
             if MARKER_KEY in text.replace("\\u005f", "_"):
                 print(
-                    f"ERROR: {path}: mentions {MARKER_KEY!r} but does not parse "
-                    f"as JSON ({exc})"
+                    f"ERROR: {path}: mentions {MARKER_KEY!r} but does not parse " f"as JSON ({exc})"
                 )
                 rc = 1
             continue

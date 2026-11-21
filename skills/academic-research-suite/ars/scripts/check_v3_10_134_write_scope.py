@@ -121,7 +121,7 @@ def read_frontmatter_name(rel_path: str) -> str | None:
         # than scanning the body — a `name:` in prose must NOT masquerade as the binding
         # (review finding). A missing/broken frontmatter is itself a drift the lint reports.
         return None
-    block = text[fences[0].end():fences[1].start()]
+    block = text[fences[0].end() : fences[1].start()]
     m = _NAME_RE.search(block)
     return m.group(1).strip().strip('"').strip("'") if m else None
 
@@ -259,7 +259,9 @@ def run_checks() -> list[str]:
     manifest = load_manifest()
     for key, entry in manifest.get("agents", {}).items():
         if entry.get("bucket") != "A":
-            errors.append(f"I4: manifest entry {key!r} has bucket={entry.get('bucket')!r}, expected 'A'.")
+            errors.append(
+                f"I4: manifest entry {key!r} has bucket={entry.get('bucket')!r}, expected 'A'."
+            )
         globs = entry.get("allowed_write_globs")
         if not isinstance(globs, list) or not globs:
             errors.append(f"I4: manifest entry {key!r} has empty/invalid allowed_write_globs.")

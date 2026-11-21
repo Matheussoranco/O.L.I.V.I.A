@@ -3,7 +3,6 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
-
 CODEX_ROOT = Path(__file__).resolve().parents[1]
 RUNNER = CODEX_ROOT / "scripts" / "ars_codex_topology_experiment.py"
 
@@ -53,7 +52,9 @@ def test_reviewer_blind_arms_have_no_reviewer_to_reviewer_edges() -> None:
     for arm_id in ("reviewer-two-plus-synthesis", "reviewer-five-panel", "reviewer-full-seven"):
         plan = runner.plan_for(task, arm_id)
         reviewer_ids = {node["id"] for node in plan["nodes"] if node["phase"] == "blind_review"}
-        assert not any(edge["from"] in reviewer_ids and edge["to"] in reviewer_ids for edge in plan["edges"])
+        assert not any(
+            edge["from"] in reviewer_ids and edge["to"] in reviewer_ids for edge in plan["edges"]
+        )
         assert plan["information_sharing"]["peer_outputs"] == "hidden_until_synthesis"
         for edge in plan["edges"]:
             if edge["from"] in reviewer_ids:

@@ -26,8 +26,7 @@ def _shipped() -> dict:
 
 def _write(tmp_path: Path, data) -> Path:
     p = tmp_path / "registry.json"
-    p.write_text(
-        data if isinstance(data, str) else json.dumps(data), encoding="utf-8")
+    p.write_text(data if isinstance(data, str) else json.dumps(data), encoding="utf-8")
     return p
 
 
@@ -114,10 +113,19 @@ def test_empty_mechanisms_fails(tmp_path):
     assert any("non-empty list" in e for e in _errors_for(tmp_path, data))
 
 
-@pytest.mark.parametrize("field", [
-    "mechanism", "failure_class", "degraded_state", "diagnostic_marker",
-    "downstream_consumer", "terminal_policy_effect", "authority", "pinned_by",
-])
+@pytest.mark.parametrize(
+    "field",
+    [
+        "mechanism",
+        "failure_class",
+        "degraded_state",
+        "diagnostic_marker",
+        "downstream_consumer",
+        "terminal_policy_effect",
+        "authority",
+        "pinned_by",
+    ],
+)
 def test_missing_required_field_fails(tmp_path, field):
     data = _shipped()
     del data["mechanisms"][0][field]
@@ -161,16 +169,16 @@ def test_nonexistent_authority_file_fails(tmp_path):
 
 def test_line_number_reference_forbidden(tmp_path):
     data = _shipped()
-    data["mechanisms"][0]["authority"][0]["file"] = (
-        "scripts/citation_verification_summary.py:62")
+    data["mechanisms"][0]["authority"][0]["file"] = "scripts/citation_verification_summary.py:62"
     errors = _errors_for(tmp_path, data)
     assert any("line-number references are forbidden" in e for e in errors)
 
 
 def test_absent_anchor_fails(tmp_path):
     data = _shipped()
-    data["mechanisms"][0]["authority"][0]["anchor"] = (
-        "this exact sentence appears nowhere in the cited authority file")
+    data["mechanisms"][0]["authority"][0][
+        "anchor"
+    ] = "this exact sentence appears nowhere in the cited authority file"
     errors = _errors_for(tmp_path, data)
     assert any("D3" in e and "not found verbatim" in e for e in errors)
 
@@ -196,15 +204,15 @@ def test_nonexistent_pinned_file_fails(tmp_path):
 def test_missing_pinned_function_fails(tmp_path):
     data = _shipped()
     data["mechanisms"][0]["pinned_by"] = [
-        "scripts/test_verification_gate.py::test_that_was_never_written"]
+        "scripts/test_verification_gate.py::test_that_was_never_written"
+    ]
     errors = _errors_for(tmp_path, data)
     assert any("D4" in e and "not defined" in e for e in errors)
 
 
 def test_function_form_on_non_py_fails(tmp_path):
     data = _shipped()
-    data["mechanisms"][0]["pinned_by"] = [
-        "shared/contracts/degradation_registry.json::test_x"]
+    data["mechanisms"][0]["pinned_by"] = ["shared/contracts/degradation_registry.json::test_x"]
     errors = _errors_for(tmp_path, data)
     assert any("requires a .py path" in e for e in errors)
 
@@ -212,7 +220,8 @@ def test_function_form_on_non_py_fails(tmp_path):
 def test_existing_pinned_function_passes(tmp_path):
     data = _shipped()
     data["mechanisms"][0]["pinned_by"] = [
-        "scripts/test_verification_gate.py::test_all_unreachable_is_unresolvable"]
+        "scripts/test_verification_gate.py::test_all_unreachable_is_unresolvable"
+    ]
     assert _errors_for(tmp_path, data) == []
 
 
@@ -239,8 +248,7 @@ def test_deleted_row_fails_inventory_lock(tmp_path):
     """D5: silently deleting a mechanism row must fail until the lint's
     pinned inventory is updated in the same commit (lock semantics)."""
     data = _shipped()
-    data["mechanisms"] = [
-        r for r in data["mechanisms"] if r["mechanism"] != "vlm_unavailable"]
+    data["mechanisms"] = [r for r in data["mechanisms"] if r["mechanism"] != "vlm_unavailable"]
     errors = _errors_for(tmp_path, data)
     assert any("D5" in e and "missing from the registry" in e for e in errors)
 

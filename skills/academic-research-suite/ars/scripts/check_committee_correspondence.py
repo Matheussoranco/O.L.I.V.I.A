@@ -17,14 +17,9 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_SCHEMA = (
-    REPO_ROOT
-    / "shared"
-    / "contracts"
-    / "human_subjects"
-    / "committee_correspondence.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "human_subjects" / "committee_correspondence.schema.json"
 )
 SOURCE_NAME = "source_letter.txt"
 TRACKER_NAME = "concern_tracker.json"
@@ -100,9 +95,7 @@ def _bundle_member(bundle_root: Path, relative: str, errors: list[str]) -> Path 
     return resolved
 
 
-def _schema_errors(
-    tracker: dict[str, Any], schema_path: Path, errors: list[str]
-) -> bool:
+def _schema_errors(tracker: dict[str, Any], schema_path: Path, errors: list[str]) -> bool:
     schema = _load_json(schema_path, errors)
     if schema is None:
         return True
@@ -156,7 +149,9 @@ def validate_bundle(tracker_path: Path, schema_path: Path = DEFAULT_SCHEMA) -> l
     if tracker["tracker_id"] != f"committee-{source_digest[:12]}":
         errors.append("tracker_id must bind to the first 12 hex characters of source SHA-256")
     if bundle_root.name != source_digest[:12]:
-        errors.append("bundle directory name must equal the first 12 hex characters of source SHA-256")
+        errors.append(
+            "bundle directory name must equal the first 12 hex characters of source SHA-256"
+        )
 
     segments = source_meta["segments"]
     segment_by_id: dict[str, dict[str, Any]] = {}
@@ -273,7 +268,10 @@ def validate_bundle(tracker_path: Path, schema_path: Path = DEFAULT_SCHEMA) -> l
         if view["view_id"] in view_ids:
             errors.append(f"duplicate working view id: {view['view_id']}")
         view_ids.add(view["view_id"])
-        if len(view["concern_ids"]) != len(concern_ids) or set(view["concern_ids"]) != concern_id_set:
+        if (
+            len(view["concern_ids"]) != len(concern_ids)
+            or set(view["concern_ids"]) != concern_id_set
+        ):
             errors.append(f"working view {view['view_id']} must be a full concern-id permutation")
 
     status = tracker["human_subjects_status"]
@@ -298,7 +296,9 @@ def validate_bundle(tracker_path: Path, schema_path: Path = DEFAULT_SCHEMA) -> l
     markers = list(MARKER.finditer(skeleton))
     marker_ids = [match.group(1) for match in markers]
     if marker_ids != concern_ids:
-        errors.append("response skeleton markers must cover every concern exactly once in source order")
+        errors.append(
+            "response skeleton markers must cover every concern exactly once in source order"
+        )
     for index, match in enumerate(markers):
         concern_id = match.group(1)
         end = markers[index + 1].start() if index + 1 < len(markers) else len(skeleton)

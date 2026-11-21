@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GOLD_SET = REPO_ROOT / "evals/gold/rq_framing_patterns/gold_set.json"
 POSITIVE_LABEL = "wording_cliche"
@@ -37,26 +36,110 @@ def _rx(pattern: str) -> re.Pattern[str]:
 
 
 REFERENCE_PATTERNS: tuple[PatternSpec, ...] = (
-    PatternSpec("WP01", "impact/effect frame", _rx(r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*|study\w*)\s+(?:the\s+)?(?:impact|effect)s?\s+of\b.+\bon\b")),
-    PatternSpec("WP02", "relationship frame", _rx(r"\b(?:investigat\w*|examin\w*|explor\w*)?\s*(?:the\s+)?(?:relationship|association|correlation)\s+between\b")),
-    PatternSpec("WP03", "role frame", _rx(r"\b(?:understand\w*|examin\w*|investigat\w*|explor\w*|analyz\w*|assess\w*)\s+(?:the\s+)?role\s+of\b.+\bin\b")),
-    PatternSpec("WP04", "influence frame", _rx(r"\b(?:analyz\w*|investigat\w*|examin\w*|explor\w*)\s+how\b.+\b(?:influences?|affects?)\b")),
-    PatternSpec("WP05", "generic factors frame", _rx(r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*)?\s*factors\s+(?:influencing|affecting|that\s+influence|that\s+affect)\b")),
+    PatternSpec(
+        "WP01",
+        "impact/effect frame",
+        _rx(
+            r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*|study\w*)\s+(?:the\s+)?(?:impact|effect)s?\s+of\b.+\bon\b"
+        ),
+    ),
+    PatternSpec(
+        "WP02",
+        "relationship frame",
+        _rx(
+            r"\b(?:investigat\w*|examin\w*|explor\w*)?\s*(?:the\s+)?(?:relationship|association|correlation)\s+between\b"
+        ),
+    ),
+    PatternSpec(
+        "WP03",
+        "role frame",
+        _rx(
+            r"\b(?:understand\w*|examin\w*|investigat\w*|explor\w*|analyz\w*|assess\w*)\s+(?:the\s+)?role\s+of\b.+\bin\b"
+        ),
+    ),
+    PatternSpec(
+        "WP04",
+        "influence frame",
+        _rx(
+            r"\b(?:analyz\w*|investigat\w*|examin\w*|explor\w*)\s+how\b.+\b(?:influences?|affects?)\b"
+        ),
+    ),
+    PatternSpec(
+        "WP05",
+        "generic factors frame",
+        _rx(
+            r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*)?\s*factors\s+(?:influencing|affecting|that\s+influence|that\s+affect)\b"
+        ),
+    ),
     PatternSpec("WP06", "bare study-of frame", _rx(r"^(?:a|an|the)\s+(?:\w+\s+)?study\s+of\b")),
-    PatternSpec("WP07", "impact case-study frame", _rx(r"\bimpact\s+of\b.+\bon\b.+\bcase\s+study\b|\bcase\s+study\b.+\bimpact\s+of\b")),
-    PatternSpec("WP08", "challenges/opportunities pair", _rx(r"\bchallenges\s+and\s+opportunities\s+of\b")),
-    PatternSpec("WP09", "perception/attitude survey frame", _rx(r"\b(?:perceptions|attitudes)\s+(?:of\b.+\s+)?(?:toward|towards|about)\b")),
-    PatternSpec("WP10", "performance/achievement effect frame", _rx(r"\b(?:the\s+)?effect\s+of\b.+\bon\b.+\b(?:performance|achievement|satisfaction|outcomes?)\b")),
-    PatternSpec("WP11", "achievement relationship frame", _rx(r"\brelationship\s+between\b.+\band\b.+\b(?:performance|achievement|outcomes?)\b")),
-    PatternSpec("WP12", "generic use/application frame", _rx(r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*|assess\w*)\s+(?:the\s+)?(?:use|application|implementation)\s+of\b.+\bin\b")),
-    PatternSpec("WP13", "effectiveness frame", _rx(r"\b(?:investigat\w*|examin\w*|evaluat\w*)?\s*(?:the\s+)?effectiveness\s+of\b.+\b(?:for|in|on)\b")),
-    PatternSpec("WP14", "mediator/moderator template", _rx(r"\b(?:mediating|moderating)\s+role\s+of\b")),
-    PatternSpec("WP15", "adoption/intention/satisfaction factors", _rx(r"\bfactors\s+affecting\b.+\b(?:adoption|intention|satisfaction)\b")),
-    PatternSpec("WP16", "barriers/facilitators pair", _rx(r"\bbarriers\s+and\s+facilitators\s+to\b")),
+    PatternSpec(
+        "WP07",
+        "impact case-study frame",
+        _rx(r"\bimpact\s+of\b.+\bon\b.+\bcase\s+study\b|\bcase\s+study\b.+\bimpact\s+of\b"),
+    ),
+    PatternSpec(
+        "WP08", "challenges/opportunities pair", _rx(r"\bchallenges\s+and\s+opportunities\s+of\b")
+    ),
+    PatternSpec(
+        "WP09",
+        "perception/attitude survey frame",
+        _rx(r"\b(?:perceptions|attitudes)\s+(?:of\b.+\s+)?(?:toward|towards|about)\b"),
+    ),
+    PatternSpec(
+        "WP10",
+        "performance/achievement effect frame",
+        _rx(
+            r"\b(?:the\s+)?effect\s+of\b.+\bon\b.+\b(?:performance|achievement|satisfaction|outcomes?)\b"
+        ),
+    ),
+    PatternSpec(
+        "WP11",
+        "achievement relationship frame",
+        _rx(r"\brelationship\s+between\b.+\band\b.+\b(?:performance|achievement|outcomes?)\b"),
+    ),
+    PatternSpec(
+        "WP12",
+        "generic use/application frame",
+        _rx(
+            r"\b(?:explor\w*|investigat\w*|examin\w*|analyz\w*|assess\w*)\s+(?:the\s+)?(?:use|application|implementation)\s+of\b.+\bin\b"
+        ),
+    ),
+    PatternSpec(
+        "WP13",
+        "effectiveness frame",
+        _rx(
+            r"\b(?:investigat\w*|examin\w*|evaluat\w*)?\s*(?:the\s+)?effectiveness\s+of\b.+\b(?:for|in|on)\b"
+        ),
+    ),
+    PatternSpec(
+        "WP14", "mediator/moderator template", _rx(r"\b(?:mediating|moderating)\s+role\s+of\b")
+    ),
+    PatternSpec(
+        "WP15",
+        "adoption/intention/satisfaction factors",
+        _rx(r"\bfactors\s+affecting\b.+\b(?:adoption|intention|satisfaction)\b"),
+    ),
+    PatternSpec(
+        "WP16", "barriers/facilitators pair", _rx(r"\bbarriers\s+and\s+facilitators\s+to\b")
+    ),
     PatternSpec("WP17", "comparative-study shell", _rx(r"\bcomparative\s+study\s+of\b")),
-    PatternSpec("WP18", "framework/model shell", _rx(r"\btowards?\s+a\s+(?:framework|model)\s+for\b")),
-    PatternSpec("WP19", "technology-enhancement shell", _rx(r"\brole\s+of\s+(?:technology|ai|artificial\s+intelligence|digital\s+tools)\b.+\benhanc\w*\b")),
-    PatternSpec("WP20", "experience-of frame", _rx(r"\b(?:explor\w*|investigat\w*|examin\w*)?\s*(?:the\s+)?experiences\s+of\b.+\b(?:in|with|during)\b")),
+    PatternSpec(
+        "WP18", "framework/model shell", _rx(r"\btowards?\s+a\s+(?:framework|model)\s+for\b")
+    ),
+    PatternSpec(
+        "WP19",
+        "technology-enhancement shell",
+        _rx(
+            r"\brole\s+of\s+(?:technology|ai|artificial\s+intelligence|digital\s+tools)\b.+\benhanc\w*\b"
+        ),
+    ),
+    PatternSpec(
+        "WP20",
+        "experience-of frame",
+        _rx(
+            r"\b(?:explor\w*|investigat\w*|examin\w*)?\s*(?:the\s+)?experiences\s+of\b.+\b(?:in|with|during)\b"
+        ),
+    ),
 )
 
 
@@ -110,7 +193,9 @@ def evaluate_items(items: list[dict[str, Any]]) -> dict[str, Any]:
         if actual_positive and missing_expected:
             errors.append(f"{item_id}: expected patterns not matched: {missing_expected}")
         if not actual_positive and matched:
-            errors.append(f"{item_id}: domain-native item matched unexpected patterns: {sorted(matched)}")
+            errors.append(
+                f"{item_id}: domain-native item matched unexpected patterns: {sorted(matched)}"
+            )
 
         if predicted_positive and actual_positive:
             tp += 1
@@ -121,12 +206,14 @@ def evaluate_items(items: list[dict[str, Any]]) -> dict[str, Any]:
         else:
             tn += 1
 
-        item_results.append({
-            "id": item_id,
-            "label": label,
-            "predicted_positive": predicted_positive,
-            **analysis,
-        })
+        item_results.append(
+            {
+                "id": item_id,
+                "label": label,
+                "predicted_positive": predicted_positive,
+                **analysis,
+            }
+        )
 
     positives = tp + fn
     negatives = tn + fp
@@ -139,7 +226,9 @@ def evaluate_items(items: list[dict[str, Any]]) -> dict[str, Any]:
     if len(items) != 40:
         errors.append(f"sample_n must be 40, got {len(items)}")
     if positives != 20 or negatives != 20:
-        errors.append(f"gold set must be balanced 20/20, got positives={positives}, negatives={negatives}")
+        errors.append(
+            f"gold set must be balanced 20/20, got positives={positives}, negatives={negatives}"
+        )
     if fnr >= 0.30:
         errors.append(f"FNR {fnr:.3f} must be < 0.30")
     if fpr >= 0.20:
@@ -148,7 +237,14 @@ def evaluate_items(items: list[dict[str, Any]]) -> dict[str, Any]:
         errors.append(f"balanced accuracy {balanced_accuracy:.3f} must be >= 0.75")
 
     return {
-        "counts": {"tp": tp, "tn": tn, "fp": fp, "fn": fn, "positives": positives, "negatives": negatives},
+        "counts": {
+            "tp": tp,
+            "tn": tn,
+            "fp": fp,
+            "fn": fn,
+            "positives": positives,
+            "negatives": negatives,
+        },
         "metrics": {"fnr": fnr, "fpr": fpr, "balanced_accuracy": balanced_accuracy},
         "item_results": item_results,
         "errors": errors,

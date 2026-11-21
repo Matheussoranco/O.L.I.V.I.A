@@ -26,7 +26,6 @@ import re
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 PROSE_PATH = REPO_ROOT / "deep-research" / "agents" / "bibliography_agent.md"
 PYTHON_PATH = REPO_ROOT / "scripts" / "contamination_signals.py"
@@ -77,9 +76,7 @@ def _extract_python_venues(text: str) -> set[str]:
         flags=re.DOTALL,
     )
     if not m:
-        raise RuntimeError(
-            "could not locate PREPRINT_VENUES literal in contamination_signals.py"
-        )
+        raise RuntimeError("could not locate PREPRINT_VENUES literal in contamination_signals.py")
     body = m.group(1)
     venues = {
         _normalize(s.strip().strip('"').strip("'"))

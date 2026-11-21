@@ -29,7 +29,10 @@ APPLY_REPORT = (
     "}\n"
     "```\n"
 )
-ANSWER_A = {"en": "Approved. Apply the escalation floor.", "zh-TW": "核准。套用 escalation 樓地板。"}
+ANSWER_A = {
+    "en": "Approved. Apply the escalation floor.",
+    "zh-TW": "核准。套用 escalation 樓地板。",
+}
 ANSWER_C = {"en": "Not approved. Record it only.", "zh-TW": "不予核准。僅作記錄。"}
 
 PACKET = "# Packet\n\n## A. Roadmap\n\ncontent\n\n## B. Letter\n\ncontent\n"
@@ -60,9 +63,15 @@ SYNTH_CELL_COUNTS = {sid: 2 for sid in mod.EXPECTED_ARMS}
 SYNTH_APPLY_REPORT_FILES = 28
 
 
-def _scenario(sid: str, sdir: str, arm_ids: list[str], *, claim_equality: bool = False,
-              pointer_arm: str | None = None,
-              answers: dict[str, dict] | None = None) -> dict:
+def _scenario(
+    sid: str,
+    sdir: str,
+    arm_ids: list[str],
+    *,
+    claim_equality: bool = False,
+    pointer_arm: str | None = None,
+    answers: dict[str, dict] | None = None,
+) -> dict:
     answers = answers or {}
     arms = []
     for aid in arm_ids:
@@ -145,13 +154,15 @@ def make_index() -> dict:
 
 
 def make_tree(root: Path, index: dict) -> None:
-    (root / "heldout_set.json").write_text(json.dumps(index, indent=2, ensure_ascii=False),
-                                           encoding="utf-8")
+    (root / "heldout_set.json").write_text(
+        json.dumps(index, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     for scenario in index["scenarios"]:
         sdir = root / scenario["dir"]
         (sdir / "arms").mkdir(parents=True, exist_ok=True)
         (sdir / "ground_truth.md").write_text(
-            GT_TEMPLATE.format(sid=scenario["id"]), encoding="utf-8")
+            GT_TEMPLATE.format(sid=scenario["id"]), encoding="utf-8"
+        )
         for lang in ("en", "zh-TW"):
             (sdir / f"packet.{lang}.md").write_text(PACKET, encoding="utf-8")
         for arm in scenario["arms"]:
@@ -190,13 +201,15 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
         make_tree(self.root, self.index)
         if self.tree_mutation is not None:
             self.tree_mutation(self.root)
-        with mock.patch.object(mod, "ROOT", self.root), \
-             mock.patch.object(mod, "INDEX", self.root / "heldout_set.json"), \
-             mock.patch.object(mod, "EXPECTED_PAIRS", SYNTH_PAIRS), \
-             mock.patch.object(mod, "EXPECTED_CELL_COUNTS", SYNTH_CELL_COUNTS), \
-             mock.patch.object(mod, "EXPECTED_APPLY_REPORT_FILES", SYNTH_APPLY_REPORT_FILES), \
-             mock.patch("sys.stderr", new_callable=_Buffer) as err, \
-             mock.patch("sys.stdout", new_callable=_Buffer) as out:
+        with mock.patch.object(mod, "ROOT", self.root), mock.patch.object(
+            mod, "INDEX", self.root / "heldout_set.json"
+        ), mock.patch.object(mod, "EXPECTED_PAIRS", SYNTH_PAIRS), mock.patch.object(
+            mod, "EXPECTED_CELL_COUNTS", SYNTH_CELL_COUNTS
+        ), mock.patch.object(
+            mod, "EXPECTED_APPLY_REPORT_FILES", SYNTH_APPLY_REPORT_FILES
+        ), mock.patch("sys.stderr", new_callable=_Buffer) as err, mock.patch(
+            "sys.stdout", new_callable=_Buffer
+        ) as out:
             code = mod.main()
         return code, err.value + out.value
 
@@ -244,8 +257,7 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
     def test_deleted_arm_fails(self) -> None:
         scenario = self.index["scenarios"][2]
         removed = scenario["arms"].pop()
-        scenario["pairs"] = [p for p in scenario["pairs"]
-                             if removed["arm_id"] not in p["arms"]]
+        scenario["pairs"] = [p for p in scenario["pairs"] if removed["arm_id"] not in p["arms"]]
         self.assert_fails("2. P-3 arm-id set is")
 
     def test_deleted_pair_fails(self) -> None:
@@ -340,8 +352,11 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
     def test_literal_hash_in_apply_report_fails(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s2/arms/arm-a.en.md"
-            p.write_text(p.read_text(encoding="utf-8").replace(
-                "<<BASE_DRAFT_HASH>>", "a17c4e0b9d33"), encoding="utf-8")
+            p.write_text(
+                p.read_text(encoding="utf-8").replace("<<BASE_DRAFT_HASH>>", "a17c4e0b9d33"),
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("base_draft_hash is 'a17c4e0b9d33'")
 
@@ -349,9 +364,10 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
         def mutate(root: Path) -> None:
             p = root / "scenarios/s2/arms/arm-a.en.md"
             p.write_text(
-                p.read_text(encoding="utf-8").replace(
-                    '  "patch_digest": "<<PATCH_DIGEST>>"\n', ""),
-                encoding="utf-8")
+                p.read_text(encoding="utf-8").replace('  "patch_digest": "<<PATCH_DIGEST>>"\n', ""),
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails('carries an apply report with 0 "patch_digest" key(s)')
 
@@ -362,27 +378,34 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
                 p.read_text(encoding="utf-8").replace(
                     '  "patch_digest": "<<PATCH_DIGEST>>"\n',
                     '  "patch_digest": "<<PATCH_DIGEST>>",\n'
-                    '  "patch_digest": "<<PATCH_DIGEST>>"\n'),
-                encoding="utf-8")
+                    '  "patch_digest": "<<PATCH_DIGEST>>"\n',
+                ),
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails('carries an apply report with 2 "patch_digest" key(s)')
 
     def test_whole_apply_report_deleted_fails(self) -> None:
         """Removing every hash key must not make the file look report-free."""
+
         def mutate(root: Path) -> None:
             p = root / "scenarios/s2/arms/arm-a.en.md"
             t = p.read_text(encoding="utf-8")
             for token in mod.PLACEHOLDERS:
                 t = "\n".join(l for l in t.splitlines() if token not in l)
             p.write_text(t + "\n", encoding="utf-8")
+
         self.tree_mutation = mutate
         self.assert_fails('carries an apply report with 0 "base_draft_hash" key(s)')
 
     def test_apply_report_block_removed_entirely_fails(self) -> None:
         """Deleting the whole report block trips the pinned report-bearing file count."""
+
         def mutate(root: Path) -> None:
             p = root / "scenarios/s2/arms/arm-a.en.md"
             p.write_text("## H. Response to Reviewers\n\ncontent\n", encoding="utf-8")
+
         self.tree_mutation = mutate
         self.assert_fails("file(s) carry an apply report, expected 28")
 
@@ -392,38 +415,45 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
             p.write_text(
                 p.read_text(encoding="utf-8").replace(
                     '  "report_format_version": "1.2",\n',
-                    '  "report_format_version": "1.2",\n  "report_format_version": "1.2",\n'),
-                encoding="utf-8")
+                    '  "report_format_version": "1.2",\n  "report_format_version": "1.2",\n',
+                ),
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails('with 2 "report_format_version" key(s)')
 
     def test_swapped_placeholder_tokens_fail(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s2/arms/arm-a.en.md"
-            t = (p.read_text(encoding="utf-8")
-                 .replace("<<BASE_DRAFT_HASH>>", "<<TMP>>")
-                 .replace("<<OUTPUT_DRAFT_HASH>>", "<<BASE_DRAFT_HASH>>")
-                 .replace("<<TMP>>", "<<OUTPUT_DRAFT_HASH>>"))
+            t = (
+                p.read_text(encoding="utf-8")
+                .replace("<<BASE_DRAFT_HASH>>", "<<TMP>>")
+                .replace("<<OUTPUT_DRAFT_HASH>>", "<<BASE_DRAFT_HASH>>")
+                .replace("<<TMP>>", "<<OUTPUT_DRAFT_HASH>>")
+            )
             p.write_text(t, encoding="utf-8")
+
         self.tree_mutation = mutate
         self.assert_fails("the token is key-bound")
 
     # --- invariant 9: pointer arms --------------------------------------
     def test_pointer_arm_without_pointer_file_fails(self) -> None:
-        self.tree_mutation = lambda root: (
-            root / "scenarios/s6/arms/arm-c.en.md").write_text(ARM, encoding="utf-8")
+        self.tree_mutation = lambda root: (root / "scenarios/s6/arms/arm-c.en.md").write_text(
+            ARM, encoding="utf-8"
+        )
         self.assert_fails("is not a pointer file")
 
     def test_undeclared_pointer_file_fails(self) -> None:
-        self.tree_mutation = lambda root: (
-            root / "scenarios/s3/arms/arm-c.en.md").write_text(
-                POINTER.format(lang="en"), encoding="utf-8")
+        self.tree_mutation = lambda root: (root / "scenarios/s3/arms/arm-c.en.md").write_text(
+            POINTER.format(lang="en"), encoding="utf-8"
+        )
         self.assert_fails("is a pointer file but the index declares no material_pointer")
 
     def test_pointer_to_missing_file_fails(self) -> None:
-        self.tree_mutation = lambda root: (
-            root / "scenarios/s6/arms/arm-c.en.md").write_text(
-                "ARM-MATERIAL-POINTER: arm-q.en.md\n", encoding="utf-8")
+        self.tree_mutation = lambda root: (root / "scenarios/s6/arms/arm-c.en.md").write_text(
+            "ARM-MATERIAL-POINTER: arm-q.en.md\n", encoding="utf-8"
+        )
         self.assert_fails("points at a missing file")
 
     def test_self_referential_pointer_fails(self) -> None:
@@ -432,7 +462,9 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
         def mutate(root: Path) -> None:
             for lang in ("en", "zh-TW"):
                 (root / f"scenarios/s6/arms/arm-c.{lang}.md").write_text(
-                    f"ARM-MATERIAL-POINTER: arm-c.{lang}.md\n", encoding="utf-8")
+                    f"ARM-MATERIAL-POINTER: arm-c.{lang}.md\n", encoding="utf-8"
+                )
+
         self.tree_mutation = mutate
         self.assert_fails("material_pointer points at itself")
 
@@ -440,7 +472,9 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
         def mutate(root: Path) -> None:
             for lang in ("en", "zh-TW"):
                 (root / f"scenarios/s6/arms/arm-a.{lang}.md").write_text(
-                    f"ARM-MATERIAL-POINTER: arm-b.{lang}.md\n", encoding="utf-8")
+                    f"ARM-MATERIAL-POINTER: arm-b.{lang}.md\n", encoding="utf-8"
+                )
+
         self.tree_mutation = mutate
         self.assert_fails("which is itself a pointer")
 
@@ -448,33 +482,38 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
     def test_material_referencing_ground_truth_fails(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s5/packet.en.md"
-            p.write_text(p.read_text(encoding="utf-8") + "\nSee ground_truth.md.\n",
-                         encoding="utf-8")
+            p.write_text(
+                p.read_text(encoding="utf-8") + "\nSee ground_truth.md.\n", encoding="utf-8"
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("references ground_truth.md")
 
     def test_scripted_answer_leaking_into_material_fails(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s6/arms/arm-a.en.md"
-            p.write_text(p.read_text(encoding="utf-8") + f"\n{ANSWER_A['en']}\n",
-                         encoding="utf-8")
+            p.write_text(p.read_text(encoding="utf-8") + f"\n{ANSWER_A['en']}\n", encoding="utf-8")
+
         self.tree_mutation = mutate
         self.assert_fails("scripted checkpoint answer (en)")
 
     def test_zh_scripted_answer_leaking_into_zh_material_fails(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s6/arms/arm-a.zh-TW.md"
-            p.write_text(p.read_text(encoding="utf-8") + f"\n{ANSWER_A['zh-TW']}\n",
-                         encoding="utf-8")
+            p.write_text(
+                p.read_text(encoding="utf-8") + f"\n{ANSWER_A['zh-TW']}\n", encoding="utf-8"
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("scripted checkpoint answer (zh-TW)")
 
     def test_cross_language_scripted_answer_leak_fails(self) -> None:
         """An English answer pasted into a zh-TW file is still contamination."""
+
         def mutate(root: Path) -> None:
             p = root / "scenarios/s6/arms/arm-a.zh-TW.md"
-            p.write_text(p.read_text(encoding="utf-8") + f"\n{ANSWER_A['en']}\n",
-                         encoding="utf-8")
+            p.write_text(p.read_text(encoding="utf-8") + f"\n{ANSWER_A['en']}\n", encoding="utf-8")
+
         self.tree_mutation = mutate
         self.assert_fails("scripted checkpoint answer (en)")
 
@@ -490,30 +529,39 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
     def test_arm_supplied_section_leaking_into_packet_fails(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s1/packet.en.md"
-            p.write_text(p.read_text(encoding="utf-8")
-                         + "\n## H. Response to Reviewers\n\nx\n", encoding="utf-8")
+            p.write_text(
+                p.read_text(encoding="utf-8") + "\n## H. Response to Reviewers\n\nx\n",
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("contains arm-supplied section(s) ['H']")
 
     def test_arm_missing_its_supplied_section_fails(self) -> None:
-        self.tree_mutation = lambda root: (
-            root / "scenarios/s1/arms/arm-b.zh-TW.md").write_text(
-                "## Z. Something else\n\nx\n", encoding="utf-8")
+        self.tree_mutation = lambda root: (root / "scenarios/s1/arms/arm-b.zh-TW.md").write_text(
+            "## Z. Something else\n\nx\n", encoding="utf-8"
+        )
         self.assert_fails("section set is ['Z'], expected exactly ['H']")
 
     def test_arm_with_extra_undeclared_section_fails(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s1/arms/arm-a.en.md"
-            p.write_text(p.read_text(encoding="utf-8")
-                         + "\n## F. Revised manuscript\n\nsmuggled\n", encoding="utf-8")
+            p.write_text(
+                p.read_text(encoding="utf-8") + "\n## F. Revised manuscript\n\nsmuggled\n",
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("section set is ['F', 'H'], expected exactly ['H']")
 
     def test_arm_with_duplicate_section_fails(self) -> None:
         def mutate(root: Path) -> None:
             p = root / "scenarios/s1/arms/arm-a.en.md"
-            p.write_text(p.read_text(encoding="utf-8")
-                         + "\n## H. Response to Reviewers\n\nagain\n", encoding="utf-8")
+            p.write_text(
+                p.read_text(encoding="utf-8") + "\n## H. Response to Reviewers\n\nagain\n",
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("<duplicate>")
 
@@ -523,9 +571,9 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
 
     # --- invariant 12: ground-truth agreement ---------------------------
     def test_ground_truth_without_pair_structure_fails(self) -> None:
-        self.tree_mutation = lambda root: (
-            root / "scenarios/s3/ground_truth.md").write_text(
-                "# P-3\n\nno table here\n", encoding="utf-8")
+        self.tree_mutation = lambda root: (root / "scenarios/s3/ground_truth.md").write_text(
+            "# P-3\n\nno table here\n", encoding="utf-8"
+        )
         self.assert_fails("has no '## Pair structure' section")
 
     def test_ground_truth_missing_a_cell_fails(self) -> None:
@@ -533,9 +581,11 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
             p = root / "scenarios/s5/ground_truth.md"
             p.write_text(
                 p.read_text(encoding="utf-8").replace(
-                    "| a↔b | `phase2a_verdict` | identical | REV-001 | `NOT_ADDRESSED` both |\n",
-                    ""),
-                encoding="utf-8")
+                    "| a↔b | `phase2a_verdict` | identical | REV-001 | `NOT_ADDRESSED` both |\n", ""
+                ),
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("index declares cells ground_truth.md Pair structure does not")
 
@@ -545,19 +595,25 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
             p.write_text(
                 p.read_text(encoding="utf-8").replace(
                     "## Rule anchors",
-                    "| a↔b | `attribution` | differs | — | x vs y |\n\n## Rule anchors"),
-                encoding="utf-8")
+                    "| a↔b | `attribution` | differs | — | x vs y |\n\n## Rule anchors",
+                ),
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("Pair structure declares cells the index does not")
 
     def test_pair_rows_after_the_next_h2_are_ignored(self) -> None:
         """A later section's table must not be folded into the Pair-structure comparison."""
+
         def mutate(root: Path) -> None:
             p = root / "scenarios/s5/ground_truth.md"
             p.write_text(
                 p.read_text(encoding="utf-8")
                 + "\n## Appendix\n\n| a↔b | `attribution` | differs | — | x vs y |\n",
-                encoding="utf-8")
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         code, output = self.run_checker()
         self.assertEqual(code, 0, output)
@@ -568,21 +624,26 @@ class PersuasionInvarianceFixtureTests(unittest.TestCase):
             p.write_text(
                 p.read_text(encoding="utf-8").replace(
                     "| a↔b | `phase2a_verdict` | identical | REV-001 |",
-                    "| a↔b | `phase2a_verdict` | identical | REV-009 |"),
-                encoding="utf-8")
+                    "| a↔b | `phase2a_verdict` | identical | REV-009 |",
+                ),
+                encoding="utf-8",
+            )
+
         self.tree_mutation = mutate
         self.assert_fails("Pair structure declares cells the index does not")
 
     def test_ground_truth_collapsing_two_targets_into_one_row_fails(self) -> None:
         """Two index cells sharing an observable but not a target need two GT rows."""
         cells = self.index["scenarios"][4]["pairs"][0]["cells"]
-        cells.append({
-            "observable": "phase2a_verdict",
-            "target": "REV-002",
-            "relation": "identical",
-            "expected": {"arm-a": "NOT_ADDRESSED", "arm-b": "NOT_ADDRESSED"},
-            "rule_anchor": "spec §3.1",
-        })
+        cells.append(
+            {
+                "observable": "phase2a_verdict",
+                "target": "REV-002",
+                "relation": "identical",
+                "expected": {"arm-a": "NOT_ADDRESSED", "arm-b": "NOT_ADDRESSED"},
+                "rule_anchor": "spec §3.1",
+            }
+        )
         with mock.patch.dict(SYNTH_CELL_COUNTS, {"P-5": 3}):
             self.assert_fails("index declares cells ground_truth.md Pair structure does not")
 

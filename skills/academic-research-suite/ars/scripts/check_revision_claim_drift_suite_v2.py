@@ -16,11 +16,11 @@ import os
 import re
 import stat
 import sys
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SUITE_REL = "evals/heldout/revision_claim_drift"
@@ -38,12 +38,9 @@ HISTORICAL_TREE_COUNT = 128
 
 HISTORICAL_FILES = {
     f"{SUITE_REL}/adjudication_rubric.md": V1_RUBRIC_SHA256,
-    f"{SUITE_REL}/heldout_set.json":
-        "4b2392e95ae7569907438d9e731ead8eb1db35489b0583a601631d22cdc4eb98",
-    f"{SUITE_REL}/measurement-2026-07-22.json":
-        "d0c7e5f53d21775d32fb820665cf17f6baec056262765767467e56d1e428bd1f",
-    f"{SUITE_REL}/measurement-2026-08-07.json":
-        "1af137c798e6cf3a5d0a742e379a8af78fe802cb924b4ece22cdf57cb881f573",
+    f"{SUITE_REL}/heldout_set.json": "4b2392e95ae7569907438d9e731ead8eb1db35489b0583a601631d22cdc4eb98",
+    f"{SUITE_REL}/measurement-2026-07-22.json": "d0c7e5f53d21775d32fb820665cf17f6baec056262765767467e56d1e428bd1f",
+    f"{SUITE_REL}/measurement-2026-08-07.json": "1af137c798e6cf3a5d0a742e379a8af78fe802cb924b4ece22cdf57cb881f573",
 }
 HISTORICAL_MEASUREMENTS = {
     "measurement-2026-07-22.json",
@@ -59,14 +56,10 @@ TREE_ALGORITHM = (
 
 FIXTURE_HASHES = {
     "README.md": "660ad28ad484cec61aa3d7d5cb47c3119eb75b8a548f9de891e743497732e1c3",
-    "subject_context_attested_only.json":
-        "d8636dc2d8d8173300e04e211a2411a3e0b1cc644e73c0cf5bc46315b5ae7eca",
-    "subject_context_machine_supported.json":
-        "7263fd771706d8e407b8ff7f3750bb1558e4d75524f5454bbfeadfb67118f5bc",
-    "subject_context_not_isolated.json":
-        "24c5d462c9b0184ad2e719dd39cab99d2a08ca598f46ece706fff8e863d6bb5d",
-    "subject_context_unknown.json":
-        "8b470acdf748b629fefed542c1f3d5578eb72ec44423bf8a98c73fcb6a941727",
+    "subject_context_attested_only.json": "d8636dc2d8d8173300e04e211a2411a3e0b1cc644e73c0cf5bc46315b5ae7eca",
+    "subject_context_machine_supported.json": "7263fd771706d8e407b8ff7f3750bb1558e4d75524f5454bbfeadfb67118f5bc",
+    "subject_context_not_isolated.json": "24c5d462c9b0184ad2e719dd39cab99d2a08ca598f46ece706fff8e863d6bb5d",
+    "subject_context_unknown.json": "8b470acdf748b629fefed542c1f3d5578eb72ec44423bf8a98c73fcb6a941727",
 }
 FIXTURE_STATUSES = {
     "subject_context_attested_only.json": "attested_only",
@@ -76,10 +69,20 @@ FIXTURE_STATUSES = {
 }
 
 ROOT_KEYS = {
-    "schema_version", "suite", "run_id", "suite_commit", "execution_manifest",
+    "schema_version",
+    "suite",
+    "run_id",
+    "suite_commit",
+    "execution_manifest",
     "subject_call_plan",
-    "recorded_at", "status", "neutral_cwd", "cli", "instruction_visibility",
-    "context_probe", "attestation", "data_minimization",
+    "recorded_at",
+    "status",
+    "neutral_cwd",
+    "cli",
+    "instruction_visibility",
+    "context_probe",
+    "attestation",
+    "data_minimization",
 }
 STATUS_VALUES = {"machine_supported", "attested_only", "not_isolated", "unknown"}
 STATUS_CLAIMS = {
@@ -221,15 +224,16 @@ def _expected_lock() -> dict[str, Any]:
             ),
         },
         "protected_files": [
-            {"path": path, "sha256": digest}
-            for path, digest in HISTORICAL_FILES.items()
+            {"path": path, "sha256": digest} for path, digest in HISTORICAL_FILES.items()
         ],
-        "protected_trees": [{
-            "path": HISTORICAL_TREE_REL,
-            "file_count": HISTORICAL_TREE_COUNT,
-            "inventory_algorithm": TREE_ALGORITHM,
-            "inventory_sha256": HISTORICAL_TREE_SHA256,
-        }],
+        "protected_trees": [
+            {
+                "path": HISTORICAL_TREE_REL,
+                "file_count": HISTORICAL_TREE_COUNT,
+                "inventory_algorithm": TREE_ALGORITHM,
+                "inventory_sha256": HISTORICAL_TREE_SHA256,
+            }
+        ],
         "mutation_policy": "fail_closed",
     }
 
@@ -259,9 +263,7 @@ def _discover_contract_rows(root: Path) -> list[tuple[Path, dict[str, Any]]]:
                 continue
             mode = path.lstat().st_mode
             if stat.S_ISLNK(mode) or not stat.S_ISREG(mode):
-                raise ContractError(
-                    f"measurement discovery encountered non-regular JSON: {path}"
-                )
+                raise ContractError(f"measurement discovery encountered non-regular JSON: {path}")
             try:
                 text = path.read_bytes().decode("utf-8")
             except (OSError, UnicodeError) as exc:
@@ -300,9 +302,7 @@ def _check_history(root: Path) -> list[tuple[Path, dict[str, Any]]]:
             raise ContractError(f"protected historical byte drift: {ref}: {actual} != {expected}")
     count, digest = _tree_inventory(root, HISTORICAL_TREE_REL)
     if (count, digest) != (HISTORICAL_TREE_COUNT, HISTORICAL_TREE_SHA256):
-        raise ContractError(
-            f"protected historical run-tree drift: count={count}, sha256={digest}"
-        )
+        raise ContractError(f"protected historical run-tree drift: count={count}, sha256={digest}")
     measurements = {
         path.name
         for path in (root / SUITE).iterdir()
@@ -338,27 +338,37 @@ def _expected_amendments() -> dict[str, Any]:
         "suite": "revision_claim_drift",
         "append_only": True,
         "rubrics": [
-            {"version": "1.0", "path": v1_path, "sha256": V1_RUBRIC_SHA256,
-             "status": "frozen_historical"},
-            {"version": "2.0", "path": v2_path, "sha256": V2_RUBRIC_SHA256,
-             "status": "prospective"},
+            {
+                "version": "1.0",
+                "path": v1_path,
+                "sha256": V1_RUBRIC_SHA256,
+                "status": "frozen_historical",
+            },
+            {
+                "version": "2.0",
+                "path": v2_path,
+                "sha256": V2_RUBRIC_SHA256,
+                "status": "prospective",
+            },
         ],
-        "amendments": [{
-            "amendment_id": "RCD-RUBRIC-2026-08-10-001",
-            "recorded_on": "2026-08-10",
-            "issue": 679,
-            "from_version": "1.0",
-            "from_sha256": V1_RUBRIC_SHA256,
-            "to_version": "2.0",
-            "to_sha256": V2_RUBRIC_SHA256,
-            "changes": [
-                "add_C9_non_control_citation_attachment",
-                "replace_ladder_examples_with_canonical_pointers",
-            ],
-            "historical_effect": "none",
-            "historical_rows": rows,
-            "rescoring_permitted": False,
-        }],
+        "amendments": [
+            {
+                "amendment_id": "RCD-RUBRIC-2026-08-10-001",
+                "recorded_on": "2026-08-10",
+                "issue": 679,
+                "from_version": "1.0",
+                "from_sha256": V1_RUBRIC_SHA256,
+                "to_version": "2.0",
+                "to_sha256": V2_RUBRIC_SHA256,
+                "changes": [
+                    "add_C9_non_control_citation_attachment",
+                    "replace_ladder_examples_with_canonical_pointers",
+                ],
+                "historical_effect": "none",
+                "historical_rows": rows,
+                "rescoring_permitted": False,
+            }
+        ],
     }
 
 
@@ -393,9 +403,10 @@ def _check_rubric(root: Path) -> None:
     if _sha256(ladder_path) != CLAIM_LADDER_SHA256:
         raise ContractError("canonical claim-strength ladder target hash drifted")
     ladder_text = ladder_path.read_text(encoding="utf-8")
-    if ladder_text.count("## The ladder") != 1 or ladder_text.count(
-        "## What counts as a move (and what does not)"
-    ) != 1:
+    if (
+        ladder_text.count("## The ladder") != 1
+        or ladder_text.count("## What counts as a move (and what does not)") != 1
+    ):
         raise ContractError("canonical claim-strength ladder target headings drifted")
 
     ledger_path = _safe_file(root, f"{SUITE_REL}/rubric_amendments.json", "rubric ledger")
@@ -408,9 +419,7 @@ def _check_rubric(root: Path) -> None:
             raise ContractError(f"ledger rubric hash mismatch: {item['path']}")
 
 
-_RFC3339 = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$"
-)
+_RFC3339 = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$")
 
 
 def _time(value: str, label: str) -> dt.datetime:
@@ -436,8 +445,10 @@ def _schema_validator(schema: Mapping[str, Any], label: str) -> Draft202012Valid
 def validate_subject_context(
     record: Mapping[str, Any], schema: Mapping[str, Any], label: str = "subject context"
 ) -> None:
-    errors = sorted(_schema_validator(schema, "subject-context schema").iter_errors(record),
-                    key=lambda error: tuple(str(part) for part in error.absolute_path))
+    errors = sorted(
+        _schema_validator(schema, "subject-context schema").iter_errors(record),
+        key=lambda error: tuple(str(part) for part in error.absolute_path),
+    )
     if errors:
         first = errors[0]
         location = ".".join(str(part) for part in first.absolute_path) or "<root>"
@@ -463,9 +474,7 @@ def validate_subject_context(
             raise ContractError(f"{label}: attestation precedes completed context evidence")
 
 
-def _pinned_schema(
-    root: Path, ref: str, expected_sha256: str, label: str
-) -> dict[str, Any]:
+def _pinned_schema(root: Path, ref: str, expected_sha256: str, label: str) -> dict[str, Any]:
     path = _safe_file(root, ref, label)
     if _sha256(path) != expected_sha256:
         raise ContractError(f"{label} byte identity differs from frozen hash")
@@ -483,9 +492,7 @@ def _check_subject_assets(
     dict[str, dict[str, Any]],
 ]:
     schema_ref = f"{SUITE_REL}/subject_context_record.schema.json"
-    schema = _pinned_schema(
-        root, schema_ref, SUBJECT_SCHEMA_SHA256, "subject-context schema"
-    )
+    schema = _pinned_schema(root, schema_ref, SUBJECT_SCHEMA_SHA256, "subject-context schema")
     launcher_schema = _pinned_schema(
         root,
         f"{SUITE_REL}/subject_launcher_config.schema.json",
@@ -498,14 +505,21 @@ def _check_subject_assets(
         CALL_PLAN_SCHEMA_SHA256,
         "subject-call-plan schema",
     )
-    if set(schema.get("required", [])) != ROOT_KEYS or set(schema.get("properties", {})) != ROOT_KEYS:
-        raise ContractError("subject-context schema root keys differ from the frozen closed grammar")
+    if (
+        set(schema.get("required", [])) != ROOT_KEYS
+        or set(schema.get("properties", {})) != ROOT_KEYS
+    ):
+        raise ContractError(
+            "subject-context schema root keys differ from the frozen closed grammar"
+        )
     status_enum = set(schema["properties"]["status"].get("enum", []))
     if status_enum != STATUS_VALUES:
         raise ContractError("subject-context schema status vocabulary drift")
 
     fixture_dir = root / "scripts/fixtures/revision_claim_drift_v2"
-    actual_files = {path.name for path in fixture_dir.iterdir() if path.is_file() or path.is_symlink()}
+    actual_files = {
+        path.name for path in fixture_dir.iterdir() if path.is_file() or path.is_symlink()
+    }
     if actual_files != set(FIXTURE_HASHES):
         raise ContractError(f"subject-context fixture inventory drift: {sorted(actual_files)}")
     records: dict[str, dict[str, Any]] = {}
@@ -531,15 +545,9 @@ def _check_subject_assets(
 
     repository_visible = copy.deepcopy(records["subject_context_unknown.json"])
     repository_visible["status"] = "not_isolated"
-    repository_visible["neutral_cwd"]["repo_membership_probe"] = (
-        "outside_suite_repository"
-    )
-    repository_visible["instruction_visibility"]["repository_instructions"] = (
-        "visible"
-    )
-    validate_subject_context(
-        repository_visible, schema, "derived repository-visible record"
-    )
+    repository_visible["neutral_cwd"]["repo_membership_probe"] = "outside_suite_repository"
+    repository_visible["instruction_visibility"]["repository_instructions"] = "visible"
+    validate_subject_context(repository_visible, schema, "derived repository-visible record")
     return schema, launcher_schema, call_plan_schema, records
 
 
@@ -571,17 +579,14 @@ def _validate_launcher_binding(
         raise ContractError("launcher-config ref must appear in raw_outputs.paths")
     artifact = _require_object(_strict_json(path), "launcher-config artifact")
     errors = list(
-        _schema_validator(launcher_schema, "subject-launcher-config schema").iter_errors(
-            artifact
-        )
+        _schema_validator(launcher_schema, "subject-launcher-config schema").iter_errors(artifact)
     )
     if errors:
         raise ContractError(f"launcher-config artifact fails schema: {errors[0].message}")
     if artifact["suite"] != record["suite"] or artifact["run_id"] != record["run_id"]:
         raise ContractError("launcher-config suite/run_id mismatch")
     invocation = {
-        key: artifact[key]
-        for key in ("launcher", "working_directory", "instruction_loading")
+        key: artifact[key] for key in ("launcher", "working_directory", "instruction_loading")
     }
     if artifact["invocation_sha256"] != _canonical_object_sha256(invocation):
         raise ContractError("launcher-config invocation hash mismatch")
@@ -593,13 +598,12 @@ def _validate_launcher_binding(
         "inside_suite_repository": "inside_suite_repository",
         "unresolved": "unresolved",
     }
-    if artifact["working_directory"]["policy"] != membership_to_policy[
-        record["neutral_cwd"]["repo_membership_probe"]
-    ]:
+    if (
+        artifact["working_directory"]["policy"]
+        != membership_to_policy[record["neutral_cwd"]["repo_membership_probe"]]
+    ):
         raise ContractError("launcher-config/context working-directory policy mismatch")
-    if artifact["working_directory"]["pwd_p_sha256"] != record["neutral_cwd"][
-        "pwd_p_sha256"
-    ]:
+    if artifact["working_directory"]["pwd_p_sha256"] != record["neutral_cwd"]["pwd_p_sha256"]:
         raise ContractError("launcher-config/context pwd -P hash mismatch")
     sealed_at = _time(artifact["sealed_at"], "launcher_config.sealed_at")
     probe_started_at = record["context_probe"]["started_at"]
@@ -636,9 +640,7 @@ def _validate_call_plan_binding(
     if expected_ref not in raw_paths:
         raise ContractError("subject-call-plan ref must appear in raw_outputs.paths")
     plan = _require_object(_strict_json(path), "subject-call-plan artifact")
-    errors = list(
-        _schema_validator(call_plan_schema, "subject-call-plan schema").iter_errors(plan)
-    )
+    errors = list(_schema_validator(call_plan_schema, "subject-call-plan schema").iter_errors(plan))
     if errors:
         raise ContractError(f"subject-call-plan artifact fails schema: {errors[0].message}")
     if (
@@ -692,11 +694,7 @@ def _validate_call_plan_binding(
     arm_ids = plan["arm_ids"]
     if arm_ids != sorted(set(arm_ids)):
         raise ContractError("subject-call-plan arm_ids must be sorted and unique")
-    result_arm_ids = (
-        report.get("results", {})
-        .get("revision_claim_drift_v2", {})
-        .get("arm_ids")
-    )
+    result_arm_ids = report.get("results", {}).get("revision_claim_drift_v2", {}).get("arm_ids")
     if result_arm_ids != arm_ids:
         raise ContractError("subject-call plan arm_ids differ from the published v2 layer")
     arm_roles = report.get("results", {}).get("arm_roles", {})
@@ -785,15 +783,17 @@ def _validate_call_plan_binding(
     if any(judge.get("blinded_to") != required_blinding for judge in judge_rows):
         raise ContractError("future #679 judges must use the frozen blinding dimensions")
     for plan_judge, row_judge in zip(plan_judges, judge_rows, strict=True):
-        if any(
-            row_judge.get(key) != plan_judge[key]
-            for key in ("judge_id", "model_id", "model_family", "blinded_to")
-        ) or row_judge.get("prompt_ref") != plan_judge["prompt_template"]["ref"]:
+        if (
+            any(
+                row_judge.get(key) != plan_judge[key]
+                for key in ("judge_id", "model_id", "model_family", "blinded_to")
+            )
+            or row_judge.get("prompt_ref") != plan_judge["prompt_template"]["ref"]
+        ):
             raise ContractError("published judge identity/template differs from call plan")
         template_ref = plan_judge["prompt_template"]["ref"]
         expected_template_ref = (
-            f"{RUNS_PREFIX}{record['run_id']}/raw/"
-            f"judge.{plan_judge['judge_id']}.template.txt"
+            f"{RUNS_PREFIX}{record['run_id']}/raw/" f"judge.{plan_judge['judge_id']}.template.txt"
         )
         if template_ref != expected_template_ref:
             raise ContractError("judge prompt-template ref is not canonical")
@@ -861,15 +861,13 @@ def _validate_call_plan_binding(
             if _sha256(prompt_path) != prompt["sha256"]:
                 raise ContractError("subject-call-plan subject prompt hash mismatch")
         else:
-            expected_template_ref = plan_judge_by_id[call["judge_id"]][
-                "prompt_template"
-            ]["ref"]
-            expected_subject_prompt_ref = subject_by_replicate[
-                call["item_replicate_id"]
-            ]["prompt"]["ref"]
-            expected_subject_output_ref = subject_by_replicate[
-                call["item_replicate_id"]
-            ]["output_ref"]
+            expected_template_ref = plan_judge_by_id[call["judge_id"]]["prompt_template"]["ref"]
+            expected_subject_prompt_ref = subject_by_replicate[call["item_replicate_id"]]["prompt"][
+                "ref"
+            ]
+            expected_subject_output_ref = subject_by_replicate[call["item_replicate_id"]][
+                "output_ref"
+            ]
             expected_deferred = {
                 "ref": expected_prompt_ref,
                 "sha256": None,
@@ -970,10 +968,13 @@ def _check_manifest_binding(
     if len(parts) < 2 or parts[-2] != record["run_id"]:
         raise ContractError("subject-context run_id does not match manifest parent directory")
     manifest = _require_object(_strict_json(path), "execution manifest")
-    schema_path = _safe_file(root, "evals/heldout/execution_manifest.schema.json",
-                             "execution-manifest schema")
+    schema_path = _safe_file(
+        root, "evals/heldout/execution_manifest.schema.json", "execution-manifest schema"
+    )
     manifest_schema = _require_object(_strict_json(schema_path), "execution-manifest schema")
-    errors = list(_schema_validator(manifest_schema, "execution-manifest schema").iter_errors(manifest))
+    errors = list(
+        _schema_validator(manifest_schema, "execution-manifest schema").iter_errors(manifest)
+    )
     if errors:
         raise ContractError(f"bound execution manifest fails schema: {errors[0].message}")
     if manifest["suite"] != record["suite"]:
@@ -1045,10 +1046,16 @@ def _check_manifest_binding(
     if _time(record["recorded_at"], "subject_context.recorded_at") > first_call_start:
         raise ContractError("subject-context gate was not sealed before the first planned call")
     probe_completed = record["context_probe"]["completed_at"]
-    if probe_completed is not None and _time(probe_completed, "context_probe.completed_at") > first_call_start:
+    if (
+        probe_completed is not None
+        and _time(probe_completed, "context_probe.completed_at") > first_call_start
+    ):
         raise ContractError("context probe was not completed before the first planned call")
     attestation = record["attestation"]
-    if attestation is not None and _time(attestation["attested_at"], "attestation.attested_at") > first_call_start:
+    if (
+        attestation is not None
+        and _time(attestation["attested_at"], "attestation.attested_at") > first_call_start
+    ):
         raise ContractError("operator attestation was not recorded before the first planned call")
     return manifest
 
@@ -1100,9 +1107,7 @@ def _check_claim_language(report: Mapping[str, Any], status: str) -> None:
             or "prompt isolation" in normalized
             or re.search(r"\b(?:isolated|isolation)\b", normalized)
         ):
-            raise ContractError(
-                f"{location}: claim-shaped isolation keys are forbidden"
-            )
+            raise ContractError(f"{location}: claim-shaped isolation keys are forbidden")
 
 
 def validate_prospective_measurement(
@@ -1118,9 +1123,7 @@ def validate_prospective_measurement(
         _strict_json(measurement_schema_path), "measurement-report schema"
     )
     measurement_errors = sorted(
-        _schema_validator(
-            measurement_schema, "measurement-report schema"
-        ).iter_errors(report),
+        _schema_validator(measurement_schema, "measurement-report schema").iter_errors(report),
         key=lambda error: tuple(str(part) for part in error.absolute_path),
     )
     if measurement_errors:
@@ -1188,9 +1191,7 @@ def validate_prospective_measurement(
     if ref not in raw_paths:
         raise ContractError("subject-context ref must appear verbatim in raw_outputs.paths")
     _validate_launcher_binding(root, record, config, raw_paths, launcher_schema)
-    plan = _validate_call_plan_binding(
-        root, report, record, config, raw_paths, call_plan_schema
-    )
+    plan = _validate_call_plan_binding(root, report, record, config, raw_paths, call_plan_schema)
     row_manifest = report.get("execution_manifest")
     if not isinstance(row_manifest, Mapping):
         raise ContractError("prospective row lacks execution_manifest binding")
@@ -1206,7 +1207,10 @@ def validate_prospective_measurement(
     adjudication = report.get("adjudication", {})
     prereg = report.get("preregistration", {})
     for label, value in (("adjudication", adjudication), ("preregistration", prereg)):
-        if value.get("rubric_ref") != expected_ref or value.get("rubric_sha256") != V2_RUBRIC_SHA256:
+        if (
+            value.get("rubric_ref") != expected_ref
+            or value.get("rubric_sha256") != V2_RUBRIC_SHA256
+        ):
             raise ContractError(f"{label}: prospective row did not opt into the frozen v2 rubric")
     if prereg.get("frozen_commit") != record["suite_commit"]:
         raise ContractError("preregistration frozen_commit differs from context record")
@@ -1351,11 +1355,8 @@ def validate_prospective_measurement(
                 raise ContractError("confirmed C9 decision has invalid authority/result")
             confirmed_by_finding.setdefault(finding_id, []).append(pair)
         elif disposition == "rejected":
-            valid_rejection = (
-                criterion_ref == "C3" and reason_code == "authorized_under_C3"
-            ) or (
-                criterion_ref == "C9"
-                and reason_code == "no_citation_attachment_violation"
+            valid_rejection = (criterion_ref == "C3" and reason_code == "authorized_under_C3") or (
+                criterion_ref == "C9" and reason_code == "no_citation_attachment_violation"
             )
             if not valid_rejection or finding_id is not None:
                 raise ContractError("rejected C9 decision has invalid closed reason")
@@ -1364,9 +1365,15 @@ def validate_prospective_measurement(
     if decision_pairs != raw_true_pairs or len(decision_pairs) != len(set(decision_pairs)):
         raise ContractError("C9 decisions must exactly resolve every typed raw true flag")
 
-    for _location, override_text in _walk_strings(report.get("adjudication", {}).get("overrides", [])):
+    for _location, override_text in _walk_strings(
+        report.get("adjudication", {}).get("overrides", [])
+    ):
         lowered_override = override_text.casefold()
-        if re.search(r"\bc9\b", lowered_override) or "citation_attachment" in lowered_override or "citation-attachment" in lowered_override:
+        if (
+            re.search(r"\bc9\b", lowered_override)
+            or "citation_attachment" in lowered_override
+            or "citation-attachment" in lowered_override
+        ):
             raise ContractError("C9 decisions cannot be routed through generic overrides")
     finding_ids: set[str] = set()
     for index, finding in enumerate(findings):
@@ -1423,15 +1430,14 @@ def validate_prospective_measurement(
             judge = reported_judges.get(judge_id)
             if judge is None or not any(
                 item.get("item_id") == finding["item_replicate_id"]
-                and item.get("citation_attachment") == {
+                and item.get("citation_attachment")
+                == {
                     "criterion": "C9",
                     "flag": True,
                 }
                 for item in judge.get("per_item", [])
             ):
-                raise ContractError(
-                    "each confirmed C9 finding must replay to a raw judge flag"
-                )
+                raise ContractError("each confirmed C9 finding must replay to a raw judge flag")
         for key in (
             "citation_tokens_sha256",
             "original_attachment_sha256",
@@ -1448,9 +1454,7 @@ def validate_prospective_measurement(
         attachment_bindings: dict[str, dict[str, str]] = {}
         for field, suffix in attachment_specs:
             attachment_ref = finding[f"{field}_ref"]
-            expected_attachment_ref = (
-                f"{RUNS_PREFIX}{record['run_id']}/c9/{finding_id}.{suffix}"
-            )
+            expected_attachment_ref = f"{RUNS_PREFIX}{record['run_id']}/c9/{finding_id}.{suffix}"
             if attachment_ref != expected_attachment_ref:
                 raise ContractError(f"C9 {field}_ref is not the canonical run-local path")
             attachment_path = _safe_file(
@@ -1470,9 +1474,7 @@ def validate_prospective_measurement(
                 "sha256": finding[f"{field}_sha256"],
             }
         evidence_ref = finding["evidence_ref"]
-        expected_evidence_ref = (
-            f"{RUNS_PREFIX}{record['run_id']}/c9/{finding_id}.json"
-        )
+        expected_evidence_ref = f"{RUNS_PREFIX}{record['run_id']}/c9/{finding_id}.json"
         if evidence_ref != expected_evidence_ref:
             raise ContractError("C9 evidence_ref is not the canonical run-local path")
         evidence_path = _safe_file(
@@ -1485,9 +1487,7 @@ def validate_prospective_measurement(
             raise ContractError("C9 evidence artifact hash mismatch")
         if evidence_ref not in raw_paths:
             raise ContractError("C9 evidence_ref must appear in raw_outputs.paths")
-        evidence = _require_object(
-            _strict_json(evidence_path), f"C9 findings[{index}] evidence"
-        )
+        evidence = _require_object(_strict_json(evidence_path), f"C9 findings[{index}] evidence")
         expected_evidence = {
             "schema_version": "revision-claim-drift-c9-evidence/1.0",
             "suite": "revision_claim_drift",
@@ -1591,7 +1591,10 @@ def run_checks(root: Path | str = REPO_ROOT) -> list[str]:
     # no-measurement boundary is intentionally revised, every 1.1 row must also
     # survive the prospective context replay below.
     for _path, value in measurement_rows:
-        if isinstance(value, Mapping) and value.get("measurement_contract") == "heldout-measurement/1.1":
+        if (
+            isinstance(value, Mapping)
+            and value.get("measurement_contract") == "heldout-measurement/1.1"
+        ):
             validate_prospective_measurement(value, root_path, schema)
 
     return [

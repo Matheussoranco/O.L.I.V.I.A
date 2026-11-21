@@ -45,9 +45,7 @@ def test_schema_opening_fails() -> None:
 def test_proposed_result_values_must_remain_false() -> None:
     texts = _texts()
     schema = json.loads(texts[guard.FINDINGS_SCHEMA])
-    schema["$defs"]["option"]["properties"]["proposed_result_values"] = {
-        "type": "boolean"
-    }
+    schema["$defs"]["option"]["properties"]["proposed_result_values"] = {"type": "boolean"}
     texts[guard.FINDINGS_SCHEMA] = json.dumps(schema)
     assert "proposed_result_values" in "\n".join(guard.check_contracts(texts))
 
@@ -66,9 +64,7 @@ def test_adjudication_must_retain_raw_expert_labels() -> None:
     required = schema["$defs"]["finding"]["required"]
     required.remove("expert_labels")
     texts[guard.ADJUDICATION_SCHEMA] = json.dumps(schema)
-    assert "finding rows need raw expert labels" in "\n".join(
-        guard.check_contracts(texts)
-    )
+    assert "finding rows need raw expert labels" in "\n".join(guard.check_contracts(texts))
 
 
 def test_adjudication_must_keep_exact_five_way_blinding() -> None:
@@ -95,9 +91,7 @@ def test_measurement_call_plan_cannot_enable_api_or_drop_calls() -> None:
     plan["api_spend_ceiling_usd"] = 1
     plan["calls"].pop()
     texts[guard.CALL_PLAN] = json.dumps(plan)
-    assert "24-call subscription/USD-0" in "\n".join(
-        guard.check_measurement_assets(texts)
-    )
+    assert "24-call subscription/USD-0" in "\n".join(guard.check_measurement_assets(texts))
 
 
 def test_measurement_suite_lock_hash_mutation_fails() -> None:
@@ -133,9 +127,7 @@ def test_runtime_role_removal_fails() -> None:
         '("EIC", "R1", "R2", "R3", "DA")',
         '("EIC", "R1", "R2", "R3")',
     )
-    assert "role map drift" in "\n".join(
-        guard.check_python(guard.RUNTIME, source, runtime=True)
-    )
+    assert "role map drift" in "\n".join(guard.check_python(guard.RUNTIME, source, runtime=True))
 
 
 def test_cli_command_removal_fails() -> None:
@@ -150,7 +142,8 @@ def test_cli_command_removal_fails() -> None:
 
 def test_runtime_conflict_line_check_removal_fails() -> None:
     source = _texts()[guard.RUNTIME].replace(
-        "or text.splitlines().count(expected_conflicts) != 1", "",
+        "or text.splitlines().count(expected_conflicts) != 1",
+        "",
     )
     assert "exact conflict line" in "\n".join(
         guard.check_python(guard.RUNTIME, source, runtime=True)
@@ -174,9 +167,7 @@ def test_formative_marker_wiring_removal_fails() -> None:
 
 def test_synthesizer_five_role_check_removal_fails() -> None:
     texts = _texts()
-    texts[guard.SYNTH] = texts[guard.SYNTH].replace(
-        "EIC, R1, R2, R3, and DA", "available cards"
-    )
+    texts[guard.SYNTH] = texts[guard.SYNTH].replace("EIC, R1, R2, R3, and DA", "available cards")
     assert "EIC, R1, R2, R3, and DA" in "\n".join(guard.check_wiring(texts))
 
 
@@ -227,9 +218,7 @@ def test_measurement_cannot_drop_human_expert_exception() -> None:
 
 
 def test_phase1_checker_accepts_pointer_commitment_without_extra_h2() -> None:
-    contract = json.loads(
-        (guard.REPO_ROOT / "shared/contracts/reviewer/full.json").read_text()
-    )
+    contract = json.loads((guard.REPO_ROOT / "shared/contracts/reviewer/full.json").read_text())
     lines = ["## Contract Paraphrase", ""]
     for dimension in contract["acceptance_dimensions"]:
         lines.extend(

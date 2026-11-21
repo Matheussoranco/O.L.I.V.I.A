@@ -6,18 +6,17 @@ import ast
 import json
 import shutil
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 import pytest
-
 
 SCRIPTS = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
 
 import check_cross_document_consistency_advisory_integration as guard  # noqa: E402
-
 
 COPIED_FILES = tuple(
     dict.fromkeys(
@@ -120,9 +119,7 @@ def test_frozen_legacy_and_template_identities_are_load_bearing(
 
 
 @pytest.mark.parametrize("relative", tuple(guard.NEW_SCHEMA_HASHES))
-def test_five_new_schema_exact_identities_are_load_bearing(
-    tmp_path: Path, relative: Path
-) -> None:
+def test_five_new_schema_exact_identities_are_load_bearing(tmp_path: Path, relative: Path) -> None:
     root = _tree(tmp_path)
     path = root / relative
     path.write_bytes(path.read_bytes() + b" ")
@@ -132,7 +129,10 @@ def test_five_new_schema_exact_identities_are_load_bearing(
 def test_schema_conditional_branch_loosening_and_substitution_fail(tmp_path: Path) -> None:
     mutations: tuple[tuple[Path, Callable[[dict[str, Any]], None]], ...] = (
         (guard.SIDECAR_SCHEMA, lambda value: value["allOf"][0].update({"then": {}})),
-        (guard.EVIDENCE_SCHEMA, lambda value: value["$defs"]["methods_reported_analyses_slots"]["oneOf"].append({})),
+        (
+            guard.EVIDENCE_SCHEMA,
+            lambda value: value["$defs"]["methods_reported_analyses_slots"]["oneOf"].append({}),
+        ),
         (guard.MANIFEST_SCHEMA, lambda value: value["$defs"]["artifact"]["allOf"].pop()),
         (guard.DRAFT_SCHEMA, lambda value: value["$defs"]["observation"]["allOf"].pop()),
         (guard.ADVISORY_SCHEMA, lambda value: value["$defs"]["final_observation"]["allOf"].pop()),
@@ -171,7 +171,12 @@ def test_schema_external_ref_allowlist_rejects_claimintent_or_legacy_carrier(
         (guard.SIDECAR_SCHEMA, "schema_version", "preregistration-artifact/2.0", "schema_version"),
         (guard.EVIDENCE_SCHEMA, "schema_version", "evidence-row/1.1", "schema_version"),
         (guard.EVIDENCE_SCHEMA, "surface", "phase_e_claim_verification", "surface drifted"),
-        (guard.MANIFEST_SCHEMA, "schema_version", "cross-document-source-manifest/2.0", "schema_version"),
+        (
+            guard.MANIFEST_SCHEMA,
+            "schema_version",
+            "cross-document-source-manifest/2.0",
+            "schema_version",
+        ),
         (guard.DRAFT_SCHEMA, "layer", "DETERMINISTIC", "runtime constant"),
         (guard.ADVISORY_SCHEMA, "layer", "DETERMINISTIC", "layer must equal"),
         (guard.ADVISORY_SCHEMA, "evaluation_status", "MEASURED", "evaluation_status"),
@@ -262,11 +267,15 @@ def test_evidence_row_bilateral_and_three_witness_matrix_is_load_bearing(
         if mutation == "pair":
             schema["$defs"]["pair_kind"]["enum"][0] = "consent_protocol"
         elif mutation == "role":
-            schema["$defs"]["manuscript_preregistration_slots"]["prefixItems"][2]["$ref"] = "#/$defs/slot_results"
+            schema["$defs"]["manuscript_preregistration_slots"]["prefixItems"][2][
+                "$ref"
+            ] = "#/$defs/slot_results"
         elif mutation == "cardinality":
             schema["$defs"]["manuscript_preregistration_slots"]["minItems"] = 2
         elif mutation == "state":
-            schema["$defs"]["evidence_slot"]["properties"]["evidence_state"]["enum"].append("consistent")
+            schema["$defs"]["evidence_slot"]["properties"]["evidence_state"]["enum"].append(
+                "consistent"
+            )
         elif mutation == "checked_scope":
             schema["$defs"]["checked_scope"]["required"].remove("scope_sha256")
         else:
@@ -288,9 +297,7 @@ def test_evidence_row_bilateral_and_three_witness_matrix_is_load_bearing(
     "mutation",
     ("outcome", "finding", "negative", "roster", "ceiling", "conditional", "prereg_slots"),
 )
-def test_draft_semantic_input_matrix_is_load_bearing(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_draft_semantic_input_matrix_is_load_bearing(tmp_path: Path, mutation: str) -> None:
     root = _tree(tmp_path)
 
     def mutate(schema: dict[str, Any]) -> None:
@@ -340,9 +347,13 @@ def test_final_carrier_roster_binding_and_noninterference_are_load_bearing(
         elif mutation == "binding":
             schema["$defs"]["input_binding"]["required"].remove("accepted_draft_sha256")
         elif mutation == "boundary":
-            schema["$defs"]["boundary"]["properties"]["stage_5_routing_unchanged"] = {"type": "boolean"}
+            schema["$defs"]["boundary"]["properties"]["stage_5_routing_unchanged"] = {
+                "type": "boolean"
+            }
         else:
-            schema["$defs"]["final_observation"]["properties"]["evidence_row"]["$ref"] = "../evidence/evidence_row_v1_1.schema.json"
+            schema["$defs"]["final_observation"]["properties"]["evidence_row"][
+                "$ref"
+            ] = "../evidence/evidence_row_v1_1.schema.json"
 
     _rewrite_json(root, guard.ADVISORY_SCHEMA, mutate)
     expected = {
@@ -370,7 +381,11 @@ def test_parallel_score_or_consent_contract_fields_fail(tmp_path: Path) -> None:
     ("old", "new", "marker"),
     (
         ("MAX_PAGE_SIZE = 25", "MAX_PAGE_SIZE = 26", "MAX_PAGE_SIZE"),
-        ('"abstract_results": ("abstract", "results"),', '"abstract_results": ("results", "abstract"),', "PAIR_ROLES"),
+        (
+            '"abstract_results": ("abstract", "results"),',
+            '"abstract_results": ("results", "abstract"),',
+            "PAIR_ROLES",
+        ),
         ('"RESOURCE_LIMIT",', '"UNBOUNDED_ERROR",', "DIAGNOSTIC_CODES"),
         ('TEMPLATE_SHA256 = "40054e26', 'TEMPLATE_SHA256 = "50054e26', "template digest"),
         ('"manuscript_preregistration": (', '"consent_protocol": (', "PAIR_ROLES"),
@@ -394,9 +409,7 @@ def test_runtime_structural_constants_are_load_bearing(
         "import urllib.request\n",
     ),
 )
-def test_runtime_model_network_or_process_import_fails(
-    tmp_path: Path, statement: str
-) -> None:
+def test_runtime_model_network_or_process_import_fails(tmp_path: Path, statement: str) -> None:
     root = _tree(tmp_path)
     path = root / guard.RUNTIME
     path.write_text(statement + path.read_text(encoding="utf-8"), encoding="utf-8")
@@ -442,7 +455,7 @@ def test_pure_renderer_reachable_io_fails(tmp_path: Path) -> None:
         ('add_parser("build-preregistration-artifact"', 'add_parser("build-sidecar"'),
         ('for name in ("finalize", "validate", "render")', 'for name in ("finalize", "validate")'),
         ('add_argument("--page-size"', 'add_argument("--unbounded-page-size"'),
-        ('print(f"ADVISORY_UNAVAILABLE:{exc.code}"', 'print(str(exc)'),
+        ('print(f"ADVISORY_UNAVAILABLE:{exc.code}"', "print(str(exc)"),
     ),
 )
 def test_cli_and_bounded_diagnostic_markers_are_load_bearing(
@@ -624,7 +637,9 @@ def test_660_672_machine_join_and_order_are_load_bearing(tmp_path: Path) -> None
     _assert_error(root, "exact accepted-draft ID/SHA machine join")
 
     root = _tree(tmp_path / "order")
-    _replace_where_present(root, pipeline, "#660 first and #672 second", "#672 first and #660 second")
+    _replace_where_present(
+        root, pipeline, "#660 first and #672 second", "#672 first and #660 second"
+    )
     _assert_error(root, "order, distinct failure, nonblocking, or stale")
 
 
@@ -657,9 +672,7 @@ def test_unmeasured_heldout_rejects_extra_directory_and_symlink(tmp_path: Path) 
         "#672 proves cross-document agreement.",
     ),
 )
-def test_affirmative_semantic_claim_ceiling_is_load_bearing(
-    tmp_path: Path, claim: str
-) -> None:
+def test_affirmative_semantic_claim_ceiling_is_load_bearing(tmp_path: Path, claim: str) -> None:
     root = _tree(tmp_path)
     path = root / guard.PROTOCOL
     path.write_text(path.read_text(encoding="utf-8") + f"\n\n{claim}\n", encoding="utf-8")
@@ -690,9 +703,7 @@ def test_ci_manifest_and_direct_workflow_guard_are_load_bearing(tmp_path: Path) 
     "payload",
     ('{"$schema":"a","$schema":"b"}', '{"value":NaN}'),
 )
-def test_duplicate_or_nonfinite_schema_json_fails_closed(
-    tmp_path: Path, payload: str
-) -> None:
+def test_duplicate_or_nonfinite_schema_json_fails_closed(tmp_path: Path, payload: str) -> None:
     root = _tree(tmp_path)
     (root / guard.SIDECAR_SCHEMA).write_text(payload, encoding="utf-8")
     _assert_error(root, "schema load/check failed")

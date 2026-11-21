@@ -43,10 +43,11 @@ import sys
 import tempfile
 import time
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import yaml
 
@@ -115,11 +116,7 @@ def _ledger_lock(
     Acquisition is non-blocking with a bounded retry loop so contention or an
     unusable lock path fails visibly instead of hanging a command forever.
     """
-    timeout = (
-        LEDGER_LOCK_TIMEOUT_SECONDS
-        if timeout_seconds is None
-        else timeout_seconds
-    )
+    timeout = LEDGER_LOCK_TIMEOUT_SECONDS if timeout_seconds is None else timeout_seconds
     if timeout < 0:
         raise LedgerLockError("ledger lock timeout must be non-negative")
 
@@ -153,9 +150,7 @@ def _ledger_lock(
                         ) from exc
                     time.sleep(min(LEDGER_LOCK_POLL_SECONDS, remaining))
                     continue
-                raise LedgerLockError(
-                    f"cannot acquire peer lock: {exc}"
-                ) from exc
+                raise LedgerLockError(f"cannot acquire peer lock: {exc}") from exc
 
         yield
     finally:
@@ -223,8 +218,7 @@ def _validate_passport_environment(passport_path: Path | None) -> tuple[Path, Pa
     if log_path.exists() and not os.access(log_path, os.W_OK):
         print(
             _err(
-                f"read-log path target is unwritable at {log_path}; "
-                "existing file not writable"
+                f"read-log path target is unwritable at {log_path}; " "existing file not writable"
             ),
             file=sys.stderr,
         )
@@ -261,9 +255,7 @@ def _load_log(log_path: Path) -> dict[str, Any]:
         raw = log_path.read_bytes()
         text = raw.decode("utf-8")
     except (OSError, UnicodeDecodeError) as exc:
-        raise LedgerValidationError(
-            f"existing ledger cannot be read as UTF-8: {exc}"
-        ) from exc
+        raise LedgerValidationError(f"existing ledger cannot be read as UTF-8: {exc}") from exc
     try:
         data = yaml.load(text, Loader=_UniqueKeySafeLoader)
     except yaml.YAMLError as exc:
@@ -286,9 +278,7 @@ def _save_log(log_path: Path, data: dict[str, Any]) -> None:
     an owned temporary file is removed on failure.
     """
     _validated_rows(data)
-    payload = yaml.safe_dump(
-        data, sort_keys=False, allow_unicode=True
-    ).encode("utf-8")
+    payload = yaml.safe_dump(data, sort_keys=False, allow_unicode=True).encode("utf-8")
     temp_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(
@@ -338,7 +328,9 @@ def _build_read_scope(args: argparse.Namespace) -> dict | None:
     note_given = args.note is not None
     errors: list[str] = []
     if args.unmark and (args.scope is not None or locator_given or note_given):
-        errors.append("--scope/--locator/--note cannot be combined with --unmark (rescinding takes no attestation)")
+        errors.append(
+            "--scope/--locator/--note cannot be combined with --unmark (rescinding takes no attestation)"
+        )
     elif args.scope is None:
         if not args.unmark:
             errors.append(
@@ -346,7 +338,9 @@ def _build_read_scope(args: argparse.Namespace) -> dict | None:
                 "use --scope unknown when coverage cannot be specified"
             )
         if locator_given:
-            errors.append("--locator requires --scope sections (an attestation needs a declared level)")
+            errors.append(
+                "--locator requires --scope sections (an attestation needs a declared level)"
+            )
         if note_given:
             errors.append("--note requires --scope (an attestation needs a declared level)")
     else:
@@ -406,9 +400,7 @@ def _update_log_locked(
     with _ledger_lock(log_path):
         log = _load_log(log_path)
         if unmark:
-            not_found = [
-                key for key in citation_keys if not _unmark(log, key)
-            ]
+            not_found = [key for key in citation_keys if not _unmark(log, key)]
             if not_found:
                 return not_found
         else:
@@ -486,10 +478,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     except LedgerLockError as exc:
         print(
-            _err(
-                "read ledger lock lifecycle failed; mutation status is not "
-                f"assumed: {exc}"
-            ),
+            _err("read ledger lock lifecycle failed; mutation status is not " f"assumed: {exc}"),
             file=sys.stderr,
         )
         return 2
@@ -508,9 +497,7 @@ def main(argv: list[str] | None = None) -> int:
     if not_found:
         for k in not_found:
             print(
-                _err(
-                    f"citation_key '{k}' has no active mark to rescind"
-                ),
+                _err(f"citation_key '{k}' has no active mark to rescind"),
                 file=sys.stderr,
             )
         return 2

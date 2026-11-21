@@ -13,7 +13,6 @@ from tempfile import TemporaryDirectory
 
 from tests.test_helpers import run_script
 
-
 LINT = Path(__file__).parent / "check_command_frontmatter_name.py"
 REPO_ROOT = Path(__file__).parent.parent
 
@@ -69,9 +68,7 @@ class MutationTest(unittest.TestCase):
         # Cyrillic 'а' (U+0430) in place of ASCII 'a': byte-equality rejects it.
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            make_command(
-                root, "ars-plan", "---\nname: аrs-plan\n---\nBody.\n"
-            )
+            make_command(root, "ars-plan", "---\nname: аrs-plan\n---\nBody.\n")
             result = self.run_lint(root)
             self.assertEqual(result.returncode, 1)
             self.assertIn("!= filename stem", result.stdout)
@@ -119,9 +116,7 @@ class MutationTest(unittest.TestCase):
         # canonical spelling; the lint accepts exactly `name: <stem>`.
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            make_command(
-                root, "ars-full", '---\n"name": ars-full\n---\nBody.\n'
-            )
+            make_command(root, "ars-full", '---\n"name": ars-full\n---\nBody.\n')
             result = self.run_lint(root)
             self.assertEqual(result.returncode, 1)
             self.assertIn("non-canonical name key spelling", result.stdout)
@@ -131,9 +126,7 @@ class MutationTest(unittest.TestCase):
         # canonical byte form; fail closed rather than interpret quoting.
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
-            make_command(
-                root, "ars-full", '---\nname: "ars-full"\n---\nBody.\n'
-            )
+            make_command(root, "ars-full", '---\nname: "ars-full"\n---\nBody.\n')
             result = self.run_lint(root)
             self.assertEqual(result.returncode, 1)
             self.assertIn("!= filename stem", result.stdout)

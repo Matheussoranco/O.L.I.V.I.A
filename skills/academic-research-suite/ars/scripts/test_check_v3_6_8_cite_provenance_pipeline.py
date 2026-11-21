@@ -47,7 +47,7 @@ class _Snapshot:
         self._bytes: bytes | None = None
         self._existed: bool = False
 
-    def __enter__(self) -> "_Snapshot":
+    def __enter__(self) -> _Snapshot:
         self._existed = self.path.exists()
         if self._existed:
             self._bytes = self.path.read_bytes()
@@ -100,7 +100,10 @@ def test_finalizer_subsection_missing_fails() -> None:
             "Removing the finalizer subsection must hard-fail; "
             f"got rc={result.returncode}\nstdout:\n{result.stdout}"
         )
-        assert "Cite-Time Provenance Finalizer" in result.stdout or "finalizer" in result.stdout.lower()
+        assert (
+            "Cite-Time Provenance Finalizer" in result.stdout
+            or "finalizer" in result.stdout.lower()
+        )
 
 
 # =========================================================================
@@ -129,7 +132,11 @@ def test_high_warn_row_missing_fails() -> None:
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1
-        assert "HIGH" in result.stdout or "row 1" in result.stdout.lower() or "NO ORIGINAL" in result.stdout
+        assert (
+            "HIGH" in result.stdout
+            or "row 1" in result.stdout.lower()
+            or "NO ORIGINAL" in result.stdout
+        )
 
 
 def test_med_warn_row_missing_fails() -> None:
@@ -146,7 +153,11 @@ def test_med_warn_row_missing_fails() -> None:
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1
-        assert "MED" in result.stdout or "CROSS-CHECKED" in result.stdout or "row 2" in result.stdout.lower()
+        assert (
+            "MED" in result.stdout
+            or "CROSS-CHECKED" in result.stdout
+            or "row 2" in result.stdout.lower()
+        )
 
 
 def test_low_warn_row_missing_fails() -> None:
@@ -170,7 +181,11 @@ def test_low_warn_row_missing_fails() -> None:
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1
-        assert "LOW" in result.stdout or "row 3" in result.stdout.lower() or "LOW-WARN" in result.stdout
+        assert (
+            "LOW" in result.stdout
+            or "row 3" in result.stdout.lower()
+            or "LOW-WARN" in result.stdout
+        )
 
 
 def test_ok_row_missing_fails() -> None:
@@ -190,7 +205,11 @@ def test_ok_row_missing_fails() -> None:
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1
-        assert "ok" in result.stdout.lower() or "row 4" in result.stdout.lower() or "<!--ref:slug ok-->" in result.stdout
+        assert (
+            "ok" in result.stdout.lower()
+            or "row 4" in result.stdout.lower()
+            or "<!--ref:slug ok-->" in result.stdout
+        )
 
 
 # =========================================================================
@@ -322,9 +341,9 @@ def test_ok_matrix_row_canonical_clause_drift_caught() -> None:
         mutated = text.replace(marker, "OK: clear with")
         # Sanity: bare `<!--ref:slug ok-->` must survive elsewhere in the
         # block to prove R3 P2-1 (otherwise the test isn't proving its claim).
-        assert "<!--ref:slug ok-->" in mutated, (
-            "fixture invariant violated: promotion paragraph lost"
-        )
+        assert (
+            "<!--ref:slug ok-->" in mutated
+        ), "fixture invariant violated: promotion paragraph lost"
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1, (
@@ -344,9 +363,7 @@ def test_rescind_affordance_clause_missing_fails() -> None:
         mutated = text.replace(marker, "/ars-rescind")
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
-        assert result.returncode == 1, (
-            "R3 P2-2: removing /ars-unmark-read must fail the lint"
-        )
+        assert result.returncode == 1, "R3 P2-2: removing /ars-unmark-read must fail the lint"
 
 
 def test_demote_language_clause_missing_fails() -> None:
@@ -362,9 +379,9 @@ def test_demote_language_clause_missing_fails() -> None:
         mutated = text.replace(marker, "REDACT")
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
-        assert result.returncode == 1, (
-            "R3 P2-2: removing demote/demotion language must fail the lint"
-        )
+        assert (
+            result.returncode == 1
+        ), "R3 P2-2: removing demote/demotion language must fail the lint"
 
 
 def test_med_warn_row_wildcard_human_read_caught() -> None:
@@ -382,7 +399,6 @@ def test_med_warn_row_wildcard_human_read_caught() -> None:
     # `UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED`. Locate that
     # phrase, walk back to the start of its table row, and assert the
     # third column is `—` (em-dash) and not any other token.
-    import re as _re
     # Find the MED-WARN row by anchor on its unique phrase.
     pos = text.find("UNVERIFIED CITATION — AI HAS NOT CROSS-CHECKED")
     assert pos != -1, "fixture missing MED WARN phrase"
@@ -426,9 +442,9 @@ def test_low_warn_promotion_paragraph_alone_does_not_satisfy_matrix_row() -> Non
         # Sanity: the promotion paragraph's `per-section` reference must
         # survive the mutation (otherwise the test isn't proving what
         # it claims).
-        assert "per-section checklist" in mutated, (
-            "fixture invariant violated: promotion paragraph lost"
-        )
+        assert (
+            "per-section checklist" in mutated
+        ), "fixture invariant violated: promotion paragraph lost"
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1
@@ -451,4 +467,8 @@ def test_peer_file_join_clause_missing_fails() -> None:
         TARGET.write_text(mutated, encoding="utf-8")
         result = _run_lint()
         assert result.returncode == 1
-        assert "human_read" in result.stdout.lower() or "peer" in result.stdout.lower() or "human_read_log" in result.stdout
+        assert (
+            "human_read" in result.stdout.lower()
+            or "peer" in result.stdout.lower()
+            or "human_read_log" in result.stdout
+        )

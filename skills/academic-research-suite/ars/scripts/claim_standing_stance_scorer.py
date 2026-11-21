@@ -69,9 +69,7 @@ def strict_loads(raw: bytes, label: str) -> dict[str, Any]:
 
 def _validate(schema_path: Path, value: dict[str, Any], label: str) -> None:
     schema = json.loads(schema_path.read_bytes())
-    errors = sorted(
-        Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path)
-    )
+    errors = sorted(Draft202012Validator(schema).iter_errors(value), key=lambda e: str(e.path))
     if errors:
         first = errors[0]
         _fail(f"{label} schema: {list(first.path)!r}: {first.message}")
@@ -97,17 +95,13 @@ def _bump(nested: dict[str, dict[str, int]], gold: str, subject: str) -> None:
 
 def _finalize_block(block: dict[str, Any], correct_rows: int) -> None:
     scored = block["scored_rows"]
-    block["micro_full_row_accuracy"] = (
-        round(correct_rows / scored, 6) if scored else None
-    )
+    block["micro_full_row_accuracy"] = round(correct_rows / scored, 6) if scored else None
     recalls = []
     for gold_stance, row in sorted(block["stance_confusion"].items()):
         total = sum(row.values())
         if total:
             recalls.append(row.get(gold_stance, 0) / total)
-    block["stance_macro_recall"] = (
-        round(sum(recalls) / len(recalls), 6) if recalls else None
-    )
+    block["stance_macro_recall"] = round(sum(recalls) / len(recalls), 6) if recalls else None
 
 
 def score(
@@ -128,9 +122,7 @@ def score(
             "expert label files with distinct file hashes"
         )
 
-    language_by_item = {
-        item["item_id"]: item["language"] for item in set_value["items"]
-    }
+    language_by_item = {item["item_id"]: item["language"] for item in set_value["items"]}
     gold_by_item: dict[str, dict[str, Any]] = {}
     for row in adjudicated["rows"]:
         if row["item_id"] in gold_by_item:
@@ -161,9 +153,7 @@ def score(
             # partial parse_error stays visible in the failure-class report.
             for block in (blocks[language], blocks["overall"]):
                 distribution = block["failure_state_distribution"]
-                distribution[row["failure_state"]] = (
-                    distribution.get(row["failure_state"], 0) + 1
-                )
+                distribution[row["failure_state"]] = distribution.get(row["failure_state"], 0) + 1
         if row["row_state"] != "scored":
             continue
         scored_per_item[row["item_id"]] += 1
@@ -173,9 +163,7 @@ def score(
             _bump(block["relevance_confusion"], gold["relevance"], row["relevance"])
             _bump(block["check_state_confusion"], gold["check_state"], row["check_state"])
             if gold["check_state"] == "performed":
-                subject_stance = (
-                    row["stance"] if row["check_state"] == "performed" else ABSTAINED
-                )
+                subject_stance = row["stance"] if row["check_state"] == "performed" else ABSTAINED
                 _bump(block["stance_confusion"], gold["stance"], subject_stance)
             if row["evidence_scope"] == gold["evidence_scope"]:
                 block["evidence_scope_agreement"]["agree"] += 1

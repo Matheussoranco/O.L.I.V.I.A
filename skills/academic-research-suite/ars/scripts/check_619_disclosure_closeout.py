@@ -7,7 +7,6 @@ import re
 import sys
 from pathlib import Path
 
-
 PROTOCOL_REL = "academic-paper/references/disclosure_mode_protocol.md"
 POLICIES_REL = "academic-paper/references/venue_disclosure_policies.md"
 AUDIT_REL = "audits/external-contribution-audit-prompt.md"
@@ -70,8 +69,11 @@ def _heading_section(text: str, heading: str) -> str | None:
 def _venue_section(text: str, venue: str) -> str | None:
     prefix = f"## Venue: {venue}"
     start = next(
-        (match.start() for match in re.finditer(r"^## Venue: .+$", text, re.MULTILINE)
-         if match.group(0).startswith(prefix)),
+        (
+            match.start()
+            for match in re.finditer(r"^## Venue: .+$", text, re.MULTILINE)
+            if match.group(0).startswith(prefix)
+        ),
         None,
     )
     if start is None:
@@ -85,7 +87,7 @@ def _field(section: str, name: str) -> str | None:
     rows = [line for line in section.splitlines() if line.startswith(prefix)]
     if len(rows) != 1:
         return None
-    return rows[0][len(prefix):].removesuffix("|").strip()
+    return rows[0][len(prefix) :].removesuffix("|").strip()
 
 
 def _frontiers_rows(protocol: str) -> tuple[str | None, str | None]:
@@ -95,11 +97,13 @@ def _frontiers_rows(protocol: str) -> tuple[str | None, str | None]:
     phase2b = _heading_section(
         protocol, "### Phase 2b: Build the venue-required fact ledger (#596 venue path)"
     )
+
     def row(section: str | None) -> str | None:
         if section is None:
             return None
         rows = [line for line in section.splitlines() if line.startswith("| Frontiers |")]
         return rows[0] if len(rows) == 1 else None
+
     return row(phase2a), row(phase2b)
 
 
@@ -129,12 +133,20 @@ def check(root: Path) -> list[str]:
     errors: list[str] = []
 
     phase2a, phase2b = _frontiers_rows(protocol)
-    if phase2a is None or "Phase 5" not in phase2a or "does not halt disclosure rendering" not in phase2a:
+    if (
+        phase2a is None
+        or "Phase 5" not in phase2a
+        or "does not halt disclosure rendering" not in phase2a
+    ):
         errors.append("Frontiers Phase 2a must route nonblocking quality actions to Phase 5")
     if phase2b is None:
         errors.append("Frontiers Phase 2b ledger row missing or duplicated")
     else:
-        forbidden = ("plagiarism-free confirmation before render", "originality/plagiarism-free confirmation", "accurately reflects the data")
+        forbidden = (
+            "plagiarism-free confirmation before render",
+            "originality/plagiarism-free confirmation",
+            "accurately reflects the data",
+        )
         if any(token in phase2b for token in forbidden):
             errors.append("Frontiers Phase 2b regrew a quality-action render gate")
         if "Phase-5 pre-submission actions, not fields required before render" not in phase2b:
@@ -146,8 +158,7 @@ def check(root: Path) -> list[str]:
     for scenario, expected in EXPECTED_MATRIX.items():
         if matrix.get(scenario) != expected:
             errors.append(
-                "Frontiers action matrix mapping drift for "
-                f"{SCENARIO_LABELS[scenario]}"
+                "Frontiers action matrix mapping drift for " f"{SCENARIO_LABELS[scenario]}"
             )
     normalized_protocol = " ".join(protocol.split())
     for phrase in (
@@ -170,7 +181,11 @@ def check(root: Path) -> list[str]:
         if prohibited != expected_prohibited:
             errors.append("Frontiers Prohibited uses must contain only the two hard prohibitions")
         notes = _field(frontiers, "Notes") or ""
-        for phrase in ("Phase-5 pre-submission checklist", "remains outstanding", "not a disclosure `UNKNOWN` halt"):
+        for phrase in (
+            "Phase-5 pre-submission checklist",
+            "remains outstanding",
+            "not a disclosure `UNKNOWN` halt",
+        ):
             if phrase not in notes:
                 errors.append(f"Frontiers evidence action semantics missing: {phrase}")
 

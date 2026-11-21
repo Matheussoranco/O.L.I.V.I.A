@@ -41,22 +41,22 @@ Run:
 from __future__ import annotations
 
 import unittest
-from typing import Any, Callable
+from typing import Any
 
 try:
     from scripts.claim_audit_finalizer import (
-        TIER_NONE,
+        TIER_HIGH_WARN,
         TIER_LOW_WARN,
         TIER_MED_WARN,
-        TIER_HIGH_WARN,
-        classify_claim_audit_result,
-        classify_uncited_assertion,
-        classify_constraint_violation,
-        classify_claim_drift,
-        classify_audit_sampling_summary,
+        TIER_NONE,
         apply_finalizer,
-        render_stage6_histogram,
         ars_mark_read_clears,
+        classify_audit_sampling_summary,
+        classify_claim_audit_result,
+        classify_claim_drift,
+        classify_constraint_violation,
+        classify_uncited_assertion,
+        render_stage6_histogram,
     )
 
     _FINALIZER_IMPORT_ERR: Exception | None = None
@@ -85,8 +85,8 @@ except ModuleNotFoundError as exc:  # pragma: no cover — RED phase only
     ars_mark_read_clears = _stub  # type: ignore[assignment]
 
 try:
-    from scripts.claim_audit_pipeline import run_audit_pipeline
     from scripts._claim_audit_constants import SENTINEL_MANIFEST_ID
+    from scripts.claim_audit_pipeline import run_audit_pipeline
 
     _PIPELINE_IMPORT_ERR: Exception | None = None
 except Exception as exc:  # pragma: no cover
@@ -937,7 +937,6 @@ class TUAFFinalizerRouting(unittest.TestCase):
                 expected = f"[CLAIM-AUDIT-TOOL-FAILURE-UNCITED — {fault_class}]"
                 annotations = [a["annotation"] for a in out["annotations"]]
                 self.assertIn(expected, annotations)
-
 
 
 # T-512 — SUPPORTED row carrying the PDF read-integrity tag surfaces the advisory.

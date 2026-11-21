@@ -16,13 +16,13 @@ import re
 import stat
 import sys
 import tempfile
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator, NoReturn
+from typing import Any, NoReturn
 
 from resolve_review_target_context import ContractError as ResolverError
 from resolve_review_target_context import resolve
-
 
 SCHEMA_VERSION = "review-criteria-binding/1.0"
 FINDINGS_VERSION = "constructive-review-findings/1.0"
@@ -237,8 +237,13 @@ def _receipt_payload(receipt: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in receipt.items() if key != "receipt_digest"}
 
 
-def _authority(context: dict[str, Any], context_raw: bytes, registry_raw: bytes,
-               context_ref: str, registry_ref: str) -> dict[str, Any]:
+def _authority(
+    context: dict[str, Any],
+    context_raw: bytes,
+    registry_raw: bytes,
+    context_ref: str,
+    registry_ref: str,
+) -> dict[str, Any]:
     pointers = []
     for item in context["selected_criteria"]:
         pointers.append(
@@ -258,8 +263,7 @@ def _authority(context: dict[str, Any], context_raw: bytes, registry_raw: bytes,
         for item in context["parallel_conflicts"]
     ]
     unresolved = [
-        {"code": item["code"], "dimension": item["dimension"]}
-        for item in context["unresolved"]
+        {"code": item["code"], "dimension": item["dimension"]} for item in context["unresolved"]
     ]
     return {
         "context_ref": _portable_ref(context_ref, "context_ref"),
@@ -281,16 +285,21 @@ def _validate_context_pair(context: dict[str, Any], registry: dict[str, Any]) ->
     except (ResolverError, TypeError, KeyError) as exc:
         raise BindingError(f"ReviewTargetContext cannot be recomputed: {exc}") from exc
     if context != expected:
-        raise BindingError(
-            "ReviewTargetContext does not equal deterministic #683 resolution"
-        )
+        raise BindingError("ReviewTargetContext does not equal deterministic #683 resolution")
 
 
 def _validate_authority(value: Any, path: str) -> dict[str, Any]:
     keys = {
-        "context_ref", "context_sha256", "registry_ref", "registry_sha256",
-        "resolved_digest", "selected_criterion_ids", "selected_criteria",
-        "parallel_conflicts", "unresolved", "phase1_safe",
+        "context_ref",
+        "context_sha256",
+        "registry_ref",
+        "registry_sha256",
+        "resolved_digest",
+        "selected_criterion_ids",
+        "selected_criteria",
+        "parallel_conflicts",
+        "unresolved",
+        "phase1_safe",
     }
     obj = _object(value, path, keys)
     _portable_ref(obj["context_ref"], f"{path}.context_ref")
@@ -308,7 +317,13 @@ def _validate_authority(value: Any, path: str) -> dict[str, Any]:
         p = _object(
             item,
             f"{path}.selected_criteria[{index}]",
-            {"criterion_id", "criterion_version", "criterion_digest", "dimension", "blocking_eligible"},
+            {
+                "criterion_id",
+                "criterion_version",
+                "criterion_digest",
+                "dimension",
+                "blocking_eligible",
+            },
         )
         criterion_id = _string(p["criterion_id"], f"{path}.selected_criteria[{index}].criterion_id")
         if CRITERION_ID_RE.fullmatch(criterion_id) is None:
@@ -325,9 +340,13 @@ def _validate_authority(value: Any, path: str) -> dict[str, Any]:
     if not isinstance(obj["parallel_conflicts"], list):
         _fail(f"{path}.parallel_conflicts", "must be an array")
     for index, item in enumerate(obj["parallel_conflicts"]):
-        c = _object(item, f"{path}.parallel_conflicts[{index}]", {"conflict_group", "criterion_ids"})
+        c = _object(
+            item, f"{path}.parallel_conflicts[{index}]", {"conflict_group", "criterion_ids"}
+        )
         _string(c["conflict_group"], f"{path}.parallel_conflicts[{index}].conflict_group")
-        conflict_ids = _criterion_ids(c["criterion_ids"], f"{path}.parallel_conflicts[{index}].criterion_ids")
+        conflict_ids = _criterion_ids(
+            c["criterion_ids"], f"{path}.parallel_conflicts[{index}].criterion_ids"
+        )
         if len(conflict_ids) < 2 or not set(conflict_ids) <= set(ids):
             _fail(f"{path}.parallel_conflicts[{index}]", "must name two or more selected criteria")
     if not isinstance(obj["unresolved"], list):
@@ -344,7 +363,14 @@ def _validate_manifest(value: dict[str, Any], *, require_complete: bool = False)
     obj = _object(
         value,
         "manifest",
-        {"schema_version", "target_review_id", "context_authority", "predecessor", "receipts", "manifest_digest"},
+        {
+            "schema_version",
+            "target_review_id",
+            "context_authority",
+            "predecessor",
+            "receipts",
+            "manifest_digest",
+        },
     )
     if obj["schema_version"] != SCHEMA_VERSION:
         _fail("manifest.schema_version", f"must equal {SCHEMA_VERSION}")
@@ -352,11 +378,17 @@ def _validate_manifest(value: dict[str, Any], *, require_complete: bool = False)
     authority = _validate_authority(obj["context_authority"], "manifest.context_authority")
     predecessor = obj["predecessor"]
     if predecessor is not None:
-        p = _object(predecessor, "manifest.predecessor", {"target_review_id", "resolved_digest", "comparability"})
+        p = _object(
+            predecessor,
+            "manifest.predecessor",
+            {"target_review_id", "resolved_digest", "comparability"},
+        )
         _id(p["target_review_id"], "manifest.predecessor.target_review_id")
         _sha(p["resolved_digest"], "manifest.predecessor.resolved_digest")
         if p["target_review_id"] == obj["target_review_id"]:
-            _fail("manifest.predecessor.target_review_id", "must identify a different target review")
+            _fail(
+                "manifest.predecessor.target_review_id", "must identify a different target review"
+            )
         if p["comparability"] != "new_target_review_not_comparable":
             _fail("manifest.predecessor.comparability", "invalid comparability state")
     if not isinstance(obj["receipts"], list) or len(obj["receipts"]) > 3:
@@ -367,7 +399,15 @@ def _validate_manifest(value: dict[str, Any], *, require_complete: bool = False)
         receipt = _object(
             item,
             path,
-            {"consumer_id", "context_ref", "context_sha256", "resolved_digest", "selected_criterion_ids", "artifacts", "receipt_digest"},
+            {
+                "consumer_id",
+                "context_ref",
+                "context_sha256",
+                "resolved_digest",
+                "selected_criterion_ids",
+                "artifacts",
+                "receipt_digest",
+            },
         )
         consumer = receipt["consumer_id"]
         if consumer not in CONSUMERS:
@@ -526,9 +566,7 @@ def init_manifest(args: argparse.Namespace) -> int:
         _validate_manifest(prior)
         if prior["target_review_id"] == args.target_review_id:
             if prior["context_authority"] != authority:
-                raise ConflictError(
-                    "same target_review_id cannot bind a changed review target"
-                )
+                raise ConflictError("same target_review_id cannot bind a changed review target")
         else:
             predecessor = {
                 "target_review_id": prior["target_review_id"],
@@ -556,7 +594,9 @@ def marker(args: argparse.Namespace) -> int:
     return 0
 
 
-def _artifact_specs(values: list[str], consumer: str, manifest: dict[str, Any]) -> list[dict[str, str]]:
+def _artifact_specs(
+    values: list[str], consumer: str, manifest: dict[str, Any]
+) -> list[dict[str, str]]:
     parsed: dict[str, str] = {}
     for value in values:
         if "=" not in value:
@@ -622,9 +662,7 @@ def record_receipt(args: argparse.Namespace) -> int:
         if current is not None:
             if current == receipt:
                 return 0
-            raise ConflictError(
-                f"consumer {args.consumer} already has a different receipt"
-            )
+            raise ConflictError(f"consumer {args.consumer} already has a different receipt")
         manifest["receipts"].append(receipt)
         manifest["receipts"].sort(key=lambda item: CONSUMERS.index(item["consumer_id"]))
         manifest["manifest_digest"] = _digest(_manifest_payload(manifest))
@@ -683,7 +721,14 @@ def _validate_option(value: Any, path: str) -> None:
     obj = _object(
         value,
         path,
-        {"action", "resource_effort", "trade_offs", "changes_research_intent", "requires_new_data", "proposed_result_values"},
+        {
+            "action",
+            "resource_effort",
+            "trade_offs",
+            "changes_research_intent",
+            "requires_new_data",
+            "proposed_result_values",
+        },
     )
     _string(obj["action"], f"{path}.action")
     effort = _object(obj["resource_effort"], f"{path}.resource_effort", {"scope", "description"})
@@ -701,12 +746,19 @@ def _validate_option(value: Any, path: str) -> None:
         _fail(f"{path}.proposed_result_values", "must equal false")
 
 
-def _validate_findings(value: dict[str, Any], manifest: dict[str, Any],
-                       registry: dict[str, Any]) -> None:
+def _validate_findings(
+    value: dict[str, Any], manifest: dict[str, Any], registry: dict[str, Any]
+) -> None:
     obj = _object(
         value,
         "findings",
-        {"schema_version", "target_review_id", "resolved_digest", "selected_criterion_ids", "findings"},
+        {
+            "schema_version",
+            "target_review_id",
+            "resolved_digest",
+            "selected_criterion_ids",
+            "findings",
+        },
     )
     if obj["schema_version"] != FINDINGS_VERSION:
         _fail("findings.schema_version", f"must equal {FINDINGS_VERSION}")
@@ -725,11 +777,19 @@ def _validate_findings(value: dict[str, Any], manifest: dict[str, Any],
             item,
             path,
             {
-                "finding_id", "consumer_id", "reviewer_id", "severity",
-                "criterion_refs", "evidence_anchor", "scholarly_relevance",
-                "confirmed_target_relevance", "remedy_status",
-                "minimum_viable_remedy", "stronger_option",
-                "stronger_option_reason", "no_honest_remedy_reason",
+                "finding_id",
+                "consumer_id",
+                "reviewer_id",
+                "severity",
+                "criterion_refs",
+                "evidence_anchor",
+                "scholarly_relevance",
+                "confirmed_target_relevance",
+                "remedy_status",
+                "minimum_viable_remedy",
+                "stronger_option",
+                "stronger_option_reason",
+                "no_honest_remedy_reason",
             },
         )
         finding_id = _id(finding["finding_id"], f"{path}.finding_id")
@@ -755,7 +815,9 @@ def _validate_findings(value: dict[str, Any], manifest: dict[str, Any],
         blocking = False
         for ref_index, ref_value in enumerate(refs):
             ref_path = f"{path}.criterion_refs[{ref_index}]"
-            ref = _object(ref_value, ref_path, {"criterion_id", "criterion_version", "criterion_digest"})
+            ref = _object(
+                ref_value, ref_path, {"criterion_id", "criterion_version", "criterion_digest"}
+            )
             criterion_id = _string(ref["criterion_id"], f"{ref_path}.criterion_id")
             if criterion_id in ref_ids:
                 _fail(f"{path}.criterion_refs", f"duplicate criterion: {criterion_id}")
@@ -763,11 +825,17 @@ def _validate_findings(value: dict[str, Any], manifest: dict[str, Any],
             pointer = pointer_by_id.get(criterion_id)
             if pointer is None:
                 _fail(ref_path, "criterion is not selected in the active context")
-            if ref != {key: pointer[key] for key in ("criterion_id", "criterion_version", "criterion_digest")}:
+            if ref != {
+                key: pointer[key]
+                for key in ("criterion_id", "criterion_version", "criterion_digest")
+            }:
                 _fail(ref_path, "criterion pointer does not match active context")
             blocking = blocking or pointer["blocking_eligible"]
         if not blocking:
-            _fail(f"{path}.criterion_refs", "Critical/Major finding needs a blocking-eligible criterion")
+            _fail(
+                f"{path}.criterion_refs",
+                "Critical/Major finding needs a blocking-eligible criterion",
+            )
         _validate_anchor(finding["evidence_anchor"], f"{path}.evidence_anchor")
         _string(finding["scholarly_relevance"], f"{path}.scholarly_relevance")
         target = _object(
@@ -786,7 +854,10 @@ def _validate_findings(value: dict[str, Any], manifest: dict[str, Any],
             if finding["no_honest_remedy_reason"] is not None:
                 _fail(f"{path}.no_honest_remedy_reason", "must be null when remedy is available")
         elif remedy_status == "none":
-            if finding["minimum_viable_remedy"] is not None or finding["stronger_option"] is not None:
+            if (
+                finding["minimum_viable_remedy"] is not None
+                or finding["stronger_option"] is not None
+            ):
                 _fail(path, "no-honest-remedy finding cannot carry remedy options")
             _string(finding["no_honest_remedy_reason"], f"{path}.no_honest_remedy_reason")
         else:

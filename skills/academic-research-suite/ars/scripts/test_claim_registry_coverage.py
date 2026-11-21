@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-
 SCRIPTS = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
@@ -46,9 +45,9 @@ def _registry_raw(draft: bytes, claims: list[dict]) -> bytes:
 
 def test_classifies_exact_span_match_and_unregistered_candidate() -> None:
     draft = (
-        "The intervention improved completion by 12% (Smith, 2024).\n"
-        "A second outcome affected 30 participants [2].\n"
-    ).encode()
+        b"The intervention improved completion by 12% (Smith, 2024).\n"
+        b"A second outcome affected 30 participants [2].\n"
+    )
     registry = _registry_raw(
         draft,
         [_claim(draft, "C1", "The intervention improved completion by 12% (Smith, 2024).")],
@@ -81,9 +80,7 @@ def test_registry_claim_outside_candidate_classes_is_not_called_unlocated() -> N
         ("The coefficient was β = .31.", "quantitative_sentence"),
     ),
 )
-def test_common_scholarly_surface_syntax_is_detected(
-    sentence: str, expected_kind: str
-) -> None:
+def test_common_scholarly_surface_syntax_is_detected(sentence: str, expected_kind: str) -> None:
     draft = (sentence + "\n").encode("utf-8")
     report = coverage.build_report(draft, _registry_raw(draft, []))
     assert len(report["candidates"]) == 1
@@ -112,10 +109,7 @@ def test_tiny_registered_span_cannot_hide_other_trigger_in_same_sentence() -> No
     assert candidate["matched_claim_ids"] == ["C1"]
     assert candidate["uncovered_trigger_count"] >= 2
     assert report["candidate_unregistered_count"] == 1
-    assert any(
-        row["coverage_state"] == "trigger_unregistered"
-        for row in candidate["triggers"]
-    )
+    assert any(row["coverage_state"] == "trigger_unregistered" for row in candidate["triggers"])
 
 
 def test_tiny_span_covering_only_trigger_is_still_partial_not_clean() -> None:
@@ -142,7 +136,7 @@ def test_full_sentence_span_and_all_triggers_is_clean() -> None:
 
 
 def test_raw_crlf_and_unicode_bytes_are_bound_exactly() -> None:
-    draft = "前測有 42 participants。\r\n第二行。\r\n".encode("utf-8")
+    draft = "前測有 42 participants。\r\n第二行。\r\n".encode()
     text = "前測有 42 participants。"
     registry = _registry_raw(draft, [_claim(draft, "C-UTF8", text)])
     report = coverage.build_report(draft, registry)
@@ -201,9 +195,7 @@ def test_schema_rejects_state_match_contradiction() -> None:
     assert list(Draft202012Validator(schema).iter_errors(report))
 
     report = coverage.build_report(draft, registry)
-    report["candidates"][0]["triggers"][0]["coverage_state"] = (
-        "registry_span_matched"
-    )
+    report["candidates"][0]["triggers"][0]["coverage_state"] = "registry_span_matched"
     assert list(Draft202012Validator(schema).iter_errors(report))
 
 
@@ -230,14 +222,32 @@ def test_cli_build_then_replay_validate(tmp_path: Path) -> None:
     registry_path.write_bytes(registry)
     script = SCRIPTS / "claim_registry_coverage.py"
     built = subprocess.run(
-        [sys.executable, str(script), "--draft", str(draft_path), "--registry", str(registry_path), "--output", str(report_path)],
+        [
+            sys.executable,
+            str(script),
+            "--draft",
+            str(draft_path),
+            "--registry",
+            str(registry_path),
+            "--output",
+            str(report_path),
+        ],
         check=False,
         capture_output=True,
         text=True,
     )
     assert built.returncode == 0, built.stderr
     replayed = subprocess.run(
-        [sys.executable, str(script), "--draft", str(draft_path), "--registry", str(registry_path), "--validate-report", str(report_path)],
+        [
+            sys.executable,
+            str(script),
+            "--draft",
+            str(draft_path),
+            "--registry",
+            str(registry_path),
+            "--validate-report",
+            str(report_path),
+        ],
         check=False,
         capture_output=True,
         text=True,

@@ -30,7 +30,6 @@ from scripts.check_revision_token_conservation import (
     audit_patch,
     extract_citation_tokens,
     extract_numbers,
-    main,
     protected_term_counts,
 )
 
@@ -61,9 +60,7 @@ class NumberExtractionTests(unittest.TestCase):
 
     def test_sign_attaches_after_equals_but_not_inside_range(self):
         numbers = extract_numbers("β = -0.45; 95% CI: 0.58–0.92.")
-        self.assertEqual(
-            dict(numbers), {"-0.45": 1, "95%": 1, "0.58": 1, "0.92": 1}
-        )
+        self.assertEqual(dict(numbers), {"-0.45": 1, "95%": 1, "0.58": 1, "0.92": 1})
 
     def test_endash_range_conserved_against_hyphen_respelling(self):
         self.assertEqual(
@@ -75,9 +72,7 @@ class NumberExtractionTests(unittest.TestCase):
         # A CI lower bound or a comma-separated negative must keep its sign:
         # [-0.45, 0.12] flipping to [0.45, 0.12] is a real change, not conserved.
         numbers = extract_numbers("CI [-0.45, 0.12] and slope of -1.3, 0.7")
-        self.assertEqual(
-            dict(numbers), {"-0.45": 1, "0.12": 1, "-1.3": 1, "0.7": 1}
-        )
+        self.assertEqual(dict(numbers), {"-0.45": 1, "0.12": 1, "-1.3": 1, "0.7": 1})
 
     def test_scientific_exponent_is_part_of_the_token(self):
         # 6.02e23 must not truncate to 6.02 (which would let 6.02e23 -> 6.02e24
@@ -95,9 +90,7 @@ class NumberExtractionTests(unittest.TestCase):
         self.assertEqual(dict(numbers), {"612": 1, "87.08%": 1})
 
     def test_marker_comments_excluded_from_prose_numbers(self):
-        numbers = extract_numbers(
-            "The effect held.<!--ref:li2023--><!--anchor:page:12-->"
-        )
+        numbers = extract_numbers("The effect held.<!--ref:li2023--><!--anchor:page:12-->")
         self.assertEqual(dict(numbers), {})
 
 
@@ -114,9 +107,7 @@ class CitationExtractionTests(unittest.TestCase):
     def test_author_year_reorder_conserved(self):
         source = "In 612 adults, Model-A7 improved accuracy (Li & Chen, 2023)."
         revision = "Model-A7 improved accuracy in 612 adults (Li & Chen, 2023)."
-        self.assertEqual(
-            extract_citation_tokens(source), extract_citation_tokens(revision)
-        )
+        self.assertEqual(extract_citation_tokens(source), extract_citation_tokens(revision))
 
     def test_narrative_author_swap_with_same_slug_is_a_delta(self):
         # A narrative citation carries the author OUTSIDE the parenthesized year;
@@ -190,17 +181,13 @@ class AuditPairTests(unittest.TestCase):
         self.assertEqual(result["numbers_delta"], {"removed": {}, "added": {}})
 
     def test_changed_decimal_reports_removed_and_added(self):
-        result = audit_pair(
-            "The hazard ratio was 0.73.", "The hazard ratio was 0.75."
-        )
+        result = audit_pair("The hazard ratio was 0.73.", "The hazard ratio was 0.75.")
         self.assertFalse(result["conserved"])
         self.assertEqual(result["numbers_delta"]["removed"], {"0.73": 1})
         self.assertEqual(result["numbers_delta"]["added"], {"0.75": 1})
 
     def test_dropped_ref_marker_reports_citation_delta(self):
-        result = audit_pair(
-            "The effect held.<!--ref:li2023-->", "The effect held."
-        )
+        result = audit_pair("The effect held.<!--ref:li2023-->", "The effect held.")
         self.assertFalse(result["conserved"])
         self.assertEqual(result["citations_delta"]["removed"], {"ref:li2023": 1})
 
@@ -273,9 +260,7 @@ class AuditPatchTests(unittest.TestCase):
             PATCH_BASE,
         )
         by_block = {r["block_id"]: r for r in report["op_reports"]}
-        self.assertEqual(
-            by_block["B0003"]["delta"]["numbers_delta"]["added"], {"2,048": 1}
-        )
+        self.assertEqual(by_block["B0003"]["delta"]["numbers_delta"]["added"], {"2,048": 1})
         removed = by_block["B0002"]["delta"]["numbers_delta"]["removed"]
         self.assertEqual(removed, {"0.04": 1, "0.41": 1})
         self.assertEqual(
@@ -357,12 +342,8 @@ class CliTests(unittest.TestCase):
             rev.write_text("Accuracy was 88.00%.", encoding="utf-8")
             same = Path(td) / "same.md"
             same.write_text("Accuracy was 87.08%, unchanged.", encoding="utf-8")
-            drifted = self._run(
-                "pair", "--source", str(src), "--revision", str(rev), "--strict"
-            )
-            conserved = self._run(
-                "pair", "--source", str(src), "--revision", str(same), "--strict"
-            )
+            drifted = self._run("pair", "--source", str(src), "--revision", str(rev), "--strict")
+            conserved = self._run("pair", "--source", str(src), "--revision", str(same), "--strict")
         self.assertEqual(drifted.returncode, 1)
         self.assertEqual(conserved.returncode, 0, conserved.stderr)
 

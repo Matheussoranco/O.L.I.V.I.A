@@ -244,9 +244,7 @@ NEG_ENTRY_PERSISTED_BAD_STATUS: dict[str, Any] = {
 NEG_ENTRY_PROPOSAL_AUDIT_FAILED_NO_REASON = {
     **{k: v for k, v in ENTRY_PROPOSAL_AUDIT_FAILED.items() if k != "verdict"},
     "verdict": {
-        k: v
-        for k, v in ENTRY_PROPOSAL_AUDIT_FAILED["verdict"].items()
-        if k != "failure_reason"
+        k: v for k, v in ENTRY_PROPOSAL_AUDIT_FAILED["verdict"].items() if k != "failure_reason"
     },
 }
 # §3.7 A2 inverse — non-AUDIT_FAILED proposal carrying failure_reason must reject.

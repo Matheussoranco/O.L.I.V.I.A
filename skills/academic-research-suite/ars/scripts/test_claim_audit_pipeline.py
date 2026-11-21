@@ -19,14 +19,16 @@ Run:
 from __future__ import annotations
 
 import unittest
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from unittest import mock
 
 from tests.test_helpers import build_schema_validator, load_json_schema
 
 try:
-    from scripts.claim_audit_pipeline import run_audit_pipeline  # noqa: F401
+    from scripts.claim_audit_pipeline import run_audit_pipeline
+
     _MODULE_IMPORT_ERR: Exception | None = None
 except Exception as exc:  # pragma: no cover — import-time error pathway is exercised in RED state
     _MODULE_IMPORT_ERR = exc
@@ -40,7 +42,8 @@ except Exception as exc:  # pragma: no cover — import-time error pathway is ex
 # build the rationale from untrusted judge output, so a row that is supposed to
 # be a clean inconclusive fallback can still overflow the schema (#355 P2#3).
 _CAR_SCHEMA = load_json_schema(
-    Path(__file__).resolve().parent.parent / "shared/contracts/passport/claim_audit_result.schema.json"
+    Path(__file__).resolve().parent.parent
+    / "shared/contracts/passport/claim_audit_result.schema.json"
 )
 _CAR_VALIDATOR = build_schema_validator(_CAR_SCHEMA)
 
@@ -49,7 +52,8 @@ _CAR_VALIDATOR = build_schema_validator(_CAR_SCHEMA)
 # straight from untrusted judge output on the success path (#360), so the same
 # overflow can land a schema-invalid constraint_violation row.
 _CV_SCHEMA = load_json_schema(
-    Path(__file__).resolve().parent.parent / "shared/contracts/passport/constraint_violation.schema.json"
+    Path(__file__).resolve().parent.parent
+    / "shared/contracts/passport/constraint_violation.schema.json"
 )
 _CV_VALIDATOR = build_schema_validator(_CV_SCHEMA)
 
@@ -140,11 +144,13 @@ def _judge_supported() -> Callable[..., dict[str, Any]]:
     return fn
 
 
-def _judge_unsupported(*, defect_stage: str = "source_description") -> Callable[..., dict[str, Any]]:
+def _judge_unsupported(
+    *, defect_stage: str = "source_description"
+) -> Callable[..., dict[str, Any]]:
     def fn(**kwargs: Any) -> dict[str, Any]:
         return {
             "judgment": "UNSUPPORTED",
-            "rationale": f"Source describes a different population than the claim asserts.",
+            "rationale": "Source describes a different population than the claim asserts.",
             "defect_stage_hint": defect_stage,
         }
 
@@ -166,6 +172,7 @@ def _judge_partial(
     *, breakdown: list[dict[str, Any]] | None = None
 ) -> Callable[..., dict[str, Any]]:
     """#213: a judge that returns a well-formed PARTIAL with a true-partial breakdown."""
+
     def fn(**kwargs: Any) -> dict[str, Any]:
         return {
             "judgment": "PARTIAL",
@@ -173,20 +180,31 @@ def _judge_partial(
             "sub_claim_breakdown": breakdown
             if breakdown is not None
             else [
-                {"sub_claim_text": "preprints are 67%", "sub_verdict": "SUPPORTED", "evidence_pointer": "p.12"},
-                {"sub_claim_text": "trend held across venues", "sub_verdict": "UNSUPPORTED", "evidence_pointer": None},
+                {
+                    "sub_claim_text": "preprints are 67%",
+                    "sub_verdict": "SUPPORTED",
+                    "evidence_pointer": "p.12",
+                },
+                {
+                    "sub_claim_text": "trend held across venues",
+                    "sub_verdict": "UNSUPPORTED",
+                    "evidence_pointer": None,
+                },
             ],
         }
 
     return fn
 
 
-def _judge_partial_malformed(
-    *, breakdown: Any
-) -> Callable[..., dict[str, Any]]:
+def _judge_partial_malformed(*, breakdown: Any) -> Callable[..., dict[str, Any]]:
     """#213: a judge that returns PARTIAL with a malformed (not true-partial) breakdown."""
+
     def fn(**kwargs: Any) -> dict[str, Any]:
-        return {"judgment": "PARTIAL", "rationale": "partial but malformed", "sub_claim_breakdown": breakdown}
+        return {
+            "judgment": "PARTIAL",
+            "rationale": "partial but malformed",
+            "sub_claim_breakdown": breakdown,
+        }
 
     return fn
 
@@ -317,7 +335,9 @@ class TP2P3CacheBehavior(_PipelineTestBase):
             judge_fn=judge_fn,
             cache=cache,
         )
-        self.assertEqual(len(invocations), 1, "second run with identical inputs must NOT re-invoke judge")
+        self.assertEqual(
+            len(invocations), 1, "second run with identical inputs must NOT re-invoke judge"
+        )
 
     def test_p3_cache_miss_after_manual_pdf_uploaded(self) -> None:
         cache: dict[str, Any] = {}
@@ -402,7 +422,8 @@ class TP361PromptVersionCacheKey(_PipelineTestBase):
             config=_config(judge_prompt_version="promptB"),
         )
         self.assertEqual(
-            len(invocations), 2,
+            len(invocations),
+            2,
             "a prompt-version change MUST invalidate the stale entry and re-invoke the judge",
         )
 
@@ -420,7 +441,8 @@ class TP361PromptVersionCacheKey(_PipelineTestBase):
                 config=_config(judge_prompt_version="promptA"),
             )
         self.assertEqual(
-            len(invocations), 1,
+            len(invocations),
+            1,
             "two runs under the same prompt version must hit the cache (no dedup regression)",
         )
 
@@ -441,7 +463,8 @@ class TP361PromptVersionCacheKey(_PipelineTestBase):
                 audit_run_id=run_id,
             )
         self.assertEqual(
-            len(invocations), 2,
+            len(invocations),
+            2,
             "an unknown prompt version must fail closed — no cross-run cache hit",
         )
 
@@ -460,7 +483,8 @@ class TP361PromptVersionCacheKey(_PipelineTestBase):
             config=_config(judge_prompt_version=None),
         )
         self.assertEqual(
-            len(invocations), 1,
+            len(invocations),
+            1,
             "two identical citations in one run must still dedup under the run-local key",
         )
 
@@ -474,7 +498,8 @@ class TP361PromptVersionCacheKey(_PipelineTestBase):
         for _ in range(2):
             self.run_pipeline(citations=[_citation()], judge_fn=judge_fn, cache=cache)
         self.assertEqual(
-            len(invocations), 1,
+            len(invocations),
+            1,
             "absent an explicit version, the repo constant is a real version and dedup holds",
         )
 
@@ -492,18 +517,15 @@ class TP361PromptVersionCacheKey(_PipelineTestBase):
         hash_a = "a" * 64
         hash_b = "b" * 64
 
-        with mock.patch(
-            "scripts.claim_audit_pipeline.JUDGE_PROMPT_SHA256", hash_a
-        ):
+        with mock.patch("scripts.claim_audit_pipeline.JUDGE_PROMPT_SHA256", hash_a):
             self.run_pipeline(citations=[_citation()], judge_fn=judge_fn, cache=cache)
         self.assertEqual(len(invocations), 1, "first run must invoke judge")
 
-        with mock.patch(
-            "scripts.claim_audit_pipeline.JUDGE_PROMPT_SHA256", hash_b
-        ):
+        with mock.patch("scripts.claim_audit_pipeline.JUDGE_PROMPT_SHA256", hash_b):
             self.run_pipeline(citations=[_citation()], judge_fn=judge_fn, cache=cache)
         self.assertEqual(
-            len(invocations), 2,
+            len(invocations),
+            2,
             "a re-pinned prompt hash MUST invalidate the stale entry and re-invoke "
             "the judge — the default cache-key prompt component is the hash, not the "
             "decoupled version label",
@@ -548,7 +570,10 @@ class TP5RetrievalPathways(_PipelineTestBase):
 
     def test_manual_pdf_accepted(self) -> None:
         def manual_pdf(citation: dict[str, Any]) -> dict[str, Any]:
-            return {"ref_retrieval_method": "manual_pdf", "retrieved_excerpt": "user-uploaded excerpt"}
+            return {
+                "ref_retrieval_method": "manual_pdf",
+                "retrieved_excerpt": "user-uploaded excerpt",
+            }
 
         out = self.run_pipeline(citations=[_citation()], retrieve_fn=manual_pdf)
         e = out["claim_audit_results"][0]
@@ -590,7 +615,11 @@ class TP6ConstraintViolation(_PipelineTestBase):
         self.assertEqual(e["judgment"], "UNSUPPORTED")
         self.assertEqual(e["defect_stage"], "negative_constraint_violation")
         self.assertEqual(e["violated_constraint_id"], "MNC-1")
-        self.assertEqual(out["constraint_violations"], [], "cited violation MUST emit into claim_audit_results, not constraint_violations")
+        self.assertEqual(
+            out["constraint_violations"],
+            [],
+            "cited violation MUST emit into claim_audit_results, not constraint_violations",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -620,7 +649,10 @@ class TP7DefectStageClassification(_PipelineTestBase):
                 if defect_stage == "retrieval_existence":
                     out = self.run_pipeline(
                         citations=[_citation()],
-                        retrieve_fn=lambda c: {"ref_retrieval_method": "not_found", "retrieved_excerpt": None},
+                        retrieve_fn=lambda c: {
+                            "ref_retrieval_method": "not_found",
+                            "retrieved_excerpt": None,
+                        },
                     )
                 elif defect_stage == "negative_constraint_violation":
                     manifest = _manifest(
@@ -730,12 +762,20 @@ class TP10UncitedOverDrift(_PipelineTestBase):
             manifests=[manifest],
             uncited_sentences=uncited_sentences,
         )
-        self.assertEqual(out["claim_audit_results"], [], "uncited sentence has no ref -> no claim_audit_result row")
+        self.assertEqual(
+            out["claim_audit_results"],
+            [],
+            "uncited sentence has no ref -> no claim_audit_result row",
+        )
         self.assertEqual(len(out["uncited_assertions"]), 1, "uncited entry MUST emit")
         # Sentence is not in manifest, and a companion claim_drifts[] entry would
         # also be a natural drift signal — but precedence rule 3 forbids the drift
         # row when uncited fires for the same sentence.
-        same_text_drift = [d for d in out["claim_drifts"] if d.get("claim_text") == uncited_sentences[0]["sentence_text"]]
+        same_text_drift = [
+            d
+            for d in out["claim_drifts"]
+            if d.get("claim_text") == uncited_sentences[0]["sentence_text"]
+        ]
         self.assertEqual(
             same_text_drift,
             [],
@@ -787,11 +827,15 @@ class TP11CapSampling(_PipelineTestBase):
         self.assertEqual(s["sampling_strategy"], "stratified_buckets_v1")
         indices = s["audited_indices"]
         self.assertEqual(len(indices), 100)
-        self.assertEqual(sorted(set(indices)), indices, "audited_indices strictly ascending and unique")
+        self.assertEqual(
+            sorted(set(indices)), indices, "audited_indices strictly ascending and unique"
+        )
 
     def test_small_n_no_summary_or_telemetry(self) -> None:
         # 50 citations, cap=100 -> no summary OR summary with audited_count == total.
-        citations = [_citation(claim_id=f"C-{i:03d}", ref_slug=f"ref-{i:03d}") for i in range(1, 51)]
+        citations = [
+            _citation(claim_id=f"C-{i:03d}", ref_slug=f"ref-{i:03d}") for i in range(1, 51)
+        ]
         manifest = _manifest(
             claims=[
                 {
@@ -803,7 +847,9 @@ class TP11CapSampling(_PipelineTestBase):
                 for i in range(1, 51)
             ],
         )
-        out = self.run_pipeline(citations=citations, manifests=[manifest], config=_config(max_claims_per_paper=100))
+        out = self.run_pipeline(
+            citations=citations, manifests=[manifest], config=_config(max_claims_per_paper=100)
+        )
         samplings = out["audit_sampling_summaries"]
         # Two valid outcomes per spec §4 step 3: zero summaries OR exactly one
         # telemetry-mode summary where audited_count == total_citation_count.
@@ -1315,7 +1361,8 @@ class TP19ConstraintAbsorptionFullManifestScope(_PipelineTestBase):
         )
         # The constraint violation itself still emits.
         cv = [
-            r for r in out["claim_audit_results"]
+            r
+            for r in out["claim_audit_results"]
             if r.get("defect_stage") == "negative_constraint_violation"
         ]
         self.assertEqual(len(cv), 1, "constraint violation row MUST emit")
@@ -1326,9 +1373,7 @@ class TP19ConstraintAbsorptionFullManifestScope(_PipelineTestBase):
         manifest_a = _manifest(
             manifest_id="M-aaaa-A",
             claims=[],
-            mncs=[
-                {"constraint_id": "MNC-1", "rule": "MUST NOT use causal language"}
-            ],
+            mncs=[{"constraint_id": "MNC-1", "rule": "MUST NOT use causal language"}],
         )
         manifest_b = _manifest(
             manifest_id="M-bbbb-B",
@@ -1364,8 +1409,10 @@ class TP19ConstraintAbsorptionFullManifestScope(_PipelineTestBase):
         )
         # Manifest B's C-100 is NOT emitted → INTENDED_NOT_EMITTED MUST still fire.
         intended_drift_b = [
-            d for d in out["claim_drifts"]
-            if d["drift_kind"] == "INTENDED_NOT_EMITTED" and d.get("scoped_manifest_id") == "M-bbbb-B"
+            d
+            for d in out["claim_drifts"]
+            if d["drift_kind"] == "INTENDED_NOT_EMITTED"
+            and d.get("scoped_manifest_id") == "M-bbbb-B"
         ]
         self.assertEqual(
             len(intended_drift_b),
@@ -1858,9 +1905,7 @@ class TP23UncitedJudgeOutageEmitsUAF(_PipelineTestBase):
                     "claim_text": "Causal claim.",
                     "intended_evidence_kind": "empirical",
                     "planned_refs": [],
-                    "negative_constraints": [
-                        {"constraint_id": "NC-C001-1", "rule": "No causal."}
-                    ],
+                    "negative_constraints": [{"constraint_id": "NC-C001-1", "rule": "No causal."}],
                 }
             ],
         )
@@ -1956,7 +2001,6 @@ class TP24PartialDecomposition(_PipelineTestBase):
     against both the schema and the INV-19 lint.
     """
 
-
     def test_partial_normalizes_to_unsupported_source_description(self) -> None:
         out = self.run_pipeline(citations=[_citation()], judge_fn=_judge_partial())
         results = out["claim_audit_results"]
@@ -2001,7 +2045,9 @@ class TP24PartialDecomposition(_PipelineTestBase):
             citations=[_citation()], judge_fn=_judge_partial_malformed(breakdown=bad)
         )
         e = out["claim_audit_results"][0]
-        self.assertEqual(e["judgment"], "RETRIEVAL_FAILED", "malformed PARTIAL must NOT become bare UNSUPPORTED")
+        self.assertEqual(
+            e["judgment"], "RETRIEVAL_FAILED", "malformed PARTIAL must NOT become bare UNSUPPORTED"
+        )
         self.assertEqual(e["audit_status"], "inconclusive")
         self.assertEqual(e["defect_stage"], "not_applicable")
         self.assertEqual(e["ref_retrieval_method"], "audit_tool_failure")
@@ -2009,7 +2055,9 @@ class TP24PartialDecomposition(_PipelineTestBase):
             e["rationale"].startswith("judge_parse_error"),
             f"rationale must lead with judge_parse_error tag; got {e['rationale']!r}",
         )
-        self.assertNotIn("sub_claim_breakdown", e, "no breakdown on a malformed-PARTIAL inconclusive row")
+        self.assertNotIn(
+            "sub_claim_breakdown", e, "no breakdown on a malformed-PARTIAL inconclusive row"
+        )
 
     def test_malformed_partial_item_missing_sub_claim_text_routes_inconclusive(self) -> None:
         # Ship-gate round-2: an item that passes the verdict-MIX gate but lacks a
@@ -2072,7 +2120,9 @@ class TP24PartialDecomposition(_PipelineTestBase):
     def test_malformed_partial_single_item_also_routes_inconclusive(self) -> None:
         out = self.run_pipeline(
             citations=[_citation()],
-            judge_fn=_judge_partial_malformed(breakdown=[{"sub_claim_text": "a", "sub_verdict": "SUPPORTED"}]),
+            judge_fn=_judge_partial_malformed(
+                breakdown=[{"sub_claim_text": "a", "sub_verdict": "SUPPORTED"}]
+            ),
         )
         e = out["claim_audit_results"][0]
         self.assertEqual(e["judgment"], "RETRIEVAL_FAILED")
@@ -2110,12 +2160,15 @@ class TP24PartialDecomposition(_PipelineTestBase):
         self.assertEqual(e["audit_status"], "inconclusive")
         self.assertTrue(e["rationale"].startswith("judge_parse_error"))
         self.assertLessEqual(
-            len(e["rationale"]), 2000,
+            len(e["rationale"]),
+            2000,
             f"fallback rationale must fit schema maxLength=2000; got {len(e['rationale'])}",
         )
         errors = sorted(_CAR_VALIDATOR.iter_errors(e), key=str)
         self.assertEqual(
-            errors, [], f"malformed-PARTIAL fallback row must satisfy claim_audit_result schema; got {errors}"
+            errors,
+            [],
+            f"malformed-PARTIAL fallback row must satisfy claim_audit_result schema; got {errors}",
         )
         self.assertEqual(self._validate_passport(out), [], "fallback row must also be lint-clean")
 
@@ -2167,12 +2220,15 @@ class TP360JudgeRationaleBoundOnSuccessPath(_PipelineTestBase):
             f"clamp must preserve the diagnostic head; got {e['rationale'][:60]!r}",
         )
         self.assertLessEqual(
-            len(e["rationale"]), 2000,
+            len(e["rationale"]),
+            2000,
             f"completed-row rationale must fit schema maxLength=2000; got {len(e['rationale'])}",
         )
         errors = sorted(_CAR_VALIDATOR.iter_errors(e), key=str)
         self.assertEqual(
-            errors, [], f"completed row with over-long judge rationale must satisfy schema; got {errors}"
+            errors,
+            [],
+            f"completed row with over-long judge rationale must satisfy schema; got {errors}",
         )
         self.assertEqual(self._validate_passport(out), [], "completed row must also be lint-clean")
 
@@ -2180,7 +2236,10 @@ class TP360JudgeRationaleBoundOnSuccessPath(_PipelineTestBase):
         # Regression guard: a short rationale that never needed truncating must
         # pass through unchanged (the bound must not mangle the common case).
         def judge_fn(**kwargs: Any) -> dict[str, Any]:
-            return {"judgment": "SUPPORTED", "rationale": "Cited page contains the figure verbatim."}
+            return {
+                "judgment": "SUPPORTED",
+                "rationale": "Cited page contains the figure verbatim.",
+            }
 
         out = self.run_pipeline(citations=[_citation()], judge_fn=judge_fn)
         e = out["claim_audit_results"][0]
@@ -2227,14 +2286,21 @@ class TP360JudgeRationaleBoundOnSuccessPath(_PipelineTestBase):
             f"clamp must preserve the diagnostic head; got {e['rationale'][:60]!r}",
         )
         self.assertLessEqual(
-            len(e["rationale"]), 2000,
+            len(e["rationale"]),
+            2000,
             f"constraint_violation rationale must fit schema maxLength=2000; got {len(e['rationale'])}",
         )
         errors = sorted(_CV_VALIDATOR.iter_errors(e), key=str)
         self.assertEqual(
-            errors, [], f"constraint_violation row with over-long judge rationale must satisfy schema; got {errors}"
+            errors,
+            [],
+            f"constraint_violation row with over-long judge rationale must satisfy schema; got {errors}",
         )
-        self.assertEqual(self._validate_passport(out, [manifest]), [], "constraint_violation row must also be lint-clean")
+        self.assertEqual(
+            self._validate_passport(out, [manifest]),
+            [],
+            "constraint_violation row must also be lint-clean",
+        )
 
 
 class TP360NonStringJudgeRationale(_PipelineTestBase):
@@ -2287,7 +2353,6 @@ class TP360NonStringJudgeRationale(_PipelineTestBase):
         self.assertTrue(e["rationale"], "null rationale must degrade to a non-empty default")
         self.assertEqual(sorted(_CV_VALIDATOR.iter_errors(e), key=str), [])
         self.assertEqual(self._validate_passport(out, [manifest]), [])
-
 
 
 # ---------------------------------------------------------------------------

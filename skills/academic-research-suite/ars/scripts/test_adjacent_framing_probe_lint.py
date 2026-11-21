@@ -21,7 +21,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 MENTOR_AGENT = REPO_ROOT / "deep-research" / "agents" / "socratic_mentor_agent.md"
 # Scoring / pipeline files the probe must NOT leak into:
 COLLABORATION_RUBRIC = REPO_ROOT / "shared" / "collaboration_depth_rubric.md"
-PIPELINE_PROCESS_SUMMARY = REPO_ROOT / "academic-pipeline" / "references" / "process_summary_protocol.md"
+PIPELINE_PROCESS_SUMMARY = (
+    REPO_ROOT / "academic-pipeline" / "references" / "process_summary_protocol.md"
+)
 
 PROBE_HEADING = "## Optional Adjacent-Framing Probe Layer"
 ENV_VAR = "ARS_SOCRATIC_ADJACENT_PROBE"
@@ -43,7 +45,7 @@ def _extract_probe_section(text: str) -> str:
     start = text.find(PROBE_HEADING)
     if start == -1:
         return ""
-    rest = text[start + len(PROBE_HEADING):]
+    rest = text[start + len(PROBE_HEADING) :]
     nxt = re.search(r"\n## ", rest)
     return rest[: nxt.start()] if nxt else rest
 
@@ -62,9 +64,7 @@ class TestAdjacentFramingProbeStructure(unittest.TestCase):
 
     def test_required_subheadings_present(self) -> None:
         for sub in REQUIRED_PROBE_SUBHEADINGS:
-            self.assertIn(
-                sub, self.section, f"Adjacent-framing probe section missing '{sub}'"
-            )
+            self.assertIn(sub, self.section, f"Adjacent-framing probe section missing '{sub}'")
 
     def test_env_var_gates_the_layer(self) -> None:
         self.assertIn(
@@ -90,7 +90,7 @@ class TestAdjacentFramingProbeStructure(unittest.TestCase):
         # The Kong L2 verb test must be named in the normative LAW SENTENCE so the
         # executing agent knows the law — not merely present somewhere in the region
         # (a table row label like "BAD (rank)" must NOT satisfy this check).
-        ban_region = self.section[self.section.find("### Banned Patterns"):]
+        ban_region = self.section[self.section.find("### Banned Patterns") :]
         law_match = re.search(r"must never\b[^\n]*", ban_region, re.IGNORECASE)
         self.assertIsNotNone(
             law_match,
@@ -112,17 +112,24 @@ class TestAdjacentFramingProbeStructure(unittest.TestCase):
         self.assertGreater(start, -1)
         self.assertGreater(end, start)
         wording = self.section[start:end].lower()
-        banned = ["you could research", "more novel", "consider:", "could become",
-                  "mediation angle", "mediating role"]
+        banned = [
+            "you could research",
+            "more novel",
+            "consider:",
+            "could become",
+            "mediation angle",
+            "mediating role",
+        ]
         for phrase in banned:
             self.assertNotIn(
-                phrase, wording,
+                phrase,
+                wording,
                 f"Probe Wording block must not contain leak phrase {phrase!r}",
             )
 
     def test_good_row_facet_is_directionless(self) -> None:
         # The Banned Patterns GOOD row must not use a mechanism/valenced facet noun.
-        ban_region = self.section[self.section.find("### Banned Patterns"):]
+        ban_region = self.section[self.section.find("### Banned Patterns") :]
         good_line = ""
         for line in ban_region.splitlines():
             if line.strip().startswith("| GOOD"):
@@ -131,7 +138,8 @@ class TestAdjacentFramingProbeStructure(unittest.TestCase):
         self.assertTrue(good_line, "Banned Patterns table must have a GOOD row")
         for mech in ("mediating", "mediation", "-impact", "-burnout", "driver of", "effect of"):
             self.assertNotIn(
-                mech, good_line,
+                mech,
+                good_line,
                 f"GOOD-row facet must be directionless; found mechanism term {mech!r}",
             )
 

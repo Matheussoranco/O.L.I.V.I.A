@@ -12,15 +12,12 @@ import socket
 import subprocess
 import sys
 import urllib.parse
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any, Callable
-
-import pytest
-from jsonschema import Draft202012Validator, FormatChecker
-from referencing import Registry, Resource
+from typing import Any
 
 import build_content_coverage_advisory as coverage_runtime
+import pytest
 from build_content_coverage_advisory import (
     ContentCoverageAdvisoryError,
     finalize_advisory,
@@ -29,14 +26,17 @@ from build_content_coverage_advisory import (
     validate_advisory,
 )
 from build_submission_packet_manifest import build_submission_packet_manifest
+from jsonschema import Draft202012Validator, FormatChecker
+from referencing import Registry, Resource
 from resolve_human_subjects_authority import digest, resolve
 from test_build_submission_packet_manifest import (
     PACKET_ROOT as SYNTHETIC_PACKET_ROOT,
+)
+from test_build_submission_packet_manifest import (
     _repin_overlay,
     _synthetic_overlay_authority,
     _waiver_inventory,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "content_coverage_advisory"
@@ -46,15 +46,9 @@ BASE_DRAFT = FIXTURES / "base_draft.json"
 SESSION_SOURCES = FIXTURES / "session_sources.json"
 AUTHORITY_FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "human_subjects_authority"
 REGISTRY_PATH = REPO_ROOT / "shared" / "human_subjects_authority_registry.json"
-ROW_SCHEMA_PATH = (
-    REPO_ROOT / "shared" / "contracts" / "evidence" / "evidence_row_v1_1.schema.json"
-)
+ROW_SCHEMA_PATH = REPO_ROOT / "shared" / "contracts" / "evidence" / "evidence_row_v1_1.schema.json"
 ADVISORY_SCHEMA_PATH = (
-    REPO_ROOT
-    / "shared"
-    / "contracts"
-    / "human_subjects"
-    / "content_coverage_advisory.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "human_subjects" / "content_coverage_advisory.schema.json"
 )
 RUNTIME_PATH = REPO_ROOT / "scripts" / "build_content_coverage_advisory.py"
 
@@ -63,9 +57,7 @@ REQUIREMENT_POINTER = "/profiles/0/requirements/1"
 EXPECTATION_POINTERS = [
     f"{REQUIREMENT_POINTER}/structured_expectations/{index}" for index in range(3)
 ]
-SOURCE_TEXT = (
-    "Participation is voluntary. Prospective information is provided before consent.\n"
-)
+SOURCE_TEXT = "Participation is voluntary. Prospective information is provided before consent.\n"
 CAPTURED_AT = "2026-08-09T12:00:00Z"
 ENVELOPE_EXPECTED = {
     "packet_v1.non_clinical": True,
@@ -145,26 +137,21 @@ def _repin_profile(context: dict[str, Any], profile: dict[str, Any]) -> None:
     unsigned.pop("profile_digest", None)
     profile["profile_digest"] = digest(unsigned)
     selected = next(
-        row
-        for row in context["selected_profiles"]
-        if row["profile_id"] == profile["profile_id"]
+        row for row in context["selected_profiles"] if row["profile_id"] == profile["profile_id"]
     )
     selected["profile_digest"] = profile["profile_digest"]
     display = next(
         row
         for axis in context["display_precedence"]
         for row in axis["ordered_authorities"]
-        if row["authority_kind"] == "profile"
-        and row["authority_id"] == profile["profile_id"]
+        if row["authority_kind"] == "profile" and row["authority_id"] == profile["profile_id"]
     )
     display["authority_digest"] = profile["profile_digest"]
 
 
 def _us_profile(registry: dict[str, Any]) -> dict[str, Any]:
     return next(
-        row
-        for row in registry["profiles"]
-        if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
+        row for row in registry["profiles"] if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
     )
 
 
@@ -321,9 +308,7 @@ def _not_checked(judgment: dict[str, Any], failure_state: str) -> None:
 def _schema_validator() -> Draft202012Validator:
     row_schema = _json(ROW_SCHEMA_PATH)
     advisory_schema = _json(ADVISORY_SCHEMA_PATH)
-    resources = Registry().with_resource(
-        row_schema["$id"], Resource.from_contents(row_schema)
-    )
+    resources = Registry().with_resource(row_schema["$id"], Resource.from_contents(row_schema))
     return Draft202012Validator(
         advisory_schema,
         registry=resources,
@@ -350,9 +335,7 @@ def _set_packet_text(
     *,
     artifact_id: str = "fixture.us-consent",
 ) -> None:
-    artifact = next(
-        row for row in inventory["artifacts"] if row["artifact_id"] == artifact_id
-    )
+    artifact = next(row for row in inventory["artifacts"] if row["artifact_id"] == artifact_id)
     path = packet_root / artifact["relative_path"]
     path.write_text(text, encoding="utf-8")
     payload = text.encode("utf-8")
@@ -361,9 +344,7 @@ def _set_packet_text(
 
 
 def _synthetic_live_draft_and_sources() -> tuple[dict[str, Any], dict[str, str]]:
-    source = (SYNTHETIC_PACKET_ROOT / "consent-materials.txt").read_text(
-        encoding="utf-8"
-    )
+    source = (SYNTHETIC_PACKET_ROOT / "consent-materials.txt").read_text(encoding="utf-8")
     draft = _draft()
     for judgment in list(draft["judgments"]):
         judgment["quoted_anchor_encoded"] = _quote(source.strip())
@@ -385,9 +366,7 @@ def _expectation_count_case(count: int) -> dict[str, Any]:
         judgments.append(
             {
                 "requirement_id": REQUIREMENT_ID,
-                "expectation_pointer": (
-                    f"{REQUIREMENT_POINTER}/structured_expectations/{index}"
-                ),
+                "expectation_pointer": (f"{REQUIREMENT_POINTER}/structured_expectations/{index}"),
                 "artifact_id": "fixture.us-consent",
                 "coverage_check_state": "performed",
                 "advisory_coverage_status": "DOCUMENTED",
@@ -426,23 +405,23 @@ def test_schemas_constants_and_reason_vocabulary_are_frozen() -> None:
     assert coverage_runtime.LAYER == "LLM-ADVISORY"
     assert coverage_runtime.EVALUATION_STATUS == "UNMEASURED"
     assert coverage_runtime.MAX_JUDGMENTS == 4096
-    assert coverage_runtime.MAX_SESSION_CONTENT_BYTES == 64 * 1024 * 1024
-    assert coverage_runtime.MAX_TOTAL_SESSION_CONTENT_BYTES == 256 * 1024 * 1024
-    assert coverage_runtime.MAX_ADVISORY_BYTES == 8 * 1024 * 1024
+    assert 64 * 1024 * 1024 == coverage_runtime.MAX_SESSION_CONTENT_BYTES
+    assert 256 * 1024 * 1024 == coverage_runtime.MAX_TOTAL_SESSION_CONTENT_BYTES
+    assert 8 * 1024 * 1024 == coverage_runtime.MAX_ADVISORY_BYTES
     assert coverage_runtime.MAX_RENDER_PAGE_SIZE == 25
 
 
 def test_session_content_count_and_byte_bounds_are_exact(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    assert len(coverage_runtime._validate_session_contents({f"a-{i}": "" for i in range(512)})) == 512
+    assert (
+        len(coverage_runtime._validate_session_contents({f"a-{i}": "" for i in range(512)})) == 512
+    )
     with pytest.raises(ContentCoverageAdvisoryError, match="exceeds 512"):
         coverage_runtime._validate_session_contents({f"a-{i}": "" for i in range(513)})
 
     monkeypatch.setattr(coverage_runtime, "MAX_SESSION_CONTENT_BYTES", 4)
-    assert coverage_runtime._validate_session_contents({"a": "1234"}) == {
-        "a": "1234"
-    }
+    assert coverage_runtime._validate_session_contents({"a": "1234"}) == {"a": "1234"}
     with pytest.raises(ContentCoverageAdvisoryError, match="64 MiB"):
         coverage_runtime._validate_session_contents({"a": "12345"})
 
@@ -460,9 +439,7 @@ def test_public_api_is_frozen_and_packet_root_is_mandatory() -> None:
     for name in ("finalize_advisory", "validate_advisory", "render_advisory", "main"):
         assert hasattr(coverage_runtime, name)
     tree = ast.parse(RUNTIME_PATH.read_text(encoding="utf-8"))
-    functions = {
-        node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)
-    }
+    functions = {node.name: node for node in tree.body if isinstance(node, ast.FunctionDef)}
     for name in ("finalize_advisory", "validate_advisory", "render_advisory"):
         parameters = [argument.arg for argument in functions[name].args.args]
         assert "packet_root" in parameters
@@ -507,20 +484,12 @@ def test_input_binding_and_deterministic_status_are_exact_copies() -> None:
         "inventory_id": manifest["inventory_pointer"]["inventory_id"],
         "inventory_digest": manifest["inventory_pointer"]["inventory_digest"],
         "observation_digest": manifest["packet_pointer"]["observation_digest"],
-        "context_record_id": manifest["authority_binding"]["context_pointer"][
-            "context_record_id"
-        ],
-        "context_digest": manifest["authority_binding"]["context_pointer"][
-            "context_digest"
-        ],
+        "context_record_id": manifest["authority_binding"]["context_pointer"]["context_record_id"],
+        "context_digest": manifest["authority_binding"]["context_pointer"]["context_digest"],
         "registry_id": manifest["authority_binding"]["registry_pointer"]["registry_id"],
-        "registry_version": manifest["authority_binding"]["registry_pointer"][
-            "registry_version"
-        ],
+        "registry_version": manifest["authority_binding"]["registry_pointer"]["registry_version"],
         "registry_as_of": manifest["authority_binding"]["registry_pointer"]["as_of"],
-        "registry_digest": manifest["authority_binding"]["registry_pointer"][
-            "registry_digest"
-        ],
+        "registry_digest": manifest["authority_binding"]["registry_pointer"]["registry_digest"],
         "resolved_digest": manifest["authority_binding"]["resolved_digest"],
     }
     assert advisory["deterministic_status"] == {
@@ -562,9 +531,10 @@ def test_renderer_shows_exact_authorization_copy_independent_of_readiness() -> N
 
     assert complete["deterministic_status"]["authorization_status"] == authorization
     assert gap["deterministic_status"]["authorization_status"] == authorization
-    assert complete["deterministic_status"]["submission_readiness"] != gap[
-        "deterministic_status"
-    ]["submission_readiness"]
+    assert (
+        complete["deterministic_status"]["submission_readiness"]
+        != gap["deterministic_status"]["submission_readiness"]
+    )
     for advisory, case in ((complete, complete_case), (gap, gap_case)):
         rendered = _render(advisory, case)
         assert f"Authorization status: {authorization['value']}" in rendered
@@ -573,8 +543,7 @@ def test_renderer_shows_exact_authorization_copy_independent_of_readiness() -> N
             + coverage_runtime._md(authorization["source_reference"])
         ) in rendered
         assert (
-            "Authorization provenance: "
-            + coverage_runtime._md(authorization["provenance"])
+            "Authorization provenance: " + coverage_runtime._md(authorization["provenance"])
         ) in rendered
 
 
@@ -638,9 +607,7 @@ def test_draft_schema_and_runtime_reject_closed_or_absolute_end_mutations(
         ("bad_timestamp", True),
     ],
 )
-def test_draft_state_cross_products_fail_closed(
-    mutation: str, schema_rejects: bool
-) -> None:
+def test_draft_state_cross_products_fail_closed(mutation: str, schema_rejects: bool) -> None:
     case = _case()
     row = case["draft"]["judgments"][0]
     if mutation == "documented_empty_quote":
@@ -681,9 +648,7 @@ def test_missing_or_duplicate_expectation_accounting_fails() -> None:
     with pytest.raises(ContentCoverageAdvisoryError, match="missing explicit draft accounting"):
         _finalize(missing)
     duplicate = _case()
-    duplicate["draft"]["judgments"].append(
-        copy.deepcopy(duplicate["draft"]["judgments"][0])
-    )
+    duplicate["draft"]["judgments"].append(copy.deepcopy(duplicate["draft"]["judgments"][0]))
     with pytest.raises(ContentCoverageAdvisoryError, match="duplicates"):
         _finalize(duplicate)
 
@@ -695,9 +660,7 @@ def test_unknown_or_cross_bound_draft_target_is_rejected(target: str) -> None:
     if target == "requirement":
         row["requirement_id"] = "unknown.requirement"
     elif target == "pointer":
-        row["expectation_pointer"] = (
-            "/profiles/0/requirements/0/structured_expectations/0"
-        )
+        row["expectation_pointer"] = "/profiles/0/requirements/0/structured_expectations/0"
     else:
         row["artifact_id"] = "unknown.artifact"
     with pytest.raises(ContentCoverageAdvisoryError):
@@ -723,9 +686,7 @@ def test_aggregate_precedence_documented_not_located_conflicting_and_partial() -
     conflict_case["draft"]["judgments"].append(second)
     conflicting = _finalize(conflict_case)
     assert _result(conflicting)["advisory_coverage_status"] == "CONFLICTING"
-    assert _result(conflicting)["reason_codes"] == [
-        "CONFLICTING_COVERAGE_OBSERVATIONS"
-    ]
+    assert _result(conflicting)["reason_codes"] == ["CONFLICTING_COVERAGE_OBSERVATIONS"]
     assert len(_result(conflicting)["expectation_findings"][0]["evidence_rows"]) == 2
 
     partial_case = _case()
@@ -841,11 +802,15 @@ def test_explicit_failure_cannot_hide_content_that_was_supplied() -> None:
 def test_external_only_requirement_is_acceptance_unverified_not_missing() -> None:
     inventory = _inventory()
     inventory["packet_responsibility_role_ids"] = ["investigator"]
-    case = _case(inventory=inventory, draft={
-        "schema_version": "content-coverage-advisory-draft/1.0",
-        "layer": "LLM-ADVISORY",
-        "judgments": [],
-    }, sources={})
+    case = _case(
+        inventory=inventory,
+        draft={
+            "schema_version": "content-coverage-advisory-draft/1.0",
+            "layer": "LLM-ADVISORY",
+            "judgments": [],
+        },
+        sources={},
+    )
     advisory = _finalize(case)
     result = _result(advisory)
     assert result["coverage_check_state"] == "not_checked"
@@ -888,8 +853,7 @@ def test_profiled_waiver_route_stays_acceptance_boundary_without_false_gap() -> 
     extra = copy.deepcopy(targeted["draft"]["judgments"][0])
     extra["requirement_id"] = "synthetic.packet.base-consent"
     extra["expectation_pointer"] = (
-        result["requirement_ref"]["requirement_pointer"]
-        + "/structured_expectations/0"
+        result["requirement_ref"]["requirement_pointer"] + "/structured_expectations/0"
     )
     targeted["draft"]["judgments"].append(extra)
     with pytest.raises(ContentCoverageAdvisoryError, match="targets ineligible"):
@@ -912,9 +876,7 @@ def test_unprofiled_or_external_waiver_route_preserves_deterministic_gap(
         "state": route_state,
         "requirement_ids": [],
         "decision_maker_role": (
-            "institutional_review_office"
-            if route_state == "external_authority_required"
-            else None
+            "institutional_review_office" if route_state == "external_authority_required" else None
         ),
     }
     _repin_overlay(context, overlay)
@@ -948,13 +910,9 @@ def test_deterministic_packet_gap_or_conflict_never_becomes_content_not_located(
 
     conflict_inventory = _inventory()
     conflict_inventory["artifacts"][0]["declared_sha256"] = "0" * 64
-    conflict = _finalize(
-        _case(inventory=conflict_inventory, draft=empty_draft, sources={})
-    )
+    conflict = _finalize(_case(inventory=conflict_inventory, draft=empty_draft, sources={}))
     assert _result(conflict)["advisory_coverage_status"] is None
-    assert _result(conflict)["reason_codes"] == [
-        "DETERMINISTIC_PACKET_CONFLICT"
-    ]
+    assert _result(conflict)["reason_codes"] == ["DETERMINISTIC_PACKET_CONFLICT"]
 
 
 def test_not_located_requires_checked_no_match_for_every_eligible_artifact(
@@ -1098,9 +1056,7 @@ def test_unprovided_overlay_marks_each_base_requirement_applicability_unresolved
 def test_closed_capability_gate_fails_before_draft_or_content_consumption() -> None:
     context = _context()
     context["declared_facts"] = [
-        row
-        for row in context["declared_facts"]
-        if row["fact_id"] != "packet_v1.non_clinical"
+        row for row in context["declared_facts"] if row["fact_id"] != "packet_v1.non_clinical"
     ]
     case = _case(context=context, draft={}, sources={})
     assert case["manifest"]["capability_envelope"]["state"] == "unresolved"
@@ -1118,9 +1074,7 @@ def test_closed_capability_gate_fails_before_draft_or_content_consumption() -> N
 
     case["draft"] = {"explode_if_consumed": object()}
     case["sources"] = BombMapping()
-    with pytest.raises(
-        ContentCoverageAdvisoryError, match="manifest.capability_envelope"
-    ):
+    with pytest.raises(ContentCoverageAdvisoryError, match="manifest.capability_envelope"):
         _finalize(case)
 
 
@@ -1135,9 +1089,7 @@ def test_no_profiled_expectations_is_not_checked_never_covered() -> None:
         "layer": "LLM-ADVISORY",
         "judgments": [],
     }
-    advisory = _finalize(
-        _case(context=context, registry=registry, draft=empty_draft)
-    )
+    advisory = _finalize(_case(context=context, registry=registry, draft=empty_draft))
     result = _result(advisory)
     assert result["coverage_check_state"] == "not_checked"
     assert result["advisory_coverage_status"] is None
@@ -1208,10 +1160,7 @@ def test_same_artifact_conflict_observation_permutation_is_byte_identical() -> N
     baseline = _finalize(case)
 
     permuted = copy.deepcopy(case)
-    permuted["draft"] = {
-        key: permuted["draft"][key]
-        for key in reversed(tuple(permuted["draft"]))
-    }
+    permuted["draft"] = {key: permuted["draft"][key] for key in reversed(tuple(permuted["draft"]))}
     permuted["draft"]["judgments"] = [
         {key: row[key] for key in reversed(tuple(row))}
         for row in reversed(permuted["draft"]["judgments"])
@@ -1377,17 +1326,16 @@ def test_renderer_escapes_locator_and_excerpt_injection(tmp_path: Path) -> None:
     packet = _packet_copy(tmp_path)
     inventory = _inventory()
     injected = (
-        "<script>alert(1)</script> | [click](https://example.invalid) "
-        "![x](javascript:alert(2))"
+        "<script>alert(1)</script> | [click](https://example.invalid) " "![x](javascript:alert(2))"
     )
     text = f"{injected}\n"
     _set_packet_text(packet, inventory, text)
     draft = _draft()
     for index, judgment in enumerate(draft["judgments"]):
         judgment["quoted_anchor_encoded"] = _quote(injected)
-        judgment["document_locator"]["value"] = (
-            f"<img src=x onerror=alert({index})> | [link](https://example.invalid)"
-        )
+        judgment["document_locator"][
+            "value"
+        ] = f"<img src=x onerror=alert({index})> | [link](https://example.invalid)"
     case = _case(
         inventory=inventory,
         packet_root=packet,
@@ -1486,8 +1434,7 @@ def test_renderer_paging_boundaries_preserve_all_rows_once(count: int) -> None:
     for page in range(1, pages + 1):
         rendered = _render(advisory, case, page=page)
         page_rows = [
-            token.replace("\\-", "-")
-            for token in re.findall(r"EVR\\-CC\\-[0-9]{6}", rendered)
+            token.replace("\\-", "-") for token in re.findall(r"EVR\\-CC\\-[0-9]{6}", rendered)
         ]
         assert len(page_rows) <= 25
         observed.extend(page_rows)
@@ -1520,8 +1467,7 @@ def test_one_thousand_one_rows_traverse_without_loss_reorder_or_all_pages(
     ):
         rendered = _render(advisory, case, page=page)
         page_rows = [
-            token.replace("\\-", "-")
-            for token in re.findall(r"EVR\\-CC\\-[0-9]{6}", rendered)
+            token.replace("\\-", "-") for token in re.findall(r"EVR\\-CC\\-[0-9]{6}", rendered)
         ]
         assert page_rows == page_expected
         assert f"Page {page}/41" in rendered
@@ -1543,15 +1489,12 @@ def test_one_thousand_one_rows_traverse_without_loss_reorder_or_all_pages(
         selected = rows[start : start + page_size]
         return "\n".join(row["row_id"].replace("-", "\\-") for row in selected)
 
-    monkeypatch.setattr(
-        coverage_runtime, "render_evidence_rows_markdown", fast_bounded_renderer
-    )
+    monkeypatch.setattr(coverage_runtime, "render_evidence_rows_markdown", fast_bounded_renderer)
     observed: list[str] = []
     for page in range(1, 42):
         rendered = _render(advisory, case, page=page)
         page_rows = [
-            token.replace("\\-", "-")
-            for token in re.findall(r"EVR\\-CC\\-[0-9]{6}", rendered)
+            token.replace("\\-", "-") for token in re.findall(r"EVR\\-CC\\-[0-9]{6}", rendered)
         ]
         assert 1 <= len(page_rows) <= 25
         observed.extend(page_rows)
@@ -1637,9 +1580,7 @@ def test_cli_closed_gate_fails_before_opening_draft_or_source_map(
 ) -> None:
     context = _context()
     context["declared_facts"] = [
-        row
-        for row in context["declared_facts"]
-        if row["fact_id"] != "packet_v1.non_clinical"
+        row for row in context["declared_facts"] if row["fact_id"] != "packet_v1.non_clinical"
     ]
     closed = _case(context=context, draft={}, sources={})
     _case_value, paths = _cli_case(tmp_path)

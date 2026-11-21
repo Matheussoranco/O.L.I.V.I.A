@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-
 ROOT = Path(__file__).resolve().parents[1]
 MODULE_PATH = ROOT / "scripts" / "run_role_topology_utility_dry_run.py"
 SPEC = importlib.util.spec_from_file_location("role_topology_dry_run", MODULE_PATH)
@@ -17,9 +16,7 @@ SPEC.loader.exec_module(runner)
 
 
 def _assets():
-    return runner.load_json_strict(runner.PLAN_PATH), runner.load_json_strict(
-        runner.SET_PATH
-    )
+    return runner.load_json_strict(runner.PLAN_PATH), runner.load_json_strict(runner.SET_PATH)
 
 
 def test_real_assets_validate_and_materialize_exact_frozen_call_count():
@@ -33,22 +30,32 @@ def test_real_assets_validate_and_materialize_exact_frozen_call_count():
 def test_task_classes_have_independent_exact_arms_and_evaluators():
     plan, _heldout = _assets()
     classes = {row["task_class_id"]: row for row in plan["task_classes"]}
-    assert [arm["role_count"] for arm in classes["decomposable_reviewer_evidence_review"]["arms"]] == [1, 2, 5, 7]
+    assert [
+        arm["role_count"] for arm in classes["decomposable_reviewer_evidence_review"]["arms"]
+    ] == [1, 2, 5, 7]
     writing = classes["sequential_writing_revision"]
     assert [arm["role_count"] for arm in writing["arms"]] == [1, 2, 5, 8]
     assert writing["evaluator_id"] == "writing-revision-rubric-v1"
-    assert classes["decomposable_reviewer_evidence_review"]["evaluator_id"] == "reviewer-evidence-rubric-v1"
+    assert (
+        classes["decomposable_reviewer_evidence_review"]["evaluator_id"]
+        == "reviewer-evidence-rubric-v1"
+    )
 
 
 def test_writing_never_reuses_accept_reject_outcomes():
     plan, heldout = _assets()
-    writing = next(row for row in plan["task_classes"] if row["task_class_id"] == "sequential_writing_revision")
+    writing = next(
+        row for row in plan["task_classes"] if row["task_class_id"] == "sequential_writing_revision"
+    )
     assert set(writing["forbidden_outcomes"]) == runner.WRITING_FORBIDDEN
     assert not runner.WRITING_FORBIDDEN.intersection(writing["outcome_vocabulary"])
     for row in heldout["scenarios"]:
         if row["task_class"] == "sequential_writing_revision":
             constraints = " ".join(row["constraints"]).casefold()
-            assert all(label in constraints for label in ("accept", "reject", "minor revision", "major revision"))
+            assert all(
+                label in constraints
+                for label in ("accept", "reject", "minor revision", "major revision")
+            )
 
 
 def test_budget_tools_replicates_stopping_and_uncertainty_are_frozen():
@@ -61,10 +68,18 @@ def test_budget_tools_replicates_stopping_and_uncertainty_are_frozen():
         "judge_calls_included": False,
         "api_spend_authorized_usd": 0,
     }
-    assert plan["tools"] == {"allowed": [], "web": False, "network": False, "external_corpus": False, "workspace_reads": False}
+    assert plan["tools"] == {
+        "allowed": [],
+        "web": False,
+        "network": False,
+        "external_corpus": False,
+        "workspace_reads": False,
+    }
     assert plan["replicates"]["per_scenario_arm"] == 3
     assert plan["stopping"]["retry_attempts"] == 0
-    assert plan["stopping"]["stop_entire_study_on_first_blocked_partial_or_protocol_deviation"] is True
+    assert (
+        plan["stopping"]["stop_entire_study_on_first_blocked_partial_or_protocol_deviation"] is True
+    )
     assert plan["uncertainty"]["pool_task_classes"] is False
     assert plan["uncertainty"]["pool_metrics_to_scalar"] is False
 
@@ -88,7 +103,9 @@ def test_subject_prompts_hide_gold_and_exact_arm_identifiers():
         assert call["arm_id"].encode() not in prompt
         assert b"role_count" not in prompt
         scenario = scenarios[call["scenario_id"]]
-        units = scenario["gold"].get("value_units", scenario["gold"].get("revision_requirements", []))
+        units = scenario["gold"].get(
+            "value_units", scenario["gold"].get("revision_requirements", [])
+        )
         assert all(unit["unit_id"].encode() not in prompt for unit in units)
 
 
@@ -167,9 +184,7 @@ def test_manifest_source_digests_bind_the_exact_in_memory_snapshots():
     changed, _ = runner.build_manifest(plan, mutated)
     assert changed["plan_sha256"] == original["plan_sha256"]
     assert changed["heldout_sha256"] != original["heldout_sha256"]
-    assert changed["heldout_sha256"] == runner._sha256(
-        runner._canonical_json(mutated)
-    )
+    assert changed["heldout_sha256"] == runner._sha256(runner._canonical_json(mutated))
 
 
 def test_exact_rebuild_rejects_metadata_or_placeholder_dependency_drift():
@@ -185,15 +200,17 @@ def test_exact_rebuild_rejects_metadata_or_placeholder_dependency_drift():
         (index, candidates)
         for index, target_row in enumerate(dependency["calls"])
         if len(target_row["depends_on"]) >= 2
-        for candidates in [[
-            row["call_id"]
-            for row in dependency["calls"][:index]
-            if all(
-                row[key] == target_row[key]
-                for key in ("task_class", "scenario_id", "arm_id", "replicate_id")
-            )
-            and row["call_id"] not in target_row["depends_on"]
-        ]]
+        for candidates in [
+            [
+                row["call_id"]
+                for row in dependency["calls"][:index]
+                if all(
+                    row[key] == target_row[key]
+                    for key in ("task_class", "scenario_id", "arm_id", "replicate_id")
+                )
+                and row["call_id"] not in target_row["depends_on"]
+            ]
+        ]
         if candidates
     )
     target = dependency["calls"][target_index]
@@ -204,7 +221,9 @@ def test_exact_rebuild_rejects_metadata_or_placeholder_dependency_drift():
 
 def test_materialize_writes_closed_hash_bound_no_dispatch_manifest(tmp_path: Path):
     result = runner.materialize(tmp_path / "packet")
-    manifest = json.loads((tmp_path / "packet" / "prompt-manifest.json").read_text(encoding="utf-8"))
+    manifest = json.loads(
+        (tmp_path / "packet" / "prompt-manifest.json").read_text(encoding="utf-8")
+    )
     assert result["status"] == "MATERIALIZED_NO_DISPATCH"
     assert result["call_count"] == 186
     assert manifest["dispatch_authorized"] is False
@@ -253,9 +272,7 @@ def test_exact_evaluator_and_role_graph_drift_fails_closed(mutation):
             roles[0]["role_ref"],
         )
     else:
-        mutated["task_classes"][0]["arms"][2]["roles"][-1]["depends_on"] = [
-            "review-journal-fit"
-        ]
+        mutated["task_classes"][0]["arms"][2]["roles"][-1]["depends_on"] = ["review-journal-fit"]
     with pytest.raises(runner.TopologyError, match="exact role graph drifted"):
         runner.validate_assets(mutated, heldout)
 
@@ -280,9 +297,7 @@ def test_task_class_cannot_accept_other_task_gold_shape():
         if row["task_class"] == "decomposable_reviewer_evidence_review"
     )
     writing = next(
-        row
-        for row in mutated["scenarios"]
-        if row["task_class"] == "sequential_writing_revision"
+        row for row in mutated["scenarios"] if row["task_class"] == "sequential_writing_revision"
     )
     review["gold"] = copy.deepcopy(writing["gold"])
     with pytest.raises(runner.TopologyError, match="reviewer gold"):
@@ -346,9 +361,7 @@ def test_each_arm_has_one_hash_bound_final_output_contract_and_role_scoped_inter
     manifest, prompts = runner.build_manifest(plan, heldout)
     for task in plan["task_classes"]:
         for arm in task["arms"]:
-            finals = [
-                role for role in arm["roles"] if role["output_kind"] == "final_outcome"
-            ]
+            finals = [role for role in arm["roles"] if role["output_kind"] == "final_outcome"]
             assert [role["seat_id"] for role in finals] == [arm["final_output_seat"]]
             for role in arm["roles"]:
                 contract = role["study_output_contract"].casefold()
@@ -379,9 +392,7 @@ def test_output_contract_or_final_seat_drift_fails_closed():
         runner.validate_assets(mutated, heldout)
 
     mutated = copy.deepcopy(plan)
-    mutated["task_classes"][1]["arms"][2]["roles"][0][
-        "study_output_contract"
-    ] += " Mutated."
+    mutated["task_classes"][1]["arms"][2]["roles"][0]["study_output_contract"] += " Mutated."
     with pytest.raises(runner.TopologyError, match="exact role graph drifted"):
         runner.validate_assets(mutated, heldout)
 
@@ -393,9 +404,7 @@ def test_strict_json_rejects_duplicate_keys(tmp_path: Path):
         runner.load_json_strict(path)
 
 
-def test_repository_relative_role_path_cannot_escape_through_symlink(
-    tmp_path: Path, monkeypatch
-):
+def test_repository_relative_role_path_cannot_escape_through_symlink(tmp_path: Path, monkeypatch):
     repository = tmp_path / "repository"
     repository.mkdir()
     outside = tmp_path / "outside.md"
@@ -408,7 +417,15 @@ def test_repository_relative_role_path_cannot_escape_through_symlink(
 
 def test_runner_has_no_transport_dispatch_or_measurement_command():
     source = MODULE_PATH.read_text(encoding="utf-8").casefold()
-    for forbidden in ("import requests", "import urllib", "import subprocess", "openai", "anthropic", "codex exec", "claude -p"):
+    for forbidden in (
+        "import requests",
+        "import urllib",
+        "import subprocess",
+        "openai",
+        "anthropic",
+        "codex exec",
+        "claude -p",
+    ):
         assert forbidden not in source
     parser = runner._parser()
     subparser_action = next(
@@ -418,7 +435,9 @@ def test_runner_has_no_transport_dispatch_or_measurement_command():
 
 
 def test_ci_registry_contract_and_spec_wiring():
-    registry = json.loads((ROOT / "evals" / "heldout" / "suite_registry.json").read_text(encoding="utf-8"))
+    registry = json.loads(
+        (ROOT / "evals" / "heldout" / "suite_registry.json").read_text(encoding="utf-8")
+    )
     assert registry[runner.SUITE] == "paired_controls"
     contract = (ROOT / "evals" / "heldout" / "MEASUREMENT_CONTRACT.md").read_text(encoding="utf-8")
     workflow = (ROOT / ".github" / "workflows" / "spec-consistency.yml").read_text(encoding="utf-8")

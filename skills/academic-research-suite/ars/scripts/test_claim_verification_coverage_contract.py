@@ -4,18 +4,17 @@ from __future__ import annotations
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parent.parent
 
 
 class ClaimVerificationCoverageContractTests(unittest.TestCase):
     def test_mode_two_names_registered_claim_denominator(self) -> None:
-        protocol = (
-            ROOT / "academic-pipeline/references/claim_verification_protocol.md"
-        ).read_text(encoding="utf-8")
-        agent = (
-            ROOT / "academic-pipeline/agents/integrity_verification_agent.md"
-        ).read_text(encoding="utf-8")
+        protocol = (ROOT / "academic-pipeline/references/claim_verification_protocol.md").read_text(
+            encoding="utf-8"
+        )
+        agent = (ROOT / "academic-pipeline/agents/integrity_verification_agent.md").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("100% of **registered claims**", protocol)
         self.assertIn("semantic extraction completeness remains unknown", protocol)
         self.assertIn("semantic extraction completeness remains unknown", agent)
@@ -23,14 +22,12 @@ class ClaimVerificationCoverageContractTests(unittest.TestCase):
         self.assertNotIn("Mode 2 (final-check): 100% of claims", agent)
 
     def test_mechanical_gap_detector_keeps_semantic_limit_visible(self) -> None:
-        protocol = (
-            ROOT / "academic-pipeline/references/claim_verification_protocol.md"
-        ).read_text(encoding="utf-8")
+        protocol = (ROOT / "academic-pipeline/references/claim_verification_protocol.md").read_text(
+            encoding="utf-8"
+        )
         flattened = " ".join(protocol.split())
         self.assertIn("scripts/claim_registry_coverage.py", protocol)
-        self.assertIn(
-            "semantic_extraction_coverage: not_machine_detectable", protocol
-        )
+        self.assertIn("semantic_extraction_coverage: not_machine_detectable", protocol)
         self.assertIn("citation-bearing sentences", flattened)
         self.assertIn("quantitative sentences", flattened)
         self.assertIn("claim-registry/1.0", protocol)
@@ -58,9 +55,9 @@ class ClaimVerificationCoverageContractTests(unittest.TestCase):
         self.assertIn("Auditability and replay boundaries", skill)
 
     def test_reexecution_reference_disclaims_output_equivalence(self) -> None:
-        text = (
-            ROOT / "academic-pipeline/references/reproducibility_audit.md"
-        ).read_text(encoding="utf-8")
+        text = (ROOT / "academic-pipeline/references/reproducibility_audit.md").read_text(
+            encoding="utf-8"
+        )
         self.assertIn("does not promise consistent outputs", text)
         self.assertIn("not a byte-replay guarantee", text)
 

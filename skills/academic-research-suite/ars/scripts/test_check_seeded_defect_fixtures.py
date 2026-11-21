@@ -66,12 +66,8 @@ class SeededDefectCheckerTest(unittest.TestCase):
                 mod, "CLEAN_CONTROL", self.root / "manuscripts" / "ms00_clean_control.md"
             ),
             mock.patch.object(mod, "EXPECTED_FIXTURES", {"ms01_quant"}),
-            mock.patch.object(
-                mod, "EXPECTED_DEFECT_IDS", {"ms01_quant": {"SD-01"}}
-            ),
-            mock.patch.object(
-                mod, "EXPECTED_STATISTICAL_KINDS", self.expected_kinds
-            ),
+            mock.patch.object(mod, "EXPECTED_DEFECT_IDS", {"ms01_quant": {"SD-01"}}),
+            mock.patch.object(mod, "EXPECTED_STATISTICAL_KINDS", self.expected_kinds),
         ]
         for p in patches:
             p.start()
@@ -89,23 +85,17 @@ class SeededDefectCheckerTest(unittest.TestCase):
         self.assertEqual(mod.main(), 0)
 
     def test_missing_manuscript_fails(self):
-        self.assertEqual(
-            self.mutate(lambda d: d.update(manuscript="manuscripts/nope.md")), 1
-        )
+        self.assertEqual(self.mutate(lambda d: d.update(manuscript="manuscripts/nope.md")), 1)
 
     def test_defect_count_mismatch_fails(self):
         self.assertEqual(self.mutate(lambda d: d.update(defect_count=2)), 1)
 
     def test_unknown_class_fails(self):
-        self.assertEqual(
-            self.mutate(lambda d: d["defects"][0].update({"class": "vibes"})), 1
-        )
+        self.assertEqual(self.mutate(lambda d: d["defects"][0].update({"class": "vibes"})), 1)
 
     def test_unknown_severity_fails(self):
         self.assertEqual(
-            self.mutate(
-                lambda d: d["defects"][0].update({"expected_severity": "fatal"})
-            ),
+            self.mutate(lambda d: d["defects"][0].update({"expected_severity": "fatal"})),
             1,
         )
 
@@ -130,18 +120,12 @@ class SeededDefectCheckerTest(unittest.TestCase):
     def test_anchor_too_short_fails(self):
         short = "seven words only in this anchor here"
         ms = self.root / "manuscripts" / "ms01_quant_defective.md"
-        ms.write_text(
-            ms.read_text(encoding="utf-8") + f"\n{short}\n", encoding="utf-8"
-        )
-        self.assertEqual(
-            self.mutate(lambda d: d["defects"][0].update({"anchor_quote": short})), 1
-        )
+        ms.write_text(ms.read_text(encoding="utf-8") + f"\n{short}\n", encoding="utf-8")
+        self.assertEqual(self.mutate(lambda d: d["defects"][0].update({"anchor_quote": short})), 1)
 
     def test_manifest_pointing_at_clean_control_fails(self):
         self.assertEqual(
-            self.mutate(
-                lambda d: d.update(manuscript="manuscripts/ms00_clean_control.md")
-            ),
+            self.mutate(lambda d: d.update(manuscript="manuscripts/ms00_clean_control.md")),
             1,
         )
 
@@ -161,9 +145,7 @@ class SeededDefectCheckerTest(unittest.TestCase):
         self.assertEqual(self.mutate(drop), 1)
 
     def test_fixture_version_drift_fails(self):
-        self.assertEqual(
-            self.mutate(lambda d: d.update(fixture_version="0.1")), 1
-        )
+        self.assertEqual(self.mutate(lambda d: d.update(fixture_version="0.1")), 1)
 
     def test_missing_defect_field_fails(self):
         def drop(d):
@@ -173,9 +155,7 @@ class SeededDefectCheckerTest(unittest.TestCase):
 
     def test_unknown_detector_fails(self):
         self.assertEqual(
-            self.mutate(
-                lambda d: d["defects"][0].update({"expected_detector": "psychic"})
-            ),
+            self.mutate(lambda d: d["defects"][0].update({"expected_detector": "psychic"})),
             1,
         )
 
@@ -187,11 +167,7 @@ class SeededDefectCheckerTest(unittest.TestCase):
 
     def test_unknown_statistical_kind_fails(self):
         self.assertEqual(
-            self.mutate(
-                lambda d: d["defects"][0].update(
-                    {"statistical_kind": "calculator_vibes"}
-                )
-            ),
+            self.mutate(lambda d: d["defects"][0].update({"statistical_kind": "calculator_vibes"})),
             1,
         )
 
@@ -203,17 +179,15 @@ class SeededDefectCheckerTest(unittest.TestCase):
 
     def test_statistical_projection_change_fails(self):
         self.assertEqual(
-            self.mutate(
-                lambda d: d["defects"][0].update(
-                    {"statistical_kind": "reporting_only"}
-                )
-            ),
+            self.mutate(lambda d: d["defects"][0].update({"statistical_kind": "reporting_only"})),
             1,
         )
 
     @staticmethod
     def grimmer_oracle(
-        *, reported_mean: str = "3.00", reported_sd: str = "0.10",
+        *,
+        reported_mean: str = "3.00",
+        reported_sd: str = "0.10",
         convention: str = "sample",
         expected_consistent: bool = False,
     ) -> dict:
@@ -230,7 +204,10 @@ class SeededDefectCheckerTest(unittest.TestCase):
         }
 
     def make_grimmer(
-        self, data: dict, *, reported_mean: str = "3.00",
+        self,
+        data: dict,
+        *,
+        reported_mean: str = "3.00",
         reported_sd: str = "0.10",
         expected_consistent: bool = False,
     ) -> None:
@@ -252,14 +229,10 @@ class SeededDefectCheckerTest(unittest.TestCase):
         self.expected_kinds["ms01_quant"]["SD-01"] = "grimmer"
 
     def test_grimmer_oracle_proves_planted_inconsistency(self):
-        self.assertFalse(
-            mod.integer_scale_mean_sd_consistent(self.grimmer_oracle())
-        )
+        self.assertFalse(mod.integer_scale_mean_sd_consistent(self.grimmer_oracle()))
 
     def test_grimmer_oracle_accepts_reachable_zero_sd(self):
-        oracle = self.grimmer_oracle(
-            reported_sd="0.00", expected_consistent=True
-        )
+        oracle = self.grimmer_oracle(reported_sd="0.00", expected_consistent=True)
         self.assertTrue(mod.integer_scale_mean_sd_consistent(oracle))
 
     def test_grimmer_fixture_with_inconsistent_sd_passes(self):
@@ -274,9 +247,7 @@ class SeededDefectCheckerTest(unittest.TestCase):
     def test_grimmer_cannot_self_certify_reachable_sd(self):
         self.assertEqual(
             self.mutate(
-                lambda d: self.make_grimmer(
-                    d, reported_sd="0.00", expected_consistent=True
-                )
+                lambda d: self.make_grimmer(d, reported_sd="0.00", expected_consistent=True)
             ),
             1,
         )
@@ -303,9 +274,7 @@ class SeededDefectCheckerTest(unittest.TestCase):
 
     def test_grimmer_prerequisite_mean_must_be_reachable(self):
         self.assertEqual(
-            self.mutate(
-                lambda d: self.make_grimmer(d, reported_mean="3.01")
-            ),
+            self.mutate(lambda d: self.make_grimmer(d, reported_mean="3.01")),
             1,
         )
 
@@ -328,13 +297,9 @@ class SeededDefectCheckerTest(unittest.TestCase):
     def test_anchor_too_long_fails(self):
         long_anchor = " ".join(f"w{i}" for i in range(26))
         ms = self.root / "manuscripts" / "ms01_quant_defective.md"
-        ms.write_text(
-            ms.read_text(encoding="utf-8") + f"\n{long_anchor}\n", encoding="utf-8"
-        )
+        ms.write_text(ms.read_text(encoding="utf-8") + f"\n{long_anchor}\n", encoding="utf-8")
         self.assertEqual(
-            self.mutate(
-                lambda d: d["defects"][0].update({"anchor_quote": long_anchor})
-            ),
+            self.mutate(lambda d: d["defects"][0].update({"anchor_quote": long_anchor})),
             1,
         )
 
@@ -350,9 +315,7 @@ class SeededDefectCheckerTest(unittest.TestCase):
         self.assertEqual(self.mutate(shrink), 1)
 
     def test_renamed_defect_id_fails_pin(self):
-        self.assertEqual(
-            self.mutate(lambda d: d["defects"][0].update({"defect_id": "SD-99"})), 1
-        )
+        self.assertEqual(self.mutate(lambda d: d["defects"][0].update({"defect_id": "SD-99"})), 1)
 
     def test_duplicate_fixture_id_across_manifests_fails(self):
         src = self.root / "manifests" / "ms01_quant.defects.json"

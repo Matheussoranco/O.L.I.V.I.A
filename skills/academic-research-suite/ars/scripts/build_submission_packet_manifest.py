@@ -152,8 +152,7 @@ def _text(value: Any, path: str, *, maximum: int = 1024) -> str:
     if len(value) > maximum:
         _fail(path, f"must not exceed {maximum} characters")
     if any(
-        unicodedata.category(ch) in {"Cc", "Cf", "Cs"}
-        or "\U00013430" <= ch <= "\U0001345f"
+        unicodedata.category(ch) in {"Cc", "Cf", "Cs"} or "\U00013430" <= ch <= "\U0001345f"
         for ch in value
     ):
         _fail(path, "must not contain control, format, or surrogate characters")
@@ -276,9 +275,7 @@ def _semantic_inventory(inventory: dict[str, Any]) -> dict[str, Any]:
         artifact["declared_structure"]["signature_blocks"].sort(
             key=lambda row: (row["role_id"], row["state"])
         )
-    normalized["artifacts"].sort(
-        key=lambda row: (row["artifact_id"], row["relative_path"])
-    )
+    normalized["artifacts"].sort(key=lambda row: (row["artifact_id"], row["relative_path"]))
     return normalized
 
 
@@ -387,7 +384,11 @@ def validate_submission_packet_inventory(inventory: dict[str, Any]) -> None:
         relative_paths.add(relative_path)
         _sha(artifact["declared_sha256"], f"{path}.declared_sha256")
         size = artifact["declared_size_bytes"]
-        if isinstance(size, bool) or not isinstance(size, int) or not 0 <= size <= MAX_ARTIFACT_BYTES:
+        if (
+            isinstance(size, bool)
+            or not isinstance(size, int)
+            or not 0 <= size <= MAX_ARTIFACT_BYTES
+        ):
             _fail(
                 f"{path}.declared_size_bytes",
                 f"must be an integer from 0 through {MAX_ARTIFACT_BYTES}",
@@ -432,18 +433,14 @@ def validate_submission_packet_inventory(inventory: dict[str, Any]) -> None:
                 maximum=128,
             )
         ):
-            signature_path = (
-                f"{path}.declared_structure.signature_blocks[{signature_index}]"
-            )
+            signature_path = f"{path}.declared_structure.signature_blocks[{signature_index}]"
             signature = _closed(raw_signature, signature_path, {"role_id", "state"})
             role_id = _identifier(signature["role_id"], f"{signature_path}.role_id")
             if role_id in signature_roles:
                 _fail(f"{signature_path}.role_id", "duplicates another signature role")
             signature_roles.add(role_id)
             if signature["state"] not in {"present", "not_located", "unknown"}:
-                _fail(
-                    f"{signature_path}.state", "must be present, not_located, or unknown"
-                )
+                _fail(f"{signature_path}.state", "must be present, not_located, or unknown")
         certificate = structure["certificate"]
         if certificate is not None:
             certificate_path = f"{path}.declared_structure.certificate"
@@ -455,9 +452,7 @@ def validate_submission_packet_inventory(inventory: dict[str, Any]) -> None:
             _identifier(cert["certificate_id"], f"{certificate_path}.certificate_id")
             _identifier(cert["holder_role_id"], f"{certificate_path}.holder_role_id")
             _iso_date(cert["issued_on"], f"{certificate_path}.issued_on")
-            _iso_date(
-                cert["expires_on"], f"{certificate_path}.expires_on", nullable=True
-            )
+            _iso_date(cert["expires_on"], f"{certificate_path}.expires_on", nullable=True)
 
     for index, claim in enumerate(root["waiver_or_exception_claims"]):
         artifact_id = claim["decision_artifact_id"]
@@ -678,9 +673,7 @@ def observe_submission_packet(
                 )
                 continue
             try:
-                observed_sha256, observed_size = _hash_explicit_file(
-                    file_fd, relative_path
-                )
+                observed_sha256, observed_size = _hash_explicit_file(file_fd, relative_path)
             finally:
                 os.close(file_fd)
             total_observed_size += observed_size
@@ -689,9 +682,7 @@ def observe_submission_packet(
                     "packet",
                     f"explicitly listed files exceed the {MAX_TOTAL_BYTES}-byte V1 total limit",
                 )
-            reasons = _located_observation_reasons(
-                artifact, observed_sha256, observed_size
-            )
+            reasons = _located_observation_reasons(artifact, observed_sha256, observed_size)
             observations.append(
                 {
                     "artifact_id": artifact["artifact_id"],
@@ -733,9 +724,10 @@ def _requirement_ref(row: dict[str, Any]) -> dict[str, Any]:
 
 
 def _pointer_get(root: dict[str, Any], pointer: str, contract_path: str) -> Any:
-    if not isinstance(pointer, str) or re.fullmatch(
-        r"/(profiles|overlays)/[0-9]+/requirements/[0-9]+", pointer
-    ) is None:
+    if (
+        not isinstance(pointer, str)
+        or re.fullmatch(r"/(profiles|overlays)/[0-9]+/requirements/[0-9]+", pointer) is None
+    ):
         _fail(contract_path, "is not an exact requirement pointer")
     value: Any = root
     for token in pointer[1:].split("/"):
@@ -789,9 +781,7 @@ def _capability_envelope(
                     f"context.declared_facts[{fact_id}]",
                     "V1 envelope facts must be replay-validated booleans",
                 )
-            reason_code = (
-                None if declared_value == required_value else "V1_ENVELOPE_OUTSIDE"
-            )
+            reason_code = None if declared_value == required_value else "V1_ENVELOPE_OUTSIDE"
         facts.append(
             {
                 "fact_id": fact_id,
@@ -919,9 +909,7 @@ def _inventory_indexes(
         for binding in artifact["evidence_bindings"]:
             requirement_id = binding["requirement_id"]
             evidence_id = binding["evidence_id"]
-            artifacts_by_evidence.setdefault(
-                (requirement_id, evidence_id), []
-            ).append(artifact)
+            artifacts_by_evidence.setdefault((requirement_id, evidence_id), []).append(artifact)
             evidence_ids_by_artifact_requirement.setdefault(
                 (artifact_id, requirement_id), []
             ).append(evidence_id)
@@ -930,8 +918,7 @@ def _inventory_indexes(
     for evidence_ids in evidence_ids_by_artifact_requirement.values():
         evidence_ids.sort()
     claims_by_requirement = {
-        claim["requirement_id"]: claim
-        for claim in inventory["waiver_or_exception_claims"]
+        claim["requirement_id"]: claim for claim in inventory["waiver_or_exception_claims"]
     }
     return (
         artifacts_by_id,
@@ -964,11 +951,7 @@ def _artifact_conflict_reasons(
     evidence: dict[str, Any],
     observation: dict[str, Any],
 ) -> list[str]:
-    reasons = (
-        list(observation["reason_codes"])
-        if observation["status"] == "CONFLICTING"
-        else []
-    )
+    reasons = list(observation["reason_codes"]) if observation["status"] == "CONFLICTING" else []
     if observation["state"] != "located":
         return sorted(set(reasons))
     if artifact["artifact_type"] != evidence["artifact_type"]:
@@ -997,9 +980,7 @@ def _located_profiled_route_claim(
     artifacts_by_evidence: dict[tuple[str, str], list[dict[str, Any]]],
     evidence_ids_by_artifact_requirement: dict[tuple[str, str], list[str]],
     claims_by_requirement: dict[str, dict[str, Any]],
-    resolved_requirements: dict[
-        str, tuple[dict[str, Any], list[dict[str, Any]]]
-    ],
+    resolved_requirements: dict[str, tuple[dict[str, Any], list[dict[str, Any]]]],
     evidence_by_requirement: dict[str, dict[str, dict[str, Any]]],
 ) -> bool:
     route = requirement.get("waiver_or_exception_route")
@@ -1009,9 +990,11 @@ def _located_profiled_route_claim(
     if not isinstance(profiled_ids, list) or not profiled_ids:
         return False
     claim = claims_by_requirement.get(requirement_id)
-    if claim is None or set(claim["route_requirement_ids"]) != set(
-        profiled_ids
-    ) or len(claim["route_requirement_ids"]) != len(profiled_ids):
+    if (
+        claim is None
+        or set(claim["route_requirement_ids"]) != set(profiled_ids)
+        or len(claim["route_requirement_ids"]) != len(profiled_ids)
+    ):
         return False
     artifact_id = claim["decision_artifact_id"]
     if artifact_id is None:
@@ -1036,8 +1019,7 @@ def _located_profiled_route_claim(
             )
         if route_requirement_id not in evidence_by_requirement:
             evidence_by_requirement[route_requirement_id] = {
-                row["evidence_id"]: row
-                for row in resolved_requirements[route_requirement_id][1]
+                row["evidence_id"]: row for row in resolved_requirements[route_requirement_id][1]
             }
         evidence_by_id = evidence_by_requirement[route_requirement_id]
         bound_evidence_ids = evidence_ids_by_artifact_requirement.get(
@@ -1049,10 +1031,7 @@ def _located_profiled_route_claim(
             if (
                 evidence is None
                 or evidence["held_by"] not in responsibility_roles
-                or artifacts_by_evidence.get(
-                    (route_requirement_id, evidence_id), []
-                )
-                != [artifact]
+                or artifacts_by_evidence.get((route_requirement_id, evidence_id), []) != [artifact]
             ):
                 continue
             if not _artifact_conflict_reasons(artifact, evidence, observation):
@@ -1077,9 +1056,7 @@ def _packet_owned_entry_state(
     artifacts_by_id: dict[str, dict[str, Any]],
     evidence_ids_by_artifact_requirement: dict[tuple[str, str], list[str]],
     claims_by_requirement: dict[str, dict[str, Any]],
-    resolved_requirements: dict[
-        str, tuple[dict[str, Any], list[dict[str, Any]]]
-    ],
+    resolved_requirements: dict[str, tuple[dict[str, Any], list[dict[str, Any]]]],
     evidence_by_requirement: dict[str, dict[str, dict[str, Any]]],
 ) -> tuple[str, str, list[str], list[str]]:
     matches = artifacts_by_evidence.get((requirement_id, evidence["evidence_id"]), [])
@@ -1131,9 +1108,7 @@ def _packet_owned_entry_state(
             matched_ids,
         )
 
-    reasons = _artifact_conflict_reasons(
-        artifact, evidence, observation
-    )
+    reasons = _artifact_conflict_reasons(artifact, evidence, observation)
     if reasons:
         return "CONFLICTING", "gap", reasons, matched_ids
     return "DOCUMENTED", "none", ["STRUCTURE_DOCUMENTED"], matched_ids
@@ -1182,9 +1157,7 @@ def _evidence_entries(
         evidence_ids_by_artifact_requirement,
         claims_by_requirement,
     ) = _inventory_indexes(inventory)
-    resolved_requirements: dict[
-        str, tuple[dict[str, Any], list[dict[str, Any]]]
-    ] = {}
+    resolved_requirements: dict[str, tuple[dict[str, Any], list[dict[str, Any]]]] = {}
     evidence_by_requirement: dict[str, dict[str, dict[str, Any]]] = {}
     route_claim_results: dict[str, bool] = {}
 
@@ -1210,9 +1183,7 @@ def _evidence_entries(
             )
         requirement_id = result["requirement_id"]
         if requirement_id not in resolved_requirements:
-            resolved_requirements[requirement_id] = _resolved_requirement(
-                result, registry
-            )
+            resolved_requirements[requirement_id] = _resolved_requirement(result, registry)
         requirement, evidence_rows = resolved_requirements[requirement_id]
         for evidence_index, evidence in enumerate(evidence_rows):
             if len(entries_with_order) >= MAX_MANIFEST_ENTRIES:
@@ -1235,9 +1206,7 @@ def _evidence_entries(
                 "artifact_type": artifact_type,
                 "held_by": held_by,
             }
-            matched = artifacts_by_evidence.get(
-                (result["requirement_id"], evidence_id), []
-            )
+            matched = artifacts_by_evidence.get((result["requirement_id"], evidence_id), [])
             matched_ids = [row["artifact_id"] for row in matched]
             packet_owned = (
                 held_by in responsibility_roles
@@ -1248,25 +1217,21 @@ def _evidence_entries(
                 readiness_effect = "none"
                 reason_codes = ["EXTERNAL_HOLDER_DEPENDENCY"]
             else:
-                status, readiness_effect, reason_codes, matched_ids = (
-                    _packet_owned_entry_state(
-                        requirement_id=result["requirement_id"],
-                        evidence=evidence,
-                        requirement=requirement,
-                        observations=observed_by_id,
-                        registry=registry,
-                        scoped_by_id=scoped_by_id,
-                        responsibility_roles=responsibility_roles,
-                        artifacts_by_evidence=artifacts_by_evidence,
-                        route_claim_results=route_claim_results,
-                        artifacts_by_id=artifacts_by_id,
-                        evidence_ids_by_artifact_requirement=(
-                            evidence_ids_by_artifact_requirement
-                        ),
-                        claims_by_requirement=claims_by_requirement,
-                        resolved_requirements=resolved_requirements,
-                        evidence_by_requirement=evidence_by_requirement,
-                    )
+                status, readiness_effect, reason_codes, matched_ids = _packet_owned_entry_state(
+                    requirement_id=result["requirement_id"],
+                    evidence=evidence,
+                    requirement=requirement,
+                    observations=observed_by_id,
+                    registry=registry,
+                    scoped_by_id=scoped_by_id,
+                    responsibility_roles=responsibility_roles,
+                    artifacts_by_evidence=artifacts_by_evidence,
+                    route_claim_results=route_claim_results,
+                    artifacts_by_id=artifacts_by_id,
+                    evidence_ids_by_artifact_requirement=(evidence_ids_by_artifact_requirement),
+                    claims_by_requirement=claims_by_requirement,
+                    resolved_requirements=resolved_requirements,
+                    evidence_by_requirement=evidence_by_requirement,
                 )
             entries_with_order.append(
                 (
@@ -1281,9 +1246,7 @@ def _evidence_entries(
                         "requirement_ref": reference,
                         "evidence_ref": evidence_ref,
                         "responsibility": (
-                            "packet_owned"
-                            if packet_owned
-                            else "external_dependency"
+                            "packet_owned" if packet_owned else "external_dependency"
                         ),
                         "status": status,
                         "readiness_effect": readiness_effect,
@@ -1304,12 +1267,8 @@ def _evidence_entries(
     return [item[1] for item in entries_with_order], excluded
 
 
-def _readiness(
-    unresolved_reasons: list[dict[str, Any]], entries: list[dict[str, Any]]
-) -> str:
-    if unresolved_reasons or any(
-        row["readiness_effect"] == "unresolved" for row in entries
-    ):
+def _readiness(unresolved_reasons: list[dict[str, Any]], entries: list[dict[str, Any]]) -> str:
+    if unresolved_reasons or any(row["readiness_effect"] == "unresolved" for row in entries):
         return "unresolved"
     if any(row["readiness_effect"] == "gap" for row in entries):
         return "gaps_located"
@@ -1340,9 +1299,7 @@ def build_submission_packet_manifest(
     binding = _authority_binding(resolved)
     envelope, envelope_reasons = _capability_envelope(context)
     overlay_state = (
-        copy.deepcopy(context["overlay_selection_state"])
-        if context is not None
-        else None
+        copy.deepcopy(context["overlay_selection_state"]) if context is not None else None
     )
     unresolved_reasons = _global_unresolved_reasons(
         resolved=resolved,
@@ -1359,9 +1316,7 @@ def build_submission_packet_manifest(
     if gate_allowed and within_envelope:
         assert context is not None and registry is not None and resolved is not None
         observations = observe_submission_packet(inventory, packet_root)
-        entries, excluded = _evidence_entries(
-            inventory, context, registry, resolved, observations
-        )
+        entries, excluded = _evidence_entries(inventory, context, registry, resolved, observations)
     else:
         # Fail-closed states intentionally do not touch packet_root or follow
         # registry pointers.  The empty observation digest proves that scope.
@@ -1387,9 +1342,7 @@ def build_submission_packet_manifest(
         "administrative_status": {
             "review_pathway": REVIEW_PATHWAY,
             "submission_readiness": _readiness(unresolved_reasons, entries),
-            "authorization_status": copy.deepcopy(
-                inventory["authorization_status_input"]
-            ),
+            "authorization_status": copy.deepcopy(inventory["authorization_status_input"]),
             "review_timeline": REVIEW_TIMELINE,
         },
         "acceptance_boundary": {
@@ -1420,9 +1373,7 @@ def _validate_authorization_status(value: Any, path: str) -> None:
 
 
 def _validate_context_pointer(value: Any, path: str) -> None:
-    row = _closed(
-        value, path, {"context_record_id", "schema_version", "context_digest"}
-    )
+    row = _closed(value, path, {"context_record_id", "schema_version", "context_digest"})
     _identifier(row["context_record_id"], f"{path}.context_record_id")
     if row["schema_version"] != "irb-context-record/1.0":
         _fail(f"{path}.schema_version", "must equal irb-context-record/1.0")
@@ -1485,9 +1436,10 @@ def _validate_requirement_ref(value: Any, path: str, applicability: str) -> None
         _fail(f"{path}.applicability", f"must equal {applicability}")
     _sha(row["requirement_digest"], f"{path}.requirement_digest")
     pointer = row["requirement_pointer"]
-    if not isinstance(pointer, str) or re.fullmatch(
-        r"/(profiles|overlays)/[0-9]+/requirements/[0-9]+", pointer
-    ) is None:
+    if (
+        not isinstance(pointer, str)
+        or re.fullmatch(r"/(profiles|overlays)/[0-9]+/requirements/[0-9]+", pointer) is None
+    ):
         _fail(f"{path}.requirement_pointer", "has an invalid exact pointer")
     if row["authority_anchor_pointer"] != f"{pointer}/authority_anchor":
         _fail(
@@ -1504,9 +1456,11 @@ def _validate_evidence_ref(value: Any, path: str, requirement_pointer: str) -> N
     )
     _identifier(row["evidence_id"], f"{path}.evidence_id")
     pointer = row["evidence_pointer"]
-    if not isinstance(pointer, str) or re.fullmatch(
-        re.escape(requirement_pointer) + r"/evidence_expected/[0-9]+", pointer
-    ) is None:
+    if (
+        not isinstance(pointer, str)
+        or re.fullmatch(re.escape(requirement_pointer) + r"/evidence_expected/[0-9]+", pointer)
+        is None
+    ):
         _fail(f"{path}.evidence_pointer", "must be below its requirement pointer")
     _sha(row["evidence_digest"], f"{path}.evidence_digest")
     _identifier(row["artifact_type"], f"{path}.artifact_type")
@@ -1629,9 +1583,7 @@ def _validate_manifest_shape(manifest: dict[str, Any]) -> None:
         {"scope", "observation_digest"},
     )
     if packet_pointer["scope"] != "explicit_inventory_paths_only":
-        _fail(
-            "manifest.packet_pointer.scope", "must equal explicit_inventory_paths_only"
-        )
+        _fail("manifest.packet_pointer.scope", "must equal explicit_inventory_paths_only")
     _sha(packet_pointer["observation_digest"], "manifest.packet_pointer.observation_digest")
     observations = _array(root["packet_observations"], "manifest.packet_observations")
     observation_ids: set[str] = set()
@@ -1660,10 +1612,17 @@ def _validate_manifest_shape(manifest: dict[str, Any]) -> None:
         if observation["state"] == "located":
             _sha(observation["observed_sha256"], f"{path}.observed_sha256")
             size = observation["observed_size_bytes"]
-            if isinstance(size, bool) or not isinstance(size, int) or not 0 <= size <= MAX_ARTIFACT_BYTES:
+            if (
+                isinstance(size, bool)
+                or not isinstance(size, int)
+                or not 0 <= size <= MAX_ARTIFACT_BYTES
+            ):
                 _fail(f"{path}.observed_size_bytes", "has an invalid observed size")
         elif observation["state"] == "not_located":
-            if observation["observed_sha256"] is not None or observation["observed_size_bytes"] is not None:
+            if (
+                observation["observed_sha256"] is not None
+                or observation["observed_size_bytes"] is not None
+            ):
                 _fail(path, "a not_located observation cannot carry observed values")
         else:
             _fail(f"{path}.state", "must be located or not_located")
@@ -1675,25 +1634,20 @@ def _validate_manifest_shape(manifest: dict[str, Any]) -> None:
             or not observation_reasons
             or any(not isinstance(reason, str) for reason in observation_reasons)
             or len(set(observation_reasons)) != len(observation_reasons)
-            or any(
-                reason not in OBSERVATION_REASON_CODES
-                for reason in observation_reasons
-            )
+            or any(reason not in OBSERVATION_REASON_CODES for reason in observation_reasons)
             or observation_reasons != sorted(observation_reasons)
         ):
             _fail(f"{path}.reason_codes", "has invalid or non-canonical reasons")
         if observation["state"] == "not_located":
-            if (
-                observation["status"] != "CONFLICTING"
-                or observation_reasons != ["DECLARED_ATTACHMENT_NOT_LOCATED"]
-            ):
+            if observation["status"] != "CONFLICTING" or observation_reasons != [
+                "DECLARED_ATTACHMENT_NOT_LOCATED"
+            ]:
                 _fail(path, "not_located must preserve its exact declared conflict")
         elif observation["status"] == "DOCUMENTED":
             if observation_reasons != ["STRUCTURE_DOCUMENTED"]:
                 _fail(path, "DOCUMENTED must carry STRUCTURE_DOCUMENTED only")
         elif any(
-            reason
-            in {"STRUCTURE_DOCUMENTED", "DECLARED_ATTACHMENT_NOT_LOCATED"}
+            reason in {"STRUCTURE_DOCUMENTED", "DECLARED_ATTACHMENT_NOT_LOCATED"}
             for reason in observation_reasons
         ):
             _fail(path, "a located conflict has an invalid reason")
@@ -1854,35 +1808,34 @@ def _validate_manifest_shape(manifest: dict[str, Any]) -> None:
         reason_codes = entry["reason_codes"]
         if not isinstance(reason_codes, list) or not 1 <= len(reason_codes) <= 16:
             _fail(f"{path}.reason_codes", "must be a non-empty bounded array")
-        if any(not isinstance(code, str) for code in reason_codes) or len(
-            set(reason_codes)
-        ) != len(reason_codes) or any(
-            code not in ENTRY_REASON_CODES for code in reason_codes
+        if (
+            any(not isinstance(code, str) for code in reason_codes)
+            or len(set(reason_codes)) != len(reason_codes)
+            or any(code not in ENTRY_REASON_CODES for code in reason_codes)
         ):
             _fail(f"{path}.reason_codes", "contains a duplicate or invalid reason")
         if reason_codes != sorted(reason_codes):
             _fail(f"{path}.reason_codes", "must use canonical reason-code order")
-        _unique_identifiers(
-            entry["matched_artifact_ids"], f"{path}.matched_artifact_ids"
-        )
+        _unique_identifiers(entry["matched_artifact_ids"], f"{path}.matched_artifact_ids")
         if entry["matched_artifact_ids"] != sorted(entry["matched_artifact_ids"]):
             _fail(f"{path}.matched_artifact_ids", "must use canonical identifier order")
         if entry["status"] == "DOCUMENTED" and (
-            entry["responsibility"], entry["readiness_effect"]
+            entry["responsibility"],
+            entry["readiness_effect"],
         ) != ("packet_owned", "none"):
             _fail(path, "DOCUMENTED must be packet-owned with no readiness effect")
         if entry["status"] in {"NOT_LOCATED", "CONFLICTING"} and (
-            entry["responsibility"], entry["readiness_effect"]
+            entry["responsibility"],
+            entry["readiness_effect"],
         ) != ("packet_owned", "gap"):
             _fail(path, "a located packet gap must remain packet-owned")
-        if entry["status"] == "APPLICABILITY_UNRESOLVED" and entry[
-            "readiness_effect"
-        ] != "unresolved":
+        if (
+            entry["status"] == "APPLICABILITY_UNRESOLVED"
+            and entry["readiness_effect"] != "unresolved"
+        ):
             _fail(path, "unresolved applicability must leave readiness unresolved")
         if entry["status"] == "ACCEPTANCE_UNVERIFIED":
-            expected = (
-                "none" if entry["responsibility"] == "external_dependency" else "unresolved"
-            )
+            expected = "none" if entry["responsibility"] == "external_dependency" else "unresolved"
             if entry["readiness_effect"] != expected:
                 _fail(path, "acceptance state has an invalid readiness effect")
     entry_keys = [
@@ -1898,9 +1851,7 @@ def _validate_manifest_shape(manifest: dict[str, Any]) -> None:
     if entry_keys != sorted(entry_keys) or len(set(entry_keys)) != len(entry_keys):
         _fail("manifest.entries", "must use unique canonical semantic order")
 
-    excluded = _array(
-        root["excluded_requirements"], "manifest.excluded_requirements", maximum=4096
-    )
+    excluded = _array(root["excluded_requirements"], "manifest.excluded_requirements", maximum=4096)
     for index, raw_excluded in enumerate(excluded):
         path = f"manifest.excluded_requirements[{index}]"
         row = _closed(raw_excluded, path, {"requirement_ref", "exclusion_basis"})
@@ -1916,14 +1867,10 @@ def _validate_manifest_shape(manifest: dict[str, Any]) -> None:
         )
         for row in excluded
     ]
-    if excluded_keys != sorted(excluded_keys) or len(set(excluded_keys)) != len(
-        excluded_keys
-    ):
+    if excluded_keys != sorted(excluded_keys) or len(set(excluded_keys)) != len(excluded_keys):
         _fail("manifest.excluded_requirements", "must use unique canonical order")
 
-    unresolved = _array(
-        root["unresolved_reasons"], "manifest.unresolved_reasons", maximum=128
-    )
+    unresolved = _array(root["unresolved_reasons"], "manifest.unresolved_reasons", maximum=128)
     if len({_canonical_bytes(row) for row in unresolved}) != len(unresolved):
         _fail("manifest.unresolved_reasons", "contains a duplicate reason")
     for index, raw_reason in enumerate(unresolved):
@@ -2063,11 +2010,7 @@ def _md(value: Any) -> str:
     # table delimiter, or extension-specific attribute syntax.
     return "".join(
         f"&#{ord(character)};"
-        if (
-            character.isascii()
-            and not character.isalnum()
-            and not character.isspace()
-        )
+        if (character.isascii() and not character.isalnum() and not character.isspace())
         or unicodedata.category(character) in {"Zl", "Zp"}
         else character
         for character in str(value)
@@ -2118,11 +2061,11 @@ def render_submission_packet_manifest(manifest: dict[str, Any]) -> str:
 
     lines.extend(
         [
-        "",
-        "## Mechanical Evidence Entries",
-        "",
-        "| Requirement | Evidence | Responsibility | Status | Readiness effect | Matched artifact IDs | Reason codes |",
-        "|---|---|---|---|---|---|---|",
+            "",
+            "## Mechanical Evidence Entries",
+            "",
+            "| Requirement | Evidence | Responsibility | Status | Readiness effect | Matched artifact IDs | Reason codes |",
+            "|---|---|---|---|---|---|---|",
         ]
     )
     if manifest["entries"]:
@@ -2184,8 +2127,7 @@ def render_submission_packet_manifest(manifest: dict[str, Any]) -> str:
             lines.append(
                 "| "
                 + " | ".join(
-                    _md(reason[field])
-                    for field in ("status", "code", "fact_id", "overlay_kind")
+                    _md(reason[field]) for field in ("status", "code", "fact_id", "overlay_kind")
                 )
                 + " |"
             )
@@ -2204,11 +2146,7 @@ def render_submission_packet_manifest(manifest: dict[str, Any]) -> str:
                 [
                     _md(manifest["acceptance_boundary"]["status"]),
                     _md(manifest["acceptance_boundary"]["reason_code"]),
-                    _md(
-                        manifest["acceptance_boundary"][
-                            "affects_submission_readiness"
-                        ]
-                    ),
+                    _md(manifest["acceptance_boundary"]["affects_submission_readiness"]),
                 ]
             )
             + " |",
@@ -2230,9 +2168,7 @@ def _load_authority_arguments(
     args: argparse.Namespace,
 ) -> tuple[dict[str, Any] | None, dict[str, Any] | None, dict[str, Any] | None]:
     paths = (args.context, args.registry, args.resolved)
-    if any(path is not None for path in paths) and not all(
-        path is not None for path in paths
-    ):
+    if any(path is not None for path in paths) and not all(path is not None for path in paths):
         raise ContractError("--context, --registry, and --resolved are all-or-none")
     if not all(path is not None for path in paths):
         return None, None, None

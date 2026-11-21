@@ -16,7 +16,8 @@ def _run(root: Path):
 
 
 def _valid_rubric_text() -> str:
-    return textwrap.dedent("""\
+    return textwrap.dedent(
+        """\
         ---
         rubric_version: "1.0"
         paper_citation: "Wang, S., & Zhang, H. (2026). IJETHE 23:11. DOI 10.1186/s41239-026-00585-x"
@@ -37,11 +38,13 @@ def _valid_rubric_text() -> str:
 
         ## Zone Classification
         Zone 1 / Zone 2 / Zone 3 synthesis.
-        """)
+        """
+    )
 
 
 def _valid_agent_text() -> str:
-    return textwrap.dedent("""\
+    return textwrap.dedent(
+        """\
         ---
         name: collaboration_depth_agent
         measures: collaboration_depth
@@ -52,20 +55,24 @@ def _valid_agent_text() -> str:
         # collaboration_depth_agent
 
         Observer. Reads dialogue log; scores per rubric at shared/collaboration_depth_rubric.md.
-        """)
+        """
+    )
 
 
 def _valid_orchestrator_text() -> str:
-    return textwrap.dedent("""\
+    return textwrap.dedent(
+        """\
         # pipeline_orchestrator_agent
 
         At every FULL checkpoint and at pipeline completion, dispatch
         collaboration_depth_agent (advisory only; never blocks).
-        """)
+        """
+    )
 
 
 def _valid_skill_md_text() -> str:
-    return textwrap.dedent("""\
+    return textwrap.dedent(
+        """\
         ---
         metadata:
           data_access_level: verified_only
@@ -76,7 +83,8 @@ def _valid_skill_md_text() -> str:
 
         The collaboration_depth_agent runs at checkpoints as advisory only and
         never blocks progression.
-        """)
+        """
+    )
 
 
 def _make_repo(root: Path) -> None:
@@ -131,7 +139,9 @@ class TestCollaborationDepthRubric(unittest.TestCase):
             root = Path(tmp)
             _make_repo(root)
             path = root / "shared" / "collaboration_depth_rubric.md"
-            path.write_text(_valid_rubric_text().replace("## Cognitive Vigilance", "## Something Else"))
+            path.write_text(
+                _valid_rubric_text().replace("## Cognitive Vigilance", "## Something Else")
+            )
             r = _run(root)
             self.assertEqual(r.returncode, 1)
             self.assertIn("Cognitive Vigilance", r.stdout)
@@ -141,7 +151,9 @@ class TestCollaborationDepthRubric(unittest.TestCase):
             root = Path(tmp)
             _make_repo(root)
             agent = root / "academic-pipeline" / "agents" / "collaboration_depth_agent.md"
-            agent.write_text(_valid_agent_text().replace("shared/collaboration_depth_rubric.md", "nope.md"))
+            agent.write_text(
+                _valid_agent_text().replace("shared/collaboration_depth_rubric.md", "nope.md")
+            )
             r = _run(root)
             self.assertEqual(r.returncode, 1)
             self.assertIn("rubric_ref", r.stdout)
@@ -193,9 +205,7 @@ class TestCollaborationDepthRubric(unittest.TestCase):
             root = Path(tmp)
             _make_repo(root)
             orch = root / "academic-pipeline" / "agents" / "pipeline_orchestrator_agent.md"
-            orch.write_text(
-                "At FULL checkpoint, dispatch collaboration_depth_agent.\n"
-            )
+            orch.write_text("At FULL checkpoint, dispatch collaboration_depth_agent.\n")
             r = _run(root)
             self.assertEqual(r.returncode, 1)
             self.assertIn("pipeline-completion", r.stdout)

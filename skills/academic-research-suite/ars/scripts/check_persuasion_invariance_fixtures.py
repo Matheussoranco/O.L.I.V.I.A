@@ -71,9 +71,7 @@ INDEX = ROOT / "heldout_set.json"
 
 LANGUAGES = ["en", "zh-TW"]
 ISSUE = 576
-SPEC_AUTHORITY = (
-    "docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md"
-)
+SPEC_AUTHORITY = "docs/design/2026-07-27-576-spec-b-re-review-precommitment-contract-spec.md"
 
 # Expected inventory — update deliberately when scenarios, arms, pairs or cells are
 # added/retired. Pinning cell COUNTS as well as ids means a quietly deleted cell fails CI
@@ -132,8 +130,9 @@ HASH_KEY_TOKENS = {
     "output_draft_hash": "<<OUTPUT_DRAFT_HASH>>",
     "patch_digest": "<<PATCH_DIGEST>>",
 }
-PLACEHOLDERS = tuple(HASH_KEY_TOKENS[k] for k in
-                     ("base_draft_hash", "output_draft_hash", "patch_digest"))
+PLACEHOLDERS = tuple(
+    HASH_KEY_TOKENS[k] for k in ("base_draft_hash", "output_draft_hash", "patch_digest")
+)
 POINTER_RE = re.compile(r"^ARM-MATERIAL-POINTER:\s*(\S+)\s*$")
 SECTION_RE = re.compile(r"^##\s+([A-Z])\.\s", re.MULTILINE)
 # An apply report is detected independently of the hash keys, so removing all three cannot
@@ -242,13 +241,16 @@ def check_inventory(data: dict, errors: list[str]) -> None:
             )
         cells = sum(len(p.get("cells") or []) for p in scenario.get("pairs", []))
         if cells != EXPECTED_CELL_COUNTS[sid]:
-            errors.append(
-                f"2. {sid} declares {cells} cells, expected {EXPECTED_CELL_COUNTS[sid]}"
-            )
+            errors.append(f"2. {sid} declares {cells} cells, expected {EXPECTED_CELL_COUNTS[sid]}")
 
 
-def check_scenario(scenario: dict, relations: set[str], observables: set[str],
-                   errors: list[str], report_bearing: list[Path]) -> None:
+def check_scenario(
+    scenario: dict,
+    relations: set[str],
+    observables: set[str],
+    errors: list[str],
+    report_bearing: list[Path],
+) -> None:
     sid = scenario.get("id", "<unknown>")
     missing = REQUIRED_SCENARIO - set(scenario)
     if missing:
@@ -310,8 +312,7 @@ def check_scenario(scenario: dict, relations: set[str], observables: set[str],
 
     check_pairs(scenario, arm_ids, relations, observables, errors)
     check_claim_sets(scenario, errors)
-    check_placeholders(sid, packet_paths, material_paths, pointer_arms, errors,
-                       report_bearing)
+    check_placeholders(sid, packet_paths, material_paths, pointer_arms, errors, report_bearing)
     check_pointers(sid, scenario, material_paths, pointer_arms, errors)
     check_heldout_boundary(sid, scenario, packet_paths, material_paths, errors)
     check_section_split(sid, scenario, packet_paths, material_paths, pointer_arms, errors)
@@ -319,8 +320,9 @@ def check_scenario(scenario: dict, relations: set[str], observables: set[str],
         check_ground_truth_pairs(sid, scenario, gt_path, errors)
 
 
-def check_pairs(scenario: dict, arm_ids: set[str], relations: set[str],
-                observables: set[str], errors: list[str]) -> None:
+def check_pairs(
+    scenario: dict, arm_ids: set[str], relations: set[str], observables: set[str], errors: list[str]
+) -> None:
     sid = scenario.get("id", "<unknown>")
     pair_ids = [p.get("pair_id") for p in scenario["pairs"]]
     if len(pair_ids) != len(set(pair_ids)):
@@ -346,8 +348,14 @@ def check_pairs(scenario: dict, arm_ids: set[str], relations: set[str],
             check_cell(f"{sid}/{pid}#{idx}", cell, set(arms), relations, observables, errors)
 
 
-def check_cell(label: str, cell: dict, arms: set[str], relations: set[str],
-               observables: set[str], errors: list[str]) -> None:
+def check_cell(
+    label: str,
+    cell: dict,
+    arms: set[str],
+    relations: set[str],
+    observables: set[str],
+    errors: list[str],
+) -> None:
     missing = REQUIRED_CELL - set(cell)
     if missing:
         errors.append(f"5. {label} missing cell keys: {sorted(missing)}")
@@ -382,9 +390,13 @@ def check_cell(label: str, cell: dict, arms: set[str], relations: set[str],
     first, second = (expected[a] for a in sorted(arms))
     equal = first == second
     if cell["relation"] == "identical" and not equal:
-        errors.append(f"6. {label} relation is 'identical' but expected values differ: {expected!r}")
+        errors.append(
+            f"6. {label} relation is 'identical' but expected values differ: {expected!r}"
+        )
     if cell["relation"] == "differs" and equal:
-        errors.append(f"6. {label} relation is 'differs' but expected values are equal: {expected!r}")
+        errors.append(
+            f"6. {label} relation is 'differs' but expected values are equal: {expected!r}"
+        )
 
 
 def check_claim_sets(scenario: dict, errors: list[str]) -> None:
@@ -410,19 +422,20 @@ def check_claim_sets(scenario: dict, errors: list[str]) -> None:
             )
 
 
-def check_placeholders(sid: str, packet_paths: dict[str, Path],
-                       material_paths: dict[tuple[str, str], Path],
-                       pointer_arms: set[str], errors: list[str],
-                       report_bearing: list[Path]) -> None:
+def check_placeholders(
+    sid: str,
+    packet_paths: dict[str, Path],
+    material_paths: dict[tuple[str, str], Path],
+    pointer_arms: set[str],
+    errors: list[str],
+    report_bearing: list[Path],
+) -> None:
     candidates: list[Path] = list(packet_paths.values())
     candidates += [p for (aid, _), p in material_paths.items() if aid not in pointer_arms]
     for path in sorted(candidates):
         text = _read(path)
         rel = path.relative_to(ROOT)
-        found = {
-            key: re.findall(rf'"{key}"\s*:\s*"([^"]*)"', text)
-            for key in HASH_KEY_TOKENS
-        }
+        found = {key: re.findall(rf'"{key}"\s*:\s*"([^"]*)"', text) for key in HASH_KEY_TOKENS}
         if not APPLY_REPORT_MARKER_RE.search(text):
             # No apply report in this file. Legitimate for a no-reports arm (P-3 arm-c) or a
             # packet that supplies no §G; the set-level count below is what stops a report
@@ -451,11 +464,15 @@ def check_placeholders(sid: str, packet_paths: dict[str, Path],
                 )
 
 
-def check_pointers(sid: str, scenario: dict, material_paths: dict[tuple[str, str], Path],
-                   pointer_arms: set[str], errors: list[str]) -> None:
+def check_pointers(
+    sid: str,
+    scenario: dict,
+    material_paths: dict[tuple[str, str], Path],
+    pointer_arms: set[str],
+    errors: list[str],
+) -> None:
     pointer_of = {
-        arm["arm_id"]: arm.get("material_pointer")
-        for arm in scenario["arms"] if "arm_id" in arm
+        arm["arm_id"]: arm.get("material_pointer") for arm in scenario["arms"] if "arm_id" in arm
     }
     materials_by_arm = {
         arm["arm_id"]: arm.get("material", {}) for arm in scenario["arms"] if "arm_id" in arm
@@ -489,9 +506,13 @@ def check_pointers(sid: str, scenario: dict, material_paths: dict[tuple[str, str
             )
 
 
-def check_heldout_boundary(sid: str, scenario: dict, packet_paths: dict[str, Path],
-                           material_paths: dict[tuple[str, str], Path],
-                           errors: list[str]) -> None:
+def check_heldout_boundary(
+    sid: str,
+    scenario: dict,
+    packet_paths: dict[str, Path],
+    material_paths: dict[tuple[str, str], Path],
+    errors: list[str],
+) -> None:
     answers: list[tuple[str, dict]] = []
     for arm in scenario["arms"]:
         answer = arm.get("scripted_checkpoint_answer")
@@ -526,9 +547,14 @@ def check_heldout_boundary(sid: str, scenario: dict, packet_paths: dict[str, Pat
                     )
 
 
-def check_section_split(sid: str, scenario: dict, packet_paths: dict[str, Path],
-                        material_paths: dict[tuple[str, str], Path],
-                        pointer_arms: set[str], errors: list[str]) -> None:
+def check_section_split(
+    sid: str,
+    scenario: dict,
+    packet_paths: dict[str, Path],
+    material_paths: dict[tuple[str, str], Path],
+    pointer_arms: set[str],
+    errors: list[str],
+) -> None:
     supplied = set(scenario.get("arm_supplied_sections") or [])
     if not supplied:
         errors.append(f"11. {sid} declares no arm_supplied_sections")
@@ -551,8 +577,7 @@ def check_section_split(sid: str, scenario: dict, packet_paths: dict[str, Path],
             )
 
 
-def check_ground_truth_pairs(sid: str, scenario: dict, gt_path: Path,
-                             errors: list[str]) -> None:
+def check_ground_truth_pairs(sid: str, scenario: dict, gt_path: Path, errors: list[str]) -> None:
     text = _read(gt_path)
     if PAIR_STRUCTURE_HEADING not in text:
         errors.append(f"12. {sid} {GROUND_TRUTH_NAME} has no '{PAIR_STRUCTURE_HEADING}' section")
@@ -577,8 +602,9 @@ def check_ground_truth_pairs(sid: str, scenario: dict, gt_path: Path,
     only_index = indexed - declared
 
     def fmt(counter):
-        return sorted(f"{list(arms)} {obs} [{target}] x{n}"
-                      for (arms, obs, target), n in counter.items())
+        return sorted(
+            f"{list(arms)} {obs} [{target}] x{n}" for (arms, obs, target), n in counter.items()
+        )
 
     if only_gt:
         errors.append(

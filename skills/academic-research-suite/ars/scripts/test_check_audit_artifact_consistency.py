@@ -11,14 +11,12 @@ from __future__ import annotations
 
 import copy
 import json
-import re
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
 import pytest
-
 from scripts.check_audit_artifact_consistency import (
     LintContext,
     LintError,
@@ -79,10 +77,15 @@ def make_valid_verdict_file_minor() -> dict[str, Any]:
         "target_rounds": 3,
         "finding_counts": {"p1": 0, "p2": 0, "p3": 1},
         "findings": [
-            {"id": "F-007", "severity": "P3", "dimension": "3.7",
-             "file": "chapter_4/synthesis.md", "line": 482,
-             "description": "deictic temporal phrase",
-             "suggested_fix": "replace with explicit date"},
+            {
+                "id": "F-007",
+                "severity": "P3",
+                "dimension": "3.7",
+                "file": "chapter_4/synthesis.md",
+                "line": 482,
+                "description": "deictic temporal phrase",
+                "suggested_fix": "replace with explicit date",
+            },
         ],
         "generated_at": "2026-04-30T15:22:58.471Z",
         "generated_by": "scripts/run_codex_audit.sh",
@@ -210,12 +213,23 @@ def make_valid_jsonl_events_no_tool() -> list[dict[str, Any]]:
     return [
         {"type": "thread.started", "thread_id": VALID_THREAD_ID},
         {"type": "turn.started"},
-        {"type": "item.completed",
-         "item": {"id": "item_0", "type": "agent_message",
-                  "text": "## Section 6 — Verdict\n\nRound 1: 0 findings of any severity. Convergence reached.\n"}},
-        {"type": "turn.completed",
-         "usage": {"input_tokens": 100, "cached_input_tokens": 0,
-                   "output_tokens": 50, "reasoning_output_tokens": 25}},
+        {
+            "type": "item.completed",
+            "item": {
+                "id": "item_0",
+                "type": "agent_message",
+                "text": "## Section 6 — Verdict\n\nRound 1: 0 findings of any severity. Convergence reached.\n",
+            },
+        },
+        {
+            "type": "turn.completed",
+            "usage": {
+                "input_tokens": 100,
+                "cached_input_tokens": 0,
+                "output_tokens": 50,
+                "reasoning_output_tokens": 25,
+            },
+        },
     ]
 
 
@@ -225,12 +239,23 @@ def make_valid_jsonl_events_tool_using() -> list[dict[str, Any]]:
         {"type": "turn.started"},
         {"type": "item.started", "item": {"id": "item_1", "type": "command_execution"}},
         {"type": "item.completed", "item": {"id": "item_1", "type": "command_execution"}},
-        {"type": "item.completed",
-         "item": {"id": "item_2", "type": "agent_message",
-                  "text": "## Section 6 — Verdict\n\nRound 1: 0 findings of any severity. Convergence reached.\n"}},
-        {"type": "turn.completed",
-         "usage": {"input_tokens": 100, "cached_input_tokens": 0,
-                   "output_tokens": 50, "reasoning_output_tokens": 25}},
+        {
+            "type": "item.completed",
+            "item": {
+                "id": "item_2",
+                "type": "agent_message",
+                "text": "## Section 6 — Verdict\n\nRound 1: 0 findings of any severity. Convergence reached.\n",
+            },
+        },
+        {
+            "type": "turn.completed",
+            "usage": {
+                "input_tokens": 100,
+                "cached_input_tokens": 0,
+                "output_tokens": 50,
+                "reasoning_output_tokens": 25,
+            },
+        },
     ]
 
 
@@ -276,9 +301,11 @@ class TestA1:
         ]
 
     def test_material_with_p1_gt_0_passes(self):
-        v = {**make_valid_verdict_file_pass(),
-             "verdict_status": "MATERIAL",
-             "finding_counts": {"p1": 1, "p2": 0, "p3": 0}}
+        v = {
+            **make_valid_verdict_file_pass(),
+            "verdict_status": "MATERIAL",
+            "finding_counts": {"p1": 1, "p2": 0, "p3": 0},
+        }
         assert check_a1(None, v) == []
 
     def test_material_all_zero_fails(self):
@@ -353,9 +380,11 @@ class TestA4:
 
     def test_proposal_with_ack_fails(self):
         e = make_valid_proposal_entry_pass()
-        e["acknowledgement"] = {"finding_ids": ["F-001"],
-                                 "acknowledged_at": "2026-04-30T15:23:11.847Z",
-                                 "acknowledged_by": "user"}
+        e["acknowledgement"] = {
+            "finding_ids": ["F-001"],
+            "acknowledged_at": "2026-04-30T15:23:11.847Z",
+            "acknowledged_by": "user",
+        }
         findings = check_a4(e, "proposal")
         assert any(f.rule_id == "A4" for f in findings)
 
@@ -363,9 +392,11 @@ class TestA4:
         e = make_valid_persisted_entry_minor()
         e["verdict"]["status"] = "PASS"
         e["verdict"]["finding_counts"] = {"p1": 0, "p2": 0, "p3": 0}
-        e["acknowledgement"] = {"finding_ids": ["F-001"],
-                                 "acknowledged_at": e["verdict"]["verified_at"],
-                                 "acknowledged_by": "user"}
+        e["acknowledgement"] = {
+            "finding_ids": ["F-001"],
+            "acknowledged_at": e["verdict"]["verified_at"],
+            "acknowledged_by": "user",
+        }
         findings = check_a4(e, "persisted")
         assert any(f.rule_id == "A4" and "MATERIAL" in f.message for f in findings)
 
@@ -393,8 +424,17 @@ class TestA6:
 
     def test_audit_failed_with_findings_fails(self):
         v = make_valid_verdict_file_audit_failed()
-        v["findings"] = [{"id": "F-001", "severity": "P3", "dimension": "3.7",
-                          "file": "x.md", "line": 1, "description": "x", "suggested_fix": "y"}]
+        v["findings"] = [
+            {
+                "id": "F-001",
+                "severity": "P3",
+                "dimension": "3.7",
+                "file": "x.md",
+                "line": 1,
+                "description": "x",
+                "suggested_fix": "y",
+            }
+        ]
         findings = check_a6(v)
         assert any(f.rule_id == "A6" for f in findings)
 
@@ -414,11 +454,16 @@ class TestA7:
         events = [
             {"type": "thread.started", "thread_id": VALID_THREAD_ID},
             {"type": "turn.started"},
-            {"type": "item.completed",
-             "item": {"id": "item_orphan", "type": "command_execution"}},
-            {"type": "turn.completed",
-             "usage": {"input_tokens": 1, "cached_input_tokens": 0,
-                       "output_tokens": 1, "reasoning_output_tokens": 0}},
+            {"type": "item.completed", "item": {"id": "item_orphan", "type": "command_execution"}},
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 1,
+                    "cached_input_tokens": 0,
+                    "output_tokens": 1,
+                    "reasoning_output_tokens": 0,
+                },
+            },
         ]
         findings = check_a7(events)
         assert any(f.rule_id == "A7" and "orphan" in f.message for f in findings)
@@ -427,9 +472,15 @@ class TestA7:
         events = [
             {"type": "thread.started", "thread_id": VALID_THREAD_ID},
             {"type": "item.started", "item": {"id": "item_unmatched", "type": "command_execution"}},
-            {"type": "turn.completed",
-             "usage": {"input_tokens": 1, "cached_input_tokens": 0,
-                       "output_tokens": 1, "reasoning_output_tokens": 0}},
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 1,
+                    "cached_input_tokens": 0,
+                    "output_tokens": 1,
+                    "reasoning_output_tokens": 0,
+                },
+            },
         ]
         findings = check_a7(events)
         assert any(f.rule_id == "A7" and "unmatched" in f.message for f in findings)
@@ -440,9 +491,15 @@ class TestA7:
             {"type": "item.started", "item": {"id": "item_x", "type": "command_execution"}},
             {"type": "item.started", "item": {"id": "item_x", "type": "command_execution"}},
             {"type": "item.completed", "item": {"id": "item_x", "type": "command_execution"}},
-            {"type": "turn.completed",
-             "usage": {"input_tokens": 1, "cached_input_tokens": 0,
-                       "output_tokens": 1, "reasoning_output_tokens": 0}},
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 1,
+                    "cached_input_tokens": 0,
+                    "output_tokens": 1,
+                    "reasoning_output_tokens": 0,
+                },
+            },
         ]
         findings = check_a7(events)
         assert any(f.rule_id == "A7" and "duplicate item.started" in f.message for f in findings)
@@ -454,9 +511,15 @@ class TestA7:
             {"type": "thread.started", "thread_id": VALID_THREAD_ID},
             {"type": "item.completed", "item": {"id": "item_z", "type": "command_execution"}},
             {"type": "item.started", "item": {"id": "item_z", "type": "command_execution"}},
-            {"type": "turn.completed",
-             "usage": {"input_tokens": 1, "cached_input_tokens": 0,
-                       "output_tokens": 1, "reasoning_output_tokens": 0}},
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 1,
+                    "cached_input_tokens": 0,
+                    "output_tokens": 1,
+                    "reasoning_output_tokens": 0,
+                },
+            },
         ]
         findings = check_a7(events)
         # We expect at least one A7 finding (orphan or ordering)
@@ -545,12 +608,13 @@ class TestB3:
         # Synthesize a tmp repo with a real .git marker but missing bundle
         # files; the sidecar's declared paths are intentionally absent.
         (tmp_path / ".git").mkdir()  # marker only; B3 doesn't run git commands
-        s = make_valid_sidecar()  # references deliverable.md / bibliography.json / verification.md / template
+        s = (
+            make_valid_sidecar()
+        )  # references deliverable.md / bibliography.json / verification.md / template
         findings = check_b3(s, tmp_path)
-        assert any(
-            f.rule_id == "B3" and "missing on disk" in f.message
-            for f in findings
-        ), [f.render() for f in findings]
+        assert any(f.rule_id == "B3" and "missing on disk" in f.message for f in findings), [
+            f.render() for f in findings
+        ]
 
 
 class TestB4:
@@ -560,7 +624,9 @@ class TestB4:
         # Use the actual repo HEAD
         result = subprocess.run(
             ["git", "rev-parse", "HEAD"],
-            capture_output=True, text=True, cwd=REPO,
+            capture_output=True,
+            text=True,
+            cwd=REPO,
         )
         head = result.stdout.strip()
         s = make_valid_sidecar()
@@ -632,9 +698,15 @@ class TestB7:
         e = make_valid_persisted_entry_minor()
         s = make_valid_sidecar()
         s["run_id"] = "2026-04-30T15-22-04Z-aaaa"
-        findings = check_b7(e, s, None, tmp_path / f"{VALID_RUN_ID}.meta.json",
-                             tmp_path / f"{VALID_RUN_ID}.jsonl",
-                             tmp_path / f"{VALID_RUN_ID}.verdict.yaml", "persisted")
+        findings = check_b7(
+            e,
+            s,
+            None,
+            tmp_path / f"{VALID_RUN_ID}.meta.json",
+            tmp_path / f"{VALID_RUN_ID}.jsonl",
+            tmp_path / f"{VALID_RUN_ID}.verdict.yaml",
+            "persisted",
+        )
         assert any(f.rule_id == "B7" and "entry.run_id" in f.message for f in findings)
 
     def test_basename_mismatch_fails(self, tmp_path: Path):
@@ -710,9 +782,17 @@ class TestB10:
         v = make_valid_verdict_file_minor()
         v["verdict_status"] = "MATERIAL"
         v["finding_counts"] = {"p1": 1, "p2": 0, "p3": 0}
-        v["findings"] = [{"id": "F-001", "severity": "P1", "dimension": "3.7",
-                          "file": "x.md", "line": 1, "description": "x",
-                          "suggested_fix": "y"}]
+        v["findings"] = [
+            {
+                "id": "F-001",
+                "severity": "P1",
+                "dimension": "3.7",
+                "file": "x.md",
+                "line": 1,
+                "description": "x",
+                "suggested_fix": "y",
+            }
+        ]
         assert check_b10(e, v, "persisted") == []
 
     def test_unknown_finding_id_fails(self):
@@ -727,9 +807,17 @@ class TestB10:
         v = make_valid_verdict_file_minor()
         v["verdict_status"] = "MATERIAL"
         v["finding_counts"] = {"p1": 1, "p2": 0, "p3": 0}
-        v["findings"] = [{"id": "F-001", "severity": "P1", "dimension": "3.7",
-                          "file": "x.md", "line": 1, "description": "x",
-                          "suggested_fix": "y"}]
+        v["findings"] = [
+            {
+                "id": "F-001",
+                "severity": "P1",
+                "dimension": "3.7",
+                "file": "x.md",
+                "line": 1,
+                "description": "x",
+                "suggested_fix": "y",
+            }
+        ]
         findings = check_b10(e, v, "persisted")
         assert any(f.rule_id == "B10" and "unknown" in f.message for f in findings)
 
@@ -746,10 +834,24 @@ class TestB10:
         v["verdict_status"] = "MATERIAL"
         v["finding_counts"] = {"p1": 2, "p2": 0, "p3": 0}
         v["findings"] = [
-            {"id": "F-001", "severity": "P1", "dimension": "3.7",
-             "file": "x.md", "line": 1, "description": "x", "suggested_fix": "y"},
-            {"id": "F-002", "severity": "P1", "dimension": "3.7",
-             "file": "x.md", "line": 2, "description": "y", "suggested_fix": "z"},
+            {
+                "id": "F-001",
+                "severity": "P1",
+                "dimension": "3.7",
+                "file": "x.md",
+                "line": 1,
+                "description": "x",
+                "suggested_fix": "y",
+            },
+            {
+                "id": "F-002",
+                "severity": "P1",
+                "dimension": "3.7",
+                "file": "x.md",
+                "line": 2,
+                "description": "y",
+                "suggested_fix": "z",
+            },
         ]
         findings = check_b10(e, v, "persisted")
         assert any(f.rule_id == "B10" and "coverage" in f.message for f in findings)
@@ -888,19 +990,27 @@ class TestD2:
 
     def test_distinct_started_at_passes(self):
         proposals = [
-            {"sidecar": {"timing": {"started_at": "2026-04-30T15:22:04.123Z"}},
-             "entry": {"run_id": "2026-04-30T15-22-04Z-aaaa"}},
-            {"sidecar": {"timing": {"started_at": "2026-04-30T15:22:05.123Z"}},
-             "entry": {"run_id": "2026-04-30T15-22-05Z-bbbb"}},
+            {
+                "sidecar": {"timing": {"started_at": "2026-04-30T15:22:04.123Z"}},
+                "entry": {"run_id": "2026-04-30T15-22-04Z-aaaa"},
+            },
+            {
+                "sidecar": {"timing": {"started_at": "2026-04-30T15:22:05.123Z"}},
+                "entry": {"run_id": "2026-04-30T15-22-05Z-bbbb"},
+            },
         ]
         assert check_d2(proposals) == []
 
     def test_shared_started_at_warns(self):
         proposals = [
-            {"sidecar": {"timing": {"started_at": "2026-04-30T15:22:04.123Z"}},
-             "entry": {"run_id": "2026-04-30T15-22-04Z-aaaa"}},
-            {"sidecar": {"timing": {"started_at": "2026-04-30T15:22:04.123Z"}},
-             "entry": {"run_id": "2026-04-30T15-22-04Z-bbbb"}},
+            {
+                "sidecar": {"timing": {"started_at": "2026-04-30T15:22:04.123Z"}},
+                "entry": {"run_id": "2026-04-30T15-22-04Z-aaaa"},
+            },
+            {
+                "sidecar": {"timing": {"started_at": "2026-04-30T15:22:04.123Z"}},
+                "entry": {"run_id": "2026-04-30T15-22-04Z-bbbb"},
+            },
         ]
         findings = check_d2(proposals)
         assert any(f.rule_id == "D2" for f in findings)
@@ -1096,15 +1206,23 @@ class TestF3:
 class TestSchemaSelfValidation:
     """Verification gate: each Phase 6.2 schema validates as Draft 2020-12."""
 
-    @pytest.mark.parametrize("schema_name", [
-        "audit_artifact_entry.schema.json",
-        "audit_jsonl.schema.json",
-        "audit_sidecar.schema.json",
-        "audit_verdict.schema.json",
-    ])
+    @pytest.mark.parametrize(
+        "schema_name",
+        [
+            "audit_artifact_entry.schema.json",
+            "audit_jsonl.schema.json",
+            "audit_sidecar.schema.json",
+            "audit_verdict.schema.json",
+        ],
+    )
     def test_schema_meta_valid(self, schema_name):
         from tests.test_helpers import load_json_schema
-        if "audit_jsonl" in schema_name or "audit_sidecar" in schema_name or "audit_verdict" in schema_name:
+
+        if (
+            "audit_jsonl" in schema_name
+            or "audit_sidecar" in schema_name
+            or "audit_verdict" in schema_name
+        ):
             path = REPO / "shared/contracts/audit" / schema_name
         else:
             path = REPO / "shared/contracts/passport" / schema_name
@@ -1129,8 +1247,7 @@ class TestAggregator:
         # against repo_root and verifies disk existence + samefile match
         # against CLI-loaded paths. Aggregator test writes placeholder
         # files at the recorded basename so the resolution succeeds.
-        for ext in (".jsonl", ".meta.json", ".verdict.yaml",
-                    ".audit_artifact_entry.json"):
+        for ext in (".jsonl", ".meta.json", ".verdict.yaml", ".audit_artifact_entry.json"):
             (tmp_path / f"{VALID_RUN_ID}{ext}").write_text("placeholder")
         ctx = LintContext(
             mode="persisted",
@@ -1151,8 +1268,7 @@ class TestAggregator:
         sidecar = make_valid_sidecar()
         entry = make_valid_proposal_entry_pass()
         entry["bundle_manifest_sha"] = sidecar["prompt"]["bundle"]["bundle_manifest_sha"]
-        for ext in (".jsonl", ".meta.json", ".verdict.yaml",
-                    ".audit_artifact_entry.json"):
+        for ext in (".jsonl", ".meta.json", ".verdict.yaml", ".audit_artifact_entry.json"):
             (tmp_path / f"{VALID_RUN_ID}{ext}").write_text("placeholder")
         ctx = LintContext(
             mode="proposal",
@@ -1181,8 +1297,7 @@ class TestAggregator:
     def test_jsonl_stream_mode_orphan_fails(self, tmp_path: Path):
         events = [
             {"type": "thread.started", "thread_id": VALID_THREAD_ID},
-            {"type": "item.completed",
-             "item": {"id": "orphan", "type": "command_execution"}},
+            {"type": "item.completed", "item": {"id": "orphan", "type": "command_execution"}},
         ]
         ctx = LintContext(
             mode="jsonl-stream",
@@ -1208,8 +1323,7 @@ class TestCLI:
         jsonl = tmp_path / f"{VALID_RUN_ID}.jsonl"
         events = [
             {"type": "thread.started", "thread_id": VALID_THREAD_ID},
-            {"type": "item.completed",
-             "item": {"id": "orphan", "type": "command_execution"}},
+            {"type": "item.completed", "item": {"id": "orphan", "type": "command_execution"}},
         ]
         jsonl.write_text("\n".join(json.dumps(e) for e in events) + "\n")
         rc = main(["--mode", "jsonl-stream", "--jsonl", str(jsonl)])
@@ -1227,15 +1341,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         # verdict as YAML
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         # zero findings -> rc == 0
         assert rc == 0
 
@@ -1248,15 +1368,21 @@ class TestCLI:
         events = make_valid_jsonl_events_no_tool()
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "B7" in captured.out
@@ -1278,15 +1404,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "E3" in captured.out
@@ -1306,15 +1438,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "E5" in captured.out
@@ -1338,15 +1476,23 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
         (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in truncated_events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+            "\n".join(json.dumps(e) for e in truncated_events) + "\n"
+        )
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "L2-3/L2-4" in captured.out or "stream-shape" in captured.out, captured.out
@@ -1363,9 +1509,9 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
         # Passport with hand-edited AUDIT_FAILED entry that passes E1/E2/E6
         # presence checks (verified_at + verified_by both set, verified_by
         # is the canonical orchestrator value).
@@ -1397,13 +1543,20 @@ class TestCLI:
         }
         passport_path = tmp_path / "passport.yaml"
         passport_path.write_text(_yaml.safe_dump(passport))
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--passport-path", str(passport_path),
-            "--repo-root", str(tmp_path),
-        ])
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--passport-path",
+                str(passport_path),
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "E5" in captured.out
@@ -1429,15 +1582,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "B7" in captured.out
@@ -1446,9 +1605,14 @@ class TestCLI:
     def test_argparse_invalid_mode_returns_64(self):
         # Codex round 4 P3: argparse-level failures must exit 64, not 2.
         result = subprocess.run(
-            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
-             "--mode", "definitely_not_a_mode"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(REPO / "scripts/check_audit_artifact_consistency.py"),
+                "--mode",
+                "definitely_not_a_mode",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 64, (
             f"argparse usage error returned {result.returncode}, expected 64\n"
@@ -1457,13 +1621,16 @@ class TestCLI:
 
     def test_argparse_unknown_flag_returns_64(self):
         result = subprocess.run(
-            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
-             "--bogus-flag"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(REPO / "scripts/check_audit_artifact_consistency.py"),
+                "--bogus-flag",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 64, (
-            f"unknown flag returned {result.returncode}, expected 64\n"
-            f"stderr: {result.stderr}"
+            f"unknown flag returned {result.returncode}, expected 64\n" f"stderr: {result.stderr}"
         )
 
     def test_persisted_ack_without_prior_rejected(self, tmp_path: Path, capsys):
@@ -1485,28 +1652,41 @@ class TestCLI:
         verdict = make_valid_verdict_file_minor()
         verdict["verdict_status"] = "MATERIAL"
         verdict["finding_counts"] = {"p1": 1, "p2": 0, "p3": 0}
-        verdict["findings"] = [{
-            "id": "F-001", "severity": "P1", "dimension": "3.1",
-            "file": "x.md", "line": 1,
-            "description": "x", "suggested_fix": "y",
-        }]
+        verdict["findings"] = [
+            {
+                "id": "F-001",
+                "severity": "P1",
+                "dimension": "3.1",
+                "file": "x.md",
+                "line": 1,
+                "description": "x",
+                "suggested_fix": "y",
+            }
+        ]
         events = make_valid_jsonl_events_no_tool()
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
         # Empty passport — no prior MATERIAL entry to copy from
         passport_path = tmp_path / "passport.yaml"
         passport_path.write_text(_yaml.safe_dump({"audit_artifact": []}))
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--passport-path", str(passport_path),
-            "--repo-root", str(tmp_path),
-        ])
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--passport-path",
+                str(passport_path),
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "C3" in captured.out
@@ -1517,14 +1697,22 @@ class TestCLI:
         # must surface as a clean error, not an AttributeError traceback.
         entry_path = tmp_path / "entry.json"
         entry_path.write_text("[]")
-        rc = main([
-            "--mode", "proposal",
-            "--entry", str(entry_path),
-            "--sidecar", str(tmp_path / "no.meta.json"),
-            "--verdict", str(tmp_path / "no.verdict.yaml"),
-            "--jsonl", str(tmp_path / "no.jsonl"),
-            "--repo-root", str(tmp_path),
-        ])
+        rc = main(
+            [
+                "--mode",
+                "proposal",
+                "--entry",
+                str(entry_path),
+                "--sidecar",
+                str(tmp_path / "no.meta.json"),
+                "--verdict",
+                str(tmp_path / "no.verdict.yaml"),
+                "--jsonl",
+                str(tmp_path / "no.jsonl"),
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 2
         assert "is not a JSON object" in captured.err
@@ -1545,19 +1733,31 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
-        (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(truncated_events[0]))  # placeholder
+
+        (tmp_path / f"{run_id}.verdict.yaml").write_text(
+            _yaml.safe_dump(truncated_events[0])
+        )  # placeholder
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
         (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in truncated_events) + "\n")
+            "\n".join(json.dumps(e) for e in truncated_events) + "\n"
+        )
         # Run via subprocess so we exercise the actual import path the gate
         # uses (importlib loads parse_audit_verdict by file path).
         result = subprocess.run(
-            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
-             "--mode", "persisted",
-             "--output-dir", str(tmp_path),
-             "--run-id", run_id,
-             "--repo-root", str(tmp_path)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(REPO / "scripts/check_audit_artifact_consistency.py"),
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 1, result.stdout + result.stderr
         assert "L2-3/L2-4" in result.stdout or "stream-shape" in result.stdout, result.stdout
@@ -1589,26 +1789,33 @@ class TestCLI:
         truncated_events = [
             {"type": "thread.started", "thread_id": VALID_THREAD_ID},
             {"type": "turn.started"},
-            {"type": "item.started",
-             "item": {"id": "killed_tool", "type": "command_execution"}},
+            {"type": "item.started", "item": {"id": "killed_tool", "type": "command_execution"}},
         ]
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
         (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in truncated_events) + "\n")
-        rc = main([
-            "--mode", "proposal",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+            "\n".join(json.dumps(e) for e in truncated_events) + "\n"
+        )
+        rc = main(
+            [
+                "--mode",
+                "proposal",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         # No A7 finding should appear — AUDIT_FAILED suspends pairing
-        assert "A7" not in captured.out, (
-            f"AUDIT_FAILED bundle should not produce A7 findings — got: {captured.out}"
-        )
+        assert (
+            "A7" not in captured.out
+        ), f"AUDIT_FAILED bundle should not produce A7 findings — got: {captured.out}"
 
     def test_non_object_sidecar_no_traceback(self, tmp_path: Path, capsys):
         # Codex round 6 P2: a non-object sidecar must surface as SCHEMA
@@ -1620,15 +1827,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text("[]")  # non-object
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "SCHEMA" in captured.out, captured.out
@@ -1645,14 +1858,19 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         (tmp_path / f"{run_id}.verdict.yaml").write_text("[]")  # non-object
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "SCHEMA" in captured.out, captured.out
@@ -1671,25 +1889,42 @@ class TestCLI:
         events = [
             {"type": "thread.started", "thread_id": VALID_THREAD_ID},
             {"type": "turn.started"},
-            {"type": "item.completed",
-             "item": {"id": "item_0", "type": "agent_message",
-                      "text": "I considered the bundle and decided everything looks fine."}},
-            {"type": "turn.completed",
-             "usage": {"input_tokens": 100, "cached_input_tokens": 0,
-                       "output_tokens": 50, "reasoning_output_tokens": 25}},
+            {
+                "type": "item.completed",
+                "item": {
+                    "id": "item_0",
+                    "type": "agent_message",
+                    "text": "I considered the bundle and decided everything looks fine.",
+                },
+            },
+            {
+                "type": "turn.completed",
+                "usage": {
+                    "input_tokens": 100,
+                    "cached_input_tokens": 0,
+                    "output_tokens": 50,
+                    "reasoning_output_tokens": 25,
+                },
+            },
         ]
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "L2-4" in captured.out, captured.out
@@ -1713,15 +1948,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "B7" in captured.out
@@ -1769,15 +2010,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "proposal",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "proposal",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         # B2/B3/B4/B5/B7 must not fire — AUDIT_FAILED suspends Layer 3
         for rule in ("B2", "B3", "B4", "B5", "B7"):
@@ -1810,21 +2057,30 @@ class TestCLI:
         # Partial JSON on the last line — would raise ValueError in
         # _load_jsonl and previously caused exit 2.
         partial_jsonl = (
-            json.dumps({"type": "thread.started", "thread_id": VALID_THREAD_ID}) + "\n"
-            + json.dumps({"type": "turn.started"}) + "\n"
+            json.dumps({"type": "thread.started", "thread_id": VALID_THREAD_ID})
+            + "\n"
+            + json.dumps({"type": "turn.started"})
+            + "\n"
             + '{"type":"item.start'  # truncated mid-write, no closing quote/brace
         )
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
         (tmp_path / f"{run_id}.jsonl").write_text(partial_jsonl)
-        rc = main([
-            "--mode", "proposal",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        rc = main(
+            [
+                "--mode",
+                "proposal",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         # Must NOT be rc=2 (internal error). Forensic-only bundle is allowed.
         assert rc != 2, (
@@ -1851,15 +2107,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "SCHEMA" in captured.out, captured.out
@@ -1889,9 +2151,9 @@ class TestCLI:
         # Companion files in output_dir (where the lint expects them)
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
 
         # Higher-round proposal in output_dir (round 2 > persisted round 1)
         proposal_run_id = "2026-04-30T15-30-00Z-eeee"
@@ -1908,15 +2170,23 @@ class TestCLI:
             "verdict": f"{proposal_run_id}.verdict.yaml",
         }
         (tmp_path / f"{proposal_run_id}.audit_artifact_entry.json").write_text(
-            json.dumps(proposal_entry))
+            json.dumps(proposal_entry)
+        )
 
-        rc = main([
-            "--mode", "persisted",
-            "--entry", str(consumed / f"{run_id}.audit_artifact_entry.json"),
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--entry",
+                str(consumed / f"{run_id}.audit_artifact_entry.json"),
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "D4" in captured.out, captured.out
@@ -1930,6 +2200,7 @@ class TestCLI:
         # verdict.py / run_codex_audit.sh — direct exec failing with
         # permission denied (exit 126) would block the orchestrator gate.
         import os
+
         script_path = REPO / "scripts/check_audit_artifact_consistency.py"
         assert os.access(script_path, os.X_OK), (
             f"{script_path} must be executable for orchestrator §5.2 L2-5 "
@@ -1941,12 +2212,15 @@ class TestCLI:
         # and confirm it produces the documented harness exit code. Belt
         # and braces against future `chmod 644` regressions.
         import os
+
         script_path = REPO / "scripts/check_audit_artifact_consistency.py"
         env = os.environ.copy()
         env["PATH"] = f"{Path(sys.executable).parent}{os.pathsep}{env.get('PATH', '')}"
         result = subprocess.run(
             [str(script_path), "--example-validation-harness"],
-            capture_output=True, text=True, env=env,
+            capture_output=True,
+            text=True,
+            env=env,
         )
         assert result.returncode == 0, (
             f"direct exec returned {result.returncode} (expected 0)\n"
@@ -1969,15 +2243,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "B7" in captured.out
@@ -2000,15 +2280,20 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
         # ONLY --entry + --repo-root, no --output-dir, no --sidecar/verdict/jsonl
-        rc = main([
-            "--mode", "persisted",
-            "--entry", str(tmp_path / f"{run_id}.audit_artifact_entry.json"),
-            "--repo-root", str(tmp_path),
-        ])
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--entry",
+                str(tmp_path / f"{run_id}.audit_artifact_entry.json"),
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 0, captured.out
 
@@ -2027,15 +2312,21 @@ class TestCLI:
         (tmp_path / f"{run_id}.audit_artifact_entry.json").write_text(json.dumps(entry))
         (tmp_path / f"{run_id}.meta.json").write_text(json.dumps(sidecar))
         import yaml as _yaml
+
         (tmp_path / f"{run_id}.verdict.yaml").write_text(_yaml.safe_dump(verdict))
-        (tmp_path / f"{run_id}.jsonl").write_text(
-            "\n".join(json.dumps(e) for e in events) + "\n")
-        rc = main([
-            "--mode", "persisted",
-            "--output-dir", str(tmp_path),
-            "--run-id", run_id,
-            "--repo-root", str(tmp_path),
-        ])
+        (tmp_path / f"{run_id}.jsonl").write_text("\n".join(json.dumps(e) for e in events) + "\n")
+        rc = main(
+            [
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(tmp_path),
+                "--run-id",
+                run_id,
+                "--repo-root",
+                str(tmp_path),
+            ]
+        )
         captured = capsys.readouterr()
         assert rc == 1, captured.out
         assert "SCHEMA" in captured.out
@@ -2084,12 +2375,20 @@ class TestFixtureSmoke:
     def test_positive_persisted_minor(self):
         bundle = FIXTURE_ROOT / "positive/persisted_minor"
         result = subprocess.run(
-            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
-             "--mode", "persisted",
-             "--output-dir", str(bundle),
-             "--run-id", "2026-04-30T15-22-04Z-d8f3",
-             "--repo-root", str(bundle)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(REPO / "scripts/check_audit_artifact_consistency.py"),
+                "--mode",
+                "persisted",
+                "--output-dir",
+                str(bundle),
+                "--run-id",
+                "2026-04-30T15-22-04Z-d8f3",
+                "--repo-root",
+                str(bundle),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, (
             f"positive fixture persisted_minor returned {result.returncode}\n"
@@ -2099,12 +2398,20 @@ class TestFixtureSmoke:
     def test_positive_proposal_pass(self):
         bundle = FIXTURE_ROOT / "positive/proposal_pass"
         result = subprocess.run(
-            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
-             "--mode", "proposal",
-             "--output-dir", str(bundle),
-             "--run-id", "2026-04-30T15-22-04Z-d8f3",
-             "--repo-root", str(bundle)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(REPO / "scripts/check_audit_artifact_consistency.py"),
+                "--mode",
+                "proposal",
+                "--output-dir",
+                str(bundle),
+                "--run-id",
+                "2026-04-30T15-22-04Z-d8f3",
+                "--repo-root",
+                str(bundle),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, (
             f"positive fixture proposal_pass returned {result.returncode}\n"
@@ -2114,12 +2421,20 @@ class TestFixtureSmoke:
     def test_negative_a1_pass_with_p1(self):
         bundle = FIXTURE_ROOT / "negative/a1_pass_with_p1"
         result = subprocess.run(
-            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
-             "--mode", "proposal",
-             "--output-dir", str(bundle),
-             "--run-id", "2026-04-30T15-22-04Z-d8f3",
-             "--repo-root", str(bundle)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(REPO / "scripts/check_audit_artifact_consistency.py"),
+                "--mode",
+                "proposal",
+                "--output-dir",
+                str(bundle),
+                "--run-id",
+                "2026-04-30T15-22-04Z-d8f3",
+                "--repo-root",
+                str(bundle),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 1, result.stdout
         assert "A1" in result.stdout, result.stdout
@@ -2127,10 +2442,16 @@ class TestFixtureSmoke:
     def test_negative_a7_orphan_completion(self):
         jsonl = FIXTURE_ROOT / "negative/a7_orphan_completion/2026-04-30T15-22-04Z-d8f3.jsonl"
         result = subprocess.run(
-            [sys.executable, str(REPO / "scripts/check_audit_artifact_consistency.py"),
-             "--mode", "jsonl-stream",
-             "--jsonl", str(jsonl)],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(REPO / "scripts/check_audit_artifact_consistency.py"),
+                "--mode",
+                "jsonl-stream",
+                "--jsonl",
+                str(jsonl),
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 1, result.stdout
         assert "A7" in result.stdout, result.stdout

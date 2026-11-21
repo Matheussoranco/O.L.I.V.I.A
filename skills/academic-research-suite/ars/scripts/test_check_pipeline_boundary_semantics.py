@@ -203,13 +203,19 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             "After delivering the Process Record (MD + PDF per the user's language choice), the orchestrator prompts for a terminal acknowledgement",
             "Before delivering the Process Record, the orchestrator prompts for a terminal acknowledgement",
         )
-        for kw, mut, orig in (("orch", orch_mut, self.orch),
-                              ("proto", proto_mut, self.proto),
-                              ("sm", sm_mut, self.sm)):
+        for kw, mut, orig in (
+            ("orch", orch_mut, self.orch),
+            ("proto", proto_mut, self.proto),
+            ("sm", sm_mut, self.sm),
+        ):
             self.assertNotEqual(mut, orig, msg=kw)
             errors = self._check(**{kw: mut})
             self.assertTrue(
-                any(e.startswith("invariant 4") and ("sequencing" in e or "post-delivery-prompt" in e) for e in errors),
+                any(
+                    e.startswith("invariant 4")
+                    and ("sequencing" in e or "post-delivery-prompt" in e)
+                    for e in errors
+                ),
                 msg=f"{kw} errors: {errors}",
             )
 
@@ -303,9 +309,7 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
     # --- INV-3: Stage 5 boundary semantics ---
 
     def test_inv3_authority_section_removed(self) -> None:
-        mutated = self.sm.replace(
-            "## Stage 5 and Stage 6 Boundary Semantics", "## Stage notes"
-        )
+        mutated = self.sm.replace("## Stage 5 and Stage 6 Boundary Semantics", "## Stage notes")
         errors = self._check(sm=mutated)
         self.assertTrue(
             any(e.startswith("invariant 3") and "missing" in e for e in errors),
@@ -326,7 +330,9 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             "| Stage 5 | END |",
         )
         errors = self._check(sm=mutated)
-        self.assertTrue(any(e.startswith("invariant 3") and "completion-checkpoint" in e for e in errors))
+        self.assertTrue(
+            any(e.startswith("invariant 3") and "completion-checkpoint" in e for e in errors)
+        )
 
     def test_inv3_completion_row_flipped_to_mandatory(self) -> None:
         """Adverse-value mutation (codex P1): the row survives as a prefix but
@@ -355,9 +361,7 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
 
     def test_inv3_skill_mandatory_cell_broadened(self) -> None:
         """The drift that motivated item 3: 'Stage 5' unqualified again."""
-        mutated = self.skill.replace(
-            "Stage 5 entry gate (before finalization)", "Stage 5"
-        )
+        mutated = self.skill.replace("Stage 5 entry gate (before finalization)", "Stage 5")
         errors = self._check(skill=mutated)
         self.assertTrue(any(e.startswith("invariant 3") and self.mod.SKILL in e for e in errors))
 
@@ -408,7 +412,9 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             "| Stage 6 | END | done |",
         )
         errors = self._check(sm=mutated)
-        self.assertTrue(any(e.startswith("invariant 4") and "terminal-checkpoint-row" in e for e in errors))
+        self.assertTrue(
+            any(e.startswith("invariant 4") and "terminal-checkpoint-row" in e for e in errors)
+        )
 
     def test_inv4_decline_row_removed(self) -> None:
         mutated = self.sm.replace(
@@ -545,11 +551,19 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         errors_skill = self._check(skill=skill_mut)
         errors_proto = self._check(proto=proto_mut)
         self.assertTrue(
-            any(e.startswith("invariant 4") and "change-requests-not-ack" in e and self.mod.SKILL in e for e in errors_skill),
+            any(
+                e.startswith("invariant 4")
+                and "change-requests-not-ack" in e
+                and self.mod.SKILL in e
+                for e in errors_skill
+            ),
             msg=f"errors: {errors_skill}",
         )
         self.assertTrue(
-            any(e.startswith("invariant 4") and "non-acknowledgement" in e and self.mod.PROTO in e for e in errors_proto),
+            any(
+                e.startswith("invariant 4") and "non-acknowledgement" in e and self.mod.PROTO in e
+                for e in errors_proto
+            ),
             msg=f"errors: {errors_proto}",
         )
 
@@ -567,7 +581,9 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             self.assertNotEqual(mutated, text, msg=name)
             errors = self._check(**{kw: mutated})
             self.assertTrue(
-                any(e.startswith("invariant 3") and "FULL checkpoint-type row" in e for e in errors),
+                any(
+                    e.startswith("invariant 3") and "FULL checkpoint-type row" in e for e in errors
+                ),
                 msg=f"{name} errors: {errors}",
             )
 
@@ -600,9 +616,11 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             "the user may decline it at that checkpoint; it is then marked `skipped` and the pipeline still terminates `completed`",
             "Stage 6 is mandatory; may not decline",
         )
-        for kw, mut, orig in (("skill", skill_mut, self.skill),
-                              ("orch", orch_mut, self.orch),
-                              ("proto", proto_mut, self.proto)):
+        for kw, mut, orig in (
+            ("skill", skill_mut, self.skill),
+            ("orch", orch_mut, self.orch),
+            ("proto", proto_mut, self.proto),
+        ):
             self.assertNotEqual(mut, orig, msg=kw)
             errors = self._check(**{kw: mut})
             self.assertTrue(
@@ -665,13 +683,18 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
             "On acknowledgement: state_tracker marks Stage 6 completed and sets the pipeline global state to completed",
             "On acknowledgement: state_tracker marks Stage 6 skipped and sets the pipeline global state to completed",
         )
-        for kw, mut, orig in (("sm", sm_mut, self.sm),
-                              ("skill", skill_mut, self.skill),
-                              ("proto", proto_mut, self.proto)):
+        for kw, mut, orig in (
+            ("sm", sm_mut, self.sm),
+            ("skill", skill_mut, self.skill),
+            ("proto", proto_mut, self.proto),
+        ):
             self.assertNotEqual(mut, orig, msg=kw)
             errors = self._check(**{kw: mut})
             self.assertTrue(
-                any(e.startswith("invariant 4") and ("ack-outcome" in e or "outcome" in e) for e in errors),
+                any(
+                    e.startswith("invariant 4") and ("ack-outcome" in e or "outcome" in e)
+                    for e in errors
+                ),
                 msg=f"{kw} errors: {errors}",
             )
 
@@ -845,7 +868,10 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
         self.assertNotEqual(mutated, self.proto)
         errors = self._check(proto=mutated)
         self.assertTrue(
-            any(e.startswith("invariant 4") and "decline" in e and self.mod.PROTO in e for e in errors),
+            any(
+                e.startswith("invariant 4") and "decline" in e and self.mod.PROTO in e
+                for e in errors
+            ),
             msg=f"errors: {errors}",
         )
 
@@ -867,7 +893,9 @@ class PipelineBoundarySemanticsTests(unittest.TestCase):
     def test_inv4_handoff_destination_rerouted(self) -> None:
         """Adverse-value mutation (codex round-11 P1): the handoff row's
         first cell reroutes Stage 5 -> END — must fire."""
-        mutated = self.orch.replace("| Stage 5 -> 6 | Final deliverables", "| Stage 5 -> END | Final deliverables")
+        mutated = self.orch.replace(
+            "| Stage 5 -> 6 | Final deliverables", "| Stage 5 -> END | Final deliverables"
+        )
         self.assertNotEqual(mutated, self.orch)
         errors = self._check(orch=mutated)
         self.assertTrue(

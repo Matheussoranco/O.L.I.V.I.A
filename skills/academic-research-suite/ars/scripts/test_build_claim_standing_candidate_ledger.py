@@ -10,9 +10,7 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, ValidationError
-
 from scripts import build_claim_standing_candidate_ledger as ledger
-
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = ROOT / "scripts/fixtures/claim_standing_candidate_ledger"
@@ -44,13 +42,9 @@ def _rehash_plan(plan: dict) -> None:
     consent["queries_sha256"] = ledger.digest(plan["queries"])
     if plan["schema_version"] == ledger.PLAN_VERSION_1_1:
         consent["stance_plan_sha256"] = (
-            ledger.digest(plan["stance_plan"])
-            if plan["stance_plan"] is not None
-            else None
+            ledger.digest(plan["stance_plan"]) if plan["stance_plan"] is not None else None
         )
-    consent["consentable_plan_sha256"] = ledger.digest(
-        ledger.consentable_plan_projection(plan)
-    )
+    consent["consentable_plan_sha256"] = ledger.digest(ledger.consentable_plan_projection(plan))
     consent["receipt_sha256"] = ledger.bound_digest(consent, "receipt_sha256")
     plan["plan_sha256"] = ledger.bound_digest(plan, "plan_sha256")
 
@@ -73,16 +67,12 @@ def _rehash_input(retained: dict, plan: dict | None = None) -> None:
         hit = hits.get(assessment["canonical_raw_hit_id"])
         if hit is None:
             continue
-        projection = ledger.relevance_assessment_input_projection(
-            active_plan, hit, assessment
-        )
+        projection = ledger.relevance_assessment_input_projection(active_plan, hit, assessment)
         prompt = ledger.render_relevance_prompt(projection)
         assessment["assessment_input_sha256"] = ledger.digest(projection)
         assessment["prompt_utf8"] = prompt
         assessment["prompt_sha256"] = ledger.text_digest(prompt)
-    retained["retrieval_input_sha256"] = ledger.bound_digest(
-        retained, "retrieval_input_sha256"
-    )
+    retained["retrieval_input_sha256"] = ledger.bound_digest(retained, "retrieval_input_sha256")
 
 
 def test_all_contracts_are_valid_closed_draft_2020_12_instances() -> None:
@@ -125,9 +115,7 @@ def test_build_is_deterministic_and_does_not_mutate_inputs() -> None:
     assert (plan, retained) == frozen
 
 
-@pytest.mark.parametrize(
-    "persistence", ["session_only", "explicit_local_export"]
-)
+@pytest.mark.parametrize("persistence", ["session_only", "explicit_local_export"])
 def test_finalized_ledger_truthfully_carries_consent_persistence(
     persistence: str,
 ) -> None:
@@ -141,15 +129,9 @@ def test_finalized_ledger_truthfully_carries_consent_persistence(
     result = ledger.build_ledger(plan, retained)
     assert result["local_persistence"] == persistence
     assert result["export_boundary"] == plan["consent"]["export_boundary"]
-    assert result["authorized_output_path"] == plan["consent"].get(
-        "authorized_output_path"
-    )
-    assert {row["sharing_scope"] for row in result["work_families"]} == {
-        persistence
-    }
-    assert {row["rights_basis"] for row in result["work_families"]} == {
-        "not_assessed"
-    }
+    assert result["authorized_output_path"] == plan["consent"].get("authorized_output_path")
+    assert {row["sharing_scope"] for row in result["work_families"]} == {persistence}
+    assert {row["rights_basis"] for row in result["work_families"]} == {"not_assessed"}
 
 
 def test_explicit_local_export_requires_exact_bound_consent_language() -> None:
@@ -264,9 +246,7 @@ def test_doi_normalizer_rejects_invalid_or_invisible_suffixes(
 
 def test_doi_normalizer_accepts_only_a_valid_prefixed_body() -> None:
     assert ledger.normalize_doi(" doi: 10.1234/X ") == "10.1234/x"
-    assert ledger.normalize_doi("https://doi.org/10.123456789/Ab-1") == (
-        "10.123456789/ab-1"
-    )
+    assert ledger.normalize_doi("https://doi.org/10.123456789/Ab-1") == ("10.123456789/ab-1")
 
 
 def test_normalization_empty_dois_never_create_a_strong_union() -> None:
@@ -307,7 +287,9 @@ def test_distinct_dois_defeat_weaker_title_fallback() -> None:
 
 def test_exact_claim_construction_allows_only_marker_stripping_and_ascii_space() -> None:
     plan = _plan()
-    plan["claim"]["claim_text"] = "A structured <!--ref:x--> reminder\n improves artifact completeness by 12%."
+    plan["claim"][
+        "claim_text"
+    ] = "A structured <!--ref:x--> reminder\n improves artifact completeness by 12%."
     _rehash_plan(plan)
     retained = _retained()
     _rehash_input(retained, plan)
@@ -326,9 +308,7 @@ def test_exact_claim_construction_allows_only_marker_stripping_and_ascii_space()
         ("accepted_query_text", "assisted_then_researcher_approved"),
     ],
 )
-def test_all_query_constructions_reject_whitespace_only_text(
-    field: str, construction: str
-) -> None:
+def test_all_query_constructions_reject_whitespace_only_text(field: str, construction: str) -> None:
     plan = _plan()
     query = plan["queries"][0]
     query["construction"] = construction
@@ -426,9 +406,7 @@ def test_retention_disclosure_state_and_reference_are_consistent(
 def test_consent_boundary_disclosures_cannot_be_whitespace(field: str) -> None:
     plan = _plan()
     plan["consent"][field] = "   "
-    plan["consent"]["receipt_sha256"] = ledger.bound_digest(
-        plan["consent"], "receipt_sha256"
-    )
+    plan["consent"]["receipt_sha256"] = ledger.bound_digest(plan["consent"], "receipt_sha256")
     plan["plan_sha256"] = ledger.bound_digest(plan, "plan_sha256")
     with pytest.raises(ledger.LedgerError, match=field):
         ledger.validate_plan(plan)
@@ -446,18 +424,14 @@ def test_relevance_rows_bind_exact_claim_candidate_and_prompt_bytes() -> None:
     _rehash_plan(plan)
     retained = _retained()
     retained["query_plan_sha256"] = plan["plan_sha256"]
-    retained["retrieval_input_sha256"] = ledger.bound_digest(
-        retained, "retrieval_input_sha256"
-    )
+    retained["retrieval_input_sha256"] = ledger.bound_digest(retained, "retrieval_input_sha256")
     with pytest.raises(ledger.LedgerError, match="exact claim, candidate"):
         ledger.build_ledger(plan, retained)
 
     plan = _plan()
     retained = _retained()
     retained["relevance_assessments"][0]["prompt_utf8"] += " stale"
-    retained["retrieval_input_sha256"] = ledger.bound_digest(
-        retained, "retrieval_input_sha256"
-    )
+    retained["retrieval_input_sha256"] = ledger.bound_digest(retained, "retrieval_input_sha256")
     with pytest.raises(ledger.LedgerError, match="canonical relevance prompt"):
         ledger.build_ledger(plan, retained)
 
@@ -465,9 +439,7 @@ def test_relevance_rows_bind_exact_claim_candidate_and_prompt_bytes() -> None:
 def test_every_planned_query_index_pair_requires_visible_root_attempt() -> None:
     retained = _retained()
     retained["attempts"] = [
-        attempt
-        for attempt in retained["attempts"]
-        if attempt["attempt_id"] != "attempt-c"
+        attempt for attempt in retained["attempts"] if attempt["attempt_id"] != "attempt-c"
     ]
     _rehash_input(retained)
     with pytest.raises(ledger.LedgerError, match="every planned query/index"):
@@ -523,9 +495,7 @@ def test_author_names_reject_whitespace_in_schema_and_runtime(field: str) -> Non
         ledger.build_ledger(plan, retained)
 
 
-@pytest.mark.parametrize(
-    "field", ["product_identity", "query_capability", "pagination_behavior"]
-)
+@pytest.mark.parametrize("field", ["product_identity", "query_capability", "pagination_behavior"])
 def test_provider_disclosures_reject_whitespace_in_schema_and_runtime(field: str) -> None:
     plan = _plan()
     plan["provider_roster"][0][field] = "   "
@@ -550,9 +520,7 @@ def test_provider_disclosures_reject_whitespace_in_schema_and_runtime(field: str
         ("export_boundary", "\ud800"),
     ],
 )
-def test_plan_semantic_text_surfaces_reject_invisible_unicode(
-    surface: str, value: str
-) -> None:
+def test_plan_semantic_text_surfaces_reject_invisible_unicode(surface: str, value: str) -> None:
     plan = _plan()
     if surface == "claim":
         plan["claim"]["claim_text"] = value
@@ -585,9 +553,7 @@ def test_plan_semantic_text_surfaces_reject_invisible_unicode(
         ("failure_detail", "\u2060"),
     ],
 )
-def test_retained_semantic_text_surfaces_reject_invisible_unicode(
-    surface: str, value: str
-) -> None:
+def test_retained_semantic_text_surfaces_reject_invisible_unicode(surface: str, value: str) -> None:
     plan = _plan()
     retained = _retained()
     hit = retained["raw_hits"][0]
@@ -833,9 +799,7 @@ def test_failed_relevance_assessment_remains_truthfully_visible() -> None:
     )
     _rehash_input(retained)
     result = ledger.build_ledger(_plan(), retained)
-    family = next(
-        row for row in result["work_families"] if row["canonical_raw_hit_id"] == "hit-1"
-    )
+    family = next(row for row in result["work_families"] if row["canonical_raw_hit_id"] == "hit-1")
     assert family["selection_state"] == "not_checked"
     assert family["relevance"]["failure_code"] == "timeout"
     row = next(row for row in result["raw_hits"] if row["raw_hit_id"] == "hit-1")
@@ -858,9 +822,7 @@ def test_failed_malformed_relevance_preserves_whitespace_raw_output_exactly() ->
     )
     _rehash_input(retained)
     result = ledger.build_ledger(_plan(), retained)
-    family = next(
-        row for row in result["work_families"] if row["canonical_raw_hit_id"] == "hit-1"
-    )
+    family = next(row for row in result["work_families"] if row["canonical_raw_hit_id"] == "hit-1")
     assert family["relevance"]["raw_output"] == "   "
     assert family["relevance"]["raw_output_sha256"] == ledger.text_digest("   ")
 
@@ -880,15 +842,9 @@ def test_failed_malformed_relevance_preserves_format_only_raw_output_exactly() -
     )
     _rehash_input(retained)
     result = ledger.build_ledger(_plan(), retained)
-    family = next(
-        row
-        for row in result["work_families"]
-        if row["canonical_raw_hit_id"] == "hit-1"
-    )
+    family = next(row for row in result["work_families"] if row["canonical_raw_hit_id"] == "hit-1")
     assert family["relevance"]["raw_output"] == "\u200b\u2060"
-    assert family["relevance"]["raw_output_sha256"] == ledger.text_digest(
-        "\u200b\u2060"
-    )
+    assert family["relevance"]["raw_output_sha256"] == ledger.text_digest("\u200b\u2060")
 
 
 def test_available_abstract_rejects_whitespace_in_schema_and_runtime() -> None:
@@ -1109,12 +1065,8 @@ def test_cli_explicit_local_export_is_write_once_and_validate_replays(
     written = json.loads(output.read_text(encoding="utf-8"))
     assert written["local_persistence"] == "explicit_local_export"
     assert written["export_boundary"] == plan["consent"]["export_boundary"]
-    assert {row["sharing_scope"] for row in written["work_families"]} == {
-        "explicit_local_export"
-    }
-    assert {row["rights_basis"] for row in written["work_families"]} == {
-        "not_assessed"
-    }
+    assert {row["sharing_scope"] for row in written["work_families"]} == {"explicit_local_export"}
+    assert {row["rights_basis"] for row in written["work_families"]} == {"not_assessed"}
     assert subprocess.run(command, capture_output=True, text=True).returncode == 1
     validate = command[:2] + [
         "validate",

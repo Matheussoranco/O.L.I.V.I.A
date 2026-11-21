@@ -136,7 +136,9 @@ def _candidate_name_violations(text: str) -> list[str]:
     return errors
 
 
-def _walk_strings(value: Any, path: tuple[str | int, ...] = ()) -> list[tuple[tuple[str | int, ...], str]]:
+def _walk_strings(
+    value: Any, path: tuple[str | int, ...] = ()
+) -> list[tuple[tuple[str | int, ...], str]]:
     rows: list[tuple[tuple[str | int, ...], str]] = []
     stack: list[tuple[tuple[str | int, ...], Any]] = [(path, value)]
     visited = 0
@@ -144,13 +146,10 @@ def _walk_strings(value: Any, path: tuple[str | int, ...] = ()) -> list[tuple[tu
         current_path, current = stack.pop()
         visited += 1
         if visited > MAX_SURFACE_NODES:
-            raise ContractError(
-                f"generated surface exceeds {MAX_SURFACE_NODES} JSON nodes"
-            )
+            raise ContractError(f"generated surface exceeds {MAX_SURFACE_NODES} JSON nodes")
         if isinstance(current, dict):
             stack.extend(
-                ((*current_path, key), child)
-                for key, child in reversed(tuple(current.items()))
+                ((*current_path, key), child) for key, child in reversed(tuple(current.items()))
             )
         elif isinstance(current, list):
             stack.extend(
@@ -168,9 +167,7 @@ def _read_text_limited(path: Path) -> str:
     except OSError as exc:
         raise ContractError(f"cannot stat rendered artifact {path}: {exc}") from exc
     if size > MAX_RENDERED_BYTES:
-        raise ContractError(
-            f"rendered artifact exceeds {MAX_RENDERED_BYTES} bytes: {path}"
-        )
+        raise ContractError(f"rendered artifact exceeds {MAX_RENDERED_BYTES} bytes: {path}")
     try:
         return path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
@@ -216,7 +213,11 @@ def _candidate_lines(trace: dict[str, Any]) -> set[str]:
             continue
         profile = row.get("profile_ref")
         name = row.get("candidate_pathway_name")
-        if isinstance(profile, dict) and isinstance(profile.get("profile_id"), str) and isinstance(name, str):
+        if (
+            isinstance(profile, dict)
+            and isinstance(profile.get("profile_id"), str)
+            and isinstance(name, str)
+        ):
             result.add(f"Candidate pathway examined: {profile['profile_id']} {name}")
     return result
 
@@ -230,7 +231,9 @@ def lint_rendered_surface(trace: dict[str, Any], rendered: str) -> list[str]:
         for message in _string_violations(line, permit_pathway_name=permit):
             errors.append(f"rendered line {line_number}: {message}")
         if line.startswith("Candidate pathway examined:") and line not in allowed_candidate_lines:
-            errors.append(f"rendered line {line_number}: candidate grammar does not exactly match trace")
+            errors.append(
+                f"rendered line {line_number}: candidate grammar does not exactly match trace"
+            )
     return errors
 
 
@@ -241,7 +244,9 @@ def lint_artifacts(trace: dict[str, Any], rendered: str | None = None) -> list[s
             if __package__:
                 from scripts.build_review_pathway_rule_trace import render_review_pathway_rule_trace
             else:
-                from build_review_pathway_rule_trace import render_review_pathway_rule_trace  # type: ignore[no-redef]
+                from build_review_pathway_rule_trace import (
+                    render_review_pathway_rule_trace,  # type: ignore[no-redef]
+                )
             expected = render_review_pathway_rule_trace(trace)
         except (ContractError, KeyError, TypeError, ValueError) as exc:
             errors.append(f"trace cannot be deterministically rendered: {exc}")

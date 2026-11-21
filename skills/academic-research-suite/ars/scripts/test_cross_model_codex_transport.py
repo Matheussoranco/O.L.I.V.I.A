@@ -5,15 +5,14 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator
 import pytest
-
+from jsonschema import Draft202012Validator
 
 REPO = Path(__file__).resolve().parent.parent
 RUNTIME_PATH = REPO / "scripts" / "cross_model_codex_transport.py"
@@ -460,7 +459,9 @@ def test_url_key_drift_fatal_even_when_model_says_not_searched() -> None:
     for m in messages:
         item = m.get("params", {}).get("item", {})
         if item.get("type") == "webSearch":
-            item["results"] = [{"type": "text_result", "canonical_url": "https://arxiv.org/abs/1706.03762"}]
+            item["results"] = [
+                {"type": "text_result", "canonical_url": "https://arxiv.org/abs/1706.03762"}
+            ]
         elif item.get("type") == "agentMessage":
             item["text"] = json.dumps(
                 {"verdict": "NOT_SEARCHED", "detail": "Search unavailable.", "sources": []}
@@ -479,7 +480,9 @@ def test_url_key_drift_in_bound_results_is_stream_fatal() -> None:
     for m in messages:
         item = m.get("params", {}).get("item", {})
         if item.get("type") == "webSearch":
-            item["results"] = [{"type": "text_result", "canonical_url": "https://arxiv.org/abs/1706.03762"}]
+            item["results"] = [
+                {"type": "text_result", "canonical_url": "https://arxiv.org/abs/1706.03762"}
+            ]
         elif item.get("type") == "agentMessage":
             item["text"] = json.dumps(
                 {"verdict": "NOT_FOUND", "detail": "No matching work found.", "sources": []}
@@ -660,9 +663,7 @@ def test_post_terminal_forbidden_event_is_not_ignored(tmp_path: Path) -> None:
             }
         },
     }
-    fake_bin, capture_path = _make_fake_codex(
-        tmp_path, late_events_after_eof=[late_forbidden]
-    )
+    fake_bin, capture_path = _make_fake_codex(tmp_path, late_events_after_eof=[late_forbidden])
     completed = subprocess.run(
         [str(WRAPPER)],
         input=runtime.canonical_json(_request()),
@@ -691,24 +692,18 @@ def test_post_terminal_forbidden_event_is_not_ignored(tmp_path: Path) -> None:
 
 
 def test_first_helper_start_failure_reaps_process_group(tmp_path: Path, monkeypatch) -> None:
-    started_threads = _assert_helper_start_failure_cleanup(
-        tmp_path, monkeypatch, fail_on_start=1
-    )
+    started_threads = _assert_helper_start_failure_cleanup(tmp_path, monkeypatch, fail_on_start=1)
     assert started_threads == []
 
 
 def test_second_helper_start_failure_reaps_process_group_and_stdout_helper(
     tmp_path: Path, monkeypatch
 ) -> None:
-    started_threads = _assert_helper_start_failure_cleanup(
-        tmp_path, monkeypatch, fail_on_start=2
-    )
+    started_threads = _assert_helper_start_failure_cleanup(tmp_path, monkeypatch, fail_on_start=2)
     assert len(started_threads) == 1
 
 
-def test_post_terminal_hang_hits_bounded_drain_and_is_reaped(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_post_terminal_hang_hits_bounded_drain_and_is_reaped(tmp_path: Path, monkeypatch) -> None:
     home = tmp_path / "custom-home"
     _make_auth(home)
     fake_bin, capture_path = _make_fake_codex(tmp_path, hang_after_eof=True)
@@ -924,14 +919,20 @@ def test_wrong_result_url_key_does_not_count_as_grounding() -> None:
 def test_multiple_turn_completions_and_failed_turn_fail_closed() -> None:
     messages, raw = _fixture("grounded_verified.jsonl")
     messages.append(messages[-1])
-    assert runtime.parse_app_server_messages(
-        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
-    )["reason_code"] == "TURN_NOT_COMPLETED"
+    assert (
+        runtime.parse_app_server_messages(
+            messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )["reason_code"]
+        == "TURN_NOT_COMPLETED"
+    )
     messages, raw = _fixture("grounded_verified.jsonl")
     messages[-1]["params"]["turn"]["status"] = "failed"
-    assert runtime.parse_app_server_messages(
-        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
-    )["reason_code"] == "TURN_NOT_COMPLETED"
+    assert (
+        runtime.parse_app_server_messages(
+            messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )["reason_code"]
+        == "TURN_NOT_COMPLETED"
+    )
 
 
 @pytest.mark.parametrize(
@@ -954,7 +955,9 @@ def test_selector_is_closed_and_has_no_implicit_fallback(
     assert detection["reason_code"] == reason
 
 
-def test_detection_requires_model_auth_version_and_exact_subscription_status(tmp_path: Path) -> None:
+def test_detection_requires_model_auth_version_and_exact_subscription_status(
+    tmp_path: Path
+) -> None:
     home = tmp_path / "custom-codex-home"
     _make_auth(home)
     fake_bin, _ = _make_fake_codex(tmp_path)
@@ -1036,9 +1039,9 @@ def test_fake_app_server_e2e_is_auth_only_read_only_and_no_secret_env(tmp_path: 
 
     capture = json.loads(capture_path.read_text(encoding="utf-8"))
     assert capture["codex_home_files"] == ["auth.json"]
-    assert {
-        "CODEX_HOME", "HOME", "LANG", "LC_ALL", "NO_COLOR", "PATH", "TMPDIR"
-    } <= set(capture["env"])
+    assert {"CODEX_HOME", "HOME", "LANG", "LC_ALL", "NO_COLOR", "PATH", "TMPDIR"} <= set(
+        capture["env"]
+    )
     assert set(capture["env"]) <= {
         "CODEX_HOME",
         "HOME",
@@ -1141,12 +1144,18 @@ def test_malformed_rpc_line_is_a_transport_error() -> None:
 def test_surrogate_final_and_control_query_fail_closed() -> None:
     messages, raw = _fixture("grounded_verified.jsonl")
     messages[1]["params"]["item"]["text"] = "\ud800"
-    assert runtime.parse_app_server_messages(
-        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
-    )["reason_code"] == "FINAL_OUTPUT_INVALID"
+    assert (
+        runtime.parse_app_server_messages(
+            messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )["reason_code"]
+        == "FINAL_OUTPUT_INVALID"
+    )
 
     messages, raw = _fixture("grounded_verified.jsonl")
     messages[0]["params"]["item"]["query"] += "\u0000"
-    assert runtime.parse_app_server_messages(
-        messages, raw_stream=raw, request=_request(), model="gpt-5.6"
-    )["reason_code"] == "EVENT_STREAM_INVALID"
+    assert (
+        runtime.parse_app_server_messages(
+            messages, raw_stream=raw, request=_request(), model="gpt-5.6"
+        )["reason_code"]
+        == "EVENT_STREAM_INVALID"
+    )

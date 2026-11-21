@@ -5,11 +5,10 @@ from __future__ import annotations
 
 import ast
 import json
-from pathlib import Path
 import re
 import sys
+from pathlib import Path
 from typing import Any
-
 
 REPO = Path(__file__).resolve().parent.parent
 RUNTIME = REPO / "scripts" / "cross_model_codex_transport.py"
@@ -105,7 +104,9 @@ def _returned_dict_keys(function: ast.FunctionDef) -> set[str]:
             node
             for node in ast.walk(function)
             if isinstance(node, ast.Assign)
-            and any(isinstance(target, ast.Name) and target.id == value.id for target in node.targets)
+            and any(
+                isinstance(target, ast.Name) and target.id == value.id for target in node.targets
+            )
         ]
         if len(assignments) != 1:
             raise ValueError("returned dictionary name has no single assignment")
@@ -143,7 +144,10 @@ def check_schemas() -> list[str]:
             if definition.get("additionalProperties") is not False:
                 errors.append(f"receipt definition {name} is open")
     binding_required = {"url", "search_item_id", "result_index", "search_result_digest"}
-    if set(receipt.get("$defs", {}).get("source_binding", {}).get("required", [])) != binding_required:
+    if (
+        set(receipt.get("$defs", {}).get("source_binding", {}).get("required", []))
+        != binding_required
+    ):
         errors.append("receipt source binding is not exact item/index/digest authority")
     receipt_conditions = json.dumps(receipt.get("allOf", []), sort_keys=True)
     for token in ("NOT_SEARCHED", "VERIFIED", "MISMATCH", "NOT_FOUND", "minItems", "maxItems"):
@@ -189,7 +193,9 @@ def check_runtime() -> list[str]:
     except (ValueError, TypeError, SyntaxError) as exc:
         errors.append(f"runtime structural contract failed: {exc}")
 
-    command_source = ast.get_source_segment(source, _function(tree, "build_app_server_command")) or ""
+    command_source = (
+        ast.get_source_segment(source, _function(tree, "build_app_server_command")) or ""
+    )
     for token in (
         "app-server",
         "--stdio",
@@ -242,7 +248,9 @@ def check_runtime() -> list[str]:
         helpers_process_owned = False
         for try_node in (node for node in ast.walk(run_function) if isinstance(node, ast.Try)):
             body_nodes = [nested for statement in try_node.body for nested in ast.walk(statement)]
-            final_nodes = [nested for statement in try_node.finalbody for nested in ast.walk(statement)]
+            final_nodes = [
+                nested for statement in try_node.finalbody for nested in ast.walk(statement)
+            ]
             has_process_stop = any(
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Name)
@@ -285,9 +293,9 @@ def check_runtime() -> list[str]:
         body_nodes = [nested for statement in try_node.body for nested in ast.walk(statement)]
         if try_node.handlers and any(node in body_nodes for node in drain_calls):
             errors.append("post-terminal drain failure is caught inside run_app_server")
-    drain_source = ast.get_source_segment(
-        source, _function(tree, "_drain_app_server_after_turn")
-    ) or ""
+    drain_source = (
+        ast.get_source_segment(source, _function(tree, "_drain_app_server_after_turn")) or ""
+    )
     for token in (
         'timeout_code="APP_SERVER_DRAIN_TIMEOUT"',
         "_parse_rpc_line(raw)",
@@ -301,12 +309,14 @@ def check_runtime() -> list[str]:
     ):
         if token not in drain_source:
             errors.append(f"post-terminal closed drain dropped {token!r}")
-    remaining_source = ast.get_source_segment(
-        source, _function(tree, "_remaining_drain_seconds")
-    ) or ""
+    remaining_source = (
+        ast.get_source_segment(source, _function(tree, "_remaining_drain_seconds")) or ""
+    )
     if 'raise TransportError("APP_SERVER_DRAIN_TIMEOUT")' not in remaining_source:
         errors.append("post-terminal drain deadline no longer fails closed")
-    parser_source = ast.get_source_segment(source, _function(tree, "parse_app_server_messages")) or ""
+    parser_source = (
+        ast.get_source_segment(source, _function(tree, "parse_app_server_messages")) or ""
+    )
     for token in (
         "webSearch",
         "results",
@@ -410,7 +420,10 @@ def check_shell_and_ci() -> list[str]:
                 errors.append(f"{label} wrapper uses non-Bash-3.2 syntax: {pattern}")
     if "Manual LIVE smoke test. CI must never invoke this file." not in smoke:
         errors.append("live smoke lost its manual/no-CI warning")
-    if "cross_model_smoke_test_codex.sh" in workflow or "cross_model_smoke_test_codex.sh" in manifest:
+    if (
+        "cross_model_smoke_test_codex.sh" in workflow
+        or "cross_model_smoke_test_codex.sh" in manifest
+    ):
         errors.append("live Codex smoke is wired into CI")
     for entry in (
         'id = "630-codex-subscription-transport"',

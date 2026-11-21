@@ -53,37 +53,27 @@ class PreprintSignalTest(unittest.TestCase):
         self.assertTrue(cs.compute_preprint_signal({"year": 2024, "venue": "SSRN"}))
 
     def test_research_square_2024_returns_true(self) -> None:
-        self.assertTrue(
-            cs.compute_preprint_signal({"year": 2024, "venue": "Research Square"})
-        )
+        self.assertTrue(cs.compute_preprint_signal({"year": 2024, "venue": "Research Square"}))
 
     def test_preprints_org_2024_returns_true(self) -> None:
-        self.assertTrue(
-            cs.compute_preprint_signal({"year": 2024, "venue": "Preprints.org"})
-        )
+        self.assertTrue(cs.compute_preprint_signal({"year": 2024, "venue": "Preprints.org"}))
 
     def test_chemrxiv_2024_returns_true(self) -> None:
         """v3.7.3 codex F6 / gemini review F6 expansion."""
         self.assertTrue(cs.compute_preprint_signal({"year": 2024, "venue": "ChemRxiv"}))
 
     def test_eartharxiv_2024_returns_true(self) -> None:
-        self.assertTrue(
-            cs.compute_preprint_signal({"year": 2024, "venue": "EarthArXiv"})
-        )
+        self.assertTrue(cs.compute_preprint_signal({"year": 2024, "venue": "EarthArXiv"}))
 
     def test_osf_preprints_2024_returns_true(self) -> None:
-        self.assertTrue(
-            cs.compute_preprint_signal({"year": 2024, "venue": "OSF Preprints"})
-        )
+        self.assertTrue(cs.compute_preprint_signal({"year": 2024, "venue": "OSF Preprints"}))
 
     def test_techrxiv_2024_returns_true(self) -> None:
         self.assertTrue(cs.compute_preprint_signal({"year": 2024, "venue": "TechRxiv"}))
 
     def test_non_preprint_venue_2024_returns_false(self) -> None:
         # Year passes threshold but venue is not in the closed list
-        self.assertFalse(
-            cs.compute_preprint_signal({"year": 2024, "venue": "Nature"})
-        )
+        self.assertFalse(cs.compute_preprint_signal({"year": 2024, "venue": "Nature"}))
 
     def test_missing_venue_returns_false(self) -> None:
         # Defensive: entries lacking venue cannot satisfy the AND
@@ -105,7 +95,10 @@ class PreprintSignalTest(unittest.TestCase):
     def test_source_pointer_infers_biorxiv(self) -> None:
         self.assertTrue(
             cs.compute_preprint_signal(
-                {"year": 2025, "source_pointer": "https://www.biorxiv.org/content/10.1101/2025.01.01.000000v1"}
+                {
+                    "year": 2025,
+                    "source_pointer": "https://www.biorxiv.org/content/10.1101/2025.01.01.000000v1",
+                }
             )
         )
 
@@ -171,9 +164,7 @@ class SemanticScholarSignalTest(unittest.TestCase):
         """v3.7.3 spec §3.2 + schema allOf rule #4: obtained_via='manual'
         triggers SKIP — the field MUST be omitted from the emission."""
         client = MagicMock()
-        result = cs.compute_ss_unmatched_signal(
-            self._entry(obtained_via="manual"), client
-        )
+        result = cs.compute_ss_unmatched_signal(self._entry(obtained_via="manual"), client)
         self.assertIsNone(result)
         # The exemption is a skip, not an API call
         client.lookup.assert_not_called()
@@ -247,9 +238,7 @@ class EmissionRulesTest(unittest.TestCase):
 
     def test_manual_entry_omits_unmatched_field(self) -> None:
         client = MagicMock()
-        result = cs.build_signals_object(
-            self._entry(obtained_via="manual"), client
-        )
+        result = cs.build_signals_object(self._entry(obtained_via="manual"), client)
         self.assertEqual(result, {"preprint_post_llm_inflection": True})
         self.assertNotIn("semantic_scholar_unmatched", result)
 
@@ -280,8 +269,6 @@ class ResetClientOutageLatchHelperTest(unittest.TestCase):
         cs.reset_client_outage_latch(client)
 
 
-
-
 class BuildSignalsWithOmissionsTest(unittest.TestCase):
     """#511 Part A: the omissions half distinguishes degraded from derivable."""
 
@@ -307,21 +294,23 @@ class BuildSignalsWithOmissionsTest(unittest.TestCase):
 
     def test_degraded_lookup_yields_omission(self):
         signals, omissions = cs.build_signals_with_omissions(
-            self._entry(), self._client(degraded=True))
+            self._entry(), self._client(degraded=True)
+        )
         self.assertNotIn("semantic_scholar_unmatched", signals)
-        self.assertEqual(
-            omissions, {"semantic_scholar_unmatched": "api_degraded"})
+        self.assertEqual(omissions, {"semantic_scholar_unmatched": "api_degraded"})
 
     def test_computed_lookup_yields_no_omission(self):
         signals, omissions = cs.build_signals_with_omissions(
-            self._entry(), self._client(matched=True))
+            self._entry(), self._client(matched=True)
+        )
         self.assertIs(signals["semantic_scholar_unmatched"], False)
         self.assertEqual(omissions, {})
 
     def test_manual_entry_yields_no_omission(self):
         """Manual exemption is derivable from obtained_via — never recorded."""
         signals, omissions = cs.build_signals_with_omissions(
-            self._entry(obtained_via="manual"), self._client(degraded=True))
+            self._entry(obtained_via="manual"), self._client(degraded=True)
+        )
         self.assertNotIn("semantic_scholar_unmatched", signals)
         self.assertEqual(omissions, {})
 
@@ -329,8 +318,7 @@ class BuildSignalsWithOmissionsTest(unittest.TestCase):
         """The no-arxiv-id skip is derivable from the entry — never recorded,
         even when an arxiv client is supplied."""
         ax = MagicMock()
-        signals, omissions = cs.build_signals_with_omissions(
-            self._entry(), self._client(), ax)
+        signals, omissions = cs.build_signals_with_omissions(self._entry(), self._client(), ax)
         self.assertNotIn("arxiv_unmatched", signals)
         self.assertEqual(omissions, {})
         ax.arxiv_id_lookup.assert_not_called()
@@ -340,7 +328,8 @@ class BuildSignalsWithOmissionsTest(unittest.TestCase):
         ax.arxiv_id_lookup.side_effect = cs.ArxivUnavailable("down")
         ax.title_search.side_effect = cs.ArxivUnavailable("down")
         signals, omissions = cs.build_signals_with_omissions(
-            self._entry(arxiv_id="2401.00001"), self._client(), ax)
+            self._entry(arxiv_id="2401.00001"), self._client(), ax
+        )
         self.assertEqual(omissions.get("arxiv_unmatched"), "api_degraded")
 
     def test_build_signals_object_stays_equivalent(self):
@@ -349,7 +338,8 @@ class BuildSignalsWithOmissionsTest(unittest.TestCase):
             entry = self._entry()
             self.assertEqual(
                 cs.build_signals_object(entry, client),
-                cs.build_signals_with_omissions(entry, client)[0])
+                cs.build_signals_with_omissions(entry, client)[0],
+            )
 
 
 class OmissionHelpersTest(unittest.TestCase):
@@ -361,23 +351,25 @@ class OmissionHelpersTest(unittest.TestCase):
         self.assertTrue(cs.record_signal_omission(entry, "openalex_unmatched"))
         self.assertFalse(cs.record_signal_omission(entry, "openalex_unmatched"))
         self.assertEqual(
-            entry["contamination_signal_omissions"],
-            {"openalex_unmatched": "api_degraded"})
+            entry["contamination_signal_omissions"], {"openalex_unmatched": "api_degraded"}
+        )
 
     def test_clear_removes_key_and_empty_object(self):
-        entry = {"contamination_signal_omissions": {
-            "openalex_unmatched": "api_degraded"}}
+        entry = {"contamination_signal_omissions": {"openalex_unmatched": "api_degraded"}}
         self.assertTrue(cs.clear_signal_omission(entry, "openalex_unmatched"))
         self.assertNotIn("contamination_signal_omissions", entry)
 
     def test_clear_keeps_other_keys(self):
-        entry = {"contamination_signal_omissions": {
-            "openalex_unmatched": "api_degraded",
-            "crossref_unmatched": "api_degraded"}}
+        entry = {
+            "contamination_signal_omissions": {
+                "openalex_unmatched": "api_degraded",
+                "crossref_unmatched": "api_degraded",
+            }
+        }
         self.assertTrue(cs.clear_signal_omission(entry, "openalex_unmatched"))
         self.assertEqual(
-            entry["contamination_signal_omissions"],
-            {"crossref_unmatched": "api_degraded"})
+            entry["contamination_signal_omissions"], {"crossref_unmatched": "api_degraded"}
+        )
 
     def test_clear_on_absent_is_noop(self):
         entry = {}
@@ -627,8 +619,8 @@ class ResolveArxivUnmatchedTest(unittest.TestCase):
 
     def test_api_down_raises(self):
         """API degraded → re-raise ArxivUnavailable for caller to omit field."""
-        from contamination_signals import resolve_arxiv_unmatched
         from arxiv_client import ArxivUnavailable
+        from contamination_signals import resolve_arxiv_unmatched
 
         mock_client = MagicMock()
         mock_client.arxiv_id_lookup.side_effect = ArxivUnavailable("down")
@@ -666,9 +658,7 @@ class BuildSignalsArxivExtensionTest(unittest.TestCase):
         ax = MagicMock()
         ax.arxiv_id_lookup.return_value = None
         ax.title_search.return_value = None
-        result = cs.build_signals_object(
-            self._entry(arxiv_id="9999.99999"), ss, arxiv_client=ax
-        )
+        result = cs.build_signals_object(self._entry(arxiv_id="9999.99999"), ss, arxiv_client=ax)
         self.assertIs(result["arxiv_unmatched"], True)
 
     def test_no_arxiv_id_omits_arxiv_field_even_with_client(self) -> None:
@@ -680,7 +670,9 @@ class BuildSignalsArxivExtensionTest(unittest.TestCase):
         ss.lookup.return_value = {"matched": True}
         ax = MagicMock()
         result = cs.build_signals_object(
-            self._entry(), ss, arxiv_client=ax  # _entry() carries no arxiv_id
+            self._entry(),
+            ss,
+            arxiv_client=ax,  # _entry() carries no arxiv_id
         )
         self.assertNotIn("arxiv_unmatched", result)
         ax.arxiv_id_lookup.assert_not_called()
@@ -691,8 +683,7 @@ class BuildSignalsArxivExtensionTest(unittest.TestCase):
         ss = MagicMock()
         ax = MagicMock()
         result = cs.build_signals_object(
-            self._entry(obtained_via="manual", arxiv_id="1706.03762"), ss,
-            arxiv_client=ax
+            self._entry(obtained_via="manual", arxiv_id="1706.03762"), ss, arxiv_client=ax
         )
         self.assertNotIn("arxiv_unmatched", result)
         ax.arxiv_id_lookup.assert_not_called()
@@ -703,9 +694,7 @@ class BuildSignalsArxivExtensionTest(unittest.TestCase):
         ss.lookup.return_value = {"matched": True}
         ax = MagicMock()
         ax.arxiv_id_lookup.side_effect = cs.ArxivUnavailable("5xx")
-        result = cs.build_signals_object(
-            self._entry(arxiv_id="1706.03762"), ss, arxiv_client=ax
-        )
+        result = cs.build_signals_object(self._entry(arxiv_id="1706.03762"), ss, arxiv_client=ax)
         self.assertNotIn("arxiv_unmatched", result)
 
 
@@ -760,12 +749,15 @@ class ResolveCrossrefCacheTest(unittest.TestCase):
         client = MagicMock()
         qf = "doi:10.5555/abc|title:Attention Is All You Need"
         # A same-decision-version row IS reused (#431 §0.12.3b).
-        cache = _FakeCache(seed={
-            ("vaswani2017", "crossref", qf): {
-                "matched": True, "matched_by": "doi",
-                "decision_version": cs.RESOLVER_DECISION_VERSION,
+        cache = _FakeCache(
+            seed={
+                ("vaswani2017", "crossref", qf): {
+                    "matched": True,
+                    "matched_by": "doi",
+                    "decision_version": cs.RESOLVER_DECISION_VERSION,
+                }
             }
-        })
+        )
         result = resolve_crossref_unmatched(self._entry(), client, cache=cache)
         self.assertIs(result, False)  # matched=True → unmatched=False
         client.doi_lookup_with_title_check.assert_not_called()
@@ -785,19 +777,20 @@ class ResolveCrossrefCacheTest(unittest.TestCase):
         client.doi_lookup_with_title_check.return_value = None  # DOI miss
         client.title_search.return_value = None  # v5: non-exact → no match
         qf = "doi:10.5555/abc|title:Attention Is All You Need"
-        cache = _FakeCache(seed={
-            ("vaswani2017", "crossref", qf): {
-                "matched": True, "matched_by": "title",  # stale, no version
+        cache = _FakeCache(
+            seed={
+                ("vaswani2017", "crossref", qf): {
+                    "matched": True,
+                    "matched_by": "title",  # stale, no version
+                }
             }
-        })
+        )
         result = resolve_crossref_unmatched(self._entry(), client, cache=cache)
         self.assertIs(result, True)  # recomputed unmatched, NOT stale matched
         client.title_search.assert_called_once()  # v5 loop ran
         # The recomputed verdict is re-stored WITH the current version.
         _, _, _, response = cache.put_calls[0]
-        self.assertEqual(
-            response["decision_version"], cs.RESOLVER_DECISION_VERSION
-        )
+        self.assertEqual(response["decision_version"], cs.RESOLVER_DECISION_VERSION)
 
     def test_cache_miss_calls_network_and_populates(self):
         from contamination_signals import resolve_crossref_unmatched
@@ -823,9 +816,7 @@ class ResolveCrossrefCacheTest(unittest.TestCase):
         client = MagicMock()
         client.doi_lookup_with_title_check.return_value = {"title": ["X"]}  # match
         qf = "doi:10.5555/abc|title:Attention Is All You Need"
-        cache = _FakeCache(seed={
-            ("vaswani2017", "crossref", qf): {"legacy": "no matched key"}
-        })
+        cache = _FakeCache(seed={("vaswani2017", "crossref", qf): {"legacy": "no matched key"}})
         result = resolve_crossref_unmatched(self._entry(), client, cache=cache)
         # Falls through to live call (which matched) → unmatched=False.
         self.assertIs(result, False)
@@ -847,9 +838,7 @@ class ResolveCrossrefCacheTest(unittest.TestCase):
 
         client = MagicMock()
         cache = _FakeCache()
-        result = resolve_crossref_unmatched(
-            self._entry(obtained_via="manual"), client, cache=cache
-        )
+        result = resolve_crossref_unmatched(self._entry(obtained_via="manual"), client, cache=cache)
         self.assertIsNone(result)
         self.assertEqual(cache.get_calls, [])
         self.assertEqual(cache.put_calls, [])
@@ -872,12 +861,15 @@ class ResolveArxivCacheTest(unittest.TestCase):
 
         client = MagicMock()
         qf = "arxiv:1706.03762|title:Attention Is All You Need"
-        cache = _FakeCache(seed={
-            ("vaswani2017", "arxiv", qf): {
-                "matched": False, "matched_by": None,
-                "decision_version": cs.RESOLVER_DECISION_VERSION,
+        cache = _FakeCache(
+            seed={
+                ("vaswani2017", "arxiv", qf): {
+                    "matched": False,
+                    "matched_by": None,
+                    "decision_version": cs.RESOLVER_DECISION_VERSION,
+                }
             }
-        })
+        )
         result = resolve_arxiv_unmatched(self._entry(), client, cache=cache)
         self.assertIs(result, True)  # matched=False → unmatched=True
         client.arxiv_id_lookup.assert_not_called()
@@ -891,11 +883,14 @@ class ResolveArxivCacheTest(unittest.TestCase):
         client.arxiv_id_lookup.return_value = None  # ID miss
         client.title_search.return_value = None  # v5: non-exact → no match
         qf = "arxiv:1706.03762|title:Attention Is All You Need"
-        cache = _FakeCache(seed={
-            ("vaswani2017", "arxiv", qf): {
-                "matched": True, "matched_by": "title",  # stale, no version
+        cache = _FakeCache(
+            seed={
+                ("vaswani2017", "arxiv", qf): {
+                    "matched": True,
+                    "matched_by": "title",  # stale, no version
+                }
             }
-        })
+        )
         result = resolve_arxiv_unmatched(self._entry(), client, cache=cache)
         self.assertIs(result, True)  # recomputed, NOT stale matched
         client.arxiv_id_lookup.assert_called_once()
@@ -938,12 +933,15 @@ class SemanticScholarCacheTest(unittest.TestCase):
     def test_cache_hit_skips_lookup(self):
         client = MagicMock()
         qf = "doi:10.1234/xyz|title:Test paper"
-        cache = _FakeCache(seed={
-            ("chen2024ai", "semantic_scholar", qf): {
-                "matched": False, "matched_by": None,
-                "decision_version": cs.RESOLVER_DECISION_VERSION,
+        cache = _FakeCache(
+            seed={
+                ("chen2024ai", "semantic_scholar", qf): {
+                    "matched": False,
+                    "matched_by": None,
+                    "decision_version": cs.RESOLVER_DECISION_VERSION,
+                }
             }
-        })
+        )
         result = cs.compute_ss_unmatched_signal(self._entry(), client, cache=cache)
         self.assertTrue(result)  # matched=False → unmatched=True
         client.lookup.assert_not_called()
@@ -957,11 +955,14 @@ class SemanticScholarCacheTest(unittest.TestCase):
         client = MagicMock()
         client.lookup.return_value = {"matched": False}  # v5 live verdict
         qf = "doi:10.1234/xyz|title:Test paper"
-        cache = _FakeCache(seed={
-            ("chen2024ai", "semantic_scholar", qf): {
-                "matched": True, "matched_by": "title",  # stale, no version
+        cache = _FakeCache(
+            seed={
+                ("chen2024ai", "semantic_scholar", qf): {
+                    "matched": True,
+                    "matched_by": "title",  # stale, no version
+                }
             }
-        })
+        )
         result = cs.compute_ss_unmatched_signal(self._entry(), client, cache=cache)
         self.assertTrue(result)  # recomputed unmatched=True, NOT stale matched
         client.lookup.assert_called_once()  # v5 loop ran
@@ -1038,7 +1039,8 @@ class ResolveDoiThenTitleQueriedByTest(unittest.TestCase):
         client = MagicMock()
         client.title_search.return_value = None
         unmatched, matched_by, queried_by = cs._resolve_doi_then_title(
-            {"title": "Unindexed regional paper"}, client  # no doi
+            {"title": "Unindexed regional paper"},
+            client,  # no doi
         )
         self.assertIs(unmatched, True)
         self.assertIsNone(matched_by)
@@ -1048,7 +1050,8 @@ class ResolveDoiThenTitleQueriedByTest(unittest.TestCase):
         client = MagicMock()
         client.title_search.return_value = {"title": ["X"]}
         unmatched, matched_by, queried_by = cs._resolve_doi_then_title(
-            {"title": "X"}, client  # no doi
+            {"title": "X"},
+            client,  # no doi
         )
         self.assertIs(unmatched, False)
         self.assertEqual(matched_by, "title")

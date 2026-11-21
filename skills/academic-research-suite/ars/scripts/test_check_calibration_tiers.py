@@ -9,7 +9,6 @@ from tempfile import TemporaryDirectory
 
 from tests.test_helpers import run_script
 
-
 SCRIPT = Path(__file__).resolve().parent / "check_calibration_tiers.py"
 REPO_ROOT = SCRIPT.parent.parent
 PROTOCOL = Path("academic-paper-reviewer/references/calibration_mode_protocol.md")
@@ -44,9 +43,7 @@ def _replace(root: Path, rel: Path, old: str, new: str) -> None:
     path = root / rel
     text = path.read_text(encoding="utf-8")
     if text.count(old) != 1:
-        raise AssertionError(
-            f"mutation anchor must occur exactly once in {rel}: {old!r}"
-        )
+        raise AssertionError(f"mutation anchor must occur exactly once in {rel}: {old!r}")
     path.write_text(text.replace(old, new), encoding="utf-8")
 
 
@@ -168,8 +165,7 @@ class TestCalibrationTiers(unittest.TestCase):
             _tree(root)
             path = root / PROTOCOL
             path.write_text(
-                path.read_text(encoding="utf-8")
-                + "\nFull-tier repeats use fresh contexts.\n",
+                path.read_text(encoding="utf-8") + "\nFull-tier repeats use fresh contexts.\n",
                 encoding="utf-8",
             )
             result = _run(root)
@@ -215,9 +211,7 @@ class TestCalibrationTiers(unittest.TestCase):
                 _tree(root)
                 _replace(root, CROSS_MODEL, predicate, "exact closing tag only")
                 result = _run(root)
-                self.assertEqual(
-                    result.returncode, 1, result.stdout + result.stderr
-                )
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertIn("delimiter-collision preflight", result.stderr)
 
     def test_collision_refuses_transport_without_rewriting(self) -> None:
@@ -237,9 +231,7 @@ class TestCalibrationTiers(unittest.TestCase):
                 _tree(root)
                 _replace(root, CROSS_MODEL, old, new)
                 result = _run(root)
-                self.assertEqual(
-                    result.returncode, 1, result.stdout + result.stderr
-                )
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertIn("delimiter-collision preflight", result.stderr)
 
     def test_calibration_transport_is_homogeneous(self) -> None:
@@ -366,9 +358,7 @@ class TestCalibrationTiers(unittest.TestCase):
                     "candidate profile application is available",
                 )
                 result = _run(root)
-                self.assertEqual(
-                    result.returncode, 1, result.stdout + result.stderr
-                )
+                self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
                 self.assertIn("missing witness", result.stderr)
 
 

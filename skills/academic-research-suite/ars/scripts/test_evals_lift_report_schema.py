@@ -6,7 +6,6 @@ constraints are load-bearing.
 """
 from __future__ import annotations
 
-import copy
 import json
 from pathlib import Path
 
@@ -40,17 +39,30 @@ def _valid_report():
                 "status": "measured",
                 "sample_n": 50,
                 "aggregate_metric": {
-                    "metric": "accuracy", "value": 1.0,
+                    "metric": "accuracy",
+                    "value": 1.0,
                     "direction": "higher_is_better",
-                    "threshold_value": 0.90, "comparison": ">=", "passed": True,
+                    "threshold_value": 0.90,
+                    "comparison": ">=",
+                    "passed": True,
                 },
                 "per_class": [
-                    {"class_name": "true", "metric": "accuracy", "value": 1.0,
-                     "direction": "higher_is_better", "support": 30, "passed": True},
+                    {
+                        "class_name": "true",
+                        "metric": "accuracy",
+                        "value": 1.0,
+                        "direction": "higher_is_better",
+                        "support": 30,
+                        "passed": True,
+                    },
                 ],
                 "expert_concordance": [
-                    {"class_name": "true", "agreement_rate": 1.0,
-                     "labeled_count": 5, "agreements": 5},
+                    {
+                        "class_name": "true",
+                        "agreement_rate": 1.0,
+                        "labeled_count": 5,
+                        "agreements": 5,
+                    },
                 ],
             }
         ],

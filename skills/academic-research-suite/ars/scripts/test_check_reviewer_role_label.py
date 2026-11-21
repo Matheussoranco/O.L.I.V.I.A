@@ -8,9 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from check_reviewer_role_label import REQUIRED
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECKER = REPO_ROOT / "scripts" / "check_reviewer_role_label.py"
@@ -43,9 +41,7 @@ UNCOVERED_PUBLIC_SURFACES = {
     "docs/PERFORMANCE.md": (
         "Two reviewers (Journal-Fit Reviewer + methodology) each run two phases",
     ),
-    "docs/PERFORMANCE.zh-TW.md": (
-        "Journal-Fit Reviewer + methodology 兩位 reviewer 各跑兩階段",
-    ),
+    "docs/PERFORMANCE.zh-TW.md": ("Journal-Fit Reviewer + methodology 兩位 reviewer 各跑兩階段",),
 }
 REVIEW_DISPATCH_SURFACES = {
     "academic-paper-reviewer/references/re_review_mode_protocol.md": (
@@ -60,9 +56,7 @@ REVIEW_DISPATCH_SURFACES = {
         "Stage 3' uses three dedicated contract judgment calls",
         "Do not reuse Stage 3 `eic` or `editorial_synthesizer` workers for Stage 3'",
     ),
-    "README.md": (
-        "First-round review panel vs. contract-governed re-review dispatch boundary",
-    ),
+    "README.md": ("First-round review panel vs. contract-governed re-review dispatch boundary",),
     "README.zh-TW.md": ("第一輪審查面板 vs. 契約治理再審派送的分界",),
     "README.zh-CN.md": ("第一轮审查面板 vs. 契约治理再审调度的分界",),
     "README.ja-JP.md": ("初回レビューパネル vs. 契約管理された再レビューディスパッチの境界",),
@@ -86,11 +80,7 @@ PROVENANCE_LANGUAGE_SURFACES = {
         "independent-DA-critique prompt",
     ),
 }
-FILES = tuple(
-    dict.fromkeys(
-        (*REQUIRED, *UNCOVERED_PUBLIC_SURFACES, *REVIEW_DISPATCH_SURFACES)
-    )
-)
+FILES = tuple(dict.fromkeys((*REQUIRED, *UNCOVERED_PUBLIC_SURFACES, *REVIEW_DISPATCH_SURFACES)))
 
 
 def _run(root: Path) -> subprocess.CompletedProcess[str]:
@@ -174,9 +164,7 @@ def test_field_card_has_public_display_and_stable_wire_role(tree: Path) -> None:
 def test_field_card_preserves_existing_non_eic_role_values(tree: Path) -> None:
     rel = "academic-paper-reviewer/agents/field_analyst_agent.md"
     text = (tree / rel).read_text(encoding="utf-8")
-    existing_role_field = (
-        "**Role**: [EIC / Peer Reviewer 1 / Peer Reviewer 2 / Peer Reviewer 3]"
-    )
+    existing_role_field = "**Role**: [EIC / Peer Reviewer 1 / Peer Reviewer 2 / Peer Reviewer 3]"
     assert existing_role_field in text
 
     _mutate(
@@ -422,10 +410,7 @@ def test_full_mode_example_cannot_claim_binary_independence(tree: Path) -> None:
 
 @pytest.mark.parametrize(
     ("rel", "safe_phrase", "binary_phrase"),
-    tuple(
-        (rel, phrases[0], phrases[1])
-        for rel, phrases in PROVENANCE_LANGUAGE_SURFACES.items()
-    ),
+    tuple((rel, phrases[0], phrases[1]) for rel, phrases in PROVENANCE_LANGUAGE_SURFACES.items()),
 )
 def test_active_surfaces_cannot_restore_binary_independence(
     tree: Path, rel: str, safe_phrase: str, binary_phrase: str
@@ -470,9 +455,7 @@ def test_decision_template_cannot_drop_fixed_da_report(tree: Path) -> None:
         for witness in witnesses
     ),
 )
-def test_every_changed_public_surface_is_role_linted(
-    tree: Path, rel: str, witness: str
-) -> None:
+def test_every_changed_public_surface_is_role_linted(tree: Path, rel: str, witness: str) -> None:
     _mutate(tree, rel, witness, witness.replace("Journal-Fit Reviewer", "EIC"))
     result = _run(tree)
     assert result.returncode == 1

@@ -22,8 +22,7 @@ if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 SCHEMA_PATH = (
-    REPO_ROOT / "shared" / "contracts" / "passport"
-    / "citation_verification_summary.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "passport" / "citation_verification_summary.schema.json"
 )
 
 
@@ -49,14 +48,10 @@ def _entry(**overrides):
         "anchor_present": True,
         "verification_timestamp": "2026-06-04T12:00:00Z",
         "resolver_outcomes": {
-            "crossref": {"status": "matched", "queried_by": "id",
-                         "response_summary": None},
-            "openalex": {"status": "skipped", "queried_by": None,
-                         "response_summary": None},
-            "semantic_scholar": {"status": "skipped", "queried_by": None,
-                                 "response_summary": None},
-            "arxiv": {"status": "skipped", "queried_by": None,
-                      "response_summary": None},
+            "crossref": {"status": "matched", "queried_by": "id", "response_summary": None},
+            "openalex": {"status": "skipped", "queried_by": None, "response_summary": None},
+            "semantic_scholar": {"status": "skipped", "queried_by": None, "response_summary": None},
+            "arxiv": {"status": "skipped", "queried_by": None, "response_summary": None},
         },
     }
     base.update(overrides)
@@ -65,8 +60,10 @@ def _entry(**overrides):
 
 def _full_ro(**overrides):
     """All four resolver keys, default skipped/null; override individual ones."""
-    ro = {r: {"status": "skipped", "queried_by": None, "response_summary": None}
-          for r in ("crossref", "openalex", "semantic_scholar", "arxiv")}
+    ro = {
+        r: {"status": "skipped", "queried_by": None, "response_summary": None}
+        for r in ("crossref", "openalex", "semantic_scholar", "arxiv")
+    }
     ro.update(overrides)
     return ro
 
@@ -91,8 +88,14 @@ def test_lookup_verified_enum_is_three_class(validator):
 
 
 def test_required_fields_enforced(validator):
-    for field in ("citation_key", "ref_slug", "lookup_verified",
-                  "anchor_present", "verification_timestamp", "resolver_outcomes"):
+    for field in (
+        "citation_key",
+        "ref_slug",
+        "lookup_verified",
+        "anchor_present",
+        "verification_timestamp",
+        "resolver_outcomes",
+    ):
         bad = _entry()
         del bad[field]
         assert any(validator.iter_errors(bad)), f"{field} must be required"
@@ -105,13 +108,19 @@ def test_verification_timestamp_never_null(validator):
 def test_resolver_outcome_status_enum(validator):
     # status enum exercised with a coherent queried_by per status (ran→id,
     # skipped/unreachable→null), against the full four-resolver shape.
-    for s, q in (("matched", "id"), ("unmatched", "id"),
-                 ("unreachable", None), ("skipped", None)):
-        e = _entry(lookup_verified="true", resolver_outcomes=_full_ro(
-            crossref={"status": s, "queried_by": q, "response_summary": None}))
+    for s, q in (("matched", "id"), ("unmatched", "id"), ("unreachable", None), ("skipped", None)):
+        e = _entry(
+            lookup_verified="true",
+            resolver_outcomes=_full_ro(
+                crossref={"status": s, "queried_by": q, "response_summary": None}
+            ),
+        )
         assert list(validator.iter_errors(e)) == [], s
-    bad = _entry(resolver_outcomes=_full_ro(crossref={
-        "status": "bogus", "queried_by": "id", "response_summary": None}))
+    bad = _entry(
+        resolver_outcomes=_full_ro(
+            crossref={"status": "bogus", "queried_by": "id", "response_summary": None}
+        )
+    )
     assert any(validator.iter_errors(bad))
 
 
@@ -120,18 +129,27 @@ def test_resolver_outcome_queried_by_enum(validator):
     'unmatched' so id/title are both coherent; null is rejected by the
     status-dependent rule, covered separately.)"""
     for q in ("id", "title"):
-        e = _entry(lookup_verified="false", resolver_outcomes=_full_ro(
-            crossref={"status": "unmatched", "queried_by": q,
-                      "response_summary": None}))
+        e = _entry(
+            lookup_verified="false",
+            resolver_outcomes=_full_ro(
+                crossref={"status": "unmatched", "queried_by": q, "response_summary": None}
+            ),
+        )
         assert list(validator.iter_errors(e)) == [], repr(q)
-    bad = _entry(resolver_outcomes=_full_ro(crossref={
-        "status": "unmatched", "queried_by": "doi", "response_summary": None}))
+    bad = _entry(
+        resolver_outcomes=_full_ro(
+            crossref={"status": "unmatched", "queried_by": "doi", "response_summary": None}
+        )
+    )
     assert any(validator.iter_errors(bad)), "queried_by must reject 'doi' (use 'id')"
 
 
 def test_resolver_outcomes_closed_to_four_resolvers(validator):
-    bad = _entry(resolver_outcomes={"scopus": {
-        "status": "matched", "queried_by": "id", "response_summary": None}})
+    bad = _entry(
+        resolver_outcomes={
+            "scopus": {"status": "matched", "queried_by": "id", "response_summary": None}
+        }
+    )
     assert any(validator.iter_errors(bad)), "unknown resolver must be rejected"
 
 
@@ -140,8 +158,11 @@ def test_resolver_outcomes_requires_all_four_resolver_keys(validator):
     present (each carrying its own status, incl. 'skipped'), so a consumer never
     has to disambiguate 'absent key' from 'resolver did not run'. A partial
     resolver_outcomes object is a contract violation."""
-    bad = _entry(resolver_outcomes={"crossref": {
-        "status": "matched", "queried_by": "id", "response_summary": None}})
+    bad = _entry(
+        resolver_outcomes={
+            "crossref": {"status": "matched", "queried_by": "id", "response_summary": None}
+        }
+    )
     assert any(validator.iter_errors(bad)), "must require all 4 resolver keys"
 
 
@@ -150,9 +171,10 @@ def test_resolver_outcome_requires_queried_by(validator):
     producer emit an ambiguous unmatched that silently reduces to unresolvable
     instead of false. It must be required (value may be null for skipped /
     pure-unreachable)."""
-    bad_ro = {r: {"status": "skipped", "queried_by": None,
-                  "response_summary": None}
-              for r in ("crossref", "openalex", "semantic_scholar", "arxiv")}
+    bad_ro = {
+        r: {"status": "skipped", "queried_by": None, "response_summary": None}
+        for r in ("crossref", "openalex", "semantic_scholar", "arxiv")
+    }
     # drop queried_by from one outcome
     del bad_ro["crossref"]["queried_by"]
     bad = _entry(lookup_verified="unresolvable", resolver_outcomes=bad_ro)
@@ -163,36 +185,52 @@ def test_matched_and_unmatched_require_non_null_queried_by(validator):
     """status ∈ {matched, unmatched} demands queried_by ∈ {id, title} — a ran
     resolver always knows what it keyed on. queried_by=null with a ran status is
     the exact ambiguity the narrowed-false reducer can be fooled by."""
-    bad = _entry(lookup_verified="false", resolver_outcomes=_full_ro(
-        crossref={"status": "unmatched", "queried_by": None,
-                  "response_summary": None}))
-    assert any(validator.iter_errors(bad)), \
-        "unmatched with queried_by=null must be rejected"
-    good = _entry(lookup_verified="false", resolver_outcomes=_full_ro(
-        crossref={"status": "unmatched", "queried_by": "id",
-                  "response_summary": None}))
+    bad = _entry(
+        lookup_verified="false",
+        resolver_outcomes=_full_ro(
+            crossref={"status": "unmatched", "queried_by": None, "response_summary": None}
+        ),
+    )
+    assert any(validator.iter_errors(bad)), "unmatched with queried_by=null must be rejected"
+    good = _entry(
+        lookup_verified="false",
+        resolver_outcomes=_full_ro(
+            crossref={"status": "unmatched", "queried_by": "id", "response_summary": None}
+        ),
+    )
     assert list(validator.iter_errors(good)) == []
 
 
 def test_skipped_and_unreachable_require_null_queried_by(validator):
     """status ∈ {skipped, unreachable} → no meaningful query completed →
     queried_by MUST be null. A skipped row claiming queried_by=id is incoherent."""
-    bad = _entry(lookup_verified="unresolvable", resolver_outcomes=_full_ro(
-        crossref={"status": "skipped", "queried_by": "id",
-                  "response_summary": None}))
-    assert any(validator.iter_errors(bad)), \
-        "skipped with queried_by=id must be rejected"
-    bad2 = _entry(lookup_verified="unresolvable", resolver_outcomes=_full_ro(
-        crossref={"status": "unreachable", "queried_by": "title",
-                  "response_summary": None}))
-    assert any(validator.iter_errors(bad2)), \
-        "unreachable with non-null queried_by must be rejected"
+    bad = _entry(
+        lookup_verified="unresolvable",
+        resolver_outcomes=_full_ro(
+            crossref={"status": "skipped", "queried_by": "id", "response_summary": None}
+        ),
+    )
+    assert any(validator.iter_errors(bad)), "skipped with queried_by=id must be rejected"
+    bad2 = _entry(
+        lookup_verified="unresolvable",
+        resolver_outcomes=_full_ro(
+            crossref={"status": "unreachable", "queried_by": "title", "response_summary": None}
+        ),
+    )
+    assert any(validator.iter_errors(bad2)), "unreachable with non-null queried_by must be rejected"
 
 
 def test_resolver_outcome_object_is_closed(validator):
-    bad = _entry(resolver_outcomes={"crossref": {
-        "status": "matched", "queried_by": "id", "response_summary": None,
-        "extra": 1}})
+    bad = _entry(
+        resolver_outcomes={
+            "crossref": {
+                "status": "matched",
+                "queried_by": "id",
+                "response_summary": None,
+                "extra": 1,
+            }
+        }
+    )
     assert any(validator.iter_errors(bad))
 
 
@@ -212,27 +250,38 @@ def _ro(**resolvers):
             status, queried_by = v
         else:
             status, queried_by = v, None
-        out[name] = {"status": status, "queried_by": queried_by,
-                     "response_summary": None}
+        out[name] = {"status": status, "queried_by": queried_by, "response_summary": None}
     return out
 
 
 def test_reduce_matched_wins_true():
     from citation_verification_summary import reduce_lookup_verified
+
     # matched WINS even when another applicable resolver is unmatched.
-    assert reduce_lookup_verified(_ro(
-        crossref=("matched", "id"),
-        openalex=("unmatched", "id"),
-    )) == "true"
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref=("matched", "id"),
+                openalex=("unmatched", "id"),
+            )
+        )
+        == "true"
+    )
 
 
 def test_reduce_id_keyed_unmatched_is_false():
     from citation_verification_summary import reduce_lookup_verified
+
     # ID-keyed unmatched, no matched → false (fabrication evidence, C-V6(a)).
-    assert reduce_lookup_verified(_ro(
-        crossref=("unmatched", "id"),
-        openalex=("unmatched", "id"),
-    )) == "false"
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref=("unmatched", "id"),
+                openalex=("unmatched", "id"),
+            )
+        )
+        == "false"
+    )
 
 
 def test_reduce_title_only_unmatched_is_unresolvable_NOT_false():
@@ -240,70 +289,112 @@ def test_reduce_title_only_unmatched_is_unresolvable_NOT_false():
     resolvable ID) → unresolvable, never false. This is the coverage-safe
     verdict shape, not a representative genuine-unindexed gold tuple (#250)."""
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(_ro(
-        crossref=("unmatched", "title"),
-        openalex=("unmatched", "title"),
-    )) == "unresolvable"
+
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref=("unmatched", "title"),
+                openalex=("unmatched", "title"),
+            )
+        )
+        == "unresolvable"
+    )
 
 
 def test_reduce_mixed_id_and_title_unmatched_is_false():
     """At least one ID-keyed unmatched → false, even if others are title-only."""
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(_ro(
-        crossref=("unmatched", "id"),
-        openalex=("unmatched", "title"),
-    )) == "false"
+
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref=("unmatched", "id"),
+                openalex=("unmatched", "title"),
+            )
+        )
+        == "false"
+    )
 
 
 def test_reduce_anti_fabrication_bias_id_unmatched_plus_unreachable():
     """3 ID-keyed unmatched + 1 unreachable → false (one outage doesn't cancel
     positive non-existence evidence). Spec Delta 4 anti-fabrication bias."""
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(_ro(
-        crossref=("unmatched", "id"),
-        openalex=("unmatched", "id"),
-        semantic_scholar=("unmatched", "id"),
-        arxiv="unreachable",
-    )) == "false"
+
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref=("unmatched", "id"),
+                openalex=("unmatched", "id"),
+                semantic_scholar=("unmatched", "id"),
+                arxiv="unreachable",
+            )
+        )
+        == "false"
+    )
 
 
 def test_reduce_title_unmatched_plus_unreachable_is_unresolvable():
     """Partial outage whose only unmatched are title-only → unresolvable, not
     false (C-V6(a) / OQ-4 amendment)."""
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(_ro(
-        crossref=("unmatched", "title"),
-        openalex="unreachable",
-    )) == "unresolvable"
+
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref=("unmatched", "title"),
+                openalex="unreachable",
+            )
+        )
+        == "unresolvable"
+    )
 
 
 def test_reduce_all_unreachable_is_unresolvable():
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(_ro(
-        crossref="unreachable",
-        openalex="unreachable",
-    )) == "unresolvable"
+
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref="unreachable",
+                openalex="unreachable",
+            )
+        )
+        == "unresolvable"
+    )
 
 
 def test_reduce_all_skipped_is_unresolvable():
     """Manual entry: all resolvers skipped → empty adjudicating set →
     unresolvable."""
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(_ro(
-        crossref="skipped",
-        openalex="skipped",
-        semantic_scholar="skipped",
-        arxiv="skipped",
-    )) == "unresolvable"
+
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref="skipped",
+                openalex="skipped",
+                semantic_scholar="skipped",
+                arxiv="skipped",
+            )
+        )
+        == "unresolvable"
+    )
 
 
 def test_reduce_skipped_excluded_matched_still_true():
     """skipped is excluded from classification; a matched among skips → true."""
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(_ro(
-        crossref=("matched", "id"),
-        arxiv="skipped",  # arXiv skipped on a non-arXiv citation
-    )) == "true"
+
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref=("matched", "id"),
+                arxiv="skipped",  # arXiv skipped on a non-arXiv citation
+            )
+        )
+        == "true"
+    )
 
 
 def test_reduce_by_design_false_negative_no_id_bogus_title():
@@ -312,15 +403,22 @@ def test_reduce_by_design_false_negative_no_id_bogus_title():
     limit (a no-identifier fabrication is caught by the v3.8 audit + human
     review, not the existence gate). MUST stay unresolvable."""
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(_ro(
-        crossref=("unmatched", "title"),
-        openalex=("unmatched", "title"),
-        semantic_scholar=("unmatched", "title"),
-    )) == "unresolvable"
+
+    assert (
+        reduce_lookup_verified(
+            _ro(
+                crossref=("unmatched", "title"),
+                openalex=("unmatched", "title"),
+                semantic_scholar=("unmatched", "title"),
+            )
+        )
+        == "unresolvable"
+    )
 
 
 def test_reduce_empty_outcomes_is_unresolvable():
     from citation_verification_summary import reduce_lookup_verified
+
     assert reduce_lookup_verified({}) == "unresolvable"
 
 
@@ -331,12 +429,13 @@ def test_reduce_legacy_unmatched_missing_queried_by_is_unresolvable():
     fail-safe-toward-not-false, never false). The schema now forbids this shape,
     but the reducer stays robust to upstream data drift."""
     from citation_verification_summary import reduce_lookup_verified
-    assert reduce_lookup_verified(
-        {"crossref": {"status": "unmatched"}}) == "unresolvable"
+
+    assert reduce_lookup_verified({"crossref": {"status": "unmatched"}}) == "unresolvable"
 
 
 def test_reduce_none_valued_outcome_is_ignored():
     """A None resolver value (v or {} guard) must not crash and must not be
     treated as evidence; with only a None outcome → unresolvable."""
     from citation_verification_summary import reduce_lookup_verified
+
     assert reduce_lookup_verified({"crossref": None}) == "unresolvable"

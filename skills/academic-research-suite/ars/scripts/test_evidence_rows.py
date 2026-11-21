@@ -18,25 +18,20 @@ import os
 import socket
 import subprocess
 import sys
-import tomllib
 import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
 
 import pytest
+import tomllib
 from jsonschema import Draft202012Validator, FormatChecker
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = REPO_ROOT / "scripts" / "fixtures" / "evidence_rows"
 SCHEMA_PATH = REPO_ROOT / "shared" / "contracts" / "evidence" / "evidence_row.schema.json"
 ADVISORY_SCHEMA_PATH = (
-    REPO_ROOT
-    / "shared"
-    / "contracts"
-    / "evidence"
-    / "evidence_row_v1_1.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "evidence" / "evidence_row_v1_1.schema.json"
 )
 RUNTIME_PATH = REPO_ROOT / "scripts" / "evidence_rows.py"
 MANIFEST_PATH = REPO_ROOT / "scripts" / "_ci_pytest_manifest.toml"
@@ -130,13 +125,9 @@ def _raw_advisory_row(
         "coverage_subject": {
             "requirement_id": "us.45cfr46.116.informed-consent",
             "requirement_pointer": "/profiles/0/requirements/1",
-            "authority_anchor_pointer": (
-                "/profiles/0/requirements/1/authority_anchor"
-            ),
+            "authority_anchor_pointer": ("/profiles/0/requirements/1/authority_anchor"),
             "expectation_field_id": "consent.voluntary_circumstances",
-            "expectation_pointer": (
-                "/profiles/0/requirements/1/structured_expectations/1"
-            ),
+            "expectation_pointer": ("/profiles/0/requirements/1/structured_expectations/1"),
             "expectation_digest": "e" * 64,
             "document_locator": {
                 "kind": "section",
@@ -153,9 +144,7 @@ def _raw_advisory_row(
         "anchor": {
             "kind": anchor_kind,
             "value_encoded": (
-                urllib.parse.quote(anchor_text, safe="")
-                if anchor_kind == "quote"
-                else ""
+                urllib.parse.quote(anchor_text, safe="") if anchor_kind == "quote" else ""
             ),
         },
     }
@@ -425,9 +414,7 @@ def test_build_state_matrix(
     assert row["schema_version"] == "evidence-row/1.0"
     assert row["surface"] == "phase_e_claim_verification"
     assert row["excerpt"]["state"] == case["expected_state"]
-    assert row["anchor"]["value_decoded"] == er.strict_percent_decode(
-        case["anchor_value_encoded"]
-    )
+    assert row["anchor"]["value_decoded"] == er.strict_percent_decode(case["anchor_value_encoded"])
     assert row["row_sha256"] == _row_digest(row)
     if row["excerpt"]["state"] in POSITIVE_STATES:
         source = sources[case["source_key"]]
@@ -438,9 +425,7 @@ def test_build_state_matrix(
     elif row["excerpt"]["state"] == "unconfirmed_anchor":
         assert row["excerpt"]["text"] is None
         assert row["cache"]["status"] == "miss"
-        assert row["source"]["source_content_sha256"] == _sha256_text(
-            sources[case["source_key"]]
-        )
+        assert row["source"]["source_content_sha256"] == _sha256_text(sources[case["source_key"]])
     else:
         _assert_empty_excerpt(row)
 
@@ -452,7 +437,9 @@ def test_writer_quote_needs_exact_session_source_match(
     raw = _raw_row(input_fixture)
     exact = er.build(raw, sources["smith2024"])
     mismatch = er.build(
-        _raw_row(input_fixture, row_id="EVR-000002", anchor_value="The%20estimate%20was%2015.3%25."),
+        _raw_row(
+            input_fixture, row_id="EVR-000002", anchor_value="The%20estimate%20was%2015.3%25."
+        ),
         sources["smith2024"],
     )
     assert exact["excerpt"]["state"] == "verified_exact_match"
@@ -546,13 +533,13 @@ def test_paragraph_and_none_never_carry_excerpt(
             extracted_text="Page evidence says treatment improved outcomes.",
         )
     row = er.build(raw, sources["smith2024"])
-    assert row["excerpt"]["state"] == (
-        "not_checked" if kind == "paragraph" else "anchorless"
-    )
+    assert row["excerpt"]["state"] == ("not_checked" if kind == "paragraph" else "anchorless")
     _assert_empty_excerpt(row)
 
 
-@pytest.mark.parametrize("failure_state", ["not_checked", "source_missing", "access_failed", "retrieval_failed"])
+@pytest.mark.parametrize(
+    "failure_state", ["not_checked", "source_missing", "access_failed", "retrieval_failed"]
+)
 def test_explicit_failure_state_refuses_candidate_then_builds_empty(
     failure_state: str, input_fixture: dict[str, Any], sources: dict[str, str]
 ) -> None:
@@ -699,17 +686,16 @@ def test_codepoint_cap_for_emoji_and_combining_sequences(
             call()
 
 
-def test_nbsp_splits_but_zero_width_space_does_not(
-    input_fixture: dict[str, Any]
-) -> None:
+def test_nbsp_splits_but_zero_width_space_does_not(input_fixture: dict[str, Any]) -> None:
     _runtime_required()
     nbsp_26 = "\u00a0".join(f"w{i}" for i in range(26))
     zwsp_26 = "\u200b".join(f"w{i}" for i in range(26))
     with pytest.raises(er.EvidenceRowError):
         er.build(_raw_row(input_fixture, anchor_value=_quote(nbsp_26)), nbsp_26)
-    assert er.build(
-        _raw_row(input_fixture, anchor_value=_quote(zwsp_26)), zwsp_26
-    )["excerpt"]["text"] == zwsp_26
+    assert (
+        er.build(_raw_row(input_fixture, anchor_value=_quote(zwsp_26)), zwsp_26)["excerpt"]["text"]
+        == zwsp_26
+    )
 
 
 def test_over_budget_text_is_rejected_not_truncated(input_fixture: dict[str, Any]) -> None:
@@ -1025,9 +1011,7 @@ def test_cache_identity_or_content_drift_is_a_miss(
     if drift == "source":
         current_source += " changed source bytes"
     elif drift == "anchor":
-        raw["anchor"]["value_encoded"] = _quote(
-            "Page evidence says treatment improved outcomes."
-        )
+        raw["anchor"]["value_encoded"] = _quote("Page evidence says treatment improved outcomes.")
     elif drift == "claim_id":
         raw["claim"]["claim_id"] = "E-C-DIFFERENT"
     elif drift == "ref_slug":
@@ -1055,7 +1039,9 @@ def test_page_candidate_text_drift_is_a_miss(
     assert rebuilt["excerpt"]["text"] == second_text
 
 
-@pytest.mark.parametrize("corruption", ["unknown_field", "bad_digest", "forged_span", "empty_state"])
+@pytest.mark.parametrize(
+    "corruption", ["unknown_field", "bad_digest", "forged_span", "empty_state"]
+)
 def test_corrupt_cache_candidate_is_ignored_and_rebuilt(
     corruption: str,
     input_fixture: dict[str, Any],
@@ -1104,7 +1090,9 @@ def test_forged_page_excerpt_with_every_public_digest_cannot_overwrite_current_c
     assert attacker_text != rebuilt["excerpt"]["text"]
 
 
-@pytest.mark.parametrize("failure_state", ["not_checked", "source_missing", "access_failed", "retrieval_failed"])
+@pytest.mark.parametrize(
+    "failure_state", ["not_checked", "source_missing", "access_failed", "retrieval_failed"]
+)
 def test_current_failure_wins_without_reading_cache_candidate(
     failure_state: str,
     input_fixture: dict[str, Any],
@@ -1288,9 +1276,7 @@ def test_every_state_uses_runtime_canonical_label(
         assert label in html_output, state
 
 
-def test_renderer_displays_row_specific_rights_handling(
-    input_fixture: dict[str, Any]
-) -> None:
+def test_renderer_displays_row_specific_rights_handling(input_fixture: dict[str, Any]) -> None:
     _runtime_required()
     default = er.build(
         _raw_row(input_fixture, row_id="EVR-RIGHTS-1", anchor_value="missing%20one"),
@@ -1405,13 +1391,11 @@ def test_fully_rebound_forged_quote_requires_exact_source_replay_before_render(
     forged_quote = "forged exact quote"
     forged_source = f"attacker prefix {forged_quote} attacker suffix"
     forged_source_bytes = forged_source.encode("utf-8")
-    start = len("attacker prefix ".encode("utf-8"))
+    start = len(b"attacker prefix ")
 
     forged["anchor"]["value_encoded"] = _quote(forged_quote)
     forged["anchor"]["value_decoded"] = forged_quote
-    forged["source"]["source_content_sha256"] = hashlib.sha256(
-        forged_source_bytes
-    ).hexdigest()
+    forged["source"]["source_content_sha256"] = hashlib.sha256(forged_source_bytes).hexdigest()
     forged["source"]["source_content_utf8_bytes"] = len(forged_source_bytes)
     forged["excerpt"]["text"] = forged_quote
     forged["excerpt"]["excerpt_sha256"] = _sha256_text(forged_quote)
@@ -1427,7 +1411,9 @@ def test_fully_rebound_forged_quote_requires_exact_source_replay_before_render(
     assert forged["source"]["source_content_sha256"] != original["source"]["source_content_sha256"]
     assert forged["excerpt"]["excerpt_sha256"] != original["excerpt"]["excerpt_sha256"]
     assert forged["cache"]["key_sha256"] != original["cache"]["key_sha256"]
-    assert er.validate(forged) == forged  # Structural/integrity validation is intentionally offline.
+    assert (
+        er.validate(forged) == forged
+    )  # Structural/integrity validation is intentionally offline.
     assert er.validate(forged, forged_source) == forged
 
     for renderer in (er.render_markdown, er.render_html):
@@ -1494,7 +1480,9 @@ def test_line_separators_newlines_tabs_and_bidi_are_visible_data_not_structure(
     assert html_output.lower().count("<tr") == 2
 
 
-@pytest.mark.parametrize(("codepoint", "escape"), [("\u0085", "u0085"), ("\u009b", "u009B"), ("\u009d", "u009D")])
+@pytest.mark.parametrize(
+    ("codepoint", "escape"), [("\u0085", "u0085"), ("\u009b", "u009B"), ("\u009d", "u009D")]
+)
 def test_c1_nel_csi_and_osc_are_visible_ascii_not_raw_controls(
     codepoint: str,
     escape: str,
@@ -1508,14 +1496,11 @@ def test_c1_nel_csi_and_osc_are_visible_ascii_not_raw_controls(
 
 
 _AUTOLINK_PROBE_PAYLOAD = (
-    "https://evil.example/path user@example.com ftp://evil.example/file "
-    "javascript:alert(1)"
+    "https://evil.example/path user@example.com ftp://evil.example/file " "javascript:alert(1)"
 )
 
 
-def test_gfm_bare_urls_emails_and_schemes_cannot_autolink(
-    input_fixture: dict[str, Any]
-) -> None:
+def test_gfm_bare_urls_emails_and_schemes_cannot_autolink(input_fixture: dict[str, Any]) -> None:
     _runtime_required()
     row = _hostile_row(input_fixture, _AUTOLINK_PROBE_PAYLOAD)
     markdown = er.render_markdown([row])
@@ -1537,7 +1522,9 @@ def test_escaped_markdown_yields_no_linkify_tokens_on_round_trip(
     markdown_it = pytest.importorskip("markdown_it", minversion="3.0.0")
     pytest.importorskip("linkify_it", minversion="2.0.3")
     markdown = er.render_markdown([_hostile_row(input_fixture, _AUTOLINK_PROBE_PAYLOAD)])
-    tokens = markdown_it.MarkdownIt("commonmark", {"linkify": True}).enable("linkify").parse(markdown)
+    tokens = (
+        markdown_it.MarkdownIt("commonmark", {"linkify": True}).enable("linkify").parse(markdown)
+    )
     flattened = [child for token in tokens for child in (token.children or [])]
     assert all(token.type != "link_open" for token in [*tokens, *flattened])
 
@@ -1641,14 +1628,10 @@ def test_cli_validate_and_render_happy_paths(
     validated = _run_cli("validate", rows_path, "--source-map", sources_path)
     assert validated.returncode == 0, validated.stderr
     assert validated.stdout == "PASS: 1 evidence row(s)\n"
-    markdown = _run_cli(
-        "render", rows_path, "--format", "markdown", "--source-map", sources_path
-    )
+    markdown = _run_cli("render", rows_path, "--format", "markdown", "--source-map", sources_path)
     assert markdown.returncode == 0, markdown.stderr
     assert markdown.stdout.startswith("### Phase E evidence rows — Page 1/1\n")
-    html_result = _run_cli(
-        "render", rows_path, "--format", "html", "--source-map", sources_path
-    )
+    html_result = _run_cli("render", rows_path, "--format", "html", "--source-map", sources_path)
     assert html_result.returncode == 0, html_result.stderr
     assert html_result.stdout.startswith('<section class="ars-evidence-rows"')
 
@@ -1672,9 +1655,7 @@ def test_cli_source_bound_validate_and_render_require_exact_source_map(
     assert _run_cli("validate", rows_path, "--source-map", correct_map).returncode == 0
     for output_format in ("markdown", "html"):
         missing = _run_cli("render", rows_path, "--format", output_format)
-        wrong = _run_cli(
-            "render", rows_path, "--format", output_format, "--source-map", wrong_map
-        )
+        wrong = _run_cli("render", rows_path, "--format", output_format, "--source-map", wrong_map)
         correct = _run_cli(
             "render", rows_path, "--format", output_format, "--source-map", correct_map
         )
@@ -1758,8 +1739,7 @@ def test_cli_integrity_report_missing_rows_requires_explicit_legacy_flag(
     )
     assert html_result.returncode == 0
     assert html_result.stdout == (
-        '<p class="ars-evidence-rows-legacy">'
-        "LEGACY — EVIDENCE ROWS UNAVAILABLE</p>\n"
+        '<p class="ars-evidence-rows-legacy">' "LEGACY — EVIDENCE ROWS UNAVAILABLE</p>\n"
     )
 
 
@@ -1856,7 +1836,9 @@ def test_current_report_rejects_claim_or_verified_count_drift(
     assert _run_cli("render", report_path, "--format", "html").returncode == 1
 
 
-@pytest.mark.parametrize("summary", [{"checked": 1, "verified": 0}, {}, {"checked": 0}, {"verified": 0}])
+@pytest.mark.parametrize(
+    "summary", [{"checked": 1, "verified": 0}, {}, {"checked": 0}, {"verified": 0}]
+)
 def test_current_report_rejects_nonempty_checked_with_empty_or_missing_summary(
     summary: dict[str, int],
     tmp_path: Path,
@@ -2002,9 +1984,7 @@ def test_cli_accepts_integrity_report_pointer_shape(
 
 
 @pytest.mark.parametrize("token", ["NaN", "Infinity", "-Infinity"])
-def test_cli_rejects_nonfinite_json_before_contract_validation(
-    token: str, tmp_path: Path
-) -> None:
+def test_cli_rejects_nonfinite_json_before_contract_validation(token: str, tmp_path: Path) -> None:
     _runtime_required()
     path = tmp_path / "nonfinite.json"
     path.write_text(f"[{token}]", encoding="utf-8")
@@ -2020,9 +2000,7 @@ def test_cli_rejects_nonfinite_json_before_contract_validation(
         '{"schema_version":"evidence-row/1.0","schema_version":"evidence-row/1.0"}',
     ],
 )
-def test_cli_parse_or_duplicate_key_failure_is_exit_two(
-    payload: str, tmp_path: Path
-) -> None:
+def test_cli_parse_or_duplicate_key_failure_is_exit_two(payload: str, tmp_path: Path) -> None:
     _runtime_required()
     path = tmp_path / "invalid.json"
     path.write_text(payload, encoding="utf-8")
@@ -2105,13 +2083,9 @@ def test_cli_has_no_render_all_or_oversized_page_escape(
     _write_json(rows_path, _make_empty_rows(26, input_fixture))
     no_all = _run_cli("render", rows_path, "--format", "markdown", "--all")
     assert no_all.returncode == 2
-    oversized = _run_cli(
-        "render", rows_path, "--format", "markdown", "--page-size", "26"
-    )
+    oversized = _run_cli("render", rows_path, "--format", "markdown", "--page-size", "26")
     assert oversized.returncode == 1
-    page_zero = _run_cli(
-        "render", rows_path, "--format", "markdown", "--page", "0"
-    )
+    page_zero = _run_cli("render", rows_path, "--format", "markdown", "--page", "0")
     assert page_zero.returncode == 1
 
 
@@ -2226,7 +2200,9 @@ def test_phase_e_surfaces_pin_bounded_requested_page_and_no_display_io(
 
 def test_runtime_contract_is_registered_once_in_ci_manifest() -> None:
     manifest = tomllib.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
-    entries = [entry for entry in manifest["pytest"] if entry["id"] == "656-shared-evidence-row-contract"]
+    entries = [
+        entry for entry in manifest["pytest"] if entry["id"] == "656-shared-evidence-row-contract"
+    ]
     assert entries == [
         {"id": "656-shared-evidence-row-contract", "path": "scripts/test_evidence_rows.py"}
     ]
@@ -2241,9 +2217,7 @@ def test_advisory_schema_is_a_separate_closed_1_1_surface() -> None:
     advisory_schema = _json(ADVISORY_SCHEMA_PATH)
     Draft202012Validator.check_schema(advisory_schema)
     assert advisory_schema["additionalProperties"] is False
-    assert advisory_schema["properties"]["schema_version"]["const"] == (
-        "evidence-row/1.1"
-    )
+    assert advisory_schema["properties"]["schema_version"]["const"] == ("evidence-row/1.1")
     assert advisory_schema["properties"]["surface"]["const"] == (
         "authority_profile_content_coverage"
     )
@@ -2259,17 +2233,13 @@ def test_advisory_schema_is_a_separate_closed_1_1_surface() -> None:
         "content_handling",
         "row_sha256",
     ]
-    assert {"claim", "verdict", "detail"}.isdisjoint(
-        advisory_schema["properties"]
-    )
+    assert {"claim", "verdict", "detail"}.isdisjoint(advisory_schema["properties"])
 
 
 def test_advisory_schema_pins_states_subject_binding_and_no_cache() -> None:
     advisory_schema = _json(ADVISORY_SCHEMA_PATH)
     defs = advisory_schema["$defs"]
-    assert set(defs["excerpt"]["properties"]["state"]["enum"]) == (
-        ADVISORY_EXPECTED_STATES
-    )
+    assert set(defs["excerpt"]["properties"]["state"]["enum"]) == (ADVISORY_EXPECTED_STATES)
     assert defs["coverage_subject"]["required"] == [
         "requirement_id",
         "requirement_pointer",
@@ -2279,9 +2249,7 @@ def test_advisory_schema_pins_states_subject_binding_and_no_cache() -> None:
         "expectation_digest",
         "document_locator",
     ]
-    assert set(defs["coverage_subject"]["properties"]) == set(
-        defs["coverage_subject"]["required"]
-    )
+    assert set(defs["coverage_subject"]["properties"]) == set(defs["coverage_subject"]["required"])
     assert advisory_schema["properties"]["cache"]["properties"] == {
         "status": {"const": "not_used"},
         "key_sha256": {"type": "null"},
@@ -2290,12 +2258,8 @@ def test_advisory_schema_pins_states_subject_binding_and_no_cache() -> None:
 
 def test_advisory_schema_preserves_the_shared_25_word_and_1000_char_budgets() -> None:
     advisory_schema = _json(ADVISORY_SCHEMA_PATH)
-    assert advisory_schema["$defs"]["anchor"]["properties"]["value_decoded"][
-        "maxLength"
-    ] == 1000
-    assert advisory_schema["$defs"]["excerpt"]["properties"]["text"][
-        "maxLength"
-    ] == 1000
+    assert advisory_schema["$defs"]["anchor"]["properties"]["value_decoded"]["maxLength"] == 1000
+    assert advisory_schema["$defs"]["excerpt"]["properties"]["text"]["maxLength"] == 1000
     _runtime_required()
     assert er.QUOTE_WORD_CAP == 25
     assert er.TEXT_CHAR_CAP == 1000
@@ -2336,9 +2300,7 @@ def test_advisory_relative_path_control_rejection_has_schema_runtime_parity(
     relative_path: str,
 ) -> None:
     _runtime_required()
-    validator = Draft202012Validator(
-        _json(ADVISORY_SCHEMA_PATH), format_checker=FormatChecker()
-    )
+    validator = Draft202012Validator(_json(ADVISORY_SCHEMA_PATH), format_checker=FormatChecker())
     accepted = er.build_advisory(
         _raw_advisory_row(),
         "Participation is voluntary.",
@@ -2360,9 +2322,7 @@ def test_advisory_relative_path_control_rejection_has_schema_runtime_parity(
         )
 
 
-@pytest.mark.parametrize(
-    "relative_path", ["dir/", "a//b", "./a", "a/../b", "/absolute", "a\\b"]
-)
+@pytest.mark.parametrize("relative_path", ["dir/", "a//b", "./a", "a/../b", "/absolute", "a\\b"])
 def test_advisory_builder_requires_canonical_relative_posix_path(
     relative_path: str,
 ) -> None:
@@ -2385,9 +2345,7 @@ def test_advisory_builder_binds_exact_source_hash_excerpt_and_utf8_span() -> Non
         source,
         captured_at=ADVISORY_CAPTURED_AT,
     )
-    Draft202012Validator(
-        _json(ADVISORY_SCHEMA_PATH), format_checker=FormatChecker()
-    ).validate(row)
+    Draft202012Validator(_json(ADVISORY_SCHEMA_PATH), format_checker=FormatChecker()).validate(row)
     assert row["schema_version"] == "evidence-row/1.1"
     assert row["surface"] == "authority_profile_content_coverage"
     assert row["excerpt"]["state"] == "agent_extracted"
@@ -2396,9 +2354,7 @@ def test_advisory_builder_binds_exact_source_hash_excerpt_and_utf8_span() -> Non
     excerpt_bytes = row["excerpt"]["text"].encode("utf-8")
     span = row["excerpt"]["source_span_utf8"]
     assert source_bytes[span["start"] : span["end"]] == excerpt_bytes
-    assert row["source"]["source_content_sha256"] == hashlib.sha256(
-        source_bytes
-    ).hexdigest()
+    assert row["source"]["source_content_sha256"] == hashlib.sha256(source_bytes).hexdigest()
     assert row["source"]["source_content_utf8_bytes"] == len(source_bytes)
     assert row["cache"] == {"status": "not_used", "key_sha256": None}
     assert row["row_sha256"] == _row_digest(row)
@@ -2414,9 +2370,7 @@ def test_advisory_checked_no_match_is_source_bound_without_excerpt() -> None:
     )
     assert row["excerpt"]["state"] == "checked_no_match"
     assert row["source"]["source_content_sha256"] == _sha256_text(source)
-    assert row["source"]["source_content_utf8_bytes"] == len(
-        source.encode("utf-8")
-    )
+    assert row["source"]["source_content_utf8_bytes"] == len(source.encode("utf-8"))
     assert row["anchor"] == {
         "kind": "none",
         "value_encoded": "",
@@ -2442,12 +2396,8 @@ def test_advisory_positive_timestamp_is_explicit_stable_and_never_uses_clock(
         raise AssertionError("advisory builder consulted the runtime clock")
 
     monkeypatch.setattr(er, "_timestamp_now", forbidden_clock)
-    first = er.build_advisory(
-        _raw_advisory_row(), source, captured_at=ADVISORY_CAPTURED_AT
-    )
-    second = er.build_advisory(
-        _raw_advisory_row(), source, captured_at=ADVISORY_CAPTURED_AT
-    )
+    first = er.build_advisory(_raw_advisory_row(), source, captured_at=ADVISORY_CAPTURED_AT)
+    second = er.build_advisory(_raw_advisory_row(), source, captured_at=ADVISORY_CAPTURED_AT)
     assert first == second
     assert first["excerpt"]["captured_at"] == ADVISORY_CAPTURED_AT
 
@@ -2537,9 +2487,7 @@ def test_advisory_quote_budgets_reject_instead_of_truncate(
 def test_advisory_builder_rejects_cache_and_nonexact_quote() -> None:
     _runtime_required()
     source = "Participation is voluntary."
-    baseline = er.build_advisory(
-        _raw_advisory_row(), source, captured_at=ADVISORY_CAPTURED_AT
-    )
+    baseline = er.build_advisory(_raw_advisory_row(), source, captured_at=ADVISORY_CAPTURED_AT)
     with pytest.raises(er.EvidenceRowError, match="cache"):
         er.build_advisory(
             _raw_advisory_row(),
@@ -2564,9 +2512,7 @@ def test_advisory_hash_span_and_self_digest_tampering_fail_replay(
 ) -> None:
     _runtime_required()
     source = "前言：Participation is voluntary. 後記。"
-    row = er.build_advisory(
-        _raw_advisory_row(), source, captured_at=ADVISORY_CAPTURED_AT
-    )
+    row = er.build_advisory(_raw_advisory_row(), source, captured_at=ADVISORY_CAPTURED_AT)
     if mutation == "source_hash":
         row["source"]["source_content_sha256"] = "0" * 64
     elif mutation == "source_size":

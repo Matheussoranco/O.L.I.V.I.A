@@ -39,8 +39,8 @@ def _record(root: Path, stem: str) -> Path:
     found = [path for path in candidates if _lexists(path)]
     if len(found) != 1:
         raise PromotionError(
-            f"expected exactly one record namespace for {stem}, found "
-            f"{len(found)}")
+            f"expected exactly one record namespace for {stem}, found " f"{len(found)}"
+        )
     try:
         evidence.assert_plain_file(found[0], runs)
     except evidence.EvidencePathError as failure:
@@ -53,15 +53,16 @@ def _load_record(path: Path) -> dict:
         loaded = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as failure:
         raise PromotionError(
-            f"record is not readable JSON: {path}: {type(failure).__name__}") \
-            from failure
+            f"record is not readable JSON: {path}: {type(failure).__name__}"
+        ) from failure
     if not isinstance(loaded, dict):
         raise PromotionError(f"record top level is not an object: {path}")
     return loaded
 
 
-def _declared(record_path: Path, value: object, runs: Path, *, label: str,
-              directory: bool = False) -> Path:
+def _declared(
+    record_path: Path, value: object, runs: Path, *, label: str, directory: bool = False
+) -> Path:
     if not isinstance(value, str) or not value.strip():
         raise PromotionError(f"{label} must be a non-empty relative path")
     if Path(value).is_absolute():
@@ -76,8 +77,8 @@ def _declared(record_path: Path, value: object, runs: Path, *, label: str,
             evidence.assert_plain_file(target, runs)
     except evidence.EvidencePathError as failure:
         raise PromotionError(
-            f"{label} is missing or does not resolve safely: {failure}") \
-            from failure
+            f"{label} is missing or does not resolve safely: {failure}"
+        ) from failure
     return target
 
 
@@ -102,49 +103,47 @@ def _scope(root: Path, stem: str) -> tuple[Path, dict[str, dict]]:
     record_path = _record(root, stem)
     record = _load_record(record_path)
     blocked = record_path.parent.name == "blocked"
-    expected_raw = (runs / "raw" / "blocked" / stem if blocked
-                    else runs / "raw" / stem)
-    expected_declared_raw = os.path.relpath(
-        expected_raw, record_path.parent).replace(os.sep, "/") + "/"
+    expected_raw = runs / "raw" / "blocked" / stem if blocked else runs / "raw" / stem
+    expected_declared_raw = (
+        os.path.relpath(expected_raw, record_path.parent).replace(os.sep, "/") + "/"
+    )
     declared_raw = record.get("raw_bundle")
-    if not isinstance(declared_raw, str) or not declared_raw.strip() \
-            or Path(declared_raw).is_absolute():
+    if (
+        not isinstance(declared_raw, str)
+        or not declared_raw.strip()
+        or Path(declared_raw).is_absolute()
+    ):
         raise PromotionError("raw_bundle must be a non-empty relative path")
     lexical_raw = evidence.lexical_path(record_path.parent / declared_raw)
-    if declared_raw != expected_declared_raw \
-            or lexical_raw != evidence.lexical_path(expected_raw):
+    if declared_raw != expected_declared_raw or lexical_raw != evidence.lexical_path(expected_raw):
         raise PromotionError(
             f"raw_bundle is not the canonical layout for {stem}: expected "
-            f"{expected_declared_raw!r}, got {declared_raw!r}")
-    raw = _declared(
-        record_path, declared_raw, runs,
-        label="raw_bundle", directory=True)
+            f"{expected_declared_raw!r}, got {declared_raw!r}"
+        )
+    raw = _declared(record_path, declared_raw, runs, label="raw_bundle", directory=True)
 
     for label, declared in _locations(record):
         target = _declared(record_path, declared, runs, label=label)
         if not evidence.within(target, raw):
-            raise PromotionError(
-                f"{label} resolves outside the declared raw_bundle: {declared}")
+            raise PromotionError(f"{label} resolves outside the declared raw_bundle: {declared}")
 
     scope: dict[str, dict] = {}
     record_rel = record_path.relative_to(root).as_posix()
-    scope[record_rel] = {
-        "type": "file", "sha256": evidence.sha256_file(record_path)}
+    scope[record_rel] = {"type": "file", "sha256": evidence.sha256_file(record_path)}
     raw_rel = raw.relative_to(root).as_posix()
     scope[raw_rel] = {"type": "directory"}
     for entry in evidence.tree_manifest(raw):
         if entry["type"] not in {"file", "directory"}:
             raise PromotionError(
-                f"raw bundle contains forbidden {entry['type']} path: "
-                f"{entry['path']}")
+                f"raw bundle contains forbidden {entry['type']} path: " f"{entry['path']}"
+            )
         scope[f"{raw_rel}/{entry['path']}"] = {
             key: value for key, value in entry.items() if key != "path"
         }
     return record_path, scope
 
 
-def verify_promotion(source_root: Path, destination_root: Path,
-                     stem: str) -> PromotionReceipt:
+def verify_promotion(source_root: Path, destination_root: Path, stem: str) -> PromotionReceipt:
     if not stem or Path(stem).parts != (stem,) or stem in {".", ".."}:
         raise PromotionError("stem must be one non-empty path component")
     source_root = evidence.lexical_path(Path(source_root))
@@ -156,20 +155,14 @@ def verify_promotion(source_root: Path, destination_root: Path,
     if source.keys() != destination.keys():
         missing = sorted(source.keys() - destination.keys())
         extra = sorted(destination.keys() - source.keys())
-        raise PromotionError(
-            f"promoted path set differs; missing={missing}, extra={extra}")
+        raise PromotionError(f"promoted path set differs; missing={missing}, extra={extra}")
     changed = [path for path in source if source[path] != destination[path]]
     if changed:
-        details = [
-            f"{path}: {source[path]} -> {destination[path]}"
-            for path in changed
-        ]
-        raise PromotionError("promoted file type or bytes changed: "
-                             + "; ".join(details))
+        details = [f"{path}: {source[path]} -> {destination[path]}" for path in changed]
+        raise PromotionError("promoted file type or bytes changed: " + "; ".join(details))
     return PromotionReceipt(
         stem=stem,
-        files_checked=sum(1 for item in source.values()
-                          if item["type"] == "file"),
+        files_checked=sum(1 for item in source.values() if item["type"] == "file"),
         source_record=source_record,
         destination_record=destination_record,
     )
@@ -182,8 +175,7 @@ def main(argv=None) -> int:
     parser.add_argument("--stem", required=True)
     args = parser.parse_args(argv)
     try:
-        receipt = verify_promotion(
-            args.source_root, args.destination_root, args.stem)
+        receipt = verify_promotion(args.source_root, args.destination_root, args.stem)
     except PromotionError as failure:
         print(f"FAIL: {failure}", file=sys.stderr)
         return 1

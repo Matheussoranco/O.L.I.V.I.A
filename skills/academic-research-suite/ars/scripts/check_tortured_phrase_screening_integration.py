@@ -17,23 +17,18 @@ import hashlib
 import json
 import os
 import sys
-import tomllib
 from pathlib import Path
 from typing import Any
 
+import tomllib
 from jsonschema import Draft202012Validator
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SNAPSHOT_SCHEMA = Path("shared/contracts/audit/tortured_phrase_snapshot.schema.json")
-MANIFEST_SCHEMA = Path(
-    "shared/contracts/audit/tortured_phrase_snapshot_manifest.schema.json"
-)
+MANIFEST_SCHEMA = Path("shared/contracts/audit/tortured_phrase_snapshot_manifest.schema.json")
 ADVISORY_SCHEMA = Path("shared/contracts/audit/tortured_phrase_advisory.schema.json")
-SIGNAL_SCHEMA = Path(
-    "shared/contracts/passport/bibliographic_integrity_signal.schema.json"
-)
+SIGNAL_SCHEMA = Path("shared/contracts/passport/bibliographic_integrity_signal.schema.json")
 RUNTIME = Path("scripts/tortured_phrase_screening.py")
 RUNTIME_TEST = Path("scripts/test_tortured_phrase_screening.py")
 FIXTURE_ROOT = Path("scripts/fixtures/tortured_phrase_screening")
@@ -44,21 +39,16 @@ CITED_DETECTED_FIXTURE = Path(
     "scripts/fixtures/bibliographic_integrity_signals/tortured_phrase_v1_2_detected.json"
 )
 CITED_MISSING_FIXTURE = Path(
-    "scripts/fixtures/bibliographic_integrity_signals/"
-    "tortured_phrase_v1_2_abstract_missing.json"
+    "scripts/fixtures/bibliographic_integrity_signals/" "tortured_phrase_v1_2_abstract_missing.json"
 )
 DESIGN_SPEC = Path("docs/design/2026-08-10-660-tortured-phrase-screening-spec.md")
 SIGNAL_PROTOCOL = Path("shared/bibliographic_integrity_signals.md")
 CONTRACT_README = Path("shared/contracts/README.md")
 INTEGRITY_PROTOCOL = Path("academic-pipeline/references/integrity_review_protocol.md")
-CORPUS_CONSUMER_PROTOCOL = Path(
-    "academic-pipeline/references/literature_corpus_consumers.md"
-)
+CORPUS_CONSUMER_PROTOCOL = Path("academic-pipeline/references/literature_corpus_consumers.md")
 BIBLIOGRAPHY_AGENT = Path("deep-research/agents/bibliography_agent.md")
 PIPELINE_SKILL = Path("academic-pipeline/WORKFLOW.md")
-PIPELINE_ORCHESTRATOR = Path(
-    "academic-pipeline/agents/pipeline_orchestrator_agent.md"
-)
+PIPELINE_ORCHESTRATOR = Path("academic-pipeline/agents/pipeline_orchestrator_agent.md")
 FORMATTER_AGENT = Path("academic-paper/agents/formatter_agent.md")
 HANDOFF_SCHEMAS = Path("shared/handoff_schemas.md")
 SIGNAL_RUNTIME = Path("scripts/bibliographic_integrity_signals.py")
@@ -70,35 +60,23 @@ CONFORMANCE_README = HELDOUT_ROOT / "tortured_phrase_conformance/README.md"
 MEASUREMENT_PLAN = HELDOUT_ROOT / "tortured_phrase_conformance/measurement_plan.md"
 SUITE_REGISTRY = HELDOUT_ROOT / "suite_registry.json"
 MEASUREMENT_CONTRACT = HELDOUT_ROOT / "MEASUREMENT_CONTRACT.md"
-MEASUREMENT_REPORT = (
-    HELDOUT_ROOT / "tortured_phrase_conformance/measurement-2026-08-10.json"
-)
+MEASUREMENT_REPORT = HELDOUT_ROOT / "tortured_phrase_conformance/measurement-2026-08-10.json"
 MEASUREMENT_TRANSCRIPT = (
-    HELDOUT_ROOT
-    / "tortured_phrase_conformance/runs/2026-08-10/raw/pytest-transcript.json"
+    HELDOUT_ROOT / "tortured_phrase_conformance/runs/2026-08-10/raw/pytest-transcript.json"
 )
 MEASUREMENT_EXECUTION_MANIFEST = (
-    HELDOUT_ROOT
-    / "tortured_phrase_conformance/runs/2026-08-10/execution-manifest.json"
+    HELDOUT_ROOT / "tortured_phrase_conformance/runs/2026-08-10/execution-manifest.json"
 )
 
 FROZEN_MAIN_SHA = "86bf0e5c2cedb300d6d1c6428470cdcedfbf97df"
-FROZEN_PLAN_SHA256 = (
-    "c5ca307f2e5941d8b6ed411169d7dc956d0290de7c75a54b25b8e04e070e0792"
-)
+FROZEN_PLAN_SHA256 = "c5ca307f2e5941d8b6ed411169d7dc956d0290de7c75a54b25b8e04e070e0792"
 MEASUREMENT_COMMAND = "python -m pytest -q scripts/test_tortured_phrase_screening.py"
-MEASUREMENT_COMMAND_SHA256 = (
-    "3c85403d49ddbe4907b6277d2664c006b364c045fb1c1db412a817dcd855c110"
-)
-MEASUREMENT_TRANSCRIPT_SHA256 = (
-    "62252493e7c5b04e5a7276e60d54696c6df251f704f6237980f4932b9bb76541"
-)
+MEASUREMENT_COMMAND_SHA256 = "3c85403d49ddbe4907b6277d2664c006b364c045fb1c1db412a817dcd855c110"
+MEASUREMENT_TRANSCRIPT_SHA256 = "62252493e7c5b04e5a7276e60d54696c6df251f704f6237980f4932b9bb76541"
 MEASUREMENT_EXECUTION_MANIFEST_SHA256 = (
     "a3801e22c2482a3fba05e65b520ceeedacf7e4d8fdc57f8fce1bfd111d05e6c1"
 )
-MEASUREMENT_REPORT_SHA256 = (
-    "fdb3f4b1300dbe10a9982c7663668e997556868507e4bfcf7cd088f10990fd11"
-)
+MEASUREMENT_REPORT_SHA256 = "fdb3f4b1300dbe10a9982c7663668e997556868507e4bfcf7cd088f10990fd11"
 MEASUREMENT_STARTED_AT = "2026-08-10T04:31:45.398248Z"
 MEASUREMENT_COMPLETED_AT = "2026-08-10T04:31:50.553009Z"
 
@@ -574,15 +552,10 @@ def _schema_errors(root: Path) -> list[str]:
         advisory_defs.get("match", {}), MATCH_KEYS, f"{ADVISORY_SCHEMA}: $defs.match", errors
     )
     boundary = advisory_defs.get("boundary", {})
-    _closed_fields(
-        boundary, set(BOUNDARY_VALUES), f"{ADVISORY_SCHEMA}: $defs.boundary", errors
-    )
+    _closed_fields(boundary, set(BOUNDARY_VALUES), f"{ADVISORY_SCHEMA}: $defs.boundary", errors)
     _consts(boundary, BOUNDARY_VALUES, f"{ADVISORY_SCHEMA}: $defs.boundary", errors)
     contexts = set(
-        advisory_defs.get("match", {})
-        .get("properties", {})
-        .get("context", {})
-        .get("enum", ())
+        advisory_defs.get("match", {}).get("properties", {}).get("context", {}).get("enum", ())
     )
     if contexts != CONTEXTS:
         errors.append(f"{ADVISORY_SCHEMA}: match context vocabulary drifted")
@@ -620,9 +593,10 @@ def _schema_errors(root: Path) -> list[str]:
         f"{SIGNAL_SCHEMA}: properties.tortured_phrase_context",
         errors,
     )
-    if set(
-        phrase_context.get("properties", {}).get("surface", {}).get("enum", ())
-    ) != {"cited_title", "cited_abstract"}:
+    if set(phrase_context.get("properties", {}).get("surface", {}).get("enum", ())) != {
+        "cited_title",
+        "cited_abstract",
+    }:
         errors.append(f"{SIGNAL_SCHEMA}: citation surface vocabulary drifted")
     phrase_reasons = set(
         phrase_context.get("properties", {}).get("reason_code", {}).get("enum", ())
@@ -645,10 +619,8 @@ def _schema_errors(root: Path) -> list[str]:
     if (
         "tortured_phrase_context" not in set(then.get("required", ()))
         or then_properties.get("signal_type", {}).get("const") != "tortured_phrase_match"
-        or then_properties.get("epistemic_class", {}).get("const")
-        != "heuristic_advisory"
-        or then_properties.get("epistemic_label", {}).get("const")
-        != "HEURISTIC-INDICATOR"
+        or then_properties.get("epistemic_class", {}).get("const") != "heuristic_advisory"
+        or then_properties.get("epistemic_label", {}).get("const") != "HEURISTIC-INDICATOR"
         or then_properties.get("display", {})
         .get("properties", {})
         .get("summary_label", {})
@@ -662,10 +634,8 @@ def _schema_errors(root: Path) -> list[str]:
             continue
         then_properties_for_branch = branch.get("then", {}).get("properties", {})
         if (
-            then_properties_for_branch.get("check_status", {}).get("const")
-            == "not_checked"
-            and then_properties_for_branch.get("finding", {}).get("const")
-            == "unresolved"
+            then_properties_for_branch.get("check_status", {}).get("const") == "not_checked"
+            and then_properties_for_branch.get("finding", {}).get("const") == "unresolved"
         ):
             not_checked_reasons.update(
                 branch.get("if", {})
@@ -676,17 +646,13 @@ def _schema_errors(root: Path) -> list[str]:
                 .get("enum", ())
             )
     if "ABSTRACT_EMPTY" not in not_checked_reasons:
-        errors.append(
-            f"{SIGNAL_SCHEMA}: ABSTRACT_EMPTY must map to not_checked/unresolved"
-        )
+        errors.append(f"{SIGNAL_SCHEMA}: ABSTRACT_EMPTY must map to not_checked/unresolved")
     type_properties = type_branch.get("then", {}).get("properties", {}) if type_branch else {}
     terminal = type_properties.get("terminal_policy", {}).get("properties", {})
     display = type_properties.get("display", {}).get("properties", {})
     if (
-        type_properties.get("epistemic_class", {}).get("const")
-        != "heuristic_advisory"
-        or type_properties.get("epistemic_label", {}).get("const")
-        != "HEURISTIC-INDICATOR"
+        type_properties.get("epistemic_class", {}).get("const") != "heuristic_advisory"
+        or type_properties.get("epistemic_label", {}).get("const") != "HEURISTIC-INDICATOR"
         or terminal.get("eligible", {}).get("const") is not False
         or terminal.get("owner", {}).get("const") != "none"
         or terminal.get("current_effect", {}).get("const") != "advisory_only"
@@ -716,12 +682,8 @@ def _fixture_errors(root: Path) -> list[str]:
         (cited_detected, signal_schema, CITED_DETECTED_FIXTURE),
         (cited_missing, signal_schema, CITED_MISSING_FIXTURE),
     ):
-        validator = Draft202012Validator(
-            schema, format_checker=Draft202012Validator.FORMAT_CHECKER
-        )
-        validation_errors = sorted(
-            error.message for error in validator.iter_errors(value)
-        )
+        validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
+        validation_errors = sorted(error.message for error in validator.iter_errors(value))
         if validation_errors:
             errors.append(f"{label}: schema validation failed: {validation_errors[0]}")
 
@@ -774,9 +736,7 @@ def _fixture_errors(root: Path) -> list[str]:
     ):
         errors.append(f"{EXPECTATIONS_FIXTURE}: synthetic UNMEASURED claim ceiling drifted")
     input_paths = {
-        item.get("path")
-        for item in expectations.get("inputs", ())
-        if isinstance(item, dict)
+        item.get("path") for item in expectations.get("inputs", ()) if isinstance(item, dict)
     }
     if input_paths != {"own_draft.md", "own_draft.tex", "corpus_input.yaml"}:
         errors.append(f"{EXPECTATIONS_FIXTURE}: conformance input inventory drifted")
@@ -885,9 +845,7 @@ def _qualified(node: ast.AST, aliases: dict[str, str]) -> str | None:
 def _arg_names(function: ast.FunctionDef | ast.AsyncFunctionDef) -> set[str]:
     return {
         argument.arg
-        for argument in (
-            function.args.posonlyargs + function.args.args + function.args.kwonlyargs
-        )
+        for argument in (function.args.posonlyargs + function.args.args + function.args.kwonlyargs)
     }
 
 
@@ -979,8 +937,7 @@ def _existing_signal_count_is_aggregate_sum(
                 for child in ast.walk(value)
             )
             and any(
-                isinstance(child, ast.Constant)
-                and child.value == "bibliographic_integrity_signals"
+                isinstance(child, ast.Constant) and child.value == "bibliographic_integrity_signals"
                 for child in ast.walk(value)
             )
         )
@@ -995,14 +952,11 @@ def _call_lines(
     return sorted(
         node.lineno
         for node in ast.walk(function)
-        if isinstance(node, ast.Call)
-        and _qualified(node.func, aliases) == call_name
+        if isinstance(node, ast.Call) and _qualified(node.func, aliases) == call_name
     )
 
 
-def _dict_binds_name(
-    function: ast.FunctionDef | ast.AsyncFunctionDef, key: str, name: str
-) -> bool:
+def _dict_binds_name(function: ast.FunctionDef | ast.AsyncFunctionDef, key: str, name: str) -> bool:
     for node in ast.walk(function):
         if not isinstance(node, ast.Dict):
             continue
@@ -1043,12 +997,9 @@ def _transitive_hermetic_errors(root: Path, relative: Path) -> list[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported = [node.module]
         for name in imported:
-            if (
-                name.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS
-                or any(
-                    name == prefix or name.startswith(prefix + ".")
-                    for prefix in FORBIDDEN_IMPORT_PREFIXES
-                )
+            if name.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS or any(
+                name == prefix or name.startswith(prefix + ".")
+                for prefix in FORBIDDEN_IMPORT_PREFIXES
             ):
                 errors.append(
                     f"{relative}: forbidden transitive model/network/process import {name}"
@@ -1056,9 +1007,7 @@ def _transitive_hermetic_errors(root: Path, relative: Path) -> list[str]:
         if isinstance(node, ast.Call):
             name = _qualified(node.func, aliases)
             if name in FORBIDDEN_CALLS:
-                errors.append(
-                    f"{relative}: forbidden transitive model/network/process call {name}"
-                )
+                errors.append(f"{relative}: forbidden transitive model/network/process call {name}")
             if name in FORBIDDEN_CLOCK_CALLS:
                 errors.append(f"{relative}: forbidden transitive ambient clock call {name}")
             tail = name.rsplit(".", 1)[-1] if name else None
@@ -1131,12 +1080,9 @@ def _runtime_errors(root: Path) -> list[str]:
         elif isinstance(node, ast.ImportFrom) and node.module:
             imported = [node.module]
         for name in imported:
-            if (
-                name.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS
-                or any(
-                    name == prefix or name.startswith(prefix + ".")
-                    for prefix in FORBIDDEN_IMPORT_PREFIXES
-                )
+            if name.split(".", 1)[0] in FORBIDDEN_IMPORT_ROOTS or any(
+                name == prefix or name.startswith(prefix + ".")
+                for prefix in FORBIDDEN_IMPORT_PREFIXES
             ):
                 errors.append(f"{RUNTIME}: forbidden model/network/process import {name}")
         if isinstance(node, ast.Call):
@@ -1225,11 +1171,7 @@ def _runtime_errors(root: Path) -> list[str]:
     )
     for function_name, constant_name, minimum in limit_sites:
         function = functions.get(function_name)
-        count = (
-            _limit_comparison_count(function, constant_name)
-            if function is not None
-            else 0
-        )
+        count = _limit_comparison_count(function, constant_name) if function is not None else 0
         if count < minimum:
             errors.append(
                 f"{RUNTIME}: {function_name} must enforce {constant_name} "
@@ -1255,13 +1197,9 @@ def _runtime_errors(root: Path) -> list[str]:
     structure_guard = functions.get("_reject_nonfinite_recursive")
     if structure_guard is None:
         errors.append(f"{RUNTIME}: missing bounded iterative structure guard")
-    if strict_json is None or not _call_lines(
-        strict_json, aliases, "_reject_nonfinite_recursive"
-    ):
+    if strict_json is None or not _call_lines(strict_json, aliases, "_reject_nonfinite_recursive"):
         errors.append(f"{RUNTIME}: strict JSON loader must apply the structure guard")
-    if enricher is None or not _call_lines(
-        enricher, aliases, "_reject_nonfinite_recursive"
-    ):
+    if enricher is None or not _call_lines(enricher, aliases, "_reject_nonfinite_recursive"):
         errors.append(f"{RUNTIME}: direct passport enricher must apply the structure guard")
     entry_guard = (
         _strict_limit_guard(
@@ -1296,11 +1234,7 @@ def _runtime_errors(root: Path) -> list[str]:
             f"{RUNTIME}: existing_signal_count must aggregate every pre-existing "
             "bibliographic_integrity_signals row"
         )
-    copy_lines = (
-        _call_lines(enricher, aliases, "copy.deepcopy")
-        if enricher is not None
-        else []
-    )
+    copy_lines = _call_lines(enricher, aliases, "copy.deepcopy") if enricher is not None else []
     if (
         len(copy_lines) != 1
         or entry_guard is None
@@ -1320,9 +1254,7 @@ def _runtime_errors(root: Path) -> list[str]:
 
     main_function = functions.get("main")
     enrich_lines = (
-        _call_lines(main_function, aliases, "enrich_passport")
-        if main_function is not None
-        else []
+        _call_lines(main_function, aliases, "enrich_passport") if main_function is not None else []
     )
     passport_write_lines = (
         _call_lines(main_function, aliases, "_atomic_write_passport")
@@ -1342,9 +1274,7 @@ def _runtime_errors(root: Path) -> list[str]:
     if cited_builder is None or not _dict_binds_name(
         cited_builder, "summary_label", "ADVISORY_LABEL"
     ):
-        errors.append(
-            f"{RUNTIME}: build_cited_signal must bind summary_label to ADVISORY_LABEL"
-        )
+        errors.append(f"{RUNTIME}: build_cited_signal must bind summary_label to ADVISORY_LABEL")
     own_builder = functions.get("build_own_draft_report")
     if own_builder is None or "DOCUMENT_EMPTY" not in _string_literals(own_builder):
         errors.append(f"{RUNTIME}: empty draft must emit DOCUMENT_EMPTY")
@@ -1379,8 +1309,7 @@ def _frozen_runtime_errors(root: Path) -> list[str]:
             continue
         if actual != expected:
             errors.append(
-                f"{relative}: frozen runtime sha256 drifted; "
-                f"expected {expected}, got {actual}"
+                f"{relative}: frozen runtime sha256 drifted; " f"expected {expected}, got {actual}"
             )
     return errors
 
@@ -1416,9 +1345,7 @@ def _consumer_ast_errors(root: Path) -> list[str]:
         and node.func.id == "validate_cited_signal_binding"
     ]
     if len(calls) != 1:
-        errors.append(
-            f"{CORPUS_CHECKER}: must call validate_cited_signal_binding exactly once"
-        )
+        errors.append(f"{CORPUS_CHECKER}: must call validate_cited_signal_binding exactly once")
     return errors
 
 
@@ -1463,8 +1390,7 @@ def _measurement_plan_errors(root: Path) -> list[str]:
         "`preregistration.frozen_commit`",
         "No retry is permitted",
         "Primary metric: `synthetic_conformance_test_pass_rate`",
-        "It uses zero judges, no agreement statistic, no adjudication, and no "
-        "experimental arms",
+        "It uses zero judges, no agreement statistic, no adjudication, and no " "experimental arms",
         "A passing row may say only: “the pinned deterministic runtime passed the "
         "pinned repository-owned synthetic conformance suite.”",
         "It remains `UNMEASURED` for contextual validity and real-world "
@@ -1510,8 +1436,7 @@ def _json_values_equal(actual: Any, expected: Any) -> bool:
         )
     if isinstance(actual, list):
         return len(actual) == len(expected) and all(
-            _json_values_equal(left, right)
-            for left, right in zip(actual, expected, strict=True)
+            _json_values_equal(left, right) for left, right in zip(actual, expected, strict=True)
         )
     return bool(actual == expected)
 
@@ -1569,9 +1494,7 @@ def _walk_heldout_json_files(root: Path) -> tuple[list[Path], list[str]]:
         if real in visited:
             return
         if not (real.is_relative_to(heldout_real) or real.is_relative_to(repo_real)):
-            walk_errors.append(
-                f"{directory}: symlinked directory resolves outside the repository"
-            )
+            walk_errors.append(f"{directory}: symlinked directory resolves outside the repository")
             return
         visited.add(real)
         try:
@@ -1595,13 +1518,8 @@ def _walk_heldout_json_files(root: Path) -> tuple[list[Path], list[str]]:
             except OSError as exc:
                 walk_errors.append(f"{path}: cannot resolve JSON file: {exc}")
                 continue
-            if not (
-                file_real.is_relative_to(heldout_real)
-                or file_real.is_relative_to(repo_real)
-            ):
-                walk_errors.append(
-                    f"{path}: file symlink resolves outside the repository"
-                )
+            if not (file_real.is_relative_to(heldout_real) or file_real.is_relative_to(repo_real)):
+                walk_errors.append(f"{path}: file symlink resolves outside the repository")
                 continue
             found.append(path)
 
@@ -1698,8 +1616,7 @@ def _expected_measurement_report(manifest_sha256: str) -> dict[str, Any]:
             ),
             "spread": None,
             "exception": (
-                "The deterministic exact-byte replay is not rerun to manufacture "
-                "variance."
+                "The deterministic exact-byte replay is not rerun to manufacture " "variance."
             ),
         },
         "adjudication": {"applies": False},
@@ -1720,8 +1637,7 @@ def _expected_measurement_report(manifest_sha256: str) -> dict[str, Any]:
         },
         "attempts": {
             "atomicity": (
-                "The exact registered command was dispatched once, with no retry "
-                "permitted."
+                "The exact registered command was dispatched once, with no retry " "permitted."
             ),
             "partial_published": False,
             "blocked_runs": [],
@@ -1775,9 +1691,7 @@ def _measurement_errors(root: Path) -> list[str]:
         try:
             value, raw = _load_json_bytes(root / relative)
         except (OSError, UnicodeError, ValueError, DuplicateKeyError) as exc:
-            errors.append(
-                f"{relative}: cannot load canonical #660 measurement artifact: {exc}"
-            )
+            errors.append(f"{relative}: cannot load canonical #660 measurement artifact: {exc}")
         else:
             values[relative] = value
             raw_bytes[relative] = raw
@@ -1796,9 +1710,7 @@ def _measurement_errors(root: Path) -> list[str]:
             candidate, _ = _load_json_bytes(path)
         except (OSError, UnicodeError, ValueError, DuplicateKeyError) as exc:
             if "tortured_phrase_conformance" in path.parts:
-                errors.append(
-                    f"{relative}: cannot inspect the closed #660 row set: {exc}"
-                )
+                errors.append(f"{relative}: cannot inspect the closed #660 row set: {exc}")
             continue
         if "measurement_contract" in candidate and (
             candidate.get("suite") == "tortured_phrase_conformance"
@@ -1914,9 +1826,7 @@ def _ci_errors(root: Path) -> list[str]:
     }
     for identifier, path in expected.items():
         matches = [
-            item
-            for item in entries
-            if isinstance(item, dict) and item.get("id") == identifier
+            item for item in entries if isinstance(item, dict) and item.get("id") == identifier
         ]
         if len(matches) != 1 or matches[0].get("path") != path:
             errors.append(f"{CI_MANIFEST}: missing exact {identifier!r} -> {path!r} binding")
@@ -1954,9 +1864,7 @@ def run_checks(root: Path = REPO_ROOT) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument(
-        "--root", type=Path, default=REPO_ROOT, help="Repository root to inspect."
-    )
+    parser.add_argument("--root", type=Path, default=REPO_ROOT, help="Repository root to inspect.")
     try:
         args = parser.parse_args(argv)
     except SystemExit as exc:

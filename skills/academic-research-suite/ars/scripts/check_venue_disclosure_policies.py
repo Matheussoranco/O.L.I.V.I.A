@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """Structural guard for the 15-entry venue disclosure policy database."""
 
-from pathlib import Path
 import re
 import sys
-
+from pathlib import Path
 
 DEFAULT = Path("academic-paper/references/venue_disclosure_policies.md")
 REQUIRED = (
@@ -16,9 +15,7 @@ REQUIRED = (
     "Prohibited uses",
     "Authorship rule",
 )
-FIELD_ROW = re.compile(
-    r"^\|[ \t]*([^|\n]*?)[ \t]*\|[ \t]*((?:\\\||[^|\n])*)\|[ \t]*$"
-)
+FIELD_ROW = re.compile(r"^\|[ \t]*([^|\n]*?)[ \t]*\|[ \t]*((?:\\\||[^|\n])*)\|[ \t]*$")
 
 
 def main() -> int:
@@ -35,7 +32,7 @@ def main() -> int:
         errors.append("venue headings are not globally case-insensitive alphabetical")
     for index, match in enumerate(headings):
         end = headings[index + 1].start() if index + 1 < len(headings) else len(text)
-        entry = text[match.end():end]
+        entry = text[match.end() : end]
         for field in REQUIRED:
             values = []
             for line in entry.splitlines():
@@ -44,9 +41,7 @@ def main() -> int:
                     row = FIELD_ROW.fullmatch(line)
                     values.append(row.group(2) if row else None)
             if len(values) != 1:
-                errors.append(
-                    f"{match.group(1)}: {field!r} occurs {len(values)} times"
-                )
+                errors.append(f"{match.group(1)}: {field!r} occurs {len(values)} times")
             elif values[0] is None:
                 errors.append(f"{match.group(1)}: {field!r} is not a two-column row")
             elif not values[0].strip():

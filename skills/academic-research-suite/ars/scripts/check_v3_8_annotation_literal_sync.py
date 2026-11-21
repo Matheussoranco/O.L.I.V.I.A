@@ -130,7 +130,9 @@ def _extract_finalizer_high_warn_constants(source: str) -> dict[str, str]:
     # import path so the load succeeds end-to-end.
     sys.path.insert(0, str(REPO_ROOT))
     try:
-        from scripts import claim_audit_finalizer  # noqa: F401  (import for side effect: load constants)
+        from scripts import (
+            claim_audit_finalizer,  # (import for side effect: load constants)
+        )
 
         for name in dir(claim_audit_finalizer):
             if name.startswith("ANNOTATION_HIGH_WARN_"):
@@ -200,10 +202,7 @@ def main() -> int:
             # indicates a rename attack — e.g. `…VIOLATION-RENAMED]`
             # should NOT satisfy `…VIOLATION` because the boundary is a
             # hyphen-letter run that extends the identifier.
-            present = any(
-                f"{token}{boundary}" in refuse_block
-                for boundary in (" ", "]", "`")
-            )
+            present = any(f"{token}{boundary}" in refuse_block for boundary in (" ", "]", "`"))
         if not present:
             missing.append((name, token))
 

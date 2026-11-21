@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
-
 from scripts.research_workflow_profile import (
     DEFAULT_FIELD_GENERAL_PROFILE,
     JCS_SAFE_INTEGER_MAX,
@@ -28,15 +27,14 @@ from scripts.research_workflow_profile import (
     create_selection_receipt,
     effective_stage_map,
     load_profile,
-    profile_digest,
     profile_binding,
+    profile_digest,
     seal_profile,
     validate_profile,
     validate_profile_catalog,
     validate_selection_receipt,
     validate_shipped_field_general,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACTS = REPO_ROOT / "shared" / "contracts" / "research_workflow"
@@ -59,12 +57,8 @@ def _schema_validators() -> tuple[Draft202012Validator, Draft202012Validator]:
     registry = Registry().with_resource(profile_schema["$id"], resource)
     registry = registry.with_resource("research_workflow_profile.schema.json", resource)
     return (
-        Draft202012Validator(
-            profile_schema, registry=registry, format_checker=FormatChecker()
-        ),
-        Draft202012Validator(
-            receipt_schema, registry=registry, format_checker=FormatChecker()
-        ),
+        Draft202012Validator(profile_schema, registry=registry, format_checker=FormatChecker()),
+        Draft202012Validator(receipt_schema, registry=registry, format_checker=FormatChecker()),
     )
 
 
@@ -79,13 +73,8 @@ def _clinical_profile(*, version: str = "1.0.0") -> dict:
             "profile_id": "clinical_human_subjects",
             "profile_version": version,
             "research_family": "clinical_human_subjects",
-            "display_name": copy.deepcopy(
-                RESEARCH_FAMILY_DISPLAY_NAMES["clinical_human_subjects"]
-            ),
-            "stage_map": {
-                task_family: {"state": "applicable"}
-                for task_family in TASK_FAMILIES
-            },
+            "display_name": copy.deepcopy(RESEARCH_FAMILY_DISPLAY_NAMES["clinical_human_subjects"]),
+            "stage_map": {task_family: {"state": "applicable"} for task_family in TASK_FAMILIES},
             "alternative_categories": {
                 "state": "declared",
                 "categories": ["alternative_design", "boundary_condition"],

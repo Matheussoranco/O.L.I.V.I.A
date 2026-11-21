@@ -56,9 +56,7 @@ def _check_rubric(root: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
 
     if "Wang" not in text or "2026" not in text or DOI_TOKEN not in text:
-        errs.append(
-            f"{RUBRIC_PATH}: must cite Wang & Zhang (2026) including DOI {DOI_TOKEN}"
-        )
+        errs.append(f"{RUBRIC_PATH}: must cite Wang & Zhang (2026) including DOI {DOI_TOKEN}")
 
     fm, body = split_frontmatter(text)
     if fm is None:

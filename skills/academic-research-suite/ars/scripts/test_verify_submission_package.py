@@ -15,14 +15,12 @@ from pathlib import Path
 import jsonschema
 import pytest
 import yaml
-
 from verify_submission_package import run
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "submission_package"
 SCHEMA_PATH = (
-    REPO_ROOT / "shared" / "contracts" / "submission"
-    / "submission_verification_report.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "submission" / "submission_verification_report.schema.json"
 )
 REPORT_BASENAME = "submission_verification_report.json"
 
@@ -35,10 +33,7 @@ def run_dir(package_dir, extra_args=()):
     """Run the CLI on a package dir; returns (exit_code, report_dict)."""
     rc = run([str(package_dir), *extra_args])
     report_path = package_dir / REPORT_BASENAME
-    report = (
-        json.loads(report_path.read_text(encoding="utf-8"))
-        if report_path.is_file() else None
-    )
+    report = json.loads(report_path.read_text(encoding="utf-8")) if report_path.is_file() else None
     return rc, report
 
 
@@ -59,6 +54,7 @@ def checks_by_id(report):
 
 
 # --- Round 1: clean package, joined marker path -----------------------------
+
 
 def test_clean_package_family_c_passes(tmp_path):
     # Without a venue profile the Family B checks are NOT-CHECKED (§3.2), so
@@ -83,6 +79,7 @@ def test_clean_package_is_deterministic_joined_marker(tmp_path):
 
 
 # --- Slice 2: Family B venue limits ------------------------------------------
+
 
 def test_no_venue_profile_family_b_not_checked(tmp_path):
     # §3.2: without a venue profile every Family B check is
@@ -123,8 +120,7 @@ def test_full_profile_all_family_b_pass(tmp_path):
     # venue_clean satisfies every limit in profiles/full.yaml; with both
     # families green the exit code is a true 0.
     profile = FIXTURES / "profiles" / "full.yaml"
-    rc, report, _ = run_on("venue_clean", tmp_path,
-                           extra_args=["--venue-profile", str(profile)])
+    rc, report, _ = run_on("venue_clean", tmp_path, extra_args=["--venue-profile", str(profile)])
     assert rc == 0
     by_id = checks_by_id(report)
     for cid in ("B1", "B2", "B3", "B4", "B5", "C1", "C2"):
@@ -141,8 +137,9 @@ def test_violated_profile_every_family_b_check_fails(tmp_path):
     # Mutation discipline (§8): every Family B check has a fixture that fails
     # it. venue_violations breaks all five limits in profiles/tight.yaml.
     profile = FIXTURES / "profiles" / "tight.yaml"
-    rc, report, _ = run_on("venue_violations", tmp_path,
-                           extra_args=["--venue-profile", str(profile)])
+    rc, report, _ = run_on(
+        "venue_violations", tmp_path, extra_args=["--venue-profile", str(profile)]
+    )
     assert rc == 1
     by_id = checks_by_id(report)
     for cid in ("B1", "B2", "B3", "B4", "B5"):
@@ -159,17 +156,17 @@ def test_partial_profile_runs_what_it_can(tmp_path):
     # §4: a partially-declared profile runs the checks it can and
     # NOT-CHECKEDs the rest, each with the undeclared field named.
     profile = tmp_path / "partial.yaml"
-    profile.write_text(
-        "word_limit: 200\ndeclared_by: scholar\n", encoding="utf-8")
-    rc, report, _ = run_on("venue_clean", tmp_path,
-                           extra_args=["--venue-profile", str(profile)])
+    profile.write_text("word_limit: 200\ndeclared_by: scholar\n", encoding="utf-8")
+    rc, report, _ = run_on("venue_clean", tmp_path, extra_args=["--venue-profile", str(profile)])
     assert rc == 3
     by_id = checks_by_id(report)
     assert by_id["B1"]["status"] == "pass"
-    for cid, field in (("B2", "abstract_word_limit"),
-                       ("B3", "keyword_range"),
-                       ("B4", "required_sections"),
-                       ("B5", "reference_limit")):
+    for cid, field in (
+        ("B2", "abstract_word_limit"),
+        ("B3", "keyword_range"),
+        ("B4", "required_sections"),
+        ("B5", "reference_limit"),
+    ):
         assert by_id[cid]["status"] == "not_checked"
         assert f"{field} not declared" in by_id[cid]["detail"]
 
@@ -178,16 +175,13 @@ def test_word_count_tolerance_two_percent(tmp_path):
     # §3.2: ±2% tolerance before fail (format-conversion noise). 101 words
     # against a 100 limit passes; 103 fails.
     profile = tmp_path / "profile.yaml"
-    profile.write_text(
-        "word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
+    profile.write_text("word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
     for n_words, expected in ((101, "pass"), (103, "fail")):
         package = tmp_path / f"pkg{n_words}"
         package.mkdir()
-        (package / "paper.md").write_text(
-            " ".join(["word"] * n_words) + "\n", encoding="utf-8")
+        (package / "paper.md").write_text(" ".join(["word"] * n_words) + "\n", encoding="utf-8")
         run([str(package), "--venue-profile", str(profile)])
-        report = json.loads(
-            (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+        report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
         assert checks_by_id(report)["B1"]["status"] == expected, n_words
 
 
@@ -196,11 +190,11 @@ def test_invalid_venue_profile_is_usage_error(tmp_path):
     package.mkdir()
     (package / "paper.md").write_text("# x\n", encoding="utf-8")
     cases = (
-        "word_limit: 100\n",                                  # no declared_by
-        "declared_by: tool\n",                                # wrong provenance
+        "word_limit: 100\n",  # no declared_by
+        "declared_by: tool\n",  # wrong provenance
         "declared_by: scholar\nword_count_scope: detexed\n",  # bad enum
         "declared_by: scholar\nkeyword_range: {min: 5, max: 2}\n",  # min>max
-        "declared_by: scholar\nword_limit: -3\n",             # bad int
+        "declared_by: scholar\nword_limit: -3\n",  # bad int
     )
     for body in cases:
         profile = tmp_path / "bad.yaml"
@@ -213,10 +207,10 @@ def test_missing_abstract_and_keywords_not_checked(tmp_path):
     # reason — never folded into pass (§1.4), never guessed.
     profile = tmp_path / "profile.yaml"
     profile.write_text(
-        "abstract_word_limit: 50\nkeyword_range: {min: 1, max: 5}\n"
-        "declared_by: scholar\n", encoding="utf-8")
-    rc, report, _ = run_on("clean", tmp_path,
-                           extra_args=["--venue-profile", str(profile)])
+        "abstract_word_limit: 50\nkeyword_range: {min: 1, max: 5}\n" "declared_by: scholar\n",
+        encoding="utf-8",
+    )
+    rc, report, _ = run_on("clean", tmp_path, extra_args=["--venue-profile", str(profile)])
     by_id = checks_by_id(report)
     assert by_id["B2"]["status"] == "not_checked"
     assert "no abstract section" in by_id["B2"]["detail"]
@@ -229,10 +223,8 @@ def test_latex_manuscript_word_count_declares_detex(tmp_path):
     # whitespace-split, the method is declared in the report, never promised
     # venue-exact.
     profile = tmp_path / "profile.yaml"
-    profile.write_text(
-        "word_limit: 5\ndeclared_by: scholar\n", encoding="utf-8")
-    rc, report, _ = run_on("fallback_latex", tmp_path,
-                           extra_args=["--venue-profile", str(profile)])
+    profile.write_text("word_limit: 5\ndeclared_by: scholar\n", encoding="utf-8")
+    rc, report, _ = run_on("fallback_latex", tmp_path, extra_args=["--venue-profile", str(profile)])
     by_id = checks_by_id(report)
     assert by_id["B1"]["status"] == "fail"
     assert "naive detex" in by_id["B1"]["detail"]
@@ -251,11 +243,11 @@ def test_word_count_scope_all_counts_everything(tmp_path):
         (package / "paper.md").write_text(base, encoding="utf-8")
         profile = tmp_path / f"{scope}.yaml"
         profile.write_text(
-            f"word_limit: 10\nword_count_scope: {scope}\n"
-            "declared_by: scholar\n", encoding="utf-8")
+            f"word_limit: 10\nword_count_scope: {scope}\n" "declared_by: scholar\n",
+            encoding="utf-8",
+        )
         run([str(package), "--venue-profile", str(profile)])
-        report = json.loads(
-            (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+        report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
         assert checks_by_id(report)["B1"]["status"] == expected, scope
 
 
@@ -267,9 +259,9 @@ def test_profile_validation_matches_schema_strictness(tmp_path):
     package.mkdir()
     (package / "paper.md").write_text("# x\n", encoding="utf-8")
     cases = (
-        "declared_by: scholar\nword_limt: 100\n",     # unknown field (typo)
-        "declared_by: scholar\nword_limit: true\n",   # bool is not an int
-        "declared_by: scholar\nvenue_name: 42\n",     # venue_name not a string
+        "declared_by: scholar\nword_limt: 100\n",  # unknown field (typo)
+        "declared_by: scholar\nword_limit: true\n",  # bool is not an int
+        "declared_by: scholar\nvenue_name: 42\n",  # venue_name not a string
         "declared_by: scholar\nkeyword_range: {min: -1, max: 2}\n",  # min < 0
     )
     for body in cases:
@@ -284,23 +276,20 @@ def test_ambiguous_manuscript_not_checked(tmp_path):
     # NOT-CHECKED(ambiguous manuscript). A canonical name (paper.* /
     # manuscript.* / main.*) resolves the ambiguity.
     profile = tmp_path / "profile.yaml"
-    profile.write_text(
-        "word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
+    profile.write_text("word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
     package = tmp_path / "pkg"
     package.mkdir()
     (package / "chapter_one.md").write_text("alpha " * 20, encoding="utf-8")
     (package / "rejoinder.md").write_text("beta " * 30, encoding="utf-8")
     run([str(package), "--venue-profile", str(profile)])
-    report = json.loads(
-        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
     b1 = checks_by_id(report)["B1"]
     assert b1["status"] == "not_checked"
     assert "ambiguous manuscript" in b1["detail"]
 
     (package / "paper.md").write_text("gamma " * 10, encoding="utf-8")
     run([str(package), "--venue-profile", str(profile)])
-    report = json.loads(
-        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
     b1 = checks_by_id(report)["B1"]
     assert b1["status"] == "pass"
     assert b1["location"] == "paper.md"
@@ -311,17 +300,16 @@ def test_abstract_tolerance_and_b5_no_reference_list(tmp_path):
     # declared-limit-but-no-reference-list branch.
     profile = tmp_path / "profile.yaml"
     profile.write_text(
-        "abstract_word_limit: 100\nreference_limit: 5\n"
-        "declared_by: scholar\n", encoding="utf-8")
+        "abstract_word_limit: 100\nreference_limit: 5\n" "declared_by: scholar\n", encoding="utf-8"
+    )
     for n_words, expected in ((101, "pass"), (103, "fail")):
         package = tmp_path / f"pkg{n_words}"
         package.mkdir()
         (package / "paper.md").write_text(
-            "## Abstract\n\n" + " ".join(["word"] * n_words) + "\n",
-            encoding="utf-8")
+            "## Abstract\n\n" + " ".join(["word"] * n_words) + "\n", encoding="utf-8"
+        )
         run([str(package), "--venue-profile", str(profile)])
-        report = json.loads(
-            (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+        report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
         by_id = checks_by_id(report)
         assert by_id["B2"]["status"] == expected, n_words
         assert by_id["B5"]["status"] == "not_checked"
@@ -330,20 +318,19 @@ def test_abstract_tolerance_and_b5_no_reference_list(tmp_path):
 
 def test_profile_with_no_manuscript_not_checked(tmp_path):
     profile = tmp_path / "profile.yaml"
-    profile.write_text(
-        "word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
+    profile.write_text("word_limit: 100\ndeclared_by: scholar\n", encoding="utf-8")
     package = tmp_path / "pkg"
     package.mkdir()
     (package / "figure.png").write_bytes(b"\x89PNG\r\n")
     run([str(package), "--venue-profile", str(profile)])
-    report = json.loads(
-        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
     b1 = checks_by_id(report)["B1"]
     assert b1["status"] == "not_checked"
     assert "no manuscript found" in b1["detail"]
 
 
 # --- Slice 3: Family A blind-review residue ----------------------------------
+
 
 def test_family_a_not_applicable_without_trigger(tmp_path):
     # §3.1: the residue scan runs only when the package contains an anonymized
@@ -366,10 +353,8 @@ def test_declared_double_blind_without_variant_fails_A7(tmp_path):
     # itself a fail — the most basic residue of all, the blind version is
     # missing. A1-A6 have nothing to scan: not_checked.
     profile = tmp_path / "double.yaml"
-    profile.write_text(
-        "blind_review: double\ndeclared_by: scholar\n", encoding="utf-8")
-    rc, report, _ = run_on("clean", tmp_path,
-                           extra_args=["--venue-profile", str(profile)])
+    profile.write_text("blind_review: double\ndeclared_by: scholar\n", encoding="utf-8")
+    rc, report, _ = run_on("clean", tmp_path, extra_args=["--venue-profile", str(profile)])
     assert rc == 1
     by_id = checks_by_id(report)
     assert by_id["A7"]["status"] == "fail"
@@ -387,11 +372,12 @@ def test_anonymized_variant_triggers_family_a(tmp_path):
     package = tmp_path / "pkg"
     package.mkdir()
     (package / "paper.md").write_text(
-        "Body (Smith, 2024) <!--ref:smith2024-->.\n", encoding="utf-8")
-    shutil.copy(FIXTURES / "clean" / "references.bib",
-                package / "references.bib")
+        "Body (Smith, 2024) <!--ref:smith2024-->.\n", encoding="utf-8"
+    )
+    shutil.copy(FIXTURES / "clean" / "references.bib", package / "references.bib")
     (package / "paper_anonymized.md").write_text(
-        "# T\n\nBody text without identity.\n", encoding="utf-8")
+        "# T\n\nBody text without identity.\n", encoding="utf-8"
+    )
     rc, report = run_dir(package)
     by_id = checks_by_id(report)
     assert by_id["A7"]["status"] == "pass"
@@ -403,32 +389,34 @@ def test_anonymized_variant_triggers_family_a(tmp_path):
 
 _DOCX_CORE_TMPL = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-    '<cp:coreProperties '
+    "<cp:coreProperties "
     'xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
     'xmlns:dc="http://purl.org/dc/elements/1.1/">'
     "<dc:creator>{creator}</dc:creator>"
     "<cp:lastModifiedBy>{last_modified_by}</cp:lastModifiedBy>"
-    "</cp:coreProperties>")
+    "</cp:coreProperties>"
+)
 _DOCX_DOC_TMPL = (
     '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-    '<w:document '
+    "<w:document "
     'xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">'
     "<w:body><w:p><w:r><w:t>Blind body text.</w:t></w:r></w:p>{extra}</w:body>"
-    "</w:document>")
+    "</w:document>"
+)
 
 
-def make_docx(path, creator="", last_modified_by="", ins_author=None,
-              comment_author=None):
+def make_docx(path, creator="", last_modified_by="", ins_author=None, comment_author=None):
     """Minimal raw-structure .docx (a zip with core.xml + document.xml [+
     comments.xml]) — exactly the parts the residue scan reads (§1.3: the
     deliverable is the raw file, not the rendered view)."""
     extra = ""
     if ins_author:
-        extra = (f'<w:ins w:id="1" w:author="{ins_author}">'
-                 "<w:r><w:t>inserted</w:t></w:r></w:ins>")
+        extra = f'<w:ins w:id="1" w:author="{ins_author}">' "<w:r><w:t>inserted</w:t></w:r></w:ins>"
     with zipfile.ZipFile(path, "w") as z:
-        z.writestr("docProps/core.xml", _DOCX_CORE_TMPL.format(
-            creator=creator, last_modified_by=last_modified_by))
+        z.writestr(
+            "docProps/core.xml",
+            _DOCX_CORE_TMPL.format(creator=creator, last_modified_by=last_modified_by),
+        )
         z.writestr("word/document.xml", _DOCX_DOC_TMPL.format(extra=extra))
         if comment_author:
             z.writestr(
@@ -438,7 +426,8 @@ def make_docx(path, creator="", last_modified_by="", ins_author=None,
                 'wordprocessingml/2006/main">'
                 f'<w:comment w:id="0" w:author="{comment_author}">'
                 "<w:p><w:r><w:t>note</w:t></w:r></w:p></w:comment>"
-                "</w:comments>")
+                "</w:comments>",
+            )
 
 
 def _blind_package(tmp_path, **docx_kwargs):
@@ -536,21 +525,19 @@ def test_A4_strict_only_when_profile_forbids_acknowledgments(tmp_path):
         package.mkdir()
         (package / "paper.md").write_text("Body.\n", encoding="utf-8")
         (package / "paper_anonymized.md").write_text(
-            "# Title\n\n## Acknowledgments\n\nWe thank our colleagues.\n",
-            encoding="utf-8")
+            "# Title\n\n## Acknowledgments\n\nWe thank our colleagues.\n", encoding="utf-8"
+        )
         profile = tmp_path / f"p{len(profile_body)}.yaml"
         profile.write_text(profile_body, encoding="utf-8")
         run([str(package), "--venue-profile", str(profile)])
-        return json.loads(
-            (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+        return json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
 
     base = "blind_review: double\ndeclared_by: scholar\n"
     a4 = checks_by_id(build(base))["A4"]
     assert a4["status"] == "fail"
     assert a4["strict_eligible"] is False
 
-    a4 = checks_by_id(build(
-        base + "acknowledgments_forbidden_in_blind: true\n"))["A4"]
+    a4 = checks_by_id(build(base + "acknowledgments_forbidden_in_blind: true\n"))["A4"]
     assert a4["status"] == "fail"
     assert a4["strict_eligible"] is True
 
@@ -591,8 +578,8 @@ def test_A5_zh_tw_self_citation_phrase(tmp_path):
     package.mkdir()
     (package / "paper.md").write_text("Body.\n", encoding="utf-8")
     (package / "paper_anonymized.md").write_text(
-        "# 匿名稿\n\n如我們先前的研究所示，品保回饋迴圈存在斷點。\n",
-        encoding="utf-8")
+        "# 匿名稿\n\n如我們先前的研究所示，品保回饋迴圈存在斷點。\n", encoding="utf-8"
+    )
     _rc, report = run_dir(package)
     a5 = checks_by_id(report)["A5"]
     assert a5["status"] == "fail"
@@ -608,8 +595,8 @@ def test_A5_zh_tw_third_person_author_self_reference(tmp_path):
     package.mkdir()
     (package / "paper.md").write_text("Body.\n", encoding="utf-8")
     (package / "paper_anonymized.md").write_text(
-        "# 匿名稿\n\n本文作者先前已就品保回饋迴圈提出分析架構。\n",
-        encoding="utf-8")
+        "# 匿名稿\n\n本文作者先前已就品保回饋迴圈提出分析架構。\n", encoding="utf-8"
+    )
     _rc, report = run_dir(package)
     a5 = checks_by_id(report)["A5"]
     assert a5["status"] == "fail"
@@ -624,14 +611,15 @@ def test_A5_other_authors_prior_work_not_flagged(tmp_path):
     package.mkdir()
     (package / "paper.md").write_text("Body.\n", encoding="utf-8")
     (package / "paper_anonymized.md").write_text(
-        "# 匿名稿\n\n該作者先前的研究指出品保回饋迴圈存在斷點。\n",
-        encoding="utf-8")
+        "# 匿名稿\n\n該作者先前的研究指出品保回饋迴圈存在斷點。\n", encoding="utf-8"
+    )
     _rc, report = run_dir(package)
     a5 = checks_by_id(report)["A5"]
     assert a5["status"] == "pass"
 
 
 # --- codex slice-3 review round ----------------------------------------------
+
 
 def test_A4_docx_only_variant_is_not_checked_not_applicable(tmp_path):
     # codex P1: a DOCX-only blind variant means the acknowledgments scan
@@ -655,11 +643,9 @@ def test_A7_not_satisfied_by_blind_named_supplement(tmp_path):
     (package / "paper.md").write_text("Body.\n", encoding="utf-8")
     (package / "blind_survey.csv").write_text("q,a\n", encoding="utf-8")
     profile = tmp_path / "double.yaml"
-    profile.write_text(
-        "blind_review: double\ndeclared_by: scholar\n", encoding="utf-8")
+    profile.write_text("blind_review: double\ndeclared_by: scholar\n", encoding="utf-8")
     rc = run([str(package), "--venue-profile", str(profile)])
-    report = json.loads(
-        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
     assert rc == 1
     assert checks_by_id(report)["A7"]["status"] == "fail"
 
@@ -694,8 +680,9 @@ def test_oversized_docx_part_is_not_checked(tmp_path, monkeypatch):
     package = tmp_path / "pkg"
     package.mkdir()
     (package / "paper.md").write_text("Body.\n", encoding="utf-8")
-    make_docx(package / "paper_anonymized.docx",
-              creator="x" * 200)  # inflates core.xml past the test cap
+    make_docx(
+        package / "paper_anonymized.docx", creator="x" * 200
+    )  # inflates core.xml past the test cap
     _rc, report = run_dir(package)
     a2 = checks_by_id(report)["A2"]
     assert a2["status"] == "not_checked"
@@ -708,8 +695,8 @@ def test_profile_rejects_nonboolean_acknowledgments_forbidden_field(tmp_path):
     (package / "paper.md").write_text("# x\n", encoding="utf-8")
     profile = tmp_path / "p.yaml"
     profile.write_text(
-        "declared_by: scholar\nacknowledgments_forbidden_in_blind: maybe\n",
-        encoding="utf-8")
+        "declared_by: scholar\nacknowledgments_forbidden_in_blind: maybe\n", encoding="utf-8"
+    )
     assert run([str(package), "--venue-profile", str(profile)]) == 2
 
 
@@ -721,15 +708,17 @@ def test_schema_accepts_not_applicable():
 
 def test_venue_profile_fixtures_validate_against_schema():
     profile_schema = json.loads(
-        (REPO_ROOT / "shared" / "contracts" / "submission"
-         / "venue_profile.schema.json").read_text(encoding="utf-8"))
+        (REPO_ROOT / "shared" / "contracts" / "submission" / "venue_profile.schema.json").read_text(
+            encoding="utf-8"
+        )
+    )
     for name in ("full.yaml", "tight.yaml"):
-        profile = yaml.safe_load(
-            (FIXTURES / "profiles" / name).read_text(encoding="utf-8"))
+        profile = yaml.safe_load((FIXTURES / "profiles" / name).read_text(encoding="utf-8"))
         jsonschema.validate(profile, profile_schema)
 
 
 # --- Round 2: fail / warn / NOT-CHECKED paths + exit codes -------------------
+
 
 def test_orphan_intext_citation_fails_C1_exit_1(tmp_path):
     rc, report, _ = run_on("orphan_intext", tmp_path)
@@ -760,8 +749,7 @@ def test_markers_without_join_source_not_checked_exit_3(tmp_path):
     # reference list) but NO citation_verification_summary — never a guessed
     # comparison.
     passport = FIXTURES / "passports" / "corpus_only.yaml"
-    rc, report, _ = run_on("marker_no_join", tmp_path,
-                           extra_args=["--passport", str(passport)])
+    rc, report, _ = run_on("marker_no_join", tmp_path, extra_args=["--passport", str(passport)])
     assert rc == 3
     by_id = checks_by_id(report)
     for cid in ("C1", "C2"):
@@ -779,8 +767,10 @@ def test_join_map_resolves_the_no_join_case(tmp_path):
     join = tmp_path / "join.yaml"
     join.write_text("smith-feedback-2024: smith2024\n", encoding="utf-8")
     rc, report, _ = run_on(
-        "marker_no_join", tmp_path,
-        extra_args=["--passport", str(passport), "--join-map", str(join)])
+        "marker_no_join",
+        tmp_path,
+        extra_args=["--passport", str(passport), "--join-map", str(join)],
+    )
     assert rc == 3  # Family C green; B not checked (no profile)
     by_id = checks_by_id(report)
     assert by_id["C1"]["status"] == "pass"
@@ -793,7 +783,6 @@ def test_missing_package_dir_is_usage_error(tmp_path):
 
 
 def test_unparseable_passport_is_usage_error(tmp_path):
-
     bad = tmp_path / "bad.yaml"
     bad.write_text("just a string\n", encoding="utf-8")
     package = tmp_path / "pkg"
@@ -803,6 +792,7 @@ def test_unparseable_passport_is_usage_error(tmp_path):
 
 
 # --- Round 3: fallback extraction, summary join, fingerprint -----------------
+
 
 def test_fallback_latex_cite_extraction_is_heuristic_best_effort(tmp_path):
     # §3.3: post-converted sources fall back to \cite{} extraction; the header
@@ -844,8 +834,7 @@ def test_summary_join_consumes_real_prose_join(tmp_path):
     # (smith2024): a pass proves the citation_verification_summary join was
     # consumed, not an identity guess (§3.3).
     passport = FIXTURES / "passports" / "summary_join.yaml"
-    rc, report, _ = run_on("summary_join", tmp_path,
-                           extra_args=["--passport", str(passport)])
+    rc, report, _ = run_on("summary_join", tmp_path, extra_args=["--passport", str(passport)])
     assert rc == 3  # Family C green; B not checked (no profile)
     by_id = checks_by_id(report)
     assert by_id["C1"]["status"] == "pass"
@@ -858,11 +847,9 @@ def test_summary_join_consumes_real_prose_join(tmp_path):
 def test_no_machine_readable_reference_list_not_checked(tmp_path):
     package = tmp_path / "pkg"
     package.mkdir()
-    (package / "paper.md").write_text(
-        "Smith (2024) said things.\n", encoding="utf-8")
+    (package / "paper.md").write_text("Smith (2024) said things.\n", encoding="utf-8")
     rc = run([str(package)])
-    report = json.loads(
-        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
     assert rc == 3
     by_id = checks_by_id(report)
     for cid in ("C1", "C2"):
@@ -885,8 +872,7 @@ def test_fingerprint_follows_audit_snapshot_convention_excluding_report(tmp_path
         digest = hashlib.sha256(p.read_bytes()).hexdigest()
         lines.append(f"{p.relative_to(package_dir).as_posix()}:{digest}")
     lines.sort()
-    expected = hashlib.sha256(
-        ("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
+    expected = hashlib.sha256(("\n".join(lines) + "\n").encode("utf-8")).hexdigest()
     assert report["header"]["package_fingerprint"] == expected
 
 
@@ -896,13 +882,12 @@ def test_fingerprint_stable_across_reruns_with_report_present(tmp_path):
 
     _, first, package_dir = run_on("clean", tmp_path)
     run([str(package_dir)])
-    second = json.loads(
-        (package_dir / REPORT_BASENAME).read_text(encoding="utf-8"))
-    assert (second["header"]["package_fingerprint"]
-            == first["header"]["package_fingerprint"])
+    second = json.loads((package_dir / REPORT_BASENAME).read_text(encoding="utf-8"))
+    assert second["header"]["package_fingerprint"] == first["header"]["package_fingerprint"]
 
 
 # --- Codex review round: P1 partial-join identity guess + P2s ----------------
+
 
 def test_partial_summary_join_never_falls_back_to_identity(tmp_path):
     # P1: a marker slug ABSENT from the join source must never be compared via
@@ -913,11 +898,11 @@ def test_partial_summary_join_never_falls_back_to_identity(tmp_path):
     (package / "paper.md").write_text(
         "Joined (Smith, 2024) <!--ref:smith-feedback-2024-->.\n"
         "Unjoined but key-shaped (Smith, 2024) <!--ref:smith2024-->.\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     passport = FIXTURES / "passports" / "summary_join.yaml"
     rc = run([str(package), "--passport", str(passport)])
-    report = json.loads(
-        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
     assert rc == 1
     by_id = checks_by_id(report)
     assert by_id["C1"]["status"] == "fail"
@@ -946,8 +931,7 @@ def test_custom_report_out_inside_package_excluded_from_fingerprint(tmp_path):
     first = json.loads(out.read_text(encoding="utf-8"))
     run([str(package), "--report-out", str(out)])
     second = json.loads(out.read_text(encoding="utf-8"))
-    assert (first["header"]["package_fingerprint"]
-            == second["header"]["package_fingerprint"])
+    assert first["header"]["package_fingerprint"] == second["header"]["package_fingerprint"]
 
 
 def test_authoryear_fallback_tolerates_page_locators(tmp_path):
@@ -956,13 +940,12 @@ def test_authoryear_fallback_tolerates_page_locators(tmp_path):
     package = tmp_path / "pkg"
     package.mkdir()
     (package / "paper.md").write_text(
-        "Smith (2024, p. 12) framed it; details follow "
-        "(Chen & Lee, 2023, pp. 45–67).\n", encoding="utf-8")
-    shutil.copy(FIXTURES / "fallback_authoryear" / "references.bib",
-                package / "references.bib")
+        "Smith (2024, p. 12) framed it; details follow " "(Chen & Lee, 2023, pp. 45–67).\n",
+        encoding="utf-8",
+    )
+    shutil.copy(FIXTURES / "fallback_authoryear" / "references.bib", package / "references.bib")
     rc = run([str(package)])
-    report = json.loads(
-        (package / REPORT_BASENAME).read_text(encoding="utf-8"))
+    report = json.loads((package / REPORT_BASENAME).read_text(encoding="utf-8"))
     by_id = checks_by_id(report)
     assert rc == 3  # Family C green; B not checked (no profile)
     assert by_id["C1"]["status"] == "pass"
@@ -980,6 +963,7 @@ def test_schema_rejects_warn_with_strict_eligible():
 
 
 # --- Report schema structural contract --------------------------------------
+
 
 def _minimal_report(**check_overrides):
     check = {
@@ -1039,10 +1023,11 @@ def test_schema_rejects_unknown_status():
 # (fail / not_checked), never on the strict_eligible bit alone, so
 # not_applicable can never compose into a block (slice-3 schema pin).
 
+
 def _strict_run(fixture_name, tmp_path, capsys, extra_args=()):
     rc, report, package_dir = run_on(
-        fixture_name, tmp_path,
-        extra_args=["--policy", "strict", *extra_args])
+        fixture_name, tmp_path, extra_args=["--policy", "strict", *extra_args]
+    )
     out = capsys.readouterr().out
     return rc, report, package_dir, out
 
@@ -1069,8 +1054,7 @@ def test_strict_heuristic_fail_never_promotes(tmp_path, capsys):
     assert by_id["C1"]["signal_class"] == "heuristic"
     assert "TERMINAL-BLOCK" not in out
     assert rc == 4  # VERIFICATION-INCOMPLETE from Family B, not the C1 fail
-    assert "C1" not in next(
-        l for l in out.splitlines() if "VERIFICATION-INCOMPLETE" in l)
+    assert "C1" not in next(l for l in out.splitlines() if "VERIFICATION-INCOMPLETE" in l)
 
 
 def test_evaluate_policy_unit_contract():
@@ -1083,15 +1067,15 @@ def test_evaluate_policy_unit_contract():
     from verify_submission_package import evaluate_policy
 
     def report_of(*checks):
-        return {"checks": [
-            {"id": cid, "strict_eligible": se, "status": status}
-            for cid, se, status in checks
-        ]}
+        return {
+            "checks": [
+                {"id": cid, "strict_eligible": se, "status": status} for cid, se, status in checks
+            ]
+        }
 
     # Heuristic (strict_eligible=False) fail alone under strict: exit 1,
     # NO token.
-    token, code = evaluate_policy(report_of(("A5", False, "fail"),
-                                            ("C2", True, "pass")), "strict")
+    token, code = evaluate_policy(report_of(("A5", False, "fail"), ("C2", True, "pass")), "strict")
     assert token is None and code == 1
     # Strict-eligible fail under strict: token + exit 1.
     token, code = evaluate_policy(report_of(("B4", True, "fail")), "strict")
@@ -1103,32 +1087,32 @@ def test_evaluate_policy_unit_contract():
         token, code = evaluate_policy(report_of(("B4", True, "fail")), policy)
         assert token is None and code == 1
     # Strict-eligible not_checked under strict: incomplete token + exit 4.
-    token, code = evaluate_policy(
-        report_of(("B1", True, "not_checked")), "strict")
+    token, code = evaluate_policy(report_of(("B1", True, "not_checked")), "strict")
     assert code == 4 and "VERIFICATION-INCOMPLETE" in token
     # ... and under advisory: plain exit 3, no token.
-    token, code = evaluate_policy(
-        report_of(("B1", True, "not_checked")), "advisory")
+    token, code = evaluate_policy(report_of(("B1", True, "not_checked")), "advisory")
     assert token is None and code == 3
     # Precedence: strict fail wins over incomplete (block now, the rerun
     # after remediation surfaces the rest).
-    token, code = evaluate_policy(report_of(("B4", True, "fail"),
-                                            ("B1", True, "not_checked")),
-                                  "strict")
+    token, code = evaluate_policy(
+        report_of(("B4", True, "fail"), ("B1", True, "not_checked")), "strict"
+    )
     assert code == 1 and "TERMINAL-BLOCK" in token
     # not_applicable never composes into anything (slice-3 schema pin),
     # heuristic not_checked doesn't either.
-    token, code = evaluate_policy(report_of(("A1", True, "not_applicable"),
-                                            ("A5", False, "not_checked"),
-                                            ("C2", True, "pass")), "strict")
+    token, code = evaluate_policy(
+        report_of(
+            ("A1", True, "not_applicable"), ("A5", False, "not_checked"), ("C2", True, "pass")
+        ),
+        "strict",
+    )
     assert token is None and code == 3
     # All green under strict: clean 0.
     token, code = evaluate_policy(report_of(("C1", True, "pass")), "strict")
     assert token is None and code == 0
 
 
-def test_strict_eligible_not_checked_is_verification_incomplete(
-        tmp_path, capsys):
+def test_strict_eligible_not_checked_is_verification_incomplete(tmp_path, capsys):
     # venue_clean without a profile: Family B is strict-eligible not_checked
     # → fail-closed exit 4 + token (§5.2: a missing input must not silently
     # waive the class the scholar opted into blocking on).
@@ -1141,8 +1125,11 @@ def test_strict_eligible_not_checked_is_verification_incomplete(
 
 def test_advisory_same_not_checked_stays_exit_3(tmp_path, capsys):
     # Explicit advisory: byte-identical slice-3 behavior except the stamp.
-    rc, report, _, = run_on("venue_clean", tmp_path,
-                            extra_args=["--policy", "advisory"])
+    (
+        rc,
+        report,
+        _,
+    ) = run_on("venue_clean", tmp_path, extra_args=["--policy", "advisory"])
     out = capsys.readouterr().out
     assert rc == 3
     assert "VERIFICATION-INCOMPLETE" not in out
@@ -1168,8 +1155,7 @@ def test_strict_not_applicable_never_blocks(tmp_path, capsys):
     assert by_id["A1"]["status"] == "not_applicable"
     assert rc == 4  # from Family B not_checked, NOT from Family A
     assert "VERIFICATION-INCOMPLETE" in out
-    token_line = next(l for l in out.splitlines()
-                      if "VERIFICATION-INCOMPLETE" in l)
+    token_line = next(l for l in out.splitlines() if "VERIFICATION-INCOMPLETE" in l)
     for aid in (f"A{i}" for i in range(1, 8)):
         assert aid not in token_line
 
@@ -1178,8 +1164,8 @@ def test_strict_full_profile_clean_package_exits_0(tmp_path, capsys):
     # The strict happy path: everything checked, everything green.
     profile = FIXTURES / "profiles" / "full.yaml"
     rc, report, _, out = _strict_run(
-        "venue_clean", tmp_path, capsys,
-        extra_args=["--venue-profile", str(profile)])
+        "venue_clean", tmp_path, capsys, extra_args=["--venue-profile", str(profile)]
+    )
     assert rc == 0
     assert "TERMINAL-BLOCK" not in out
     assert "VERIFICATION-INCOMPLETE" not in out
@@ -1188,18 +1174,17 @@ def test_strict_full_profile_clean_package_exits_0(tmp_path, capsys):
 
 # --- Slice 4: freshness guard (--check-freshness, §5.2) ----------------------
 
+
 def _fresh_args(policy="advisory"):
     return ["--check-freshness", "--policy", policy]
 
 
 def test_freshness_mutated_package_is_stale(tmp_path, capsys):
-    _, _, package_dir = run_on("venue_clean", tmp_path,
-                               extra_args=["--policy", "advisory"])
-    manuscript = next(p for p in package_dir.iterdir()
-                      if p.suffix == ".md" and p.name != "provenance_summary.md")
-    manuscript.write_text(
-        manuscript.read_text(encoding="utf-8") + "\nDrifted.\n",
-        encoding="utf-8")
+    _, _, package_dir = run_on("venue_clean", tmp_path, extra_args=["--policy", "advisory"])
+    manuscript = next(
+        p for p in package_dir.iterdir() if p.suffix == ".md" and p.name != "provenance_summary.md"
+    )
+    manuscript.write_text(manuscript.read_text(encoding="utf-8") + "\nDrifted.\n", encoding="utf-8")
     capsys.readouterr()
     rc = run([str(package_dir), *_fresh_args()])
     out = capsys.readouterr().out
@@ -1209,8 +1194,7 @@ def test_freshness_mutated_package_is_stale(tmp_path, capsys):
 
 def test_freshness_policy_mismatch_is_stale(tmp_path, capsys):
     # Report stamped advisory, orchestrator now wants strict: stale, rerun.
-    _, _, package_dir = run_on("venue_clean", tmp_path,
-                               extra_args=["--policy", "advisory"])
+    _, _, package_dir = run_on("venue_clean", tmp_path, extra_args=["--policy", "advisory"])
     capsys.readouterr()
     rc = run([str(package_dir), *_fresh_args(policy="strict")])
     out = capsys.readouterr().out
@@ -1246,8 +1230,7 @@ def test_freshness_missing_report_is_stale(tmp_path, capsys):
 def test_freshness_requires_policy(tmp_path, capsys):
     # --check-freshness without --policy is a usage error (exit 2): freshness
     # is always relative to an expected policy, never free-floating.
-    _, _, package_dir = run_on("venue_clean", tmp_path,
-                               extra_args=["--policy", "advisory"])
+    _, _, package_dir = run_on("venue_clean", tmp_path, extra_args=["--policy", "advisory"])
     capsys.readouterr()
     rc = run([str(package_dir), "--check-freshness"])
     err = capsys.readouterr().err
@@ -1257,8 +1240,7 @@ def test_freshness_requires_policy(tmp_path, capsys):
 
 def test_freshness_does_not_rerun_checks(tmp_path, capsys):
     # Freshness must not rewrite the report: mtime-stable bytes.
-    _, _, package_dir = run_on("venue_clean", tmp_path,
-                               extra_args=["--policy", "advisory"])
+    _, _, package_dir = run_on("venue_clean", tmp_path, extra_args=["--policy", "advisory"])
     report_path = package_dir / REPORT_BASENAME
     before = report_path.read_bytes()
     capsys.readouterr()
@@ -1272,12 +1254,11 @@ def test_provenance_summary_outside_fingerprint(tmp_path, capsys):
     # excluded from the fingerprint, so mutating it does NOT stale the report.
     package_dir = tmp_path / "venue_clean"
     shutil.copytree(FIXTURES / "venue_clean", package_dir)
-    (package_dir / "provenance_summary.md").write_text(
-        "# Provenance\n", encoding="utf-8")
+    (package_dir / "provenance_summary.md").write_text("# Provenance\n", encoding="utf-8")
     rc, _ = run_dir(package_dir, extra_args=["--policy", "advisory"])
     (package_dir / "provenance_summary.md").write_text(
-        "# Provenance\n\n## Submission Package Advisories\n\n- B2: ...\n",
-        encoding="utf-8")
+        "# Provenance\n\n## Submission Package Advisories\n\n- B2: ...\n", encoding="utf-8"
+    )
     capsys.readouterr()
     rc = run([str(package_dir), *_fresh_args()])
     out = capsys.readouterr().out
@@ -1295,14 +1276,15 @@ def test_advisory_run_is_byte_equivalent_for_package_files(tmp_path):
     shutil.copytree(FIXTURES / "venue_clean", package_dir)
     before = {
         p.relative_to(package_dir).as_posix(): p.read_bytes()
-        for p in package_dir.rglob("*") if p.is_file()
+        for p in package_dir.rglob("*")
+        if p.is_file()
     }
     profile = FIXTURES / "profiles" / "full.yaml"
-    run_dir(package_dir, extra_args=["--policy", "advisory",
-                                     "--venue-profile", str(profile)])
+    run_dir(package_dir, extra_args=["--policy", "advisory", "--venue-profile", str(profile)])
     after = {
         p.relative_to(package_dir).as_posix(): p.read_bytes()
-        for p in package_dir.rglob("*") if p.is_file()
+        for p in package_dir.rglob("*")
+        if p.is_file()
     }
     assert set(after) - set(before) == {REPORT_BASENAME}
     for rel, content in before.items():
@@ -1311,15 +1293,14 @@ def test_advisory_run_is_byte_equivalent_for_package_files(tmp_path):
 
 # --- Slice 4 gate-2 review round: freshness re-emit + external inputs -------
 
-def test_freshness_fresh_strict_report_reemits_terminal_token(
-        tmp_path, capsys):
+
+def test_freshness_fresh_strict_report_reemits_terminal_token(tmp_path, capsys):
     # Gate-2 P1: freshness alone means "the report is trustworthy", not "the
     # package passed". A fresh strict report that recorded a blocking fail
     # must re-emit its terminal verdict on reuse — otherwise the verdict
     # silently evaporates on resume and the orchestrator (gating on tokens)
     # reads the reuse as a pass.
-    _, _, package_dir = run_on("orphan_intext", tmp_path,
-                               extra_args=["--policy", "strict"])
+    _, _, package_dir = run_on("orphan_intext", tmp_path, extra_args=["--policy", "strict"])
     capsys.readouterr()
     rc = run([str(package_dir), "--check-freshness", "--policy", "strict"])
     out = capsys.readouterr().out
@@ -1328,12 +1309,10 @@ def test_freshness_fresh_strict_report_reemits_terminal_token(
     assert "TERMINAL-BLOCK policy=submission_package" in out
 
 
-def test_freshness_fresh_advisory_report_reemits_underlying_code(
-        tmp_path, capsys):
+def test_freshness_fresh_advisory_report_reemits_underlying_code(tmp_path, capsys):
     # Same contract on the advisory side: a fresh advisory report with
     # not_checked rows re-emits exit 3, not a flat 0.
-    _, _, package_dir = run_on("venue_clean", tmp_path,
-                               extra_args=["--policy", "advisory"])
+    _, _, package_dir = run_on("venue_clean", tmp_path, extra_args=["--policy", "advisory"])
     capsys.readouterr()
     rc = run([str(package_dir), *_fresh_args()])
     out = capsys.readouterr().out
@@ -1350,11 +1329,19 @@ def test_freshness_changed_venue_profile_is_stale(tmp_path, capsys):
     full = FIXTURES / "profiles" / "full.yaml"
     tight = FIXTURES / "profiles" / "tight.yaml"
     _, _, package_dir = run_on(
-        "venue_clean", tmp_path,
-        extra_args=["--policy", "advisory", "--venue-profile", str(full)])
+        "venue_clean", tmp_path, extra_args=["--policy", "advisory", "--venue-profile", str(full)]
+    )
     capsys.readouterr()
-    rc = run([str(package_dir), "--check-freshness", "--policy", "advisory",
-              "--venue-profile", str(tight)])
+    rc = run(
+        [
+            str(package_dir),
+            "--check-freshness",
+            "--policy",
+            "advisory",
+            "--venue-profile",
+            str(tight),
+        ]
+    )
     out = capsys.readouterr().out
     assert rc == 5
     assert "STALE-REPORT reason=inputs_mismatch" in out
@@ -1363,11 +1350,19 @@ def test_freshness_changed_venue_profile_is_stale(tmp_path, capsys):
 def test_freshness_same_venue_profile_stays_fresh(tmp_path, capsys):
     full = FIXTURES / "profiles" / "full.yaml"
     _, _, package_dir = run_on(
-        "venue_clean", tmp_path,
-        extra_args=["--policy", "advisory", "--venue-profile", str(full)])
+        "venue_clean", tmp_path, extra_args=["--policy", "advisory", "--venue-profile", str(full)]
+    )
     capsys.readouterr()
-    rc = run([str(package_dir), "--check-freshness", "--policy", "advisory",
-              "--venue-profile", str(full)])
+    rc = run(
+        [
+            str(package_dir),
+            "--check-freshness",
+            "--policy",
+            "advisory",
+            "--venue-profile",
+            str(full),
+        ]
+    )
     out = capsys.readouterr().out
     assert rc == 0
     assert "report fresh" in out
@@ -1378,8 +1373,8 @@ def test_freshness_dropped_input_is_stale(tmp_path, capsys):
     # inputs change (declared → absent) and must be stale.
     full = FIXTURES / "profiles" / "full.yaml"
     _, _, package_dir = run_on(
-        "venue_clean", tmp_path,
-        extra_args=["--policy", "advisory", "--venue-profile", str(full)])
+        "venue_clean", tmp_path, extra_args=["--policy", "advisory", "--venue-profile", str(full)]
+    )
     capsys.readouterr()
     rc = run([str(package_dir), *_fresh_args()])
     out = capsys.readouterr().out
@@ -1393,8 +1388,7 @@ def test_freshness_thinned_roster_is_stale(tmp_path, capsys):
     # emptied) would otherwise read as fresh and re-evaluate to a clean
     # exit — the roster guard build_report enforces at write time must
     # hold on reuse too.
-    _, _, package_dir = run_on("orphan_intext", tmp_path,
-                               extra_args=["--policy", "strict"])
+    _, _, package_dir = run_on("orphan_intext", tmp_path, extra_args=["--policy", "strict"])
     report_path = package_dir / REPORT_BASENAME
     doctored = json.loads(report_path.read_text(encoding="utf-8"))
     doctored["checks"] = []

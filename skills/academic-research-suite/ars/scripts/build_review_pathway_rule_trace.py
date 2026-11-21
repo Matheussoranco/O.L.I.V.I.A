@@ -116,8 +116,7 @@ def _text(value: Any, path: str, *, maximum: int) -> str:
     if len(value) > maximum:
         _fail(path, f"must not exceed {maximum} characters")
     if any(
-        unicodedata.category(char) in {"Cc", "Cf", "Cs"}
-        or "\U00013430" <= char <= "\U0001345f"
+        unicodedata.category(char) in {"Cc", "Cf", "Cs"} or "\U00013430" <= char <= "\U0001345f"
         for char in value
     ):
         _fail(path, "must not contain control, format, surrogate, or format-control characters")
@@ -238,8 +237,7 @@ def _trace_state(resolved: dict[str, Any]) -> str:
     only_requirement_unknown = all(
         row["code"] == "APPLICABILITY_UNRESOLVED"
         and row["requirement_id"] is not None
-        and (row["authority_id"], row["requirement_id"])
-        in selected_profile_requirements
+        and (row["authority_id"], row["requirement_id"]) in selected_profile_requirements
         for row in reasons
     )
     if (
@@ -251,17 +249,13 @@ def _trace_state(resolved: dict[str, Any]) -> str:
     return "authority_context_unresolved"
 
 
-def _eligible_requirements(resolved: dict[str, Any]) -> dict[tuple[str, str, str, str], dict[str, dict[str, Any]]]:
+def _eligible_requirements(
+    resolved: dict[str, Any]
+) -> dict[tuple[str, str, str, str], dict[str, dict[str, Any]]]:
     result: dict[tuple[str, str, str, str], dict[str, dict[str, Any]]] = {}
-    selected = {
-        _profile_key(row)
-        for row in resolved["selected_profiles"]
-    }
+    selected = {_profile_key(row) for row in resolved["selected_profiles"]}
     for row in resolved["requirement_results"]:
-        if (
-            row["authority_kind"] != "profile"
-            or "pathway_trace" not in row["consumer_scopes"]
-        ):
+        if row["authority_kind"] != "profile" or "pathway_trace" not in row["consumer_scopes"]:
             continue
         key = (
             row["axis"],
@@ -270,11 +264,17 @@ def _eligible_requirements(resolved: dict[str, Any]) -> dict[tuple[str, str, str
             row["authority_digest"],
         )
         if key not in selected:
-            _fail("resolved.requirement_results", "eligible requirement is not owned by an exact selected profile")
+            _fail(
+                "resolved.requirement_results",
+                "eligible requirement is not owned by an exact selected profile",
+            )
         bucket = result.setdefault(key, {})
         requirement_id = row["requirement_id"]
         if requirement_id in bucket:
-            _fail("resolved.requirement_results", f"duplicate eligible requirement id: {requirement_id}")
+            _fail(
+                "resolved.requirement_results",
+                f"duplicate eligible requirement id: {requirement_id}",
+            )
         bucket[requirement_id] = row
     return result
 
@@ -282,9 +282,7 @@ def _eligible_requirements(resolved: dict[str, Any]) -> dict[tuple[str, str, str
 def _validate_alternative_volume(
     candidate_sizes: dict[tuple[str, str, str, str], list[int]],
 ) -> None:
-    projected = sum(
-        sum(sizes) * (len(sizes) - 1) for sizes in candidate_sizes.values()
-    )
+    projected = sum(sum(sizes) * (len(sizes) - 1) for sizes in candidate_sizes.values())
     if projected > MAX_ALTERNATIVE_ROWS:
         _fail(
             "request.candidate_pathways",
@@ -314,7 +312,9 @@ def validate_review_pathway_trace_request(
         _fail("request.resolved_digest", "does not equal replay-bound resolved digest")
 
     state = _trace_state(resolved)
-    candidates = _array(root["candidate_pathways"], "request.candidate_pathways", maximum=MAX_CANDIDATES)
+    candidates = _array(
+        root["candidate_pathways"], "request.candidate_pathways", maximum=MAX_CANDIDATES
+    )
     if state != "completed":
         if candidates:
             _fail("request.candidate_pathways", f"must be empty when trace state is {state}")
@@ -322,16 +322,18 @@ def validate_review_pathway_trace_request(
     if not candidates:
         _fail("request.candidate_pathways", "must contain a candidate for every selected profile")
 
-    selected_profile_keys = {
-        _profile_key(row)
-        for row in resolved["selected_profiles"]
-    }
+    selected_profile_keys = {_profile_key(row) for row in resolved["selected_profiles"]}
     eligible = _eligible_requirements(resolved)
     if set(eligible) != selected_profile_keys:
-        _fail("resolved.requirement_results", "every selected profile must supply pathway_trace requirements")
+        _fail(
+            "resolved.requirement_results",
+            "every selected profile must supply pathway_trace requirements",
+        )
 
     seen_candidate_ids: set[str] = set()
-    assigned: dict[tuple[str, str, str, str], set[str]] = {key: set() for key in selected_profile_keys}
+    assigned: dict[tuple[str, str, str, str], set[str]] = {
+        key: set() for key in selected_profile_keys
+    }
     candidate_sizes: dict[tuple[str, str, str, str], list[int]] = {}
     candidate_ids_in_order: list[str] = []
     for index, value in enumerate(candidates):
@@ -374,10 +376,16 @@ def validate_review_pathway_trace_request(
             _fail(f"{path}.predicate_requirement_ids", "must not contain duplicates")
         foreign = set(requirement_ids) - set(eligible[profile_key])
         if foreign:
-            _fail(f"{path}.predicate_requirement_ids", f"contains foreign or ineligible id(s): {', '.join(sorted(foreign))}")
+            _fail(
+                f"{path}.predicate_requirement_ids",
+                f"contains foreign or ineligible id(s): {', '.join(sorted(foreign))}",
+            )
         overlap = assigned[profile_key] & set(requirement_ids)
         if overlap:
-            _fail(f"{path}.predicate_requirement_ids", f"duplicates assignment(s): {', '.join(sorted(overlap))}")
+            _fail(
+                f"{path}.predicate_requirement_ids",
+                f"duplicates assignment(s): {', '.join(sorted(overlap))}",
+            )
         assigned[profile_key].update(requirement_ids)
         candidate_sizes.setdefault(profile_key, []).append(len(requirement_ids))
 
@@ -387,7 +395,10 @@ def validate_review_pathway_trace_request(
         expected = set(eligible[key])
         if assigned[key] != expected:
             missing = sorted(expected - assigned[key])
-            _fail("request.candidate_pathways", f"does not cover profile {key[1]} requirement(s): {', '.join(missing)}")
+            _fail(
+                "request.candidate_pathways",
+                f"does not cover profile {key[1]} requirement(s): {', '.join(missing)}",
+            )
     _validate_alternative_volume(candidate_sizes)
 
 
@@ -434,7 +445,10 @@ def _predicate_row(
     decision_maker = requirement.get("authoritative_decision_maker")
     if not isinstance(decision_maker, dict):
         _fail(result["requirement_pointer"], "missing authoritative decision maker")
-    role_id = _identifier(decision_maker.get("role_id"), f"{result['requirement_pointer']}.authoritative_decision_maker.role_id")
+    role_id = _identifier(
+        decision_maker.get("role_id"),
+        f"{result['requirement_pointer']}.authoritative_decision_maker.role_id",
+    )
     facts = {row["fact_id"]: row for row in context["declared_facts"]}
     bindings: list[dict[str, Any]] = []
     unresolved_ids: set[str] = set()
@@ -481,14 +495,20 @@ def _predicate_row(
         "unresolved_fact_ids": sorted(unresolved_ids),
         "responsible_authority_role_id": role_id,
         "authority_anchor": {
-            "source_id": _identifier(anchor.get("source_id"), f"{result['authority_anchor_pointer']}.source_id"),
-            "authority_url": _https(anchor.get("authority_url"), f"{result['authority_anchor_pointer']}.authority_url"),
+            "source_id": _identifier(
+                anchor.get("source_id"), f"{result['authority_anchor_pointer']}.source_id"
+            ),
+            "authority_url": _https(
+                anchor.get("authority_url"), f"{result['authority_anchor_pointer']}.authority_url"
+            ),
             "provision": _text(
                 anchor.get("provision"),
                 f"{result['authority_anchor_pointer']}.provision",
                 maximum=300,
             ),
-            "effective_date": _date(anchor.get("effective_date"), f"{result['authority_anchor_pointer']}.effective_date"),
+            "effective_date": _date(
+                anchor.get("effective_date"), f"{result['authority_anchor_pointer']}.effective_date"
+            ),
         },
     }
 
@@ -496,11 +516,22 @@ def _predicate_row(
 def _halt_reasons(resolved: dict[str, Any]) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     for index, reason in enumerate(resolved["unresolved_reasons"]):
-        row = _closed(reason, f"resolved.unresolved_reasons[{index}]", {"code", "axis", "authority_id", "requirement_id"})
+        row = _closed(
+            reason,
+            f"resolved.unresolved_reasons[{index}]",
+            {"code", "axis", "authority_id", "requirement_id"},
+        )
         if row["code"] not in HALT_CODES:
             _fail(f"resolved.unresolved_reasons[{index}].code", "is not a closed #669 halt code")
         rows.append(copy.deepcopy(row))
-    rows.sort(key=lambda row: (row["code"], row["axis"], row["authority_id"] or "", row["requirement_id"] or ""))
+    rows.sort(
+        key=lambda row: (
+            row["code"],
+            row["axis"],
+            row["authority_id"] or "",
+            row["requirement_id"] or "",
+        )
+    )
     return rows
 
 
@@ -631,7 +662,9 @@ def _canonical_bytes(value: Any) -> bytes:
 def _fact_text(bindings: list[dict[str, Any]]) -> str:
     parts: list[str] = []
     for row in bindings:
-        value = json.dumps(row["declared_value"], ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        value = json.dumps(
+            row["declared_value"], ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
         parts.append(
             f"{row['expression_path']} {row['fact_id']}={value} "
             f"[{row['declared_state']}; {row['predicate_result']}]"
@@ -692,8 +725,12 @@ def render_review_pathway_rule_trace(trace: dict[str, Any]) -> str:
                 ]
             )
             _render_predicate_section(lines, "Matched predicates:", candidate["matched_predicates"])
-            _render_predicate_section(lines, "Unmatched predicates:", candidate["unmatched_predicates"])
-            _render_predicate_section(lines, "Unresolved predicates:", candidate["unresolved_predicates"])
+            _render_predicate_section(
+                lines, "Unmatched predicates:", candidate["unmatched_predicates"]
+            )
+            _render_predicate_section(
+                lines, "Unresolved predicates:", candidate["unresolved_predicates"]
+            )
             lines.append("Alternative pathway triggers:")
             alternatives = candidate["alternative_pathway_triggers"]
             if not alternatives:
@@ -742,7 +779,9 @@ def _atomic_create(path: Path, raw: bytes) -> None:
     temporary = parent / f".{path.name}.tmp-{os.getpid()}"
     fd: int | None = None
     try:
-        fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600)
+        fd = os.open(
+            temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, "O_NOFOLLOW", 0), 0o600
+        )
         _write_all(fd, raw)
         os.fsync(fd)
         if os.fstat(fd).st_size != len(raw):
@@ -768,7 +807,9 @@ def _atomic_create(path: Path, raw: bytes) -> None:
             pass
 
 
-def _load_inputs(args: argparse.Namespace) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
+def _load_inputs(
+    args: argparse.Namespace
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     return (
         load_json(args.request),
         load_json(args.context),
@@ -802,7 +843,12 @@ def main(argv: list[str] | None = None) -> int:
         request, context, registry, resolved = _load_inputs(args)
         if args.command == "build":
             trace = build_review_pathway_rule_trace(request, context, registry, resolved)
-            raw = json.dumps(trace, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False).encode("utf-8") + b"\n"
+            raw = (
+                json.dumps(
+                    trace, ensure_ascii=False, sort_keys=True, indent=2, allow_nan=False
+                ).encode("utf-8")
+                + b"\n"
+            )
             if len(raw) > MAX_TRACE_BYTES:
                 _fail("trace", f"pretty-printed artifact exceeds {MAX_TRACE_BYTES} bytes")
             if args.output is None:

@@ -23,6 +23,8 @@ def _isolated_cache(tmp_path, monkeypatch):
     """#541: the CLI defaults to cache-through — point every test at a tmp DB
     so no test ever touches the user's real ~/.cache/ars/verification.db."""
     monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "cli-v.db"))
+
+
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -38,8 +40,8 @@ def _no_network_clients():
         m.arxiv_id_lookup.return_value = None
         m.lookup.return_value = {"matched": False}
         return m
-    return {n: default() for n in
-            ("crossref", "openalex", "semantic_scholar", "arxiv")}
+
+    return {n: default() for n in ("crossref", "openalex", "semantic_scholar", "arxiv")}
 
 
 def _entry(**overrides):
@@ -47,10 +49,13 @@ def _entry(**overrides):
     # (literature_corpus_entry.schema is additionalProperties:False — the ref_slug
     # lives in writer prose, not the corpus).
     base = {
-        "citation_key": "a", "title": "T",
-        "authors": [{"family": "Doe", "given": "J"}], "year": 2020,
+        "citation_key": "a",
+        "title": "T",
+        "authors": [{"family": "Doe", "given": "J"}],
+        "year": 2020,
         "source_pointer": "kb://refs/a",
-        "doi": "10.5555/x", "obtained_via": "folder-scan",
+        "doi": "10.5555/x",
+        "obtained_via": "folder-scan",
     }
     base.update(overrides)
     return base
@@ -68,11 +73,14 @@ def test_cli_fixture_is_schema_valid():
     production shape (the #332 masking bug was a fixture carrying a forbidden
     ref_slug field)."""
     import json
+
     from jsonschema import Draft202012Validator
-    schema = json.loads((
-        REPO_ROOT / "shared" / "contracts" / "passport"
-        / "literature_corpus_entry.schema.json"
-    ).read_text(encoding="utf-8"))
+
+    schema = json.loads(
+        (
+            REPO_ROOT / "shared" / "contracts" / "passport" / "literature_corpus_entry.schema.json"
+        ).read_text(encoding="utf-8")
+    )
     errors = list(Draft202012Validator(schema).iter_errors(_entry()))
     assert errors == [], f"_entry fixture must be a valid corpus entry: {errors}"
 
@@ -83,6 +91,7 @@ def test_cli_refuses_without_prose_join(tmp_path, capsys):
     prose-sourced ref_slug join that a passport alone does not carry. The CLI
     refuses (nonzero) with a clear error rather than fabricating ref_slug (#332)."""
     from verify_passport import run
+
     passport = _write_passport(tmp_path, [_entry()])
     rc = run([str(passport)], clients_factory=_no_network_clients)
     assert rc != 0
@@ -96,9 +105,11 @@ def test_cli_synthetic_ref_slug_uses_citation_key(tmp_path, capsys):
     warns on stderr that the result is diagnostic (not prose-join-safe) so no
     downstream consumer mistakes it for a real prose join (#332)."""
     from verify_passport import run
+
     passport = _write_passport(tmp_path, [_entry(citation_key="a")])
-    rc = run([str(passport), "--synthetic-ref-slug", "citation_key"],
-             clients_factory=_no_network_clients)
+    rc = run(
+        [str(passport), "--synthetic-ref-slug", "citation_key"], clients_factory=_no_network_clients
+    )
     assert rc == 0
     captured = capsys.readouterr()
     out = json.loads(captured.out)
@@ -113,11 +124,13 @@ def test_cli_synthetic_ref_slug_uses_citation_key(tmp_path, capsys):
 
 def test_cli_missing_file_errors(tmp_path):
     from verify_passport import run
+
     rc = run([str(tmp_path / "nope.yaml")], clients_factory=_no_network_clients)
     assert rc != 0
 
 
 def test_cli_requires_path_arg():
     from verify_passport import run
+
     with pytest.raises(SystemExit):
         run([], clients_factory=_no_network_clients)

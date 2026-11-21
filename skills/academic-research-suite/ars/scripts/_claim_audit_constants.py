@@ -112,6 +112,7 @@ def is_emittable_partial_breakdown(breakdown: object) -> bool:
         return False
     return all(_is_schema_shaped_item(item) for item in breakdown)
 
+
 # rule_version literals for v3.8.0 release. Future revisions bump the literal
 # and require re-lint per spec §3.3 / §3.4 / §3.5.
 UNCITED_RULE_VERSION = "D4-c-v1"
@@ -171,9 +172,7 @@ UNCITED_EMPIRICAL_VERBS: frozenset[str] = frozenset(
 # Condition 1: fuzzy English quantifier words (case-insensitive whole-word).
 # Spec list: most, several, two-thirds. Kept literal; numerical / percent
 # quantifiers are caught by RE_NUMERIC_QUANTIFIER below.
-UNCITED_FUZZY_QUANTIFIERS: frozenset[str] = frozenset(
-    {"most", "several", "two-thirds"}
-)
+UNCITED_FUZZY_QUANTIFIERS: frozenset[str] = frozenset({"most", "several", "two-thirds"})
 
 # Condition 1: numerical quantifier regex. Spec line 250 lists three numeric
 # classes — `numbers / percentages / explicit quantifiers (50%, 67 of 100)`.
@@ -188,11 +187,11 @@ UNCITED_FUZZY_QUANTIFIERS: frozenset[str] = frozenset(
 RE_NUMERIC_QUANTIFIER = re.compile(
     # Order matters: longest-prefix-first so percent and "N of M" bind
     # before the bare-number branch swallows the leading digits.
-    r"\b\d+(?:\.\d+)?%"                  # percent quantifier
-    r"|\b\d+(?:\.\d+)?\s+of\s+\d+\b"     # "N of M" quantifier idiom
-    r"|\b\d+(?:\.\d+)*\b"                # bare number, possibly dotted
-                                          # (3+ segments routed to guard
-                                          # as version/section)
+    r"\b\d+(?:\.\d+)?%"  # percent quantifier
+    r"|\b\d+(?:\.\d+)?\s+of\s+\d+\b"  # "N of M" quantifier idiom
+    r"|\b\d+(?:\.\d+)*\b"  # bare number, possibly dotted
+    # (3+ segments routed to guard
+    # as version/section)
 )
 
 # Condition 1 guard: rejects bare-number matches whose surrounding context

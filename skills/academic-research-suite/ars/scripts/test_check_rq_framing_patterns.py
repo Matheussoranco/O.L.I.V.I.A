@@ -6,7 +6,6 @@ from pathlib import Path
 
 from scripts import check_rq_framing_patterns as checker
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 WP_IDS = {f"WP{i:02d}" for i in range(1, 21)}
 

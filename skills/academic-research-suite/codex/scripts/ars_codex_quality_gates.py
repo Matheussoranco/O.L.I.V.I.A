@@ -8,9 +8,9 @@ import importlib.util
 import json
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
-
+from typing import Any
 
 SCRIPT = Path(__file__).resolve()
 CODEX_ROOT = SCRIPT.parents[1]
@@ -69,9 +69,7 @@ def _require(condition: bool, message: str) -> None:
 
 
 _WORKFLOW_NAME_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
-_ROUTER_WORKFLOW_RE = re.compile(
-    r"`ars/([a-z0-9]+(?:-[a-z0-9]+)*)/WORKFLOW\.md`"
-)
+_ROUTER_WORKFLOW_RE = re.compile(r"`ars/([a-z0-9]+(?:-[a-z0-9]+)*)/WORKFLOW\.md`")
 _REQUIRED_WORKFLOWS = frozenset(
     {
         "deep-research",
@@ -198,9 +196,7 @@ def _runtime_workflow_names(manifest: dict[str, Any]) -> set[str]:
     return set(workflows)
 
 
-def _require_inventory_equal(
-    disk: set[str], other: set[str], surface: str
-) -> None:
+def _require_inventory_equal(disk: set[str], other: set[str], surface: str) -> None:
     missing = sorted(disk - other)
     extra = sorted(other - disk)
     _require(
@@ -237,7 +233,9 @@ def check_manifest() -> list[str]:
             repo_version == adapter_version,
             f"repo VERSION {repo_version!r} != adapter version {adapter_version!r}",
         )
-    messages.append(f"package version {adapter_version} is aligned across skill, manifest, plugin, and VERSION")
+    messages.append(
+        f"package version {adapter_version} is aligned across skill, manifest, plugin, and VERSION"
+    )
 
     for key, value in manifest["paths"].items():
         if key in {"adapter_root"}:
@@ -269,9 +267,13 @@ def check_manifest() -> list[str]:
 
     for name, workflow in manifest["workflows"].items():
         workflow_path = SUITE_ROOT / workflow["workflow_path"]
-        _require(workflow_path.exists(), f"workflow path missing for {name}: {workflow['workflow_path']}")
+        _require(
+            workflow_path.exists(), f"workflow path missing for {name}: {workflow['workflow_path']}"
+        )
         template = SUITE_ROOT / workflow["agent_template"]
-        _require(template.exists(), f"agent template missing for {name}: {workflow['agent_template']}")
+        _require(
+            template.exists(), f"agent template missing for {name}: {workflow['agent_template']}"
+        )
     messages.append(f"{len(manifest['workflows'])} workflows have templates")
 
     allowed_gate_kinds = {
@@ -325,7 +327,10 @@ def check_manifest() -> list[str]:
         value = entry.get("path")
         reason = entry.get("reason")
         _require(isinstance(value, str) and bool(value), f"inactive entry {index} has no path")
-        _require(isinstance(reason, str) and bool(reason.strip()), f"inactive entry {value} has no reason")
+        _require(
+            isinstance(reason, str) and bool(reason.strip()),
+            f"inactive entry {value} has no reason",
+        )
         inactive_path = _resolve_manifest_path(value)
         _require(inactive_path.is_file(), f"inactive upstream path missing: {value}")
         resolved = inactive_path.resolve()
@@ -343,7 +348,11 @@ def check_single_root_skill() -> list[str]:
     root_skill = SUITE_ROOT / "SKILL.md"
     _require(root_skill.exists(), "root SKILL.md missing")
     vendored_skill_files = sorted(ARS_ROOT.rglob("SKILL.md"))
-    _require(not vendored_skill_files, "vendored workflow SKILL.md files would expose duplicate Codex skills: " + ", ".join(str(p) for p in vendored_skill_files))
+    _require(
+        not vendored_skill_files,
+        "vendored workflow SKILL.md files would expose duplicate Codex skills: "
+        + ", ".join(str(p) for p in vendored_skill_files),
+    )
     workflow_files = sorted(ARS_ROOT.glob("*/WORKFLOW.md"))
     disk_names = {path.parent.name for path in workflow_files}
     router_names = _root_router_workflow_names(root_skill)
@@ -398,16 +407,25 @@ def check_single_root_skill() -> list[str]:
 def check_hook_safety() -> list[str]:
     pack = _json(HOOK_PACK)
     _require(pack.get("default_enabled") is False, "hook pack must be disabled by default")
-    _require(pack.get("enabled_when") == "ARS_CODEX_HOOKS=1", "hook pack must require ARS_CODEX_HOOKS=1")
+    _require(
+        pack.get("enabled_when") == "ARS_CODEX_HOOKS=1", "hook pack must require ARS_CODEX_HOOKS=1"
+    )
     hooks = pack.get("hooks", [])
     _require(isinstance(hooks, list), "hooks must be a list")
     for hook in hooks:
         _require(hook.get("mutates_files") is False, f"hook mutates files: {hook.get('id')}")
         command = hook.get("command", "")
-        _require(command.startswith("python3 "), f"hook command must use python3 wrapper: {command}")
-        _require("ars_codex_hook.py" in command, f"hook command must use adapter hook wrapper: {command}")
+        _require(
+            command.startswith("python3 "), f"hook command must use python3 wrapper: {command}"
+        )
+        _require(
+            "ars_codex_hook.py" in command, f"hook command must use adapter hook wrapper: {command}"
+        )
         for pattern in FORBIDDEN_HOOK_PATTERNS:
-            _require(not re.search(pattern, command), f"unsafe hook command pattern {pattern!r}: {command}")
+            _require(
+                not re.search(pattern, command),
+                f"unsafe hook command pattern {pattern!r}: {command}",
+            )
     return [f"{len(hooks)} hook command(s) are disabled-by-default and pass static safety checks"]
 
 
@@ -426,11 +444,20 @@ def check_reviewer_fixture(fixture: Path | None = None) -> list[str]:
         position = text.find(heading)
         _require(position >= 0, f"reviewer fixture missing heading: {heading}")
         positions.append(position)
-    _require(positions == sorted(positions), "editorial synthesis must appear after independent reviewer sections")
-    synthesis = text[positions[-1]:]
-    for marker in ("methodology concern retained", "domain concern retained", "devil's advocate dissent retained"):
+    _require(
+        positions == sorted(positions),
+        "editorial synthesis must appear after independent reviewer sections",
+    )
+    synthesis = text[positions[-1] :]
+    for marker in (
+        "methodology concern retained",
+        "domain concern retained",
+        "devil's advocate dissent retained",
+    ):
         _require(marker in synthesis, f"synthesis dropped minority marker: {marker}")
-    return ["paper-reviewer full-mode fixture preserves independent reviewer sections before synthesis"]
+    return [
+        "paper-reviewer full-mode fixture preserves independent reviewer sections before synthesis"
+    ]
 
 
 def check_upstream_lock() -> list[str]:
@@ -439,10 +466,16 @@ def check_upstream_lock() -> list[str]:
     ars = sources.get("academic-research-skills")
     _require(bool(ars), "package manifest missing academic-research-skills source")
     commit = ars.get("commit", "")
-    _require(bool(re.fullmatch(r"[0-9a-f]{40}", commit)), f"academic-research-skills lock is not a full SHA: {commit}")
+    _require(
+        bool(re.fullmatch(r"[0-9a-f]{40}", commit)),
+        f"academic-research-skills lock is not a full SHA: {commit}",
+    )
     included = set(ars.get("included_paths", []))
     for path in ("commands", "hooks", "tests", "docs", "shared", "scripts"):
-        _require(path in included or any(path in item for item in included), f"included_paths missing {path}")
+        _require(
+            path in included or any(path in item for item in included),
+            f"included_paths missing {path}",
+        )
     return [f"upstream lock pins academic-research-skills@{commit[:7]}"]
 
 
@@ -452,9 +485,15 @@ def check_topology_experiment() -> list[str]:
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     result = module.validate_all(require_runs=False)
-    _require(result["status"] == "PASS", "topology experiment contract failed: " + ", ".join(result["reason_codes"]))
+    _require(
+        result["status"] == "PASS",
+        "topology experiment contract failed: " + ", ".join(result["reason_codes"]),
+    )
     _require(result["task_count"] == 10, "topology experiment cohort must contain exactly 10 tasks")
-    _require(result["expected_run_count"] == 26, "topology experiment must declare exactly 26 matched task-arm runs")
+    _require(
+        result["expected_run_count"] == 26,
+        "topology experiment must declare exactly 26 matched task-arm runs",
+    )
     return [
         "topology experiment cohort freezes 10 tasks across reviewer and research/pipeline strata",
         "26 task-arm plans have valid input digests and acyclic DAGs",
@@ -479,13 +518,20 @@ def check_desktop_plugin_bundle() -> list[str]:
         PLUGIN_ROOT.name == manifest.get("name"),
         "Desktop plugin directory must match plugin manifest name",
     )
-    _require(manifest.get("skills") == "./skills/", "Desktop plugin manifest must point at ./skills/")
+    _require(
+        manifest.get("skills") == "./skills/", "Desktop plugin manifest must point at ./skills/"
+    )
     _require(plugin_skills.exists(), f"Desktop plugin skills path missing: {plugin_skills}")
     _require(plugin_skills.is_dir(), "Desktop plugin skills path must be a directory")
     _require(not plugin_skills.is_symlink(), "Desktop plugin skills path must not be a symlink")
     _require(suite_entry.is_dir(), "Desktop plugin bundle must include academic-research-suite")
-    _require(skill_md.is_file(), "Desktop plugin bundle academic-research-suite is missing SKILL.md")
-    _require(package_manifest.is_file(), "Desktop plugin bundle academic-research-suite is missing manifest.json")
+    _require(
+        skill_md.is_file(), "Desktop plugin bundle academic-research-suite is missing SKILL.md"
+    )
+    _require(
+        package_manifest.is_file(),
+        "Desktop plugin bundle academic-research-suite is missing manifest.json",
+    )
 
     marketplace_path = SUITE_ROOT.parents[1] / ".agents" / "plugins" / "marketplace.json"
     if marketplace_path.is_file():
@@ -495,20 +541,29 @@ def check_desktop_plugin_bundle() -> list[str]:
             marketplace.get("interface", {}).get("displayName") == "ARS-Codex",
             "repo marketplace display name must be ARS-Codex",
         )
-        entries = [entry for entry in marketplace.get("plugins", []) if entry.get("name") == "ars-codex"]
+        entries = [
+            entry for entry in marketplace.get("plugins", []) if entry.get("name") == "ars-codex"
+        ]
         _require(len(entries) == 1, "repo marketplace must contain exactly one ars-codex entry")
         source = entries[0].get("source", {})
         _require(source.get("source") == "local", "ars-codex marketplace source must be local")
-        _require(source.get("path") == "./plugins/ars-codex", "ars-codex marketplace path is incorrect")
+        _require(
+            source.get("path") == "./plugins/ars-codex", "ars-codex marketplace path is incorrect"
+        )
         policy = entries[0].get("policy", {})
-        _require(policy.get("installation") == "AVAILABLE", "ars-codex must be available to install")
-        _require(policy.get("authentication") == "ON_INSTALL", "ars-codex auth policy must be ON_INSTALL")
-        _require(entries[0].get("category") == "Research", "ars-codex marketplace category must be Research")
+        _require(
+            policy.get("installation") == "AVAILABLE", "ars-codex must be available to install"
+        )
+        _require(
+            policy.get("authentication") == "ON_INSTALL", "ars-codex auth policy must be ON_INSTALL"
+        )
+        _require(
+            entries[0].get("category") == "Research",
+            "ars-codex marketplace category must be Research",
+        )
 
     symlinks = sorted(
-        str(path.relative_to(PLUGIN_ROOT))
-        for path in plugin_skills.rglob("*")
-        if path.is_symlink()
+        str(path.relative_to(PLUGIN_ROOT)) for path in plugin_skills.rglob("*") if path.is_symlink()
     )
     _require(
         not symlinks,

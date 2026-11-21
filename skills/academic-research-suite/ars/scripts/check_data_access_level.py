@@ -91,8 +91,7 @@ def run_all_checks(root: Path) -> list[str]:
         metadata = fm.get("metadata")
         if not isinstance(metadata, dict):
             violations.append(
-                f"{skill_md}: metadata must be a mapping/object, got "
-                f"{type(metadata).__name__}"
+                f"{skill_md}: metadata must be a mapping/object, got " f"{type(metadata).__name__}"
             )
             continue
         declared = metadata.get("data_access_level")
@@ -104,8 +103,7 @@ def run_all_checks(root: Path) -> list[str]:
             )
     for name in sorted(set(EXPECTED_LEVELS) - seen):
         violations.append(
-            f"EXPECTED_LEVELS pins '{name}' but no top-level "
-            f"{name}/SKILL.md exists"
+            f"EXPECTED_LEVELS pins '{name}' but no top-level " f"{name}/SKILL.md exists"
         )
     return violations
 
@@ -124,9 +122,7 @@ def main() -> int:
             print(f"ERROR: {v}")
         print(f"\n{len(violations)} violation(s) found.", file=sys.stderr)
         return 1
-    print(
-        "OK: all SKILL.md files declare a valid, pinned data_access_level."
-    )
+    print("OK: all SKILL.md files declare a valid, pinned data_access_level.")
     return 0
 
 

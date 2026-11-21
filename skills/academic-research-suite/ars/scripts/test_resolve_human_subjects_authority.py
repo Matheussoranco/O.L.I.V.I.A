@@ -15,7 +15,6 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-
 from resolve_human_subjects_authority import (
     ContractError,
     digest,
@@ -26,7 +25,6 @@ from resolve_human_subjects_authority import (
     validate_registry,
     validate_resolved_context,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "human_subjects_authority"
@@ -68,7 +66,9 @@ def _profile(registry: dict[str, Any], profile_id: str) -> dict[str, Any]:
 
 
 def _requirement(result: dict[str, Any], requirement_id: str) -> dict[str, Any]:
-    return next(row for row in result["requirement_results"] if row["requirement_id"] == requirement_id)
+    return next(
+        row for row in result["requirement_results"] if row["requirement_id"] == requirement_id
+    )
 
 
 def _selection(context: dict[str, Any], profile_id: str) -> dict[str, Any]:
@@ -220,7 +220,11 @@ def _with_institutional_overlay(
                     "value": True,
                 },
                 "structured_expectations": [
-                    {"field_id": "participant.notice.synthetic", "operator": "present", "value": True}
+                    {
+                        "field_id": "participant.notice.synthetic",
+                        "operator": "present",
+                        "value": True,
+                    }
                 ],
                 "evidence_expected": [
                     {
@@ -349,9 +353,7 @@ def test_live_authority_dates_and_taiwan_controlling_fields_are_pinned() -> None
 
     profile = _profile(registry, "tw.mohw.human-subjects-research-act")
     expectations = {
-        row["requirement_id"]: {
-            item["field_id"] for item in row["structured_expectations"]
-        }
+        row["requirement_id"]: {item["field_id"] for item in row["structured_expectations"]}
         for row in profile["requirements"]
     }
     committee = expectations["tw.hsra.article-7.committee-composition"]
@@ -387,7 +389,9 @@ def test_structurally_distinct_review_profiles_resolve_through_same_schema(
 def test_data_protection_operates_simultaneously_with_review_ethics() -> None:
     result = resolve(_fixture("us-gdpr-two-axis.json"), _registry())
     by_axis = {
-        axis: {row["requirement_id"] for row in result["requirement_results"] if row["axis"] == axis}
+        axis: {
+            row["requirement_id"] for row in result["requirement_results"] if row["axis"] == axis
+        }
         for axis in ("review_ethics", "data_protection")
     }
     assert by_axis["review_ethics"]
@@ -493,7 +497,10 @@ def test_jurisdiction_hints_never_trigger_default_selection() -> None:
         ({"op": "fact_in", "fact_id": "choice.region", "values": ["tw", "us"]}, "true"),
         ({"op": "fact_contains", "fact_id": "set.locations", "value": "de"}, "true"),
         (
-            {"op": "not", "operand": {"op": "fact_equals", "fact_id": "flag.unknown", "value": True}},
+            {
+                "op": "not",
+                "operand": {"op": "fact_equals", "fact_id": "flag.unknown", "value": True},
+            },
             "unknown",
         ),
         (
@@ -579,9 +586,14 @@ def test_overlay_is_additive_and_collision_rows_are_preserved(
         }
     ]
     requirement_ids = {row["requirement_id"] for row in result["requirement_results"]}
-    assert {row["requirement_id"] for row in _profile(live_registry, "us.hhs.45-cfr-46.subpart-a")["requirements"]} <= requirement_ids
+    assert {
+        row["requirement_id"]
+        for row in _profile(live_registry, "us.hhs.45-cfr-46.subpart-a")["requirements"]
+    } <= requirement_ids
     assert overlay["requirements"][0]["requirement_id"] in requirement_ids
-    collision = next(row for row in result["collisions"] if row["collision_key"] == "participant.information")
+    collision = next(
+        row for row in result["collisions"] if row["collision_key"] == "participant.information"
+    )
     assert overlay["requirements"][0]["requirement_id"] in collision["requirement_ids"]
     assert collision["requirements_removed"] is False
 
@@ -646,9 +658,7 @@ def test_overlay_requirement_inherits_unknown_or_false_base_applicability() -> N
         support["state"] = state
         support["value"] = value
         result = resolve(context, registry)
-        overlay_requirement = _requirement(
-            result, "synthetic.institution.participant-information"
-        )
+        overlay_requirement = _requirement(result, "synthetic.institution.participant-information")
         assert overlay_requirement["applicability"] == expected
         assert any(
             row["code"] == "OVERLAY_BASE_UNRESOLVED"
@@ -716,9 +726,7 @@ def test_noncurrent_or_noncontrolling_authority_source_blocks_gate() -> None:
             _repin_profile(context, profile)
         result = resolve(context, registry)
         selected = next(
-            row
-            for row in result["selected_profiles"]
-            if row["profile_id"] == profile["profile_id"]
+            row for row in result["selected_profiles"] if row["profile_id"] == profile["profile_id"]
         )
         assert selected["source_state"] == "unresolved", mutation
         assert result["resolution_state"] == "applicability_unresolved", mutation
@@ -735,7 +743,9 @@ def test_requirement_authority_anchor_fields_are_mandatory() -> None:
         registry = _registry()
         profile = _profile(registry, "us.hhs.45-cfr-46.subpart-a")
         profile["requirements"][0]["authority_anchor"].pop(field)
-        assert list(_validator("authority_profile_registry.schema.json").iter_errors(registry)), field
+        assert list(
+            _validator("authority_profile_registry.schema.json").iter_errors(registry)
+        ), field
 
 
 def test_anchor_effective_date_cannot_be_replaced_by_amendment_date() -> None:
@@ -824,9 +834,7 @@ def test_resolved_validator_rejects_rebound_structural_and_semantic_mutations() 
         lambda output: output["requirement_results"][0].__setitem__(
             "requirement_pointer", "/profiles/999/requirements/0"
         ),
-        lambda output: output["requirement_results"][0].__setitem__(
-            "requirement_digest", "0" * 64
-        ),
+        lambda output: output["requirement_results"][0].__setitem__("requirement_digest", "0" * 64),
         lambda output: output["requirement_results"][0].__setitem__(
             "detail", "injected legal conclusion"
         ),
@@ -874,19 +882,22 @@ def test_key_order_selection_order_and_reconfirmation_do_not_change_digest() -> 
     reordered = json.loads(json.dumps(context, ensure_ascii=False, sort_keys=True))
     reordered["selected_profiles"].reverse()
     reordered["confirmed_at"] = "2026-08-09T12:34:56+08:00"
-    assert resolve(reordered, json.loads(json.dumps(registry, sort_keys=True)))["resolved_digest"] == first
+    assert (
+        resolve(reordered, json.loads(json.dumps(registry, sort_keys=True)))["resolved_digest"]
+        == first
+    )
 
 
 def test_string_set_value_order_does_not_change_context_or_resolved_digest() -> None:
     context = _fixture("us-gdpr-two-axis.json")
     registry = _registry()
     registry["fact_definitions"].append(
-            {
-                "fact_id": "synthetic.processing_locations",
-                "value_type": "string_set",
-                "allowed_values": None,
-                "description": "Synthetic unordered processing-location set for digest testing.",
-            }
+        {
+            "fact_id": "synthetic.processing_locations",
+            "value_type": "string_set",
+            "allowed_values": None,
+            "description": "Synthetic unordered processing-location set for digest testing.",
+        }
     )
     context["declared_facts"].append(
         {
@@ -933,9 +944,7 @@ def test_substantive_mutations_change_resolved_digest() -> None:
             _repin_profile(context, profile)
         else:
             source = next(
-                row
-                for row in registry["sources"]
-                if row["source_id"] == "us.ecfr.45-cfr-46.107"
+                row for row in registry["sources"] if row["source_id"] == "us.ecfr.45-cfr-46.107"
             )
             source["freshness"] = "stale"
         assert resolve(context, registry)["resolved_digest"] != first, mutation
@@ -1206,12 +1215,9 @@ def test_cli_reads_only_named_inputs_not_sibling_manuscript(tmp_path: Path) -> N
 
 def test_665_and_668_adjacent_contract_bytes_remain_pinned() -> None:
     expected = {
-        "scripts/check_human_subjects_output_contract.py":
-            "902ae7ed6d1be0f0629b028edc2184b8fa0ca18db0dcb4a1354fba09c90103be",
-        "shared/contracts/human_subjects/committee_correspondence.schema.json":
-            "302ffff93ca62445afa5f2979540aa24cea7875dc81f2ba2b770208e174b2931",
-        "scripts/fixtures/committee_correspondence/16fd83f6aec7/concern_tracker.json":
-            "efc76a930e8f42e1135258ca6dc80aabe3637fd0b6c535a1429b560d38764630",
+        "scripts/check_human_subjects_output_contract.py": "902ae7ed6d1be0f0629b028edc2184b8fa0ca18db0dcb4a1354fba09c90103be",
+        "shared/contracts/human_subjects/committee_correspondence.schema.json": "302ffff93ca62445afa5f2979540aa24cea7875dc81f2ba2b770208e174b2931",
+        "scripts/fixtures/committee_correspondence/16fd83f6aec7/concern_tracker.json": "efc76a930e8f42e1135258ca6dc80aabe3637fd0b6c535a1429b560d38764630",
     }
     for relative, expected_digest in expected.items():
         path = REPO_ROOT / relative

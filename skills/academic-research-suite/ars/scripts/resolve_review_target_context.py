@@ -16,7 +16,6 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any, NoReturn
 
-
 AUTHORITY_CLASSES = (
     "official_venue_type",
     "field_society_standard",
@@ -180,9 +179,7 @@ def validate_declaration(value: dict[str, Any]) -> None:
         {"primary", "subfield", "additional_disciplines"},
     )
     primary = _string(discipline["primary"], "declaration.discipline.primary")
-    subfield = _string(
-        discipline["subfield"], "declaration.discipline.subfield", nullable=True
-    )
+    subfield = _string(discipline["subfield"], "declaration.discipline.subfield", nullable=True)
     additional = _string_list(
         discipline["additional_disciplines"],
         "declaration.discipline.additional_disciplines",
@@ -195,9 +192,7 @@ def validate_declaration(value: dict[str, Any]) -> None:
     if subfield is not None and not subfield.strip():
         _fail("declaration.discipline.subfield", "must not be blank")
 
-    target = _object(
-        obj["target"], "declaration.target", {"venue", "track", "contribution_type"}
-    )
+    target = _object(obj["target"], "declaration.target", {"venue", "track", "contribution_type"})
     venue = _string(target["venue"], "declaration.target.venue", nullable=True)
     track = _string(target["track"], "declaration.target.track", nullable=True)
     _string(target["contribution_type"], "declaration.target.contribution_type")
@@ -206,17 +201,13 @@ def validate_declaration(value: dict[str, Any]) -> None:
     if venue is not None and track is None:
         _fail("declaration.target.track", "must be declared when venue is declared")
 
-    _string_list(
-        obj["reporting_design_overlays"], "declaration.reporting_design_overlays"
-    )
+    _string_list(obj["reporting_design_overlays"], "declaration.reporting_design_overlays")
     selection = _object(
         obj["criterion_selection"],
         "declaration.criterion_selection",
         {"mode", "ids"},
     )
-    mode = _enum(
-        selection["mode"], "declaration.criterion_selection.mode", SELECTION_MODES
-    )
+    mode = _enum(selection["mode"], "declaration.criterion_selection.mode", SELECTION_MODES)
     selected_ids = _string_list(selection["ids"], "declaration.criterion_selection.ids")
     for index, criterion_id in enumerate(selected_ids):
         _identifier(criterion_id, f"declaration.criterion_selection.ids[{index}]")
@@ -268,7 +259,14 @@ def validate_registry(value: dict[str, Any]) -> None:
     obj = _object(
         value,
         "registry",
-        {"schema_version", "registry_id", "registry_version", "as_of", "authority_classes", "criteria"},
+        {
+            "schema_version",
+            "registry_id",
+            "registry_version",
+            "as_of",
+            "authority_classes",
+            "criteria",
+        },
     )
     if obj["schema_version"] != "review-criteria-registry/1.0":
         _fail("registry.schema_version", "must equal review-criteria-registry/1.0")
@@ -279,9 +277,7 @@ def validate_registry(value: dict[str, Any]) -> None:
         obj["authority_classes"], "registry.authority_classes", set(AUTHORITY_CLASSES)
     )
     partition_ids: dict[str, list[str]] = {
-        authority: _string_list(
-            partitions[authority], f"registry.authority_classes.{authority}"
-        )
+        authority: _string_list(partitions[authority], f"registry.authority_classes.{authority}")
         for authority in AUTHORITY_CLASSES
     }
     for authority, listed_ids in partition_ids.items():
@@ -359,21 +355,35 @@ def validate_registry(value: dict[str, Any]) -> None:
         elif authority == "broad_field_fallback":
             for axis in ("venues", "tracks", "contribution_types", "overlays"):
                 if axes[axis]:
-                    _fail(f"{path}.applicability.{axis}", "broad fallback rows cannot claim target or overlay authority")
+                    _fail(
+                        f"{path}.applicability.{axis}",
+                        "broad fallback rows cannot claim target or overlay authority",
+                    )
 
     flattened: list[str] = []
     for authority, listed_ids in partition_ids.items():
         for criterion_id in listed_ids:
             if criterion_id in flattened:
-                _fail("registry.authority_classes", f"id appears in more than one partition: {criterion_id}")
+                _fail(
+                    "registry.authority_classes",
+                    f"id appears in more than one partition: {criterion_id}",
+                )
             flattened.append(criterion_id)
             if criterion_id not in ids:
-                _fail(f"registry.authority_classes.{authority}", f"unknown criterion id: {criterion_id}")
+                _fail(
+                    f"registry.authority_classes.{authority}",
+                    f"unknown criterion id: {criterion_id}",
+                )
             if row_authority[criterion_id] != authority:
-                _fail(f"registry.authority_classes.{authority}", f"row authority mismatch: {criterion_id}")
+                _fail(
+                    f"registry.authority_classes.{authority}",
+                    f"row authority mismatch: {criterion_id}",
+                )
     if set(flattened) != ids:
         missing = sorted(ids - set(flattened))
-        _fail("registry.authority_classes", f"criterion absent from partition: {', '.join(missing)}")
+        _fail(
+            "registry.authority_classes", f"criterion absent from partition: {', '.join(missing)}"
+        )
 
 
 def _context_axes(declaration: dict[str, Any]) -> dict[str, set[str]]:
@@ -383,7 +393,10 @@ def _context_axes(declaration: dict[str, Any]) -> dict[str, set[str]]:
     track = [] if target["track"] is None else [target["track"]]
     subfield = [] if discipline["subfield"] is None else [discipline["subfield"]]
     return {
-        "disciplines": {_normalized(item) for item in [discipline["primary"], *discipline["additional_disciplines"]]},
+        "disciplines": {
+            _normalized(item)
+            for item in [discipline["primary"], *discipline["additional_disciplines"]]
+        },
         "subfields": {_normalized(item) for item in subfield},
         "venues": {_normalized(item) for item in venue},
         "tracks": {_normalized(item) for item in track},
@@ -432,10 +445,16 @@ def resolve(declaration: dict[str, Any], registry: dict[str, Any]) -> dict[str, 
     if selection["mode"] == "explicit":
         unknown = [item for item in selection["ids"] if item not in all_by_id]
         if unknown:
-            _fail("declaration.criterion_selection.ids", f"unknown criterion id(s): {', '.join(unknown)}")
+            _fail(
+                "declaration.criterion_selection.ids",
+                f"unknown criterion id(s): {', '.join(unknown)}",
+            )
         inapplicable = [item for item in selection["ids"] if item not in applicable_by_id]
         if inapplicable:
-            _fail("declaration.criterion_selection.ids", f"inapplicable criterion id(s): {', '.join(inapplicable)}")
+            _fail(
+                "declaration.criterion_selection.ids",
+                f"inapplicable criterion id(s): {', '.join(inapplicable)}",
+            )
         selected = [applicable_by_id[item] for item in selection["ids"]]
     else:
         selected = applicable
@@ -465,7 +484,8 @@ def resolve(declaration: dict[str, Any], registry: dict[str, Any]) -> dict[str, 
             "dimension": row["dimension"],
             "source_uri": row["source"]["uri"],
             "source_freshness": freshness,
-            "blocking_eligible": freshness == "current" and row["blocking_policy"] == "blocking_allowed",
+            "blocking_eligible": freshness == "current"
+            and row["blocking_policy"] == "blocking_allowed",
             "advisory_reasons": advisory_reasons,
             "registry_pointer": f"/criteria/{row_index[row['criterion_id']]}",
         }

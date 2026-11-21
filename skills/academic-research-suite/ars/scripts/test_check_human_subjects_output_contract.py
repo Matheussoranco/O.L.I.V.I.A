@@ -5,9 +5,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_human_subjects_output_contract as contract
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -31,12 +29,8 @@ def test_real_repository_passes() -> None:
     assert contract.run_checks(REPO_ROOT) == []
 
 
-@pytest.mark.parametrize(
-    "rel", [contract.ETHICS_CHECKLIST, contract.IRB_REFERENCE]
-)
-def test_post_migration_authority_boundary_is_pinned(
-    tmp_path: Path, rel: Path
-) -> None:
+@pytest.mark.parametrize("rel", [contract.ETHICS_CHECKLIST, contract.IRB_REFERENCE])
+def test_post_migration_authority_boundary_is_pinned(tmp_path: Path, rel: Path) -> None:
     root = mirror(tmp_path)
     mutate(
         root,

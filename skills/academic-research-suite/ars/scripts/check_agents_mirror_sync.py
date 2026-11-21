@@ -38,12 +38,9 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 # mirror (plugin surface) -> canonical source. Keys must be the full contents
 # of agents/*.md (invariant 1).
 MIRRORS = {
-    "agents/report_compiler_agent.md":
-        "deep-research/agents/report_compiler_agent.md",
-    "agents/research_architect_agent.md":
-        "deep-research/agents/research_architect_agent.md",
-    "agents/synthesis_agent.md":
-        "deep-research/agents/synthesis_agent.md",
+    "agents/report_compiler_agent.md": "deep-research/agents/report_compiler_agent.md",
+    "agents/research_architect_agent.md": "deep-research/agents/research_architect_agent.md",
+    "agents/synthesis_agent.md": "deep-research/agents/synthesis_agent.md",
 }
 
 
@@ -54,7 +51,8 @@ def check(root: Path) -> list[str]:
     agents_dir = root / "agents"
     on_disk = (
         {p.relative_to(root).as_posix() for p in agents_dir.glob("*.md")}
-        if agents_dir.is_dir() else set()
+        if agents_dir.is_dir()
+        else set()
     )
     for mirror in sorted(roster - on_disk):
         errors.append(
@@ -87,9 +85,7 @@ def check(root: Path) -> list[str]:
             continue
         sp = root / source
         if not sp.is_file():
-            errors.append(
-                f"{source}: canonical source for {mirror} is missing"
-            )
+            errors.append(f"{source}: canonical source for {mirror} is missing")
             continue
         if mp.read_bytes() != sp.read_bytes():
             errors.append(

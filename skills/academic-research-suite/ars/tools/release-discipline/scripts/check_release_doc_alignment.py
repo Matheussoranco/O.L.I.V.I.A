@@ -20,6 +20,7 @@ import re
 from typing import Any
 
 from scripts._release_doc_alignment_schema import (
+    _DEFAULT_CHANGELOG_PATTERN,
     ManifestError,
     PackageError,
     ResolutionError,
@@ -31,7 +32,6 @@ from scripts._release_doc_alignment_schema import (
     load_manifest,
     resolve_authoritative_version,
     scan_changelog_file,
-    _DEFAULT_CHANGELOG_PATTERN,
 )
 
 
@@ -42,8 +42,7 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     p.add_argument("--manifest", required=True, type=Path)
     p.add_argument("--expected-version", default=None)
-    p.add_argument("--ci", action="store_true",
-                   help="Reject [suite] fallback (use in release CI)")
+    p.add_argument("--ci", action="store_true", help="Reject [suite] fallback (use in release CI)")
     p.add_argument("--json", action="store_true", dest="json_output")
     p.add_argument("--verbose", action="store_true")
     return p.parse_args(argv)
@@ -159,12 +158,14 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
     if any(e["version"] == av for e in entries):
         checks.append({"kind": "changelog_authoritative_match", "status": "pass"})
     else:
-        checks.append({
-            "kind": "changelog_authoritative_match",
-            "status": "fail",
-            "expected": av,
-            "message": f"authoritative version {av!r} has no CHANGELOG entry",
-        })
+        checks.append(
+            {
+                "kind": "changelog_authoritative_match",
+                "status": "fail",
+                "expected": av,
+                "message": f"authoritative version {av!r} has no CHANGELOG entry",
+            }
+        )
 
     # Package matches
     for entry in data.get("package", []):
@@ -199,12 +200,14 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         try:
             file_text = (manifest_parent / path).read_text(encoding="utf-8")
         except UnicodeDecodeError as exc:
-            checks.append({
-                "kind": "file_decode_error",
-                "file": path,
-                "status": "fail",
-                "message": f"file is not valid UTF-8: {exc}",
-            })
+            checks.append(
+                {
+                    "kind": "file_decode_error",
+                    "file": path,
+                    "status": "fail",
+                    "message": f"file is not valid UTF-8: {exc}",
+                }
+            )
             continue
         if entry.get("release_block_form"):
             for r in check_release_block_presence(
@@ -245,7 +248,12 @@ def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:
         "authoritative_date": av_date,
         "authoritative_date_source": av_date_src,
         "checks": checks,
-        "summary": {"pass": pass_count, "fail": fail_count, "skip": skip_count, "exit_code": exit_code},
+        "summary": {
+            "pass": pass_count,
+            "fail": fail_count,
+            "skip": skip_count,
+            "exit_code": exit_code,
+        },
     }
 
 

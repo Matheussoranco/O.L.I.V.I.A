@@ -84,9 +84,7 @@ def _check_schema_shape(manifest: dict) -> list[str]:
         )
     mode = manifest.get("manifest_lint_mode")
     if mode not in LINT_MODES:
-        errors.append(
-            f"manifest_lint_mode must be one of {sorted(LINT_MODES)}; got {mode!r}"
-        )
+        errors.append(f"manifest_lint_mode must be one of {sorted(LINT_MODES)}; got {mode!r}")
     docs = manifest.get("documentation_paths")
     if not isinstance(docs, list) or len(docs) == 0:
         errors.append(
@@ -148,16 +146,12 @@ def _check_schema_shape(manifest: dict) -> list[str]:
                 paper_a_types[pt] = paper_a_types.get(pt, 0) + 1
         # input_artefacts
         ia = p.get("input_artefacts")
-        if not isinstance(ia, dict) or not any(
-            ia.get(f) for f in INPUT_ARTEFACT_FIELDS
-        ):
+        if not isinstance(ia, dict) or not any(ia.get(f) for f in INPUT_ARTEFACT_FIELDS):
             errors.append(
                 f"{ctx}.input_artefacts must be an object with at least one populated sub-field "
                 f"from {sorted(INPUT_ARTEFACT_FIELDS)}"
             )
-        elif not all(
-            isinstance(v, str) and v for k, v in ia.items() if k in INPUT_ARTEFACT_FIELDS
-        ):
+        elif not all(isinstance(v, str) and v for k, v in ia.items() if k in INPUT_ARTEFACT_FIELDS):
             errors.append(
                 f"{ctx}.input_artefacts populated sub-fields must be non-empty string paths"
             )
@@ -169,9 +163,7 @@ def _check_schema_shape(manifest: dict) -> list[str]:
             for sub in ("writer_draft", "evaluator_review"):
                 v = bo.get(sub)
                 if not isinstance(v, str) or not v:
-                    errors.append(
-                        f"{ctx}.baseline_output.{sub} must be a non-empty string path"
-                    )
+                    errors.append(f"{ctx}.baseline_output.{sub} must be a non-empty string path")
         # treatment_output (object with four sub-fields when present)
         to = p.get("treatment_output")
         if to is not None:
@@ -236,25 +228,31 @@ def _check_schema_shape(manifest: dict) -> list[str]:
             # paper-C must-have rules
             kfm = p.get("known_failure_mode")
             if not isinstance(kfm, str) or not kfm:
-                errors.append(f"{ctx}.known_failure_mode is required for paper-C entries (non-empty string)")
+                errors.append(
+                    f"{ctx}.known_failure_mode is required for paper-C entries (non-empty string)"
+                )
             fe = p.get("failure_evidence")
             if not isinstance(fe, str) or not fe:
-                errors.append(f"{ctx}.failure_evidence is required for paper-C entries (non-empty string path)")
+                errors.append(
+                    f"{ctx}.failure_evidence is required for paper-C entries (non-empty string path)"
+                )
 
     # Aggregate role + paper-type counts
     if paper_a_count != 6:
-        errors.append(f"len([p for p in papers if p.role == 'paper-A']) must == 6; got {paper_a_count}")
+        errors.append(
+            f"len([p for p in papers if p.role == 'paper-A']) must == 6; got {paper_a_count}"
+        )
     if paper_c_count != 1:
-        errors.append(f"len([p for p in papers if p.role == 'paper-C']) must == 1; got {paper_c_count}")
+        errors.append(
+            f"len([p for p in papers if p.role == 'paper-C']) must == 1; got {paper_c_count}"
+        )
     if len(paper_a_types) != 3:
         errors.append(
             f"paper-A entries must span exactly 3 paper_type families; got {sorted(paper_a_types)}"
         )
     for pt, count in paper_a_types.items():
         if count != 2:
-            errors.append(
-                f"paper-A paper_type={pt!r} must appear exactly twice; got {count}"
-            )
+            errors.append(f"paper-A paper_type={pt!r} must appear exactly twice; got {count}")
 
     return errors
 
@@ -288,7 +286,12 @@ def _collect_declared_paths(manifest: dict) -> set[str]:
                 v = to.get(sub)
                 if isinstance(v, str):
                     declared.add(v)
-        for field in ("judge_output_baseline", "judge_output_treatment", "metrics_output", "failure_evidence"):
+        for field in (
+            "judge_output_baseline",
+            "judge_output_treatment",
+            "metrics_output",
+            "failure_evidence",
+        ):
             v = paper.get(field)
             if isinstance(v, str):
                 declared.add(v)

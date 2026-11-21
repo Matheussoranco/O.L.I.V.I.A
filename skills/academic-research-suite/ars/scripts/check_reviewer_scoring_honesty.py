@@ -13,7 +13,6 @@ import re
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
 LIVE_FILES = (
@@ -117,9 +116,7 @@ REQUIRED = {
     "academic-paper-reviewer/examples/subclaim_decomposition_example.md": (
         "Confidence remains uncertainty/scope metadata and does not prioritize the finding",
     ),
-    "academic-paper/WORKFLOW.md": (
-        "five-perspective categorical assessment",
-    ),
+    "academic-paper/WORKFLOW.md": ("five-perspective categorical assessment",),
     "academic-paper/references/failure_paths.md": (
         "Criterion-bound trigger: at least one named, decision-critical criterion is",
         "`DOES_NOT_MEET`, with the manuscript evidence and applicable standard stated",
@@ -156,89 +153,126 @@ for _agent in (
 # Positive forms only. Prohibitory prose such as "do not calculate a weighted
 # total" is allowed and protected by REQUIRED witnesses.
 FORBIDDEN = (
-    ("fixed 0-100 decision boundary", re.compile(
-        r"(?i)(?:>=|≥)\s*80.{0,35}\baccept|"
-        r"\b65\s*[-–]\s*79.{0,35}\bminor|"
-        r"\b50\s*[-–]\s*64.{0,35}\bmajor|"
-        r"(?:<|below)\s*50.{0,35}\breject"
-    )),
-    ("numeric reviewer rubric table", re.compile(
-        r"(?im)^\|\s*(?:90\s*[-–]\s*100|9\s*[-–]\s*10)\s*\|"
-    )),
-    ("weighted reviewer result", re.compile(
-        r"\b(?:final|overall)\s+score\s*=|"
-        r"^\|\s*\*\*weighted average\*\*\s*\||"
-        r"\bfour raw scoring-seat weighted averages\b",
-        re.IGNORECASE | re.MULTILINE,
-    )),
-    ("fixed peer-reviewed ratio", re.compile(
-        r"(?i)peer[- ]reviewed\s+(?:ratio\s*)?(?:>=|≥|>|at least)\s*\d+\s*%|"
-        r"\d+\s*%\+?\s+peer[- ]reviewed"
-    )),
-    ("cross-domain source quota", re.compile(
-        r"(?im)^\|\s*(?:IMRaD|Literature Review|Theoretical|Case Study|Policy Brief|Conference)\s*\|\s*\d+\s*\|"
-    )),
-    ("fixed per-theme literature quota", re.compile(
-        r"(?i)(?:every|each)\s+theme.{0,25}(?:>=|≥|at least)\s*\d+\s+sources?"
-    )),
-    ("fixed literature-gap quota", re.compile(
-        r"(?i)research\s+gaps?.{0,15}(?:>=|≥|at least)\s*\d+"
-    )),
-    ("fixed recency ratio", re.compile(
-        r"(?i)currency.{0,35}(?:>=|≥|at least)\s*\d+\s*%.{0,20}(?:last|recent)"
-    )),
-    ("fixed language ratio", re.compile(
-        r"(?i)(?:chinese|english)\s+literature.{0,25}(?:>=|≥|at least|comprise)\s*\d+\s*%"
-    )),
-    ("retired score trajectory", re.compile(
-        r"(?i)score\s+trajectory(?:\s+tracked|\s+visualization)"
-    )),
-    ("unbounded all-claim final check", re.compile(
-        r"(?i)final-check\s+mode:\s*100%\s+of\s+claims\b"
-    )),
-    ("calibration overclaim", re.compile(
-        r"(?i)provides calibrated scoring rubrics|"
-        r"ensures consistent, reproducible scoring|"
-        r"without calibration.{0,80}ordinally meaningful"
-    )),
-    ("retired statistical completeness score", re.compile(
-        r"(?i)statistical reporting completeness score"
-    )),
-    ("retired score-first reviewer heuristic", re.compile(
-        r"(?i)write the score first"
-    )),
-    ("seat-level measured-profile upgrade", re.compile(
-        r"(?i)(?:replace|upgrade).{0,40}PROFILE_MEASURED"
-    )),
-    ("scalar checkpoint quality comparison", re.compile(
-        r"(?i)quality indicators:\s*\[score if available\]|"
-        r"latest output\s*[≥>]\s*the quality"
-    )),
-    ("live typed-trajectory overclaim", re.compile(
-        r"(?i)(?:criterion trajectory tracks|criterion trajectory visualization|"
-        r"current producers emit `criterion_trajectory`)"
-    )),
-    ("mechanical confidence weighting", re.compile(
-        r"(?is)(?:\bScore-?5\b.{0,160}\b(?:outweighs|takes precedence over|overrides)\b.{0,160}\bScore-?2\b|"
-        r"^\|\s*Score\s*\|[^\n]*Weight in Synthesis|"
-        r"this reviewer's opinion carries the highest weight)"
-    )),
-    ("confidence-driven arbitration", re.compile(
-        r"(?is)(?:"
-        r"prioriti[sz]ed\s+by[^\n]{0,100}confidence[^\n]{0,40}weight|"
-        r"per-finding\s+confidence[^\n]{0,180}governs?\s+arbitration|"
-        r"arbitration\s+was\s+based\s+on\s*:\s*(?:\n[-*][^\n]*){0,5}confidence|"
-        r"confidence\s+is\s+\d/5[^\n]{0,160}should\s+be\s+respected|"
-        r"only\s+\d/5\s+confidence[^\n]{0,200}confidence\s+limitation"
-        r")"
-    )),
-    ("retired reviewer scoring label", re.compile(
-        r"(?i)five-dimension scoring"
-    )),
-    ("fixed dimension-score rejection threshold", re.compile(
-        r"(?is)(?:two|2)\s+or\s+more.{0,60}dimensions?.{0,40}"
-        r"(?:scored?\s*)?(?:below|under|<)\s*\d+"
-    )),
+    (
+        "fixed 0-100 decision boundary",
+        re.compile(
+            r"(?i)(?:>=|≥)\s*80.{0,35}\baccept|"
+            r"\b65\s*[-–]\s*79.{0,35}\bminor|"
+            r"\b50\s*[-–]\s*64.{0,35}\bmajor|"
+            r"(?:<|below)\s*50.{0,35}\breject"
+        ),
+    ),
+    (
+        "numeric reviewer rubric table",
+        re.compile(r"(?im)^\|\s*(?:90\s*[-–]\s*100|9\s*[-–]\s*10)\s*\|"),
+    ),
+    (
+        "weighted reviewer result",
+        re.compile(
+            r"\b(?:final|overall)\s+score\s*=|"
+            r"^\|\s*\*\*weighted average\*\*\s*\||"
+            r"\bfour raw scoring-seat weighted averages\b",
+            re.IGNORECASE | re.MULTILINE,
+        ),
+    ),
+    (
+        "fixed peer-reviewed ratio",
+        re.compile(
+            r"(?i)peer[- ]reviewed\s+(?:ratio\s*)?(?:>=|≥|>|at least)\s*\d+\s*%|"
+            r"\d+\s*%\+?\s+peer[- ]reviewed"
+        ),
+    ),
+    (
+        "cross-domain source quota",
+        re.compile(
+            r"(?im)^\|\s*(?:IMRaD|Literature Review|Theoretical|Case Study|Policy Brief|Conference)\s*\|\s*\d+\s*\|"
+        ),
+    ),
+    (
+        "fixed per-theme literature quota",
+        re.compile(r"(?i)(?:every|each)\s+theme.{0,25}(?:>=|≥|at least)\s*\d+\s+sources?"),
+    ),
+    (
+        "fixed literature-gap quota",
+        re.compile(r"(?i)research\s+gaps?.{0,15}(?:>=|≥|at least)\s*\d+"),
+    ),
+    (
+        "fixed recency ratio",
+        re.compile(r"(?i)currency.{0,35}(?:>=|≥|at least)\s*\d+\s*%.{0,20}(?:last|recent)"),
+    ),
+    (
+        "fixed language ratio",
+        re.compile(
+            r"(?i)(?:chinese|english)\s+literature.{0,25}(?:>=|≥|at least|comprise)\s*\d+\s*%"
+        ),
+    ),
+    (
+        "retired score trajectory",
+        re.compile(r"(?i)score\s+trajectory(?:\s+tracked|\s+visualization)"),
+    ),
+    (
+        "unbounded all-claim final check",
+        re.compile(r"(?i)final-check\s+mode:\s*100%\s+of\s+claims\b"),
+    ),
+    (
+        "calibration overclaim",
+        re.compile(
+            r"(?i)provides calibrated scoring rubrics|"
+            r"ensures consistent, reproducible scoring|"
+            r"without calibration.{0,80}ordinally meaningful"
+        ),
+    ),
+    (
+        "retired statistical completeness score",
+        re.compile(r"(?i)statistical reporting completeness score"),
+    ),
+    ("retired score-first reviewer heuristic", re.compile(r"(?i)write the score first")),
+    (
+        "seat-level measured-profile upgrade",
+        re.compile(r"(?i)(?:replace|upgrade).{0,40}PROFILE_MEASURED"),
+    ),
+    (
+        "scalar checkpoint quality comparison",
+        re.compile(
+            r"(?i)quality indicators:\s*\[score if available\]|"
+            r"latest output\s*[≥>]\s*the quality"
+        ),
+    ),
+    (
+        "live typed-trajectory overclaim",
+        re.compile(
+            r"(?i)(?:criterion trajectory tracks|criterion trajectory visualization|"
+            r"current producers emit `criterion_trajectory`)"
+        ),
+    ),
+    (
+        "mechanical confidence weighting",
+        re.compile(
+            r"(?is)(?:\bScore-?5\b.{0,160}\b(?:outweighs|takes precedence over|overrides)\b.{0,160}\bScore-?2\b|"
+            r"^\|\s*Score\s*\|[^\n]*Weight in Synthesis|"
+            r"this reviewer's opinion carries the highest weight)"
+        ),
+    ),
+    (
+        "confidence-driven arbitration",
+        re.compile(
+            r"(?is)(?:"
+            r"prioriti[sz]ed\s+by[^\n]{0,100}confidence[^\n]{0,40}weight|"
+            r"per-finding\s+confidence[^\n]{0,180}governs?\s+arbitration|"
+            r"arbitration\s+was\s+based\s+on\s*:\s*(?:\n[-*][^\n]*){0,5}confidence|"
+            r"confidence\s+is\s+\d/5[^\n]{0,160}should\s+be\s+respected|"
+            r"only\s+\d/5\s+confidence[^\n]{0,200}confidence\s+limitation"
+            r")"
+        ),
+    ),
+    ("retired reviewer scoring label", re.compile(r"(?i)five-dimension scoring")),
+    (
+        "fixed dimension-score rejection threshold",
+        re.compile(
+            r"(?is)(?:two|2)\s+or\s+more.{0,60}dimensions?.{0,40}"
+            r"(?:scored?\s*)?(?:below|under|<)\s*\d+"
+        ),
+    ),
 )
 
 

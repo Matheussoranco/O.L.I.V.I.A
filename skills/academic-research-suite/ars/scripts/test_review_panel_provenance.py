@@ -11,7 +11,6 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-
 SCRIPTS = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
@@ -483,13 +482,12 @@ def test_schema6_mode_binding_is_closed_and_requires_full_carrier(
 ) -> None:
     _artifact_path, _artifact, carrier = _write_artifact(tmp_path)
     schema6 = {"review_panel_provenance": carrier}
-    assert provenance.validate_schema6_binding(
-        schema6, provenance.REVIEW_MODE, tmp_path
-    ) == (None, [])
-
-    state, errors = provenance.validate_schema6_binding(
-        {}, provenance.REVIEW_MODE, tmp_path
+    assert provenance.validate_schema6_binding(schema6, provenance.REVIEW_MODE, tmp_path) == (
+        None,
+        [],
     )
+
+    state, errors = provenance.validate_schema6_binding({}, provenance.REVIEW_MODE, tmp_path)
     assert state == "absent"
     assert errors
 
@@ -542,12 +540,9 @@ def test_documented_surfaces_bind_the_typed_contract() -> None:
         REPO_ROOT / "academic-paper-reviewer/templates/editorial_decision_template.md"
     ).read_text(encoding="utf-8")
     protocol = (
-        REPO_ROOT
-        / "academic-paper-reviewer/references/review_panel_provenance_protocol.md"
+        REPO_ROOT / "academic-paper-reviewer/references/review_panel_provenance_protocol.md"
     ).read_text(encoding="utf-8")
-    cross_model = (REPO_ROOT / "shared/cross_model_verification.md").read_text(
-        encoding="utf-8"
-    )
+    cross_model = (REPO_ROOT / "shared/cross_model_verification.md").read_text(encoding="utf-8")
 
     for axis in (
         "role_separated",

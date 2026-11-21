@@ -98,9 +98,7 @@ _EXPECTED_MATRIX_ROW_CITATIONS = frozenset(
 
 
 def _doc_text(root: Path) -> str:
-    return strip_non_rendering(
-        (root / DOC_RELPATH).read_text(encoding="utf-8")
-    )
+    return strip_non_rendering((root / DOC_RELPATH).read_text(encoding="utf-8"))
 
 
 def _looks_like_repo_path(token: str) -> bool:
@@ -124,11 +122,7 @@ def referenced_paths(doc_text: str) -> tuple[list[str], list[str]]:
         if target.startswith(NON_RELATIVE_LINK_PREFIXES):
             continue
         links.append(target)
-    spans = [
-        token
-        for token in code_spans(doc_text)
-        if _looks_like_repo_path(token)
-    ]
+    spans = [token for token in code_spans(doc_text) if _looks_like_repo_path(token)]
     return links, spans
 
 
@@ -142,8 +136,7 @@ def check_pointer_integrity(root: Path) -> list[str]:
         failure = relative_link_failure(root, root / DOC_RELPATH, target)
         if failure is RelativeLinkFailure.ESCAPES_REPOSITORY:
             errors.append(
-                f"RR-1: {DOC_RELPATH} links to {target!r}, which escapes "
-                "the repository root"
+                f"RR-1: {DOC_RELPATH} links to {target!r}, which escapes " "the repository root"
             )
         elif failure is RelativeLinkFailure.DOES_NOT_EXIST:
             errors.append(
@@ -152,8 +145,7 @@ def check_pointer_integrity(root: Path) -> list[str]:
             )
         elif failure is RelativeLinkFailure.ANCHOR_ON_NON_MARKDOWN:
             errors.append(
-                f"RR-1: {DOC_RELPATH} links to {target!r}, an anchor "
-                "on a non-markdown target"
+                f"RR-1: {DOC_RELPATH} links to {target!r}, an anchor " "on a non-markdown target"
             )
         elif failure is RelativeLinkFailure.ANCHOR_NOT_FOUND:
             errors.append(
@@ -163,10 +155,7 @@ def check_pointer_integrity(root: Path) -> list[str]:
     for token in spans:
         resolved = (root / token).resolve()
         if not resolved.is_relative_to(root_abs) or not resolved.exists():
-            errors.append(
-                f"RR-1: {DOC_RELPATH} cites repo path `{token}`, which does "
-                "not exist"
-            )
+            errors.append(f"RR-1: {DOC_RELPATH} cites repo path `{token}`, which does " "not exist")
     return errors
 
 
@@ -197,15 +186,13 @@ def check_status_mirroring(root: Path) -> list[str]:
 
         if is_evidence_bullet and not cites:
             errors.append(
-                f"RR-2: evidence-status bullet carries no recognized "
-                f"citation: {first_line!r}"
+                f"RR-2: evidence-status bullet carries no recognized " f"citation: {first_line!r}"
             )
 
         for status, row_id in cites:
             if status not in _BEHAVIORAL_STATUSES:
                 errors.append(
-                    f"RR-2: status {status!r} not in matrix vocabulary "
-                    f"{_BEHAVIORAL_STATUSES}"
+                    f"RR-2: status {status!r} not in matrix vocabulary " f"{_BEHAVIORAL_STATUSES}"
                 )
             if row_id:
                 # The inventory lock counts only citations sitting in an
@@ -246,9 +233,7 @@ def check_inbound_link(root: Path) -> list[str]:
     surface = root / README_RELPATH
     if links_to(surface.read_text(encoding="utf-8"), surface.parent, doc_abs):
         return []
-    return [
-        f"RR-3: {README_RELPATH} carries no rendered link to {DOC_RELPATH}"
-    ]
+    return [f"RR-3: {README_RELPATH} carries no rendered link to {DOC_RELPATH}"]
 
 
 def run_all_checks(root: Path) -> list[str]:

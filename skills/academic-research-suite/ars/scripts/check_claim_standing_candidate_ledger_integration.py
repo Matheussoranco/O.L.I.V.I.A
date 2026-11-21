@@ -9,7 +9,6 @@ import json
 import sys
 from pathlib import Path
 
-
 SCHEMA_DIR = Path("shared/contracts/claim_standing")
 SCHEMAS = {
     "query_plan.schema.json": "claim-standing-query-plan/1.0",
@@ -18,9 +17,7 @@ SCHEMAS = {
 }
 RUNTIME = Path("scripts/build_claim_standing_candidate_ledger.py")
 PROTOCOL = Path("shared/references/claim_standing_candidate_ledger_protocol.md")
-PHASE_E_PROTOCOL = Path(
-    "academic-pipeline/references/claim_verification_protocol.md"
-)
+PHASE_E_PROTOCOL = Path("academic-pipeline/references/claim_verification_protocol.md")
 DESIGN = Path("docs/design/2026-08-13-655-search-bounded-claim-standing-probe-design.md")
 CONTRACT_README = Path("shared/contracts/README.md")
 MANIFEST = Path("scripts/_ci_pytest_manifest.toml")
@@ -31,10 +28,18 @@ FIXTURES = (
     Path("scripts/fixtures/claim_standing_candidate_ledger/retrieval_input.json"),
 )
 RESOLVER_HASHES = {
-    Path("scripts/semantic_scholar_client.py"): "86e2c3d713804d0e9f4d095e245db0521afb0d198686434515a0c1b225d0f787",
-    Path("scripts/openalex_client.py"): "e90207a2b591a385dab61a55a86a92a6623cb60c428edce360a4199947209cda",
-    Path("scripts/crossref_client.py"): "06da046164f882e20383cd63ec9e9b6da2507d7a5e1f23066adebb88f2256e25",
-    Path("scripts/arxiv_client.py"): "76ace0911bf98b1a288e64ee41f4c2caf993b9df48ef3abb0c57b8446acf02a7",
+    Path(
+        "scripts/semantic_scholar_client.py"
+    ): "86e2c3d713804d0e9f4d095e245db0521afb0d198686434515a0c1b225d0f787",
+    Path(
+        "scripts/openalex_client.py"
+    ): "e90207a2b591a385dab61a55a86a92a6623cb60c428edce360a4199947209cda",
+    Path(
+        "scripts/crossref_client.py"
+    ): "06da046164f882e20383cd63ec9e9b6da2507d7a5e1f23066adebb88f2256e25",
+    Path(
+        "scripts/arxiv_client.py"
+    ): "76ace0911bf98b1a288e64ee41f4c2caf993b9df48ef3abb0c57b8446acf02a7",
 }
 ALLOWED_RUNTIME_DIRECT_IMPORTS = {
     "argparse",
@@ -155,11 +160,7 @@ def run_checks(root: Path) -> list[str]:
             errors.append(f"{relative}: root must remain closed")
         if schema.get("properties", {}).get("schema_version", {}).get("const") != version:
             errors.append(f"{relative}: schema_version drifted")
-        property_names = {
-            key
-            for node in _objects(schema)
-            for key in node.get("properties", {})
-        }
+        property_names = {key for node in _objects(schema) for key in node.get("properties", {})}
         forbidden_fields = property_names & {
             "evidence_rows",
             "full_text",
@@ -169,7 +170,9 @@ def run_checks(root: Path) -> list[str]:
             "verdict",
         }
         if forbidden_fields:
-            errors.append(f"{relative}: Track B/live fields entered Track A: {sorted(forbidden_fields)}")
+            errors.append(
+                f"{relative}: Track B/live fields entered Track A: {sorted(forbidden_fields)}"
+            )
 
     retrieval = loaded_schemas.get("retrieval_input.schema.json")
     candidate = loaded_schemas.get("candidate_ledger.schema.json")
@@ -191,9 +194,9 @@ def run_checks(root: Path) -> list[str]:
             input_raw["properties"]["abstract_text"] = retrieval["$defs"]["nullable_string"]
         if input_raw != output_raw:
             errors.append(f"{SCHEMA_DIR}: shared raw_hit/base_raw_hit definitions drifted")
-        terminal = candidate["$defs"]["final_raw_hit"]["allOf"][1]["properties"][
-            "terminal_state"
-        ]["enum"]
+        terminal = candidate["$defs"]["final_raw_hit"]["allOf"][1]["properties"]["terminal_state"][
+            "enum"
+        ]
         expected_terminal = [
             "selected",
             "missing_title_and_stable_id",
@@ -234,9 +237,7 @@ def run_checks(root: Path) -> list[str]:
                         binding = alias.asname or alias.name
                         existing = direct_module_bindings.get(binding)
                         if existing is not None and existing != alias.name:
-                            forbidden_imports.add(
-                                f"ambiguous-binding:{binding}"
-                            )
+                            forbidden_imports.add(f"ambiguous-binding:{binding}")
                         direct_module_bindings[binding] = alias.name
                 elif isinstance(node, ast.ImportFrom):
                     module = node.module or "<relative>"
@@ -263,10 +264,7 @@ def run_checks(root: Path) -> list[str]:
                     and node.id in direct_module_bindings
                 ):
                     shadowed_module_bindings.add(node.id)
-                elif (
-                    isinstance(node, ast.arg)
-                    and node.arg in direct_module_bindings
-                ):
+                elif isinstance(node, ast.arg) and node.arg in direct_module_bindings:
                     shadowed_module_bindings.add(node.arg)
                 elif isinstance(node, ast.ImportFrom):
                     for alias in node.names:
@@ -278,9 +276,7 @@ def run_checks(root: Path) -> list[str]:
                     f"{sorted(shadowed_module_bindings)}"
                 )
             parents = {
-                child: parent
-                for parent in ast.walk(tree)
-                for child in ast.iter_child_nodes(parent)
+                child: parent for parent in ast.walk(tree) for child in ast.iter_child_nodes(parent)
             }
             module_reference_errors: set[str] = set()
             for node in ast.walk(tree):
@@ -293,32 +289,25 @@ def run_checks(root: Path) -> list[str]:
                 module = direct_module_bindings[node.id]
                 parent = parents.get(node)
                 if not (isinstance(parent, ast.Attribute) and parent.value is node):
-                    module_reference_errors.add(
-                        f"{module} via {node.id}: bare module reference"
-                    )
+                    module_reference_errors.add(f"{module} via {node.id}: bare module reference")
                     continue
                 attributes = [parent.attr]
                 outer = parent
                 while True:
                     ancestor = parents.get(outer)
-                    if not (
-                        isinstance(ancestor, ast.Attribute)
-                        and ancestor.value is outer
-                    ):
+                    if not (isinstance(ancestor, ast.Attribute) and ancestor.value is outer):
                         break
                     attributes.append(ancestor.attr)
                     outer = ancestor
                 attribute_path = ".".join(attributes)
                 use_parent = parents.get(outer)
                 is_allowed_call = (
-                    attribute_path
-                    in ALLOWED_RUNTIME_MODULE_CALLS.get(module, set())
+                    attribute_path in ALLOWED_RUNTIME_MODULE_CALLS.get(module, set())
                     and isinstance(use_parent, ast.Call)
                     and use_parent.func is outer
                 )
                 is_allowed_value = (
-                    attribute_path
-                    in ALLOWED_RUNTIME_MODULE_VALUES.get(module, set())
+                    attribute_path in ALLOWED_RUNTIME_MODULE_VALUES.get(module, set())
                     and isinstance(use_parent, ast.keyword)
                     and use_parent.arg == "file"
                     and isinstance(parents.get(use_parent), ast.Call)
@@ -328,12 +317,8 @@ def run_checks(root: Path) -> list[str]:
                 is_allowed_constant = attribute_path in (
                     ALLOWED_RUNTIME_MODULE_CONSTANTS.get(module, set())
                 ) and isinstance(outer.ctx, ast.Load)
-                if not (
-                    is_allowed_call or is_allowed_value or is_allowed_constant
-                ):
-                    module_reference_errors.add(
-                        f"{module} via {node.id}.{attribute_path}"
-                    )
+                if not (is_allowed_call or is_allowed_value or is_allowed_constant):
+                    module_reference_errors.add(f"{module} via {node.id}.{attribute_path}")
             if module_reference_errors:
                 errors.append(
                     f"{RUNTIME}: direct module references must match exact "
@@ -344,17 +329,19 @@ def run_checks(root: Path) -> list[str]:
             for node in ast.walk(tree):
                 if isinstance(node, ast.Name) and node.id in FORBIDDEN_RUNTIME_NAMES:
                     dynamic_references.add(node.id)
-                elif (
-                    isinstance(node, ast.Attribute)
-                    and node.attr in FORBIDDEN_RUNTIME_ATTRIBUTES
-                ):
+                elif isinstance(node, ast.Attribute) and node.attr in FORBIDDEN_RUNTIME_ATTRIBUTES:
                     dynamic_references.add(node.attr)
             if dynamic_references:
                 errors.append(
                     f"{RUNTIME}: dynamic import, introspection, process, or network "
                     f"references are forbidden: {sorted(dynamic_references)}"
                 )
-        for forbidden in ("add_parser(\"dispatch\"", "add_parser('dispatch'", "urlopen(", ".request("):
+        for forbidden in (
+            'add_parser("dispatch"',
+            "add_parser('dispatch'",
+            "urlopen(",
+            ".request(",
+        ):
             if forbidden in runtime_text:
                 errors.append(f"{RUNTIME}: forbidden capability marker {forbidden!r}")
         for marker in (
@@ -389,7 +376,9 @@ def run_checks(root: Path) -> list[str]:
         if not path.is_file():
             errors.append(f"{relative}: resolver baseline missing")
         elif _sha(path) != expected:
-            errors.append(f"{relative}: existing resolver changed; Track A requires separate future adapters")
+            errors.append(
+                f"{relative}: existing resolver changed; Track A requires separate future adapters"
+            )
 
     for fixture in FIXTURES:
         text = _read(root, fixture, errors)
@@ -469,9 +458,7 @@ def run_checks(root: Path) -> list[str]:
             continue
         for marker in markers:
             if marker in text:
-                errors.append(
-                    f"{relative}: stale #655 marker must not appear: {marker}"
-                )
+                errors.append(f"{relative}: stale #655 marker must not appear: {marker}")
     return errors
 
 

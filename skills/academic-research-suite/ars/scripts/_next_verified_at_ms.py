@@ -95,9 +95,7 @@ def next_verified_at_ms(passport_audit_artifacts: list[dict[str, Any]] | None) -
     if not passport_audit_artifacts:
         return rfc3339_ms(now)
 
-    latest_str = max(
-        entry["verdict"]["verified_at"] for entry in passport_audit_artifacts
-    )
+    latest_str = max(entry["verdict"]["verified_at"] for entry in passport_audit_artifacts)
     latest = parse_rfc3339_ms(latest_str)
     bumped = bump_ms(latest, 1)
     return rfc3339_ms(max(now, bumped))
@@ -131,7 +129,7 @@ def _load_passport_audit_artifacts(path: Path) -> list[dict[str, Any]]:
             # to datetime objects, which would break parse_rfc3339_ms()
             # downstream. The schema constrains verified_at to a string;
             # strict string load matches that contract.
-            data = yaml.load(text, Loader=yaml.BaseLoader)  # noqa: S506 - intentional, str-only
+            data = yaml.load(text, Loader=yaml.BaseLoader)  # - intentional, str-only
     except (yaml.YAMLError, json.JSONDecodeError) as e:
         raise ValueError(f"failed to parse {path}: {e}") from e
 

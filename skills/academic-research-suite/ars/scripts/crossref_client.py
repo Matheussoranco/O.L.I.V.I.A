@@ -21,7 +21,8 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 # Dual-path import: see openalex_client.py comment.
 try:
@@ -60,9 +61,7 @@ def _require_api_url(url: str) -> None:
         # Strip the query from the message: it can carry the polite-pool
         # mailto (an email address), which must never land in logs /
         # raised-exception text. Mirrors openalex_client.py (#495).
-        redacted = urllib.parse.urlunsplit(
-            (parsed.scheme, parsed.netloc, parsed.path, "", "")
-        )
+        redacted = urllib.parse.urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
         raise CrossrefUnavailable(f"Refusing non-Crossref URL: {redacted}")
 
 
@@ -97,9 +96,7 @@ class CrossrefClient:
 
     def __init__(self, polite_email: str | None = None):
         self._polite_email = polite_email or os.environ.get(_POLITE_EMAIL_ENV)
-        self._min_interval = (
-            _POLITE_MIN_INTERVAL if self._polite_email else _ANONYMOUS_MIN_INTERVAL
-        )
+        self._min_interval = _POLITE_MIN_INTERVAL if self._polite_email else _ANONYMOUS_MIN_INTERVAL
         self._last_request_at: float | None = None
         # Polite-pool email goes in User-Agent, not query param.
         ua = "ARS-v3.9.0"
@@ -172,7 +169,9 @@ class CrossrefClient:
         raise CrossrefUnavailable("Crossref rate limit exhausted after retries")
 
     def doi_lookup_with_title_check(
-        self, doi: str, expected_title: str,
+        self,
+        doi: str,
+        expected_title: str,
     ) -> dict[str, Any] | None:
         """DOI lookup with mandatory Levenshtein 0.70 title cross-check.
 
@@ -189,7 +188,9 @@ class CrossrefClient:
         return None  # DOI_MISMATCH
 
     def title_search(
-        self, title: str, year: int | None = None,
+        self,
+        title: str,
+        year: int | None = None,
     ) -> dict[str, Any] | None:
         """Title search under the #431 exact-title-or-bust gate.
 

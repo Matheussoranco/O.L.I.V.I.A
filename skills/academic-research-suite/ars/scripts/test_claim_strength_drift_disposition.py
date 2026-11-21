@@ -8,9 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from scripts import claim_strength_drift_disposition as runtime
-
 
 FINAL_DRAFT_RAW = b"# Exact revised draft\n\nBound manuscript bytes.\n"
 REVISION_BUNDLE_RAW = b'{"schema_version":"revision-evidence-bundle/1.0"}\n'
@@ -58,15 +56,10 @@ def _event_raw(index: int) -> bytes:
 
 
 def _event_raw_map(count: int) -> dict[str, bytes]:
-    return {
-        f"ASSERTED-EVENT-e6-{index}": _event_raw(index)
-        for index in range(1, count + 1)
-    }
+    return {f"ASSERTED-EVENT-e6-{index}": _event_raw(index) for index in range(1, count + 1)}
 
 
-def _author_input(
-    actions: list[str], *, event_paths: list[Path] | None = None
-) -> dict:
+def _author_input(actions: list[str], *, event_paths: list[Path] | None = None) -> dict:
     events = []
     dispositions = []
     for index, action in enumerate(actions, start=1):
@@ -81,9 +74,7 @@ def _author_input(
                     if event_paths is not None
                     else Path(f"/synthetic/session-event-{index}.raw")
                 ),
-                "raw_session_event_sha256": hashlib.sha256(
-                    _event_raw(index)
-                ).hexdigest(),
+                "raw_session_event_sha256": hashlib.sha256(_event_raw(index)).hexdigest(),
             }
         )
         disposition = {
@@ -92,7 +83,9 @@ def _author_input(
             "action": action,
         }
         if action == "authorize_with_reason":
-            disposition["reason"] = "The stronger wording reflects an explicitly accepted interpretation."
+            disposition[
+                "reason"
+            ] = "The stronger wording reflects an explicitly accepted interpretation."
         dispositions.append(disposition)
     return {
         "schema_version": "claim-strength-drift-disposition-input/1.0",
@@ -133,9 +126,7 @@ def _validate(
 def test_all_authorized_is_the_only_continue_projection() -> None:
     findings = _finding_set()
     raw = _raw(findings)
-    sidecar = _build(
-        findings, _author_input(["authorize_with_reason", "authorize_with_reason"])
-    )
+    sidecar = _build(findings, _author_input(["authorize_with_reason", "authorize_with_reason"]))
 
     assert sidecar["pipeline_action"] == "authorized_to_continue"
     assert sidecar["finding_set_sha256"] == hashlib.sha256(raw).hexdigest()
@@ -148,9 +139,7 @@ def test_all_authorized_is_the_only_continue_projection() -> None:
 
 def test_restore_prevents_continuation() -> None:
     findings = _finding_set()
-    sidecar = _build(
-        findings, _author_input(["authorize_with_reason", "restore"])
-    )
+    sidecar = _build(findings, _author_input(["authorize_with_reason", "restore"]))
     assert sidecar["pipeline_action"] == "restore_required"
 
 
@@ -181,7 +170,9 @@ def test_proceed_open_and_implicit_acceptance_are_outside_the_contract() -> None
         _build(findings, author_input)
 
     author_input = _author_input(["restore"])
-    author_input["dispositions"][0]["reason"] = "An added note cannot turn restore into authorization."
+    author_input["dispositions"][0][
+        "reason"
+    ] = "An added note cannot turn restore into authorization."
     with pytest.raises(runtime.ContractError, match="should not be valid"):
         _build(findings, author_input)
 
@@ -220,17 +211,15 @@ def test_schema_keeps_paths_transient_and_provenance_honest() -> None:
         "claim_strength_drift_disposition_input.schema.json",
         "claim_strength_drift_disposition.schema.json",
     ):
-        schema = json.loads(
-            (root / "shared/contracts/revision" / name).read_text(encoding="utf-8")
-        )
+        schema = json.loads((root / "shared/contracts/revision" / name).read_text(encoding="utf-8"))
         serialized = json.dumps(schema, sort_keys=True)
         assert "raw_session_event_sha256" in serialized
         assert "session_event_id" in serialized
         assert "authenticate" in schema["description"]
     input_schema = json.loads(
-        (root / "shared/contracts/revision/claim_strength_drift_disposition_input.schema.json").read_text(
-            encoding="utf-8"
-        )
+        (
+            root / "shared/contracts/revision/claim_strength_drift_disposition_input.schema.json"
+        ).read_text(encoding="utf-8")
     )
     sidecar_schema = json.loads(
         (root / "shared/contracts/revision/claim_strength_drift_disposition.schema.json").read_text(
@@ -310,9 +299,7 @@ def test_integrity_correction_ids_remain_valid_e6_attribution() -> None:
 def test_sidecar_tampering_breaks_binding_and_projection() -> None:
     findings = _finding_set()
     raw = _raw(findings)
-    sidecar = _build(
-        findings, _author_input(["authorize_with_reason", "authorize_with_reason"])
-    )
+    sidecar = _build(findings, _author_input(["authorize_with_reason", "authorize_with_reason"]))
 
     tampered = copy.deepcopy(sidecar)
     tampered["dispositions"][0]["finding_sha256"] = "0" * 64
@@ -378,9 +365,7 @@ def test_cli_build_and_validate(tmp_path: Path) -> None:
     event_path = tmp_path / "session-event-1.raw"
     finding_path.write_bytes(_raw(findings))
     event_path.write_bytes(_event_raw(1))
-    input_path.write_bytes(
-        _raw(_author_input(["authorize_with_reason"], event_paths=[event_path]))
-    )
+    input_path.write_bytes(_raw(_author_input(["authorize_with_reason"], event_paths=[event_path])))
     draft_path.write_bytes(FINAL_DRAFT_RAW)
     bundle_path.write_bytes(REVISION_BUNDLE_RAW)
 
@@ -439,16 +424,12 @@ def test_cli_event_artifacts_fail_closed_for_missing_symlink_and_duplicate_mappi
     event_path.write_bytes(_event_raw(1))
     missing = tmp_path / "missing.raw"
     with pytest.raises(runtime.ContractError, match="cannot open regular non-symlink"):
-        runtime._parse_validate_event_artifacts(
-            [f"ASSERTED-EVENT-e6-1={missing}"]
-        )
+        runtime._parse_validate_event_artifacts([f"ASSERTED-EVENT-e6-1={missing}"])
 
     symlink = tmp_path / "event-link.raw"
     symlink.symlink_to(event_path)
     with pytest.raises(runtime.ContractError, match="cannot open regular non-symlink"):
-        runtime._parse_validate_event_artifacts(
-            [f"ASSERTED-EVENT-e6-1={symlink}"]
-        )
+        runtime._parse_validate_event_artifacts([f"ASSERTED-EVENT-e6-1={symlink}"])
 
     with pytest.raises(runtime.ContractError, match="duplicates event id"):
         runtime._parse_validate_event_artifacts(
@@ -477,9 +458,7 @@ def test_build_loader_rejects_missing_symlink_and_duplicate_files(
 
     hardlink = tmp_path / "event-hardlink-validate.raw"
     hardlink.hardlink_to(event_path)
-    author_input = _author_input(
-        ["restore", "restore"], event_paths=[event_path, hardlink]
-    )
+    author_input = _author_input(["restore", "restore"], event_paths=[event_path, hardlink])
     with pytest.raises(runtime.ContractError, match="duplicate file mapping"):
         runtime._load_build_event_artifacts(author_input)
 

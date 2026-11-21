@@ -50,8 +50,7 @@ def test_fragment_procedure_enum_drift_fails(tree: Path) -> None:
         tree,
         CANONICAL,
         "`procedure_id: <p_from_test_statistic|grim|grimmer|n_from_df>`",
-        "`procedure_id: <p_from_test_statistic|grim|grimmer|n_from_df"
-        "|effect_size_consistency>`",
+        "`procedure_id: <p_from_test_statistic|grim|grimmer|n_from_df" "|effect_size_consistency>`",
     )
     result = _run(tree)
     assert result.returncode == 1
@@ -149,7 +148,8 @@ def test_pre_section4_decoy_cannot_mask_spec_drift(tree: Path) -> None:
     )
     _mutate(tree, SPEC, "- `tail_ambiguous`\n- `nonstandard", "- `nonstandard")
     _mutate(
-        tree, SPEC,
+        tree,
+        SPEC,
         "## 4. Prospective arithmetic receipt contract",
         decoy + "## 4. Prospective arithmetic receipt contract",
     )
@@ -160,7 +160,8 @@ def test_pre_section4_decoy_cannot_mask_spec_drift(tree: Path) -> None:
 
 def test_second_enum_sentence_inside_section4_fails(tree: Path) -> None:
     _mutate(
-        tree, SPEC,
+        tree,
+        SPEC,
         "Required invariants:",
         "A second closed v1 enum mention inside §4.\n\nRequired invariants:",
     )

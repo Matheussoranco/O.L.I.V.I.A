@@ -29,8 +29,7 @@ from citation_verification_summary import (  # noqa: E402
 )
 
 LABEL_ENUM = {"true", "false", "unresolvable"}
-KIND_ENUM = {"valid_doi", "valid_arxiv", "manual_exempt", "fabricated",
-             "fabricated_title_only"}
+KIND_ENUM = {"valid_doi", "valid_arxiv", "manual_exempt", "fabricated", "fabricated_title_only"}
 RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
 # status + queried_by enums (and their status↔queried_by coherence) are now
 # enforced by _RESOLVER_OUTCOME_VALIDATOR against the shipped summary-schema $def,
@@ -38,7 +37,10 @@ RESOLVER_NAMES = ("crossref", "openalex", "semantic_scholar", "arxiv")
 
 _CORPUS_ENTRY_SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent
-    / "shared" / "contracts" / "passport" / "literature_corpus_entry.schema.json"
+    / "shared"
+    / "contracts"
+    / "passport"
+    / "literature_corpus_entry.schema.json"
 )
 _CORPUS_ENTRY_VALIDATOR = Draft202012Validator(
     json.loads(_CORPUS_ENTRY_SCHEMA_PATH.read_text(encoding="utf-8")),
@@ -53,7 +55,10 @@ _CORPUS_ENTRY_VALIDATOR = Draft202012Validator(
 # check silently under-enforced (#332 P2).
 _SUMMARY_SCHEMA_PATH = (
     Path(__file__).resolve().parent.parent
-    / "shared" / "contracts" / "passport" / "citation_verification_summary.schema.json"
+    / "shared"
+    / "contracts"
+    / "passport"
+    / "citation_verification_summary.schema.json"
 )
 # Safe to validate the extracted $def in isolation because resolver_outcome is
 # $ref-less today. If it ever gains a $ref into a sibling $def, build the validator
@@ -65,6 +70,7 @@ _RESOLVER_OUTCOME_VALIDATOR = Draft202012Validator(
 
 def _load_json_strict(path: Path) -> Any:
     """Load JSON; raise on duplicate keys (I4)."""
+
     def _no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
         seen: set[str] = set()
         for k, _ in pairs:
@@ -72,6 +78,7 @@ def _load_json_strict(path: Path) -> Any:
                 raise ValueError(f"duplicate JSON key: {k!r}")
             seen.add(k)
         return dict(pairs)
+
     return json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_no_duplicates)
 
 
@@ -158,7 +165,9 @@ def validate(root: Path) -> list[str]:
         if obs_n != declared_n:
             errors.append(f"I3: kind {k!r} count {obs_n} != manifest declared {declared_n}")
     for k in observed.keys() - declared.keys():
-        errors.append(f"I3: kind {k!r} observed in tuples but not declared in manifest tuple_distribution")
+        errors.append(
+            f"I3: kind {k!r} observed in tuples but not declared in manifest tuple_distribution"
+        )
 
     # I5: expected_outcomes label matches manifest's kind->label mapping
     kind_to_label = {entry["kind"]: entry["expected_lookup_verified"] for entry in tuple_dist}
@@ -187,7 +196,9 @@ def validate(root: Path) -> list[str]:
             if not arxiv_id:
                 errors.append(f"I6: {stem}.json kind=valid_arxiv but arxiv_id is null/missing")
             if doi:
-                errors.append(f"I6: {stem}.json kind=valid_arxiv but corpus_entry.doi={doi!r} present")
+                errors.append(
+                    f"I6: {stem}.json kind=valid_arxiv but corpus_entry.doi={doi!r} present"
+                )
         elif kind == "valid_doi":
             if arxiv_id:
                 errors.append(f"I6: {stem}.json kind=valid_doi but arxiv_id={arxiv_id!r} present")
@@ -195,7 +206,9 @@ def validate(root: Path) -> list[str]:
                 errors.append(f"I6: {stem}.json kind=valid_doi but corpus_entry.doi missing/null")
         else:
             if arxiv_id:
-                errors.append(f"I6: {stem}.json kind={kind!r} but arxiv_id={arxiv_id!r} present (must be null)")
+                errors.append(
+                    f"I6: {stem}.json kind={kind!r} but arxiv_id={arxiv_id!r} present (must be null)"
+                )
 
     # I7: fabrication_intent <-> kind is a fabrication kind. Both `fabricated`
     # (ID-keyed → false) and `fabricated_title_only` (no identifier → unresolvable,
@@ -205,9 +218,13 @@ def validate(root: Path) -> list[str]:
         kind = tup.get("kind")
         marker = tup.get("fabrication_intent")
         if kind in fabrication_kinds and marker is not True:
-            errors.append(f"I7: {stem}.json kind={kind!r} but fabrication_intent={marker!r} (must be true)")
+            errors.append(
+                f"I7: {stem}.json kind={kind!r} but fabrication_intent={marker!r} (must be true)"
+            )
         if kind not in fabrication_kinds and marker is True:
-            errors.append(f"I7: {stem}.json kind={kind!r} but fabrication_intent=true (must be false)")
+            errors.append(
+                f"I7: {stem}.json kind={kind!r} but fabrication_intent=true (must be false)"
+            )
 
     # I9: resolver_outcomes has all four resolver keys with valid status enum
     # + valid queried_by enum (v3.11 #182 Delta 4 / C-V6(a)).
@@ -253,10 +270,10 @@ def validate(root: Path) -> list[str]:
             errors.append(f"I10: {stem}.json missing required field 'corpus_entry'")
             continue
         for ve in _CORPUS_ENTRY_VALIDATOR.iter_errors(corpus_entry):
-            path = "$" + "".join(f"[{p!r}]" if isinstance(p, str) else f"[{p}]" for p in ve.absolute_path)
-            errors.append(
-                f"I10: {stem}.json corpus_entry{path}: {ve.message}"
+            path = "$" + "".join(
+                f"[{p!r}]" if isinstance(p, str) else f"[{p}]" for p in ve.absolute_path
             )
+            errors.append(f"I10: {stem}.json corpus_entry{path}: {ve.message}")
 
     return errors
 

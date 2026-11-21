@@ -5,9 +5,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_claim_standing_candidate_ledger_integration as guard
-
 
 ROOT = Path(__file__).resolve().parents[1]
 COPIED = tuple(
@@ -62,12 +60,22 @@ def test_schema_identity_and_closure_are_pinned(tmp_path: Path) -> None:
 def test_shared_contract_definitions_and_track_boundary_are_pinned(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     candidate = guard.SCHEMA_DIR / "candidate_ledger.schema.json"
-    _replace(root, candidate, '"returned_count": { "type": "integer"', '"returned_count": { "type": "number"')
+    _replace(
+        root,
+        candidate,
+        '"returned_count": { "type": "integer"',
+        '"returned_count": { "type": "number"',
+    )
     errors = guard.run_checks(root)
     assert any("shared attempt/attempt definitions drifted" in error for error in errors)
     root = _tree(tmp_path / "boundary")
     query = guard.SCHEMA_DIR / "query_plan.schema.json"
-    _replace(root, query, '"created_at": { "$ref":', '"stance": { "type": "string" },\n    "created_at": { "$ref":')
+    _replace(
+        root,
+        query,
+        '"created_at": { "$ref":',
+        '"stance": { "type": "string" },\n    "created_at": { "$ref":',
+    )
     assert any("Track B/live fields entered Track A" in error for error in guard.run_checks(root))
 
 
@@ -76,7 +84,9 @@ def test_network_or_dispatch_capability_is_rejected(tmp_path: Path) -> None:
     path = root / guard.RUNTIME
     path.write_text("import requests\n" + path.read_text(encoding="utf-8"), encoding="utf-8")
     errors = guard.run_checks(root)
-    assert any("non-allowlisted transport/model/process-capable imports" in error for error in errors)
+    assert any(
+        "non-allowlisted transport/model/process-capable imports" in error for error in errors
+    )
     _replace(root, guard.RUNTIME, 'add_parser("build"', 'add_parser("dispatch"')
     assert any("forbidden capability marker" in error for error in guard.run_checks(root))
 
@@ -91,8 +101,7 @@ def test_non_allowlisted_and_dynamic_imports_are_rejected(tmp_path: Path) -> Non
     root = _tree(tmp_path / "dynamic")
     path = root / guard.RUNTIME
     path.write_text(
-        "_process_module = __import__('subprocess')\n"
-        + path.read_text(encoding="utf-8"),
+        "_process_module = __import__('subprocess')\n" + path.read_text(encoding="utf-8"),
         encoding="utf-8",
     )
     errors = guard.run_checks(root)
@@ -108,8 +117,7 @@ def test_non_allowlisted_and_dynamic_imports_are_rejected(tmp_path: Path) -> Non
             "sys.modules",
         ),
         (
-            "from sys import _getframe as frame\n"
-            "_scope = frame().f_globals\n",
+            "from sys import _getframe as frame\n" "_scope = frame().f_globals\n",
             "sys._getframe",
         ),
     ],
@@ -129,10 +137,7 @@ def test_from_import_requires_an_exact_per_module_symbol_allowlist(
     [
         "_runner = eval\n_runner('1 + 1')\n",
         "sys.modules['os'].system('true')\n",
-        (
-            "getattr(globals()['__built' + 'ins__'], "
-            "'__im' + 'port__')('socket')\n"
-        ),
+        ("getattr(globals()['__built' + 'ins__'], " "'__im' + 'port__')('socket')\n"),
     ],
 )
 def test_alias_introspection_and_allowed_module_capability_bypasses_are_rejected(
@@ -150,10 +155,7 @@ def test_alias_introspection_and_allowed_module_capability_bypasses_are_rejected
     [
         "argparse._os.spawnl(0, '/bin/true', 'true')\n",
         "hashlib.__spec__.loader.load_module('os')\n",
-        (
-            "import argparse as parser_alias\n"
-            "parser_alias._os.spawnl(0, '/bin/true', 'true')\n"
-        ),
+        ("import argparse as parser_alias\n" "parser_alias._os.spawnl(0, '/bin/true', 'true')\n"),
         "_escaped_module = argparse\n",
         "import hashlib as hash_alias\n_escaped_module = hash_alias\n",
         "_escaped_attribute = hashlib.sha256\n",
@@ -163,9 +165,7 @@ def test_alias_introspection_and_allowed_module_capability_bypasses_are_rejected
         "del os.O_NOFOLLOW\n",
     ],
 )
-def test_direct_module_uses_are_exact_and_cannot_escape(
-    tmp_path: Path, payload: str
-) -> None:
+def test_direct_module_uses_are_exact_and_cannot_escape(tmp_path: Path, payload: str) -> None:
     root = _tree(tmp_path)
     path = root / guard.RUNTIME
     path.write_text(payload + path.read_text(encoding="utf-8"), encoding="utf-8")
@@ -178,9 +178,7 @@ def test_safe_direct_module_alias_is_tracked_and_allowed(tmp_path: Path) -> None
     _replace(root, guard.RUNTIME, "import hashlib", "import hashlib as hash_alias")
     path = root / guard.RUNTIME
     path.write_text(
-        path.read_text(encoding="utf-8").replace(
-            "hashlib.sha256", "hash_alias.sha256"
-        ),
+        path.read_text(encoding="utf-8").replace("hashlib.sha256", "hash_alias.sha256"),
         encoding="utf-8",
     )
     assert guard.run_checks(root) == []
@@ -194,9 +192,7 @@ def test_safe_direct_module_alias_is_tracked_and_allowed(tmp_path: Path) -> None
         "from pathlib import Path as json\n",
     ],
 )
-def test_direct_module_bindings_cannot_be_shadowed(
-    tmp_path: Path, payload: str
-) -> None:
+def test_direct_module_bindings_cannot_be_shadowed(tmp_path: Path, payload: str) -> None:
     root = _tree(tmp_path)
     path = root / guard.RUNTIME
     path.write_text(payload + path.read_text(encoding="utf-8"), encoding="utf-8")

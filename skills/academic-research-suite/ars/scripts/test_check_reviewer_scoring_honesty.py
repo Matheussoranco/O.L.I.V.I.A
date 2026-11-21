@@ -10,7 +10,6 @@ from tempfile import TemporaryDirectory
 from check_reviewer_scoring_honesty import LIVE_FILES
 from tests.test_helpers import run_script
 
-
 SCRIPT = Path(__file__).resolve().parent / "check_reviewer_scoring_honesty.py"
 REPO_ROOT = SCRIPT.parent.parent
 

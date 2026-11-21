@@ -15,7 +15,6 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_MANIFEST = REPO_ROOT / "scripts" / "ars_phase_scope_manifest.json"
 MONTH_RE = re.compile(r"[0-9]{4}-(?:0[1-9]|1[0-2])")
@@ -24,13 +23,11 @@ SAFE_ID_RE = re.compile(r"[a-z0-9][a-z0-9_-]*")
 DEBT_CATEGORIES = (
     (
         "Capability-era workarounds",
-        "role priming, coercion, or retries justified only by superseded "
-        "capability limits",
+        "role priming, coercion, or retries justified only by superseded " "capability limits",
     ),
     (
         "Pre-tool-use scaffolds",
-        "manual validation duplicated by deterministic runtime or tool "
-        "enforcement",
+        "manual validation duplicated by deterministic runtime or tool " "enforcement",
     ),
     (
         "Verbose reasoning scaffolds",
@@ -38,13 +35,11 @@ DEBT_CATEGORIES = (
     ),
     (
         "Defensive few-shot examples",
-        "examples retained only for historical failure modes that no longer "
-        "reproduce",
+        "examples retained only for historical failure modes that no longer " "reproduce",
     ),
     (
         "Format guards",
-        "duplicated output-shape instructions already enforced by schemas or "
-        "checkers",
+        "duplicated output-shape instructions already enforced by schemas or " "checkers",
     ),
     (
         "Deprecated tool references",
@@ -116,22 +111,24 @@ def render_issue(month: str, manifest: dict[str, Any]) -> str:
     for heading, description in DEBT_CATEGORIES:
         lines.append(f"- [ ] **{heading}** — {description}")
 
-    lines.extend([
-        "",
-        "### Output checklist",
-        "",
-        "- [ ] Audit report posted as comment",
-        (
-            "- [ ] P0 retirements scheduled (open separate issues with "
-            "`harness-retirement` label)"
-        ),
-        "- [ ] P1 retirements logged in CHANGELOG [Unreleased]",
-        "- [ ] P2+ added to backlog",
-        "",
-        "---",
-        "_Auto-opened by harness-retirement-monthly.yml. Close once audit complete._",
-        "",
-    ])
+    lines.extend(
+        [
+            "",
+            "### Output checklist",
+            "",
+            "- [ ] Audit report posted as comment",
+            (
+                "- [ ] P0 retirements scheduled (open separate issues with "
+                "`harness-retirement` label)"
+            ),
+            "- [ ] P1 retirements logged in CHANGELOG [Unreleased]",
+            "- [ ] P2+ added to backlog",
+            "",
+            "---",
+            "_Auto-opened by harness-retirement-monthly.yml. Close once audit complete._",
+            "",
+        ]
+    )
     return "\n".join(lines)
 
 

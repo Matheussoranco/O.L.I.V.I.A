@@ -73,7 +73,10 @@ _GENERAL_NEGATION_PATTERNS = [
     re.compile(r"\bmustn'?t\b", re.IGNORECASE),
     # Adjective-targeted negations: explicit "not <obligation-adjective>"
     # forms that directly negate the contract vocabulary.
-    re.compile(r"\bnot\s+(?:non[- ]negotiable|enumerate|required|mandatory|forbidden|verbatim|reserved)\b", re.IGNORECASE),
+    re.compile(
+        r"\bnot\s+(?:non[- ]negotiable|enumerate|required|mandatory|forbidden|verbatim|reserved)\b",
+        re.IGNORECASE,
+    ),
     re.compile(r"\bneed not\b", re.IGNORECASE),
     re.compile(r"\bno\s+buffer\b", re.IGNORECASE),
     re.compile(r"\bno\s+enumeration\b", re.IGNORECASE),
@@ -102,7 +105,10 @@ _ALWAYS_NEGATION_PATTERNS = [
     # obligation noun. The bare token can appear in unrelated context
     # ("optional `approved_synonyms` field"), so we narrow this rule to
     # `optional <obligation-noun>` forms.
-    re.compile(r"\boptional\s+(?:buffer|enumeration|preservation|inclusion|verbatim|hedge|hedges|enforcement|requirement|reservation)\b", re.IGNORECASE),
+    re.compile(
+        r"\boptional\s+(?:buffer|enumeration|preservation|inclusion|verbatim|hedge|hedges|enforcement|requirement|reservation)\b",
+        re.IGNORECASE,
+    ),
     # B2 R4-001: "X is recommended" / "are recommended" downgrades a
     # mandatory obligation to advisory. The narrowed verb list ensures
     # this only flags weakening of actual contract verbs / nouns.
@@ -150,8 +156,12 @@ _ALWAYS_NEGATION_PATTERNS = [
     # `rarely` / `sometimes` / `occasionally` similarly need to be near
     # an obligation verb to count as weakeners.
     re.compile(r"\brarely\s+(?:enumerate|enforce|invoke|reserve|preserve|verify)", re.IGNORECASE),
-    re.compile(r"\bsometimes\s+(?:enumerate|enforce|invoke|reserve|preserve|verify)", re.IGNORECASE),
-    re.compile(r"\boccasionally\s+(?:enumerate|enforce|invoke|reserve|preserve|verify)", re.IGNORECASE),
+    re.compile(
+        r"\bsometimes\s+(?:enumerate|enforce|invoke|reserve|preserve|verify)", re.IGNORECASE
+    ),
+    re.compile(
+        r"\boccasionally\s+(?:enumerate|enforce|invoke|reserve|preserve|verify)", re.IGNORECASE
+    ),
     re.compile(r"\bis unable to\b", re.IGNORECASE),
     re.compile(r"\bare unable to\b", re.IGNORECASE),
     re.compile(r"\bonly when convenient\b", re.IGNORECASE),
@@ -320,9 +330,7 @@ class Check:
                 bullet_back = bullet_back_match[-1].start() if bullet_back_match else -1
                 last_break_back = max(blank_line, bullet_back)
                 bullet_start = (
-                    lookback_floor + last_break_back + 1
-                    if last_break_back >= 0
-                    else lookback_floor
+                    lookback_floor + last_break_back + 1 if last_break_back >= 0 else lookback_floor
                 )
                 # Lookahead to the start of the next bullet, blank line,
                 # or EOF (capped 400 chars).
@@ -871,9 +879,10 @@ def _load_inversion_manifest() -> tuple[list[str], str | None]:
     1807).
     """
     if not INVERSION_MANIFEST.exists():
-        return [], f"manifest missing: scripts/v3_6_7_inversion_manifest.json"
+        return [], "manifest missing: scripts/v3_6_7_inversion_manifest.json"
     try:
         import json
+
         data = json.loads(INVERSION_MANIFEST.read_text(encoding="utf-8"))
     except (json.JSONDecodeError, OSError) as exc:
         return [], f"manifest unreadable: {exc}"
@@ -1014,10 +1023,7 @@ def _inv1_check_file(rel_path: str) -> tuple[bool, str]:
         )
     bullets = list(_iter_bullets(block))
     exact = [t for _o, t in bullets if t == CANONICAL_CLAUSE_1_TEXT]
-    weakened = [
-        t for _o, t in bullets
-        if _is_clause_1_like(t) and t != CANONICAL_CLAUSE_1_TEXT
-    ]
+    weakened = [t for _o, t in bullets if _is_clause_1_like(t) and t != CANONICAL_CLAUSE_1_TEXT]
     if weakened:
         return False, (
             f"{rel_path}: PATTERN PROTECTION block contains "
@@ -1182,9 +1188,7 @@ def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
                 continue
             text = path.read_text(encoding="utf-8")
             offending_bullets = [
-                bt
-                for _o, bt in _iter_bullets(text)
-                if bt == CANONICAL_CLAUSE_1_TEXT
+                bt for _o, bt in _iter_bullets(text) if bt == CANONICAL_CLAUSE_1_TEXT
             ]
             # Line-level heading strip + whitespace collapse on the
             # rest. Heading lines (start with `#`) and bullet lines
@@ -1192,9 +1196,9 @@ def _inv3_check(manifest_files: list[str]) -> tuple[bool, list[str]]:
             # single space. The canonical sentence is detected as a
             # substring with proper sentence boundaries.
             non_bullet_non_heading = "\n".join(
-                line for line in text.splitlines()
-                if not line.lstrip().startswith("#")
-                and not line.lstrip().startswith("- ")
+                line
+                for line in text.splitlines()
+                if not line.lstrip().startswith("#") and not line.lstrip().startswith("- ")
             )
             normalized_prose = " ".join(non_bullet_non_heading.split())
             offending_prose: list[str] = []
@@ -1234,12 +1238,14 @@ def inversion_sweep_results() -> list[tuple[str, str, bool, str]]:
         ok, msg = _inv1_check_file(f)
         if not ok:
             inv1_errors.append(msg)
-    results.append((
-        "INV-1",
-        f"canonical Clause 1 line present exactly once in each of {len(files)} manifest file(s)",
-        len(inv1_errors) == 0,
-        "OK" if not inv1_errors else "; ".join(inv1_errors),
-    ))
+    results.append(
+        (
+            "INV-1",
+            f"canonical Clause 1 line present exactly once in each of {len(files)} manifest file(s)",
+            len(inv1_errors) == 0,
+            "OK" if not inv1_errors else "; ".join(inv1_errors),
+        )
+    )
 
     # INV-2: aggregate Clause 2 violation hits across all manifest files.
     inv2_errors: list[str] = []
@@ -1247,21 +1253,25 @@ def inversion_sweep_results() -> list[tuple[str, str, bool, str]]:
         ok, errs = _inv2_check_file(f)
         if not ok:
             inv2_errors.extend(errs)
-    results.append((
-        "INV-2",
-        "no Clause 2 disclosure phrases (a)-(d) inside PATTERN PROTECTION blocks",
-        len(inv2_errors) == 0,
-        "OK" if not inv2_errors else "; ".join(inv2_errors),
-    ))
+    results.append(
+        (
+            "INV-2",
+            "no Clause 2 disclosure phrases (a)-(d) inside PATTERN PROTECTION blocks",
+            len(inv2_errors) == 0,
+            "OK" if not inv2_errors else "; ".join(inv2_errors),
+        )
+    )
 
     # INV-3: canonical line restricted to manifest files.
     ok, errs = _inv3_check(files)
-    results.append((
-        "INV-3",
-        f"canonical Clause 1 line confined to {len(files)} manifest file(s)",
-        ok,
-        "OK" if ok else "; ".join(errs),
-    ))
+    results.append(
+        (
+            "INV-3",
+            f"canonical Clause 1 line confined to {len(files)} manifest file(s)",
+            ok,
+            "OK" if ok else "; ".join(errs),
+        )
+    )
     return results
 
 
@@ -1288,11 +1298,13 @@ def all_checks() -> list[Check]:
         *template_file_checks(),
     ]
     if _agent_checks_enabled():
-        checks.extend([
-            *synthesis_agent_checks(),
-            *architect_agent_checks(),
-            *compiler_agent_checks(),
-        ])
+        checks.extend(
+            [
+                *synthesis_agent_checks(),
+                *architect_agent_checks(),
+                *compiler_agent_checks(),
+            ]
+        )
     return checks
 
 

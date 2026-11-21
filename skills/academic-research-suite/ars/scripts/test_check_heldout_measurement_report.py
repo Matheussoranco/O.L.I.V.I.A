@@ -16,9 +16,8 @@ import json
 import subprocess
 from pathlib import Path
 
-import pytest
-
 import check_heldout_measurement_report as measurement_mod
+import pytest
 from check_heldout_measurement_report import (
     HELDOUT_ROOT,
     REPO_ROOT,
@@ -214,9 +213,7 @@ def make_valid_human_expert_report() -> dict:
         "note": "model-judge agreement does not apply; human labels are in the panel record",
     }
     report["adjudication"]["overrides"] = []
-    report["preregistration"]["judge_template_version"] = (
-        "review-criteria-human-expert-label/1.0"
-    )
+    report["preregistration"]["judge_template_version"] = "review-criteria-human-expert-label/1.0"
     return report
 
 
@@ -305,10 +302,7 @@ def test_marker_status_classification():
     assert marker_status({"measurement_date": "x"}) == "absent"
     # leading space, homoglyph hyphen (U+2011), case games: all near-miss
     assert marker_status({"measurement_contract": " heldout-measurement/1.0"}) == "near_miss"
-    assert (
-        marker_status({"measurement_contract": "heldout‑measurement/1.0"})
-        == "near_miss"
-    )
+    assert marker_status({"measurement_contract": "heldout‑measurement/1.0"}) == "near_miss"
     assert marker_status({"measurement_contract": "Heldout-Measurement/1.0"}) == "near_miss"
     assert marker_status({"measurement_contract": "internal-notes/0.1"}) == "near_miss"
 
@@ -391,9 +385,9 @@ def test_other_frozen_requires_explicit_note_and_lower_bound_honesty():
     report = make_valid_report()
     report["adjudication"]["resolution_direction"] = "other_frozen"
     assert errors_of(report)
-    report["adjudication"]["resolution_direction_note"] = (
-        "The frozen rule may remove flags but cannot add missed flags."
-    )
+    report["adjudication"][
+        "resolution_direction_note"
+    ] = "The frozen rule may remove flags but cannot add missed flags."
     assert any("I13" in error for error in errors_of(report))
     report["aggregate"]["headline"]["estimand_status"] = "lower_bound"
     report["aggregate"]["headline"]["construction_rule"] += "; lower bound"
@@ -926,9 +920,9 @@ def test_decision_relevant_single_replicate_fails():
 def test_decision_relevant_single_replicate_with_exception_passes():
     report = make_valid_report()
     report["replicates"]["per_item"] = 1
-    report["replicates"]["exception"] = (
-        "seed run; explicitly labeled not decision-relevant for mechanism claims"
-    )
+    report["replicates"][
+        "exception"
+    ] = "seed run; explicitly labeled not decision-relevant for mechanism claims"
     assert errors_of(report) == []
 
 
@@ -1059,9 +1053,7 @@ def test_execution_manifest_timestamp_format_is_enforced():
 def test_single_call_cannot_support_any_multi_call_execution_claim():
     manifest = _execution_manifest_fixture()
     manifest["calls"] = manifest["calls"][:1]
-    errors = _execution_claim_errors(
-        manifest, {"ordering", "concurrency", "same_window"}
-    )
+    errors = _execution_claim_errors(manifest, {"ordering", "concurrency", "same_window"})
     assert len(errors) == 3
 
 
@@ -1070,8 +1062,7 @@ def test_concurrency_requires_grouped_overlapping_calls():
     assert _execution_claim_errors(manifest, {"concurrency"}) == []
     manifest["calls"][1]["started_at"] = "2026-08-08T00:00:10Z"
     assert any(
-        "concurrency" in error
-        for error in _execution_claim_errors(manifest, {"concurrency"})
+        "concurrency" in error for error in _execution_claim_errors(manifest, {"concurrency"})
     )
 
 
@@ -1079,17 +1070,13 @@ def test_ordering_requires_contiguous_indexes_and_nondecreasing_starts():
     manifest = _execution_manifest_fixture()
     assert _execution_claim_errors(manifest, {"ordering"}) == []
     manifest["calls"][1]["sequence_index"] = 3
-    assert any(
-        "ordering" in error
-        for error in _execution_claim_errors(manifest, {"ordering"})
-    )
+    assert any("ordering" in error for error in _execution_claim_errors(manifest, {"ordering"}))
 
 
 def test_same_window_requires_declared_window_containing_all_calls():
     manifest = _execution_manifest_fixture()
     assert any(
-        "same_window" in error
-        for error in _execution_claim_errors(manifest, {"same_window"})
+        "same_window" in error for error in _execution_claim_errors(manifest, {"same_window"})
     )
     manifest["execution_window"] = {
         "window_id": "dispatch-1",
@@ -1115,8 +1102,7 @@ def make_resolvable_report() -> dict:
     report["preregistration"]["plan_ref"] = "POSITIONING.md"
     report["preregistration"]["plan_sha256"] = _repo_file_sha256("POSITIONING.md")
     execution_ref = (
-        "evals/heldout/revision_claim_drift/runs/fixtures/"
-        "execution-manifest-v1.1.json"
+        "evals/heldout/revision_claim_drift/runs/fixtures/" "execution-manifest-v1.1.json"
     )
     report["execution_manifest"]["ref"] = execution_ref
     report["execution_manifest"]["sha256"] = _repo_file_sha256(execution_ref)
@@ -1299,9 +1285,7 @@ def _valid_expert_panel() -> dict:
     }
 
 
-def _r6_errors(
-    monkeypatch, tmp_path: Path, panel: dict, *, outside: bool = False
-) -> list[str]:
+def _r6_errors(monkeypatch, tmp_path: Path, panel: dict, *, outside: bool = False) -> list[str]:
     root = tmp_path / "repo"
     suite_root = root / "evals" / "heldout" / "review_criteria_constructive_value"
     panel_path = (root / "outside-panel.json") if outside else (suite_root / "panel.json")
@@ -1377,9 +1361,7 @@ def test_human_expert_panel_requires_subject_blinding(monkeypatch, tmp_path):
 
 
 @pytest.mark.parametrize("field", ["arm_blind", "disagreements_retained"])
-def test_human_expert_panel_requires_blind_retained_adjudication(
-    monkeypatch, tmp_path, field: str
-):
+def test_human_expert_panel_requires_blind_retained_adjudication(monkeypatch, tmp_path, field: str):
     panel = _valid_expert_panel()
     panel["adjudication"][field] = False
     assert _r6_errors(monkeypatch, tmp_path, panel)
@@ -1431,9 +1413,7 @@ def test_scan_duplicate_key_marked_file_fails(monkeypatch, tmp_path, capsys):
 
 def test_scan_near_miss_marker_fails(monkeypatch, tmp_path, capsys):
     (tmp_path / "s").mkdir()
-    (tmp_path / "s" / "m.json").write_text(
-        '{"measurement_contract": " heldout-measurement/1.0"}'
-    )
+    (tmp_path / "s" / "m.json").write_text('{"measurement_contract": " heldout-measurement/1.0"}')
     assert _scan_with_root(monkeypatch, tmp_path) == 1
     assert "near-miss" in capsys.readouterr().out
 
@@ -1486,9 +1466,7 @@ def test_scan_non_utf8_json_fails(monkeypatch, tmp_path, capsys):
 
 def test_scan_uppercase_extension_discovered(monkeypatch, tmp_path):
     (tmp_path / "s").mkdir()
-    (tmp_path / "s" / "M.JSON").write_text(
-        '{"measurement_contract": "heldout-measurement/1.0"}'
-    )
+    (tmp_path / "s" / "M.JSON").write_text('{"measurement_contract": "heldout-measurement/1.0"}')
     assert _scan_with_root(monkeypatch, tmp_path) == 1
 
 

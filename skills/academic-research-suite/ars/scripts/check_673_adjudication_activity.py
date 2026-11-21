@@ -18,16 +18,11 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 SPEC = Path("docs/design/2026-08-10-673-cross-run-adjudication-activity-spec.md")
-INPUT_SCHEMA = Path(
-    "shared/contracts/activity/adjudication_activity_input.schema.json"
-)
-STORE_SCHEMA = Path(
-    "shared/contracts/activity/adjudication_activity_store.schema.json"
-)
+INPUT_SCHEMA = Path("shared/contracts/activity/adjudication_activity_input.schema.json")
+STORE_SCHEMA = Path("shared/contracts/activity/adjudication_activity_store.schema.json")
 RUNTIME = Path("scripts/adjudication_activity.py")
 
 STATE_TRACKER = Path("academic-pipeline/agents/state_tracker_agent.md")
@@ -80,8 +75,7 @@ LIMITATION_SENTENCE = (
     "genuine agreement and non-review can produce the same history."
 )
 ADVISORY_SENTENCE = (
-    "This series is advisory only; it never gates, blocks, scores, or changes any "
-    "verdict."
+    "This series is advisory only; it never gates, blocks, scores, or changes any " "verdict."
 )
 COVERAGE_LINE = (
     "Coverage: only successfully retained records in this explicitly selected "
@@ -228,9 +222,12 @@ def check_schema_contracts(input_schema: dict[str, Any], store_schema: dict[str,
     if leaked:
         errors.append(f"input schema accepts caller-derived fields: {', '.join(leaked)}")
 
-    artifact_hashes = store_schema.get("$defs", {}).get("source_receipt", {}).get(
-        "properties", {}
-    ).get("artifact_sha256s", {})
+    artifact_hashes = (
+        store_schema.get("$defs", {})
+        .get("source_receipt", {})
+        .get("properties", {})
+        .get("artifact_sha256s", {})
+    )
     if artifact_hashes.get("uniqueItems") is True:
         errors.append("store artifact_sha256s illegally reject legitimate repeated hashes")
 
@@ -320,9 +317,7 @@ def _authority_ast_checks(
         ):
             continue
         targets = node.targets if isinstance(node, ast.Assign) else [node.target]
-        inventory_names.update(
-            target.id for target in targets if isinstance(target, ast.Name)
-        )
+        inventory_names.update(target.id for target in targets if isinstance(target, ast.Name))
     if not inventory_names:
         errors.append(
             "_validate_manifest_authority does not read state adjudication_activity_sources"
@@ -443,7 +438,9 @@ def check_runtime_text(text: str) -> list[str]:
             names = []
         for name in names:
             if name in FORBIDDEN_IMPORT_ROOTS:
-                errors.append(f"runtime imports forbidden model/network/clock/process module {name}")
+                errors.append(
+                    f"runtime imports forbidden model/network/clock/process module {name}"
+                )
         if isinstance(node, ast.Call):
             name = _call_name(node)
             if name in FORBIDDEN_SCAN_CALLS:
@@ -562,20 +559,16 @@ def check_non_consumer_text(path: Path, text: str) -> list[str]:
             for clause in CLAUSE_SPLIT_RE.split(sentence):
                 if not clause:
                     continue
-            # `build-input` is the closed post-terminal producer command, not
-            # an assertion that the activity artifact is a downstream input.
-                consumer_view = re.sub(
-                    r"\bbuild-input\b", "producer-command", clause, flags=re.I
-                )
+                # `build-input` is the closed post-terminal producer command, not
+                # an assertion that the activity artifact is a downstream input.
+                consumer_view = re.sub(r"\bbuild-input\b", "producer-command", clause, flags=re.I)
                 if not FEATURE_RE.search(clause) or not CONSUMER_RE.search(consumer_view):
                     continue
                 if USER_RENDER_READ_RE.search(clause):
                     continue
                 if NEGATION_RE.search(clause):
                     continue
-                errors.append(
-                    f"{path}:{number}: affirmative activity consumer: {clause[:180]}"
-                )
+                errors.append(f"{path}:{number}: affirmative activity consumer: {clause[:180]}")
     return errors
 
 
@@ -619,9 +612,7 @@ def run_checks(root: Path = REPO_ROOT) -> list[str]:
         input_schema = _load_json(root / INPUT_SCHEMA)
         store_schema = _load_json(root / STORE_SCHEMA)
         runtime = (root / RUNTIME).read_text(encoding="utf-8")
-        wiring = {
-            path: (root / path).read_text(encoding="utf-8") for path in WIRING_FILES
-        }
+        wiring = {path: (root / path).read_text(encoding="utf-8") for path in WIRING_FILES}
     except (OSError, UnicodeError, ValueError, DuplicateKeyError) as exc:
         return [f"#673 file load failed: {exc}"]
 

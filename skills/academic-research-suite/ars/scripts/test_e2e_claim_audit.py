@@ -43,7 +43,16 @@ Run:
 from __future__ import annotations
 
 import unittest
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
+
+from scripts.claim_audit_finalizer import (
+    ANNOTATION_CLAIM_AUDIT_AMBIGUOUS,
+    ANNOTATION_HIGH_WARN_CLAIM_NOT_SUPPORTED,
+    ANNOTATION_LOW_WARN_UNVERIFIED,
+    ANNOTATION_UNCITED_ASSERTION,
+    apply_finalizer,
+)
 
 # Step 9 RED → GREEN transition is complete: all three modules below now
 # exist. Per R3 codex P2 closure, removing the prior try/except-skip wrapper
@@ -54,15 +63,7 @@ from typing import Any, Callable
 # pipeline module existed; this e2e file landed in the same commit that
 # completed the chain, so the skip wrapper was always transitional.
 from scripts.claim_audit_pipeline import run_audit_pipeline
-from scripts.claim_audit_finalizer import (
-    ANNOTATION_CLAIM_AUDIT_AMBIGUOUS,
-    ANNOTATION_HIGH_WARN_CLAIM_NOT_SUPPORTED,
-    ANNOTATION_LOW_WARN_UNVERIFIED,
-    ANNOTATION_UNCITED_ASSERTION,
-    apply_finalizer,
-)
 from scripts.uncited_assertion_detector import detect_uncited_assertions
-
 
 MANIFEST_ID = "M-2026-05-16T09:00:00Z-e2e1"
 AUDIT_RUN_ID = "2026-05-16T09:10:00Z-e2e1"
@@ -259,9 +260,7 @@ def _make_judge_fn(
                 "violated_constraint_id": "MNC-1",
                 "rationale": "Sentence asserts unqualified causation, violating MNC-1.",
             }
-        raise AssertionError(
-            f"unexpected claim_text dispatched to judge stub: {claim_text!r}"
-        )
+        raise AssertionError(f"unexpected claim_text dispatched to judge stub: {claim_text!r}")
 
     return fn
 
@@ -528,10 +527,7 @@ class E2EAdjacentClauseFilter(_E2ETestBase):
             self.assertNotEqual(row["sentence_text"], filtered_text)
         # Finalizer routes the row through classify_uncited_assertion with
         # aggregate="uncited_assertions" and annotation [UNCITED-ASSERTION].
-        uncited_anns = [
-            a for a in out["annotations"]
-            if a.get("aggregate") == "uncited_assertions"
-        ]
+        uncited_anns = [a for a in out["annotations"] if a.get("aggregate") == "uncited_assertions"]
         self.assertEqual(len(uncited_anns), 1)
         self.assertEqual(uncited_anns[0]["annotation"], ANNOTATION_UNCITED_ASSERTION)
 

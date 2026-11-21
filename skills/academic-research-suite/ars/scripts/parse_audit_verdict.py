@@ -32,16 +32,12 @@ GENERATED_BY = "scripts/run_codex_audit.sh"
 GENERATOR_VERSION = "1.0.0"
 
 # run_id filename pattern: YYYY-MM-DDTHH-MM-SSZ-XXXX  (hyphens, not colons)
-RUN_ID_RE = re.compile(
-    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z-[0-9a-f]{4}$"
-)
+RUN_ID_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z-[0-9a-f]{4}$")
 
 # F-019 (§3.3): canonical UUID regex for thread.started.thread_id validation.
 # codex 0.125+ always emits a lowercase-hex UUID in this exact format.
 # A non-matching value indicates a malformed or forged stream.
-_THREAD_ID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+_THREAD_ID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 # Valid dimension values (string enum per audit_verdict.schema.json)
 VALID_DIMENSIONS = {"3.1", "3.2", "3.3", "3.4", "3.5", "3.6", "3.7", "4(f)"}
@@ -74,9 +70,7 @@ def load_events(jsonl_path: str) -> list[dict]:
             raise ParseError(f"invalid JSON at row {lineno}: {exc}") from exc
         # F-027 (P3, R7): each row must be a JSON object so .get/[] work later.
         if not isinstance(row, dict):
-            raise ParseError(
-                f"jsonl row {lineno} is not an object: {type(row).__name__}"
-            )
+            raise ParseError(f"jsonl row {lineno} is not an object: {type(row).__name__}")
         events.append(row)
     return events
 
@@ -142,9 +136,7 @@ def validate_stream_shape(events: list[dict]) -> None:
     # Check 3: second event is turn.started (per §3.3 canonical sequence)
     if len(events) < 2 or events[1].get("type") != "turn.started":
         got = events[1].get("type") if len(events) >= 2 else "(stream too short)"
-        raise ParseError(
-            f"stream second event is not turn.started (got: {got!r})"
-        )
+        raise ParseError(f"stream second event is not turn.started (got: {got!r})")
 
     # Check 4: no error event anywhere in the stream
     if any(ev.get("type") == "error" for ev in events):
@@ -174,8 +166,7 @@ def validate_stream_shape(events: list[dict]) -> None:
         item = ev.get("item")
         if not isinstance(item, dict):
             raise ParseError(
-                f"event {idx} ({ev_type}) has malformed item field: "
-                f"{type(item).__name__}"
+                f"event {idx} ({ev_type}) has malformed item field: " f"{type(item).__name__}"
             )
         # F-030 R9 closure: enforce required item.id + item.type as non-empty strings.
         item_id = item.get("id")
@@ -198,9 +189,7 @@ def validate_stream_shape(events: list[dict]) -> None:
     # Check 6: FIRST turn.completed must exist and appear after the last agent_message.
     # (F-002 R3: anchored on first_turn_completed_idx, not last_turn_completed_idx)
     if first_turn_completed_idx == -1:
-        raise ParseError(
-            "stream missing turn.completed event (codex was killed mid-run)"
-        )
+        raise ParseError("stream missing turn.completed event (codex was killed mid-run)")
     if first_turn_completed_idx < last_agent_msg_idx:
         raise ParseError(
             "turn.completed appears before last agent_message "
@@ -212,7 +201,7 @@ def validate_stream_shape(events: list[dict]) -> None:
     # This implicitly enforces exactly-one-TC: any second turn.completed would appear
     # here as a trailing event and be rejected.  Per §3.3 §line 284, a clean codex run
     # always ends at the single turn.completed event.
-    trailing = events[first_turn_completed_idx + 1:]
+    trailing = events[first_turn_completed_idx + 1 :]
     if trailing:
         trailing_types = [ev.get("type") for ev in trailing]
         raise ParseError(
@@ -229,13 +218,9 @@ def validate_stream_shape(events: list[dict]) -> None:
     # raises TypeError. Explicit type guard turns it into a clean ParseError.
     thread_id = events[0].get("thread_id")
     if not isinstance(thread_id, str):
-        raise ParseError(
-            f"thread.started.thread_id is not a string: {type(thread_id).__name__}"
-        )
+        raise ParseError(f"thread.started.thread_id is not a string: {type(thread_id).__name__}")
     if not _THREAD_ID_RE.match(thread_id):
-        raise ParseError(
-            f"thread.started.thread_id is not canonical UUID: {thread_id!r}"
-        )
+        raise ParseError(f"thread.started.thread_id is not canonical UUID: {thread_id!r}")
 
     # Check 10 (F-019 §3.3): all four usage fields must be present, integers,
     # and non-negative.  Type validation runs FIRST (F-022 §3.3) so non-int
@@ -246,9 +231,7 @@ def validate_stream_shape(events: list[dict]) -> None:
     # JSONL with `usage: null` or `usage: []` would otherwise raise TypeError.
     usage = turn_completed.get("usage")
     if not isinstance(usage, dict):
-        raise ParseError(
-            f"turn.completed.usage is not an object: {type(usage).__name__}"
-        )
+        raise ParseError(f"turn.completed.usage is not an object: {type(usage).__name__}")
     _USAGE_FIELDS = (
         "input_tokens",
         "cached_input_tokens",
@@ -259,13 +242,9 @@ def validate_stream_shape(events: list[dict]) -> None:
         if fld not in usage:
             raise ParseError(f"turn.completed.usage missing field: {fld!r}")
         if not isinstance(usage[fld], int) or isinstance(usage[fld], bool):
-            raise ParseError(
-                f"turn.completed.usage.{fld} is not int: {usage[fld]!r}"
-            )
+            raise ParseError(f"turn.completed.usage.{fld} is not int: {usage[fld]!r}")
         if usage[fld] < 0:
-            raise ParseError(
-                f"turn.completed.usage.{fld} is negative: {usage[fld]}"
-            )
+            raise ParseError(f"turn.completed.usage.{fld} is negative: {usage[fld]}")
 
     # Check 8: first turn.completed.usage.input_tokens > 0 (§3.3 line 277, Q3 line 63).
     # Real codex always consumes input; zero → forgery indicator.
@@ -294,8 +273,7 @@ def extract_verdict_text(events: list[dict]) -> str:
         item = row.get("item")
         if not isinstance(item, dict):
             raise ParseError(
-                f"event {idx} (item.completed) has malformed item field: "
-                f"{type(item).__name__}"
+                f"event {idx} (item.completed) has malformed item field: " f"{type(item).__name__}"
             )
         if item.get("type") != "agent_message":
             continue
@@ -306,8 +284,7 @@ def extract_verdict_text(events: list[dict]) -> str:
     verdict_text = last_item.get("text")
     if not isinstance(verdict_text, str) or not verdict_text:
         raise ParseError(
-            f"agent_message.item.text is not a non-empty string: "
-            f"{type(verdict_text).__name__}"
+            f"agent_message.item.text is not a non-empty string: " f"{type(verdict_text).__name__}"
         )
     return verdict_text
 
@@ -370,17 +347,17 @@ _SUMMARY_B = re.compile(
 # then extract description + fix from the tail.
 
 _FINDING_HEADER = re.compile(
-    r"^\s*\d+\.\s+"                          # numbered list item: "1. "
-    r"\*{0,2}(F-[0-9]{3,})\*{0,2}"          # finding ID: **F-007** or F-007
+    r"^\s*\d+\.\s+"  # numbered list item: "1. "
+    r"\*{0,2}(F-[0-9]{3,})\*{0,2}"  # finding ID: **F-007** or F-007
     r"\s+"
-    r"(P[123])"                              # severity: P1 P2 P3
+    r"(P[123])"  # severity: P1 P2 P3
     r"\s+"
-    r"(?:§)?(3\.[1-7]|4\(f\))"              # dimension: §3.x or 4(f) (with or without §)
+    r"(?:§)?(3\.[1-7]|4\(f\))"  # dimension: §3.x or 4(f) (with or without §)
     r"\s+"
-    r"([^\s:]+)"                             # file path (no spaces, stops before colon)
-    r":([0-9]+)"                             # :line
-    r"\s*[-—–]+\s*"                          # separator: — or - or –
-    r"(.+)",                                 # rest of line (description + fix)
+    r"([^\s:]+)"  # file path (no spaces, stops before colon)
+    r":([0-9]+)"  # :line
+    r"\s*[-—–]+\s*"  # separator: — or - or –
+    r"(.+)",  # rest of line (description + fix)
     re.IGNORECASE,
 )
 
@@ -418,16 +395,12 @@ def _parse_finding_line(line: str) -> Optional[dict]:
     else:
         # No "Fix:" separator found — description consumes entire tail,
         # suggested_fix is missing → malformed entry.
-        raise ParseError(
-            f"malformed finding entry: no 'Fix:' separator in line: {line!r}"
-        )
+        raise ParseError(f"malformed finding entry: no 'Fix:' separator in line: {line!r}")
 
     if not description:
         raise ParseError(f"malformed finding entry: empty description for {finding_id}")
     if not suggested_fix:
-        raise ParseError(
-            f"malformed finding entry: empty suggested_fix for {finding_id}"
-        )
+        raise ParseError(f"malformed finding entry: empty suggested_fix for {finding_id}")
 
     return {
         "id": finding_id,
@@ -520,7 +493,10 @@ def parse_section6(
         # The authoritative summary line must match the last non-empty line.
         # We do a substring check because the line may be embedded in a longer
         # line (e.g. with markdown emphasis markers around it).
-        if _authoritative_summary_line not in last_nonempty and last_nonempty not in _authoritative_summary_line:
+        if (
+            _authoritative_summary_line not in last_nonempty
+            and last_nonempty not in _authoritative_summary_line
+        ):
             raise ParseError(
                 "summary line is not the last non-empty line of the verdict text "
                 "(found interior summary; expected it at the end per audit template Section 6)"

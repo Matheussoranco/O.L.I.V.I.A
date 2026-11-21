@@ -2,7 +2,6 @@
 import subprocess
 import unittest
 from pathlib import Path
-from tempfile import TemporaryDirectory
 
 from tests.test_helpers import run_script
 
@@ -14,7 +13,6 @@ def _run() -> subprocess.CompletedProcess:
 
 
 class CheckV392PhaseBoundaryTests(unittest.TestCase):
-
     def test_repo_baseline_passes(self) -> None:
         """The committed v3.9.2/v3.9.4 branch state must pass the lint."""
         result = _run()
@@ -26,9 +24,8 @@ class CheckV392PhaseBoundaryTests(unittest.TestCase):
     def test_module_invariants(self) -> None:
         """BUCKET counts must match classification doc (23 + 16 = 39)."""
         import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "check_v3_9_2_phase_boundary", SCRIPT
-        )
+
+        spec = importlib.util.spec_from_file_location("check_v3_9_2_phase_boundary", SCRIPT)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
@@ -39,8 +36,7 @@ class CheckV392PhaseBoundaryTests(unittest.TestCase):
         self.assertEqual(overlap, set(), msg=f"agents in both buckets: {overlap}")
         # All 39 agent paths are unique (23 A + 16 BCD)
         all_paths = module.BUCKET_A_AGENTS + module.BUCKET_BCD_AGENTS
-        self.assertEqual(len(all_paths), len(set(all_paths)),
-                         msg="duplicate paths across buckets")
+        self.assertEqual(len(all_paths), len(set(all_paths)), msg="duplicate paths across buckets")
 
     def test_required_phrases_constant(self) -> None:
         """REQUIRED_PHRASES must include the version-neutral load-bearing markers.
@@ -48,9 +44,8 @@ class CheckV392PhaseBoundaryTests(unittest.TestCase):
         PHASE_BOUNDARY_RE / ENFORCEMENT_RE regexes (widened to v3.9.2|v3.9.4 in v3.9.4).
         """
         import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "check_v3_9_2_phase_boundary", SCRIPT
-        )
+
+        spec = importlib.util.spec_from_file_location("check_v3_9_2_phase_boundary", SCRIPT)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
@@ -60,11 +55,11 @@ class CheckV392PhaseBoundaryTests(unittest.TestCase):
         # Version-specific markers are now regex-based
         self.assertTrue(
             hasattr(module, "PHASE_BOUNDARY_RE"),
-            "PHASE_BOUNDARY_RE must exist (widened to v3.9.2|v3.9.4)"
+            "PHASE_BOUNDARY_RE must exist (widened to v3.9.2|v3.9.4)",
         )
         self.assertTrue(
             hasattr(module, "ENFORCEMENT_RE"),
-            "ENFORCEMENT_RE must exist (widened to v3.9.2|v3.9.4)"
+            "ENFORCEMENT_RE must exist (widened to v3.9.2|v3.9.4)",
         )
         # Both regexes must match either version
         self.assertIsNotNone(module.PHASE_BOUNDARY_RE.search("## Phase Boundary (v3.9.2)"))
@@ -75,16 +70,15 @@ class CheckV392PhaseBoundaryTests(unittest.TestCase):
     def test_timeline_extraction_agent_in_bucket_a(self) -> None:
         """timeline_extraction_agent.md (v3.9.4) must be in BUCKET_A_AGENTS."""
         import importlib.util
-        spec = importlib.util.spec_from_file_location(
-            "check_v3_9_2_phase_boundary", SCRIPT
-        )
+
+        spec = importlib.util.spec_from_file_location("check_v3_9_2_phase_boundary", SCRIPT)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
         self.assertIn(
             "deep-research/agents/timeline_extraction_agent.md",
             module.BUCKET_A_AGENTS,
-            "timeline_extraction_agent.md must be in BUCKET_A_AGENTS (v3.9.4 Phase 2 sibling)"
+            "timeline_extraction_agent.md must be in BUCKET_A_AGENTS (v3.9.4 Phase 2 sibling)",
         )
 
 
@@ -104,6 +98,7 @@ class CanonicalEnforcementDefriftTests(unittest.TestCase):
 
     def _load_module(self):
         from tests.test_helpers import load_module_from_path
+
         return load_module_from_path("check_v3_9_2_phase_boundary", SCRIPT)
 
     def _block(self, enforcement_line: str, version: str = "2") -> str:
@@ -117,6 +112,7 @@ class CanonicalEnforcementDefriftTests(unittest.TestCase):
 
     def _check(self, module, content: str) -> list[str]:
         from tempfile import TemporaryDirectory
+
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             fixture = root / "fixture_agent.md"
@@ -140,8 +136,10 @@ class CanonicalEnforcementDefriftTests(unittest.TestCase):
     def test_canonical_with_file_specific_tail_passes(self) -> None:
         """Per-file tails after the canonical sentence stay free."""
         module = self._load_module()
-        line = (module.CANONICAL_ENFORCEMENT["2"]
-                + " The v3.6.2 Sprint Contract Protocol below ALSO applies.")
+        line = (
+            module.CANONICAL_ENFORCEMENT["2"]
+            + " The v3.6.2 Sprint Contract Protocol below ALSO applies."
+        )
         errors = self._check(module, self._block(line))
         self.assertEqual(errors, [])
 
@@ -180,8 +178,12 @@ class CanonicalEnforcementDefriftTests(unittest.TestCase):
         but assert it directly for a precise failure message."""
         module = self._load_module()
         repo_root = Path(__file__).resolve().parent.parent
-        v392_sample = (repo_root / "deep-research/agents/synthesis_agent.md").read_text(encoding="utf-8")
-        v394_sample = (repo_root / "deep-research/agents/timeline_extraction_agent.md").read_text(encoding="utf-8")
+        v392_sample = (repo_root / "deep-research/agents/synthesis_agent.md").read_text(
+            encoding="utf-8"
+        )
+        v394_sample = (repo_root / "deep-research/agents/timeline_extraction_agent.md").read_text(
+            encoding="utf-8"
+        )
         self.assertIn(module.CANONICAL_ENFORCEMENT["2"], v392_sample)
         self.assertIn(module.CANONICAL_ENFORCEMENT["4"], v394_sample)
 

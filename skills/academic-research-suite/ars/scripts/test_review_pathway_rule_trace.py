@@ -10,7 +10,6 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-
 from scripts import build_review_pathway_rule_trace as runtime
 from scripts import check_review_pathway_output as output_lint
 from scripts.resolve_human_subjects_authority import (
@@ -19,24 +18,15 @@ from scripts.resolve_human_subjects_authority import (
     resolve,
 )
 
-
 ROOT = Path(__file__).resolve().parents[1]
 AUTHORITY_FIXTURES = ROOT / "scripts" / "fixtures" / "human_subjects_authority"
 TRACE_FIXTURES = ROOT / "scripts" / "fixtures" / "review_pathway_rule_trace"
 REGISTRY_PATH = ROOT / "shared" / "human_subjects_authority_registry.json"
 REQUEST_SCHEMA_PATH = (
-    ROOT
-    / "shared"
-    / "contracts"
-    / "human_subjects"
-    / "review_pathway_trace_request.schema.json"
+    ROOT / "shared" / "contracts" / "human_subjects" / "review_pathway_trace_request.schema.json"
 )
 TRACE_SCHEMA_PATH = (
-    ROOT
-    / "shared"
-    / "contracts"
-    / "human_subjects"
-    / "review_pathway_rule_trace.schema.json"
+    ROOT / "shared" / "contracts" / "human_subjects" / "review_pathway_rule_trace.schema.json"
 )
 LINT_FIXTURE_PATH = TRACE_FIXTURES / "lint-near-misses.json"
 
@@ -85,10 +75,7 @@ def _request_for(
     candidates: list[dict[str, Any]] = []
     eligible_by_profile: dict[tuple[str, str, str, str], list[str]] = {}
     for row in resolved["requirement_results"]:
-        if (
-            row["authority_kind"] == "profile"
-            and "pathway_trace" in row["consumer_scopes"]
-        ):
+        if row["authority_kind"] == "profile" and "pathway_trace" in row["consumer_scopes"]:
             key = (
                 row["axis"],
                 row["authority_id"],
@@ -107,16 +94,20 @@ def _request_for(
     }
     for profile_index, key in enumerate(sorted(eligible_by_profile), start=1):
         requirements = sorted(eligible_by_profile[key])
-        groups = [[requirement_id] for requirement_id in requirements] if split_requirements else [requirements]
+        groups = (
+            [[requirement_id] for requirement_id in requirements]
+            if split_requirements
+            else [requirements]
+        )
         for group_index, group in enumerate(groups, start=1):
             profile = profile_by_key[key]
             candidates.append(
                 {
                     "candidate_id": f"candidate.route_{profile_index}_{group_index}",
                     "profile_ref": _profile_ref(profile),
-                    "candidate_pathway_name": (
-                        name_by_profile or {}
-                    ).get(profile["profile_id"], f"Candidate Route {profile_index}-{group_index}"),
+                    "candidate_pathway_name": (name_by_profile or {}).get(
+                        profile["profile_id"], f"Candidate Route {profile_index}-{group_index}"
+                    ),
                     "candidate_name_source": {
                         "source_kind": "author_declared_question",
                         "source_locator": f"Author question {profile_index}-{group_index}",
@@ -148,9 +139,7 @@ def _build_fixture(
 
 
 def _schema_errors(schema: dict[str, Any], value: dict[str, Any]) -> list[Any]:
-    return list(
-        Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(value)
-    )
+    return list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(value))
 
 
 def test_schemas_pass_draft_2020_12_metaschema() -> None:
@@ -170,14 +159,10 @@ def test_positive_fixtures_validate_schema_replay_and_lint(
     context_name: str,
     request_name: str,
 ) -> None:
-    request, context, registry, resolved, trace = _build_fixture(
-        context_name, request_name
-    )
+    request, context, registry, resolved, trace = _build_fixture(context_name, request_name)
     assert _schema_errors(_json(REQUEST_SCHEMA_PATH), request) == []
     assert _schema_errors(_json(TRACE_SCHEMA_PATH), trace) == []
-    runtime.validate_review_pathway_rule_trace(
-        trace, request, context, registry, resolved
-    )
+    runtime.validate_review_pathway_rule_trace(trace, request, context, registry, resolved)
     rendered = runtime.render_review_pathway_rule_trace(trace)
     assert output_lint.lint_artifacts(trace, rendered) == []
 
@@ -221,9 +206,7 @@ def test_every_predicate_has_exact_requirement_and_anchor() -> None:
     _request, _context_value, registry, resolved, trace = _build_fixture(
         "us-gdpr-two-axis.json", "us-candidates-request.json"
     )
-    resolved_by_id = {
-        row["requirement_id"]: row for row in resolved["requirement_results"]
-    }
+    resolved_by_id = {row["requirement_id"]: row for row in resolved["requirement_results"]}
     seen: set[str] = set()
     for candidate in trace["candidate_pathways"]:
         own = (
@@ -237,7 +220,7 @@ def test_every_predicate_has_exact_requirement_and_anchor() -> None:
             source = resolved_by_id[row["requirement_id"]]
             assert row["requirement_pointer"] == source["requirement_pointer"]
             assert row["authority_anchor_pointer"] == source["authority_anchor_pointer"]
-            requirement = runtime._pointer_get(  # noqa: SLF001 - exact acceptance assertion
+            requirement = runtime._pointer_get(  # - exact acceptance assertion
                 registry, row["requirement_pointer"], "test.pointer"
             )
             assert row["requirement_digest"] == digest(requirement)
@@ -276,28 +259,26 @@ def test_same_declared_facts_under_two_profiles_produce_different_traces() -> No
         ]
         resolved = resolve(context, registry)
         request = _request_for(resolved)
-        trace = runtime.build_review_pathway_rule_trace(
-            request, context, registry, resolved
-        )
+        trace = runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
         ids = {
             row["requirement_id"]
             for candidate in trace["candidate_pathways"]
             for row in candidate["matched_predicates"]
         }
         results[profile_id] = (copy.deepcopy(context["declared_facts"]), ids)
-    assert results["us.hhs.45-cfr-46.subpart-a"][0] == results[
-        "tw.mohw.human-subjects-research-act"
-    ][0]
-    assert results["us.hhs.45-cfr-46.subpart-a"][1] != results[
-        "tw.mohw.human-subjects-research-act"
-    ][1]
+    assert (
+        results["us.hhs.45-cfr-46.subpart-a"][0]
+        == results["tw.mohw.human-subjects-research-act"][0]
+    )
+    assert (
+        results["us.hhs.45-cfr-46.subpart-a"][1]
+        != results["tw.mohw.human-subjects-research-act"][1]
+    )
 
 
 def _unknown_requirement_authority(
     *, false_dominates: bool = False
-) -> tuple[
-    dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]
-]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]:
     context = _context("us-gdpr-two-axis.json")
     registry = _registry()
     fact_id = "pathway.local_category_confirmed"
@@ -310,9 +291,7 @@ def _unknown_requirement_authority(
         }
     )
     profile = next(
-        row
-        for row in registry["profiles"]
-        if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
+        row for row in registry["profiles"] if row["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
     )
     requirement = profile["requirements"][0]
     requirement["applies_if"]["operands"].append(
@@ -356,20 +335,14 @@ def _unknown_requirement_authority(
 
 def test_unknown_requirement_fact_stays_unresolved_and_names_holder() -> None:
     request, context, registry, resolved = _unknown_requirement_authority()
-    trace = runtime.build_review_pathway_rule_trace(
-        request, context, registry, resolved
-    )
+    trace = runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
     assert trace["trace_state"] == "completed"
     rows = [
         row
         for candidate in trace["candidate_pathways"]
         for row in candidate["unresolved_predicates"]
     ]
-    row = next(
-        row
-        for row in rows
-        if row["requirement_id"] == "us.45cfr46.107.irb-composition"
-    )
+    row = next(row for row in rows if row["requirement_id"] == "us.45cfr46.107.irb-composition")
     assert row["applicability"] == "unknown"
     assert row["unresolved_fact_ids"] == ["pathway.local_category_confirmed"]
     assert row["responsible_authority_role_id"] == "institution_or_irb"
@@ -381,12 +354,8 @@ def test_unknown_requirement_fact_stays_unresolved_and_names_holder() -> None:
 
 
 def test_false_aggregate_with_unknown_leaf_remains_in_unresolved_bucket() -> None:
-    request, context, registry, resolved = _unknown_requirement_authority(
-        false_dominates=True
-    )
-    trace = runtime.build_review_pathway_rule_trace(
-        request, context, registry, resolved
-    )
+    request, context, registry, resolved = _unknown_requirement_authority(false_dominates=True)
+    trace = runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
     row = next(
         row
         for candidate in trace["candidate_pathways"]
@@ -411,7 +380,7 @@ def test_overlay_requirement_unknown_cannot_open_trace_exception() -> None:
     forged["downstream_gate"]["all_applicability_resolved"] = False
     forged["downstream_gate"]["profile_dependent_result_allowed"] = False
     forged["resolution_state"] = "applicability_unresolved"
-    assert runtime._trace_state(forged) == "authority_context_unresolved"  # noqa: SLF001
+    assert runtime._trace_state(forged) == "authority_context_unresolved"
 
 
 def test_no_profile_halts_at_jurisdiction_unresolved() -> None:
@@ -420,9 +389,7 @@ def test_no_profile_halts_at_jurisdiction_unresolved() -> None:
     )
     assert trace["trace_state"] == "jurisdiction_unresolved"
     assert trace["candidate_pathways"] == []
-    assert {row["code"] for row in trace["halt_reasons"]} == {
-        "JURISDICTION_UNRESOLVED"
-    }
+    assert {row["code"] for row in trace["halt_reasons"]} == {"JURISDICTION_UNRESOLVED"}
     assert trace["result"] == runtime.RESULT
 
 
@@ -438,9 +405,7 @@ def test_profile_level_unknown_or_source_problem_emits_no_partial_trace() -> Non
     resolved = resolve(context, registry)
     request = _request_for(resolved)
     request["candidate_pathways"] = []
-    trace = runtime.build_review_pathway_rule_trace(
-        request, context, registry, resolved
-    )
+    trace = runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
     assert trace["trace_state"] == "authority_context_unresolved"
     assert trace["candidate_pathways"] == []
 
@@ -456,13 +421,9 @@ def test_candidate_requirement_partition_fails_closed(mutation: str) -> None:
     if mutation == "missing":
         rows.pop()
     elif mutation == "duplicate":
-        rows[1]["predicate_requirement_ids"] = copy.deepcopy(
-            rows[0]["predicate_requirement_ids"]
-        )
+        rows[1]["predicate_requirement_ids"] = copy.deepcopy(rows[0]["predicate_requirement_ids"])
     elif mutation == "foreign":
-        rows[0]["predicate_requirement_ids"] = [
-            "eu.gdpr.article-6.lawful-basis"
-        ]
+        rows[0]["predicate_requirement_ids"] = ["eu.gdpr.article-6.lawful-basis"]
     elif mutation == "wrong_profile":
         rows[0]["profile_ref"]["profile_id"] = "tw.mohw.human-subjects-research-act"
     elif mutation == "wrong_axis":
@@ -470,9 +431,7 @@ def test_candidate_requirement_partition_fails_closed(mutation: str) -> None:
     else:
         rows.reverse()
     with pytest.raises(ContractError):
-        runtime.build_review_pathway_rule_trace(
-            request, context, registry, resolved
-        )
+        runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
 
 
 @pytest.mark.parametrize("field", ["context_pointer", "registry_pointer", "resolved_digest"])
@@ -486,27 +445,24 @@ def test_request_exact_binding_drift_fails(field: str) -> None:
     else:
         request[field] = "0" * 64
     with pytest.raises(ContractError):
-        runtime.build_review_pathway_rule_trace(
-            request, context, registry, resolved
-        )
+        runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
 
 
 def test_alternative_triggers_are_complete_same_profile_rows_without_ranking() -> None:
     _request, _context_value, _registry_value, _resolved, trace = _build_fixture(
         "us-gdpr-two-axis.json", "us-candidates-request.json"
     )
-    first, second = [
+    first, second = (
         candidate
         for candidate in trace["candidate_pathways"]
-        if candidate["profile_ref"]["profile_id"]
-        == "us.hhs.45-cfr-46.subpart-a"
+        if candidate["profile_ref"]["profile_id"] == "us.hhs.45-cfr-46.subpart-a"
+    )
+    assert [row["target_candidate_id"] for row in first["alternative_pathway_triggers"]] == [
+        second["candidate_id"]
     ]
-    assert [
-        row["target_candidate_id"] for row in first["alternative_pathway_triggers"]
-    ] == [second["candidate_id"]]
-    assert [
-        row["target_candidate_id"] for row in second["alternative_pathway_triggers"]
-    ] == [first["candidate_id"]]
+    assert [row["target_candidate_id"] for row in second["alternative_pathway_triggers"]] == [
+        first["candidate_id"]
+    ]
     assert trace["ordering_semantics"] == "display_only_sequence_no_decision_meaning"
 
 
@@ -518,8 +474,8 @@ def test_projected_alternative_row_cap_fails_before_expansion() -> None:
         "0" * 64,
     )
     with pytest.raises(ContractError, match="alternative rows"):
-        runtime._validate_alternative_volume({key: [4] * 128})  # noqa: SLF001
-    runtime._validate_alternative_volume({key: [512]})  # noqa: SLF001
+        runtime._validate_alternative_volume({key: [4] * 128})
+    runtime._validate_alternative_volume({key: [512]})
 
 
 def test_trace_and_renderer_size_caps_fail_closed(
@@ -530,9 +486,7 @@ def test_trace_and_renderer_size_caps_fail_closed(
     )
     monkeypatch.setattr(runtime, "MAX_TRACE_BYTES", 100)
     with pytest.raises(ContractError, match="canonical artifact"):
-        runtime.build_review_pathway_rule_trace(
-            request, context, registry, resolved
-        )
+        runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
     monkeypatch.setattr(runtime, "MAX_TRACE_BYTES", 8 * 1024 * 1024)
     monkeypatch.setattr(runtime, "MAX_RENDERED_BYTES", 100)
     with pytest.raises(ContractError, match="rendered"):
@@ -545,10 +499,10 @@ def test_lint_walk_is_iterative_and_node_capped(
     nested: dict[str, Any] = {"leaf": "safe"}
     for _ in range(2000):
         nested = {"next": nested}
-    assert output_lint._walk_strings(nested)[0][1] == "safe"  # noqa: SLF001
+    assert output_lint._walk_strings(nested)[0][1] == "safe"
     monkeypatch.setattr(output_lint, "MAX_SURFACE_NODES", 5)
     with pytest.raises(ContractError, match="JSON nodes"):
-        output_lint._walk_strings(nested)  # noqa: SLF001
+        output_lint._walk_strings(nested)
 
 
 def test_rendered_input_reader_enforces_byte_cap(
@@ -558,7 +512,7 @@ def test_rendered_input_reader_enforces_byte_cap(
     path.write_text("123456", encoding="utf-8")
     monkeypatch.setattr(output_lint, "MAX_RENDERED_BYTES", 5)
     with pytest.raises(ContractError, match="exceeds"):
-        output_lint._read_text_limited(path)  # noqa: SLF001
+        output_lint._read_text_limited(path)
 
 
 def test_trace_digest_and_any_replayed_field_drift_fail() -> None:
@@ -570,16 +524,12 @@ def test_trace_digest_and_any_replayed_field_drift_fail() -> None:
         "effective_date"
     ] = "2026-01-01"
     with pytest.raises(ContractError, match="trace_digest"):
-        runtime.validate_review_pathway_rule_trace(
-            drifted, request, context, registry, resolved
-        )
+        runtime.validate_review_pathway_rule_trace(drifted, request, context, registry, resolved)
     drifted["trace_digest"] = digest(
         {key: value for key, value in drifted.items() if key != "trace_digest"}
     )
     with pytest.raises(ContractError, match="deterministic replay"):
-        runtime.validate_review_pathway_rule_trace(
-            drifted, request, context, registry, resolved
-        )
+        runtime.validate_review_pathway_rule_trace(drifted, request, context, registry, resolved)
 
 
 @pytest.mark.parametrize(
@@ -605,7 +555,7 @@ def test_trace_digest_and_any_replayed_field_drift_fail() -> None:
     ],
 )
 def test_normalized_banned_output_near_misses_fail(text: str) -> None:
-    assert output_lint._string_violations(  # noqa: SLF001 - policy mutation fixture
+    assert output_lint._string_violations(  # - policy mutation fixture
         text, permit_pathway_name=False
     )
 
@@ -613,35 +563,25 @@ def test_normalized_banned_output_near_misses_fail(text: str) -> None:
 def test_shipped_lint_near_miss_fixture_matrix() -> None:
     fixture = _json(LINT_FIXTURE_PATH)
     assert fixture["schema_version"] == "review-pathway-lint-fixtures/1.0"
-    assert fixture["passing_candidate_names"] == sorted(
-        fixture["passing_candidate_names"]
-    )
+    assert fixture["passing_candidate_names"] == sorted(fixture["passing_candidate_names"])
     for name in fixture["passing_candidate_names"]:
-        assert output_lint._string_violations(  # noqa: SLF001
-            name, permit_pathway_name=True
-        ) == []
-        assert output_lint._candidate_name_violations(name) == []  # noqa: SLF001
+        assert output_lint._string_violations(name, permit_pathway_name=True) == []
+        assert output_lint._candidate_name_violations(name) == []
     ids: list[str] = []
     for row in fixture["failing_surfaces"]:
         ids.append(row["fixture_id"])
-        assert output_lint._string_violations(  # noqa: SLF001
-            row["text"], permit_pathway_name=False
-        )
+        assert output_lint._string_violations(row["text"], permit_pathway_name=False)
     assert ids == sorted(ids)
     assert len(ids) == len(set(ids))
 
 
-@pytest.mark.parametrize(
-    "name", ["Exempt", "Expedited", "Full Board", "Convened Board", "NHSR"]
-)
+@pytest.mark.parametrize("name", ["Exempt", "Expedited", "Full Board", "Convened Board", "NHSR"])
 def test_exact_candidate_name_context_is_not_a_false_positive(name: str) -> None:
     request, context, registry, resolved, _trace = _build_fixture(
         "us-gdpr-two-axis.json", "us-candidates-request.json"
     )
     request["candidate_pathways"][0]["candidate_pathway_name"] = name
-    trace = runtime.build_review_pathway_rule_trace(
-        request, context, registry, resolved
-    )
+    trace = runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
     rendered = runtime.render_review_pathway_rule_trace(trace)
     assert output_lint.lint_artifacts(trace, rendered) == []
 
@@ -653,9 +593,7 @@ def test_always_banned_claim_fails_even_in_candidate_name(name: str) -> None:
     )
     request["candidate_pathways"][0]["candidate_pathway_name"] = name
     with pytest.raises(ContractError, match="banned"):
-        runtime.build_review_pathway_rule_trace(
-            request, context, registry, resolved
-        )
+        runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
 
 
 @pytest.mark.parametrize(
@@ -673,9 +611,7 @@ def test_candidate_field_accepts_a_name_not_determination_prose(name: str) -> No
     )
     request["candidate_pathways"][0]["candidate_pathway_name"] = name
     with pytest.raises(ContractError):
-        runtime.build_review_pathway_rule_trace(
-            request, context, registry, resolved
-        )
+        runtime.build_review_pathway_rule_trace(request, context, registry, resolved)
 
 
 def test_rendered_candidate_prefix_near_miss_and_extra_claim_fail() -> None:
@@ -698,9 +634,7 @@ def test_inert_candidate_text_rejects_normalization_controls_and_markdown() -> N
         mutated = copy.deepcopy(request)
         mutated["candidate_pathways"][0]["candidate_pathway_name"] = bad
         with pytest.raises(ContractError):
-            runtime.build_review_pathway_rule_trace(
-                mutated, context, registry, resolved
-            )
+            runtime.build_review_pathway_rule_trace(mutated, context, registry, resolved)
 
 
 def test_cli_build_validate_render_lint_and_no_overwrite(tmp_path: Path) -> None:
@@ -730,7 +664,14 @@ def test_cli_build_validate_render_lint_and_no_overwrite(tmp_path: Path) -> None
         str(resolved_path),
     ]
     build = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/build_review_pathway_rule_trace.py"), "build", *bound, "--output", str(trace_path)],
+        [
+            sys.executable,
+            str(ROOT / "scripts/build_review_pathway_rule_trace.py"),
+            "build",
+            *bound,
+            "--output",
+            str(trace_path),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -738,7 +679,14 @@ def test_cli_build_validate_render_lint_and_no_overwrite(tmp_path: Path) -> None
     )
     assert build.returncode == 0, build.stderr
     validate = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/build_review_pathway_rule_trace.py"), "validate", *bound, "--trace", str(trace_path)],
+        [
+            sys.executable,
+            str(ROOT / "scripts/build_review_pathway_rule_trace.py"),
+            "validate",
+            *bound,
+            "--trace",
+            str(trace_path),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -746,7 +694,16 @@ def test_cli_build_validate_render_lint_and_no_overwrite(tmp_path: Path) -> None
     )
     assert validate.returncode == 0, validate.stderr
     render = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/build_review_pathway_rule_trace.py"), "render", *bound, "--trace", str(trace_path), "--output", str(rendered_path)],
+        [
+            sys.executable,
+            str(ROOT / "scripts/build_review_pathway_rule_trace.py"),
+            "render",
+            *bound,
+            "--trace",
+            str(trace_path),
+            "--output",
+            str(rendered_path),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -754,7 +711,14 @@ def test_cli_build_validate_render_lint_and_no_overwrite(tmp_path: Path) -> None
     )
     assert render.returncode == 0, render.stderr
     lint = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/check_review_pathway_output.py"), "--trace-json", str(trace_path), "--rendered", str(rendered_path)],
+        [
+            sys.executable,
+            str(ROOT / "scripts/check_review_pathway_output.py"),
+            "--trace-json",
+            str(trace_path),
+            "--rendered",
+            str(rendered_path),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -762,7 +726,14 @@ def test_cli_build_validate_render_lint_and_no_overwrite(tmp_path: Path) -> None
     )
     assert lint.returncode == 0, lint.stderr
     retry = subprocess.run(
-        [sys.executable, str(ROOT / "scripts/build_review_pathway_rule_trace.py"), "build", *bound, "--output", str(trace_path)],
+        [
+            sys.executable,
+            str(ROOT / "scripts/build_review_pathway_rule_trace.py"),
+            "build",
+            *bound,
+            "--output",
+            str(trace_path),
+        ],
         cwd=ROOT,
         capture_output=True,
         text=True,
@@ -809,7 +780,7 @@ def test_atomic_create_handles_short_writes_and_rejects_zero_progress(
 
     monkeypatch.setattr(runtime.os, "write", short_write)
     path = tmp_path / "short.bin"
-    runtime._atomic_create(path, raw)  # noqa: SLF001 - fault-injection assertion
+    runtime._atomic_create(path, raw)  # - fault-injection assertion
     assert path.read_bytes() == raw
 
     def zero_write(_fd: int, _value: bytes | memoryview) -> int:
@@ -817,5 +788,5 @@ def test_atomic_create_handles_short_writes_and_rejects_zero_progress(
 
     monkeypatch.setattr(runtime.os, "write", zero_write)
     with pytest.raises(OSError, match="zero-progress"):
-        runtime._atomic_create(tmp_path / "zero.bin", raw)  # noqa: SLF001
+        runtime._atomic_create(tmp_path / "zero.bin", raw)
     assert not (tmp_path / "zero.bin").exists()

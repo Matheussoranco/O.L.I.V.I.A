@@ -29,6 +29,8 @@ import re
 from typing import Any
 
 from scripts._release_doc_alignment_schema import (
+    _DEFAULT_CHANGELOG,
+    _DEFAULT_CHANGELOG_PATTERN,
     ManifestError,
     PackageError,
     ScannerError,
@@ -38,12 +40,9 @@ from scripts._release_doc_alignment_schema import (
     _load_manifest_toml,
     _normalize,
     _require_str,
-    _DEFAULT_CHANGELOG,
-    _DEFAULT_CHANGELOG_PATTERN,
     extract_package_version,
     scan_changelog_file,
 )
-
 
 # Tokens are matched at a word-ish boundary: start of line or preceded by
 # whitespace, then a slash, then the command name. The possessive quantifier
@@ -87,9 +86,7 @@ def load_command_manifest(manifest_path: Path) -> dict[str, Any]:
                 field=key,
             )
     announces = data.get("announce", [])
-    if not isinstance(announces, list) or any(
-        not isinstance(e, dict) for e in announces
-    ):
+    if not isinstance(announces, list) or any(not isinstance(e, dict) for e in announces):
         raise ManifestError(
             kind="manifest_invalid_type",
             message="[[announce]] must be an array of tables",
@@ -255,17 +252,17 @@ def _check_announce(
     try:
         text = _normalize((manifest_parent / path).read_text(encoding="utf-8"))
     except UnicodeDecodeError as exc:
-        return [{
-            "kind": "announce_decode_error",
-            "file": path,
-            "status": "fail",
-            "message": f"file is not valid UTF-8: {exc}",
-        }]
+        return [
+            {
+                "kind": "announce_decode_error",
+                "file": path,
+                "status": "fail",
+                "message": f"file is not valid UTF-8: {exc}",
+            }
+        ]
 
     checks: list[dict[str, Any]] = []
-    pattern = re.compile(
-        entry.get("token_pattern") or _DEFAULT_TOKEN_PATTERN, re.MULTILINE
-    )
+    pattern = re.compile(entry.get("token_pattern") or _DEFAULT_TOKEN_PATTERN, re.MULTILINE)
 
     # A region_pattern narrows the scan to each captured region and requires
     # every discovered command in EVERY region: a file with several
@@ -275,30 +272,25 @@ def _check_announce(
     region_pattern = entry.get("region_pattern")
     if region_pattern is not None:
         regions = [
-            m.group("region")
-            for m in re.compile(region_pattern, re.MULTILINE).finditer(text)
+            m.group("region") for m in re.compile(region_pattern, re.MULTILINE).finditer(text)
         ]
         if not regions:
-            return [{
-                "kind": "announce_region_unmatched",
-                "file": path,
-                "status": "fail",
-                "message": "region_pattern matched zero regions",
-            }]
+            return [
+                {
+                    "kind": "announce_region_unmatched",
+                    "file": path,
+                    "status": "fail",
+                    "message": "region_pattern matched zero regions",
+                }
+            ]
     else:
         regions = [text]
 
-    found_per_region = [
-        {m.group("name") for m in pattern.finditer(region)} for region in regions
-    ]
+    found_per_region = [{m.group("name") for m in pattern.finditer(region)} for region in regions]
     found_union = set().union(*found_per_region)
 
     for name in names:
-        missing_from = [
-            str(i + 1)
-            for i, found in enumerate(found_per_region)
-            if name not in found
-        ]
+        missing_from = [str(i + 1) for i, found in enumerate(found_per_region) if name not in found]
         check = {
             "kind": "announce_command_listed",
             "file": path,
@@ -317,16 +309,18 @@ def _check_announce(
 
     whitelist = set(entry.get("extra_whitelist") or [])
     for name in sorted(found_union - set(names) - whitelist):
-        checks.append({
-            "kind": "announce_extra_command",
-            "file": path,
-            "name": name,
-            "status": "fail",
-            "message": (
-                f"listed command {name!r} has no definition file "
-                f"(stale entry, or add it to extra_whitelist)"
-            ),
-        })
+        checks.append(
+            {
+                "kind": "announce_extra_command",
+                "file": path,
+                "name": name,
+                "status": "fail",
+                "message": (
+                    f"listed command {name!r} has no definition file "
+                    f"(stale entry, or add it to extra_whitelist)"
+                ),
+            }
+        )
 
     count_pattern = entry.get("count_pattern")
     if count_pattern is not None:
@@ -345,9 +339,7 @@ def _check_announce(
                 )
             else:
                 check["found"] = counts
-                check["status"] = (
-                    "pass" if all(c == len(names) for c in counts) else "fail"
-                )
+                check["status"] = "pass" if all(c == len(names) for c in counts) else "fail"
         checks.append(check)
 
     return checks
@@ -372,12 +364,14 @@ def _check_version_lockstep(
             near_miss_whitelist=list(_DEFAULT_CHANGELOG["near_miss_whitelist"]),
         )
     except ScannerError as exc:
-        return [{
-            "kind": exc.kind,
-            "file": changelog_path,
-            "status": "fail",
-            "message": str(exc),
-        }]
+        return [
+            {
+                "kind": exc.kind,
+                "file": changelog_path,
+                "status": "fail",
+                "message": str(exc),
+            }
+        ]
     newest = entries[0]["version"]
 
     package_path = lockstep["package_path"]
@@ -389,26 +383,28 @@ def _check_version_lockstep(
             pattern=None,
         )
     except PackageError as exc:
-        return [{
-            "kind": exc.kind,
+        return [
+            {
+                "kind": exc.kind,
+                "file": package_path,
+                "status": "fail",
+                "message": str(exc),
+            }
+        ]
+    return [
+        {
+            "kind": "version_lockstep_match",
             "file": package_path,
-            "status": "fail",
-            "message": str(exc),
-        }]
-    return [{
-        "kind": "version_lockstep_match",
-        "file": package_path,
-        "expected": newest,
-        "found": found,
-        "status": "pass" if found == newest else "fail",
-    }]
+            "expected": newest,
+            "found": found,
+            "status": "pass" if found == newest else "fail",
+        }
+    ]
 
 
 def _sort_checks(checks: list[dict[str, Any]]) -> list[dict[str, Any]]:
     # Deterministic order, mirroring the release-doc validator (INVARIANT 18).
-    return sorted(
-        checks, key=lambda c: (c.get("file") or "", c["kind"], c.get("name") or "")
-    )
+    return sorted(checks, key=lambda c: (c.get("file") or "", c["kind"], c.get("name") or ""))
 
 
 def _run_pipeline(args: argparse.Namespace) -> dict[str, Any]:

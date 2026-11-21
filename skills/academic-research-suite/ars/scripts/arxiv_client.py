@@ -139,9 +139,7 @@ class ArxivClient:
                         # (truncated body) which inherits HTTPException, not
                         # OSError. ET.ParseError replaces crossref's
                         # JSONDecodeError for the XML payload.
-                        raise ArxivUnavailable(
-                            f"arXiv response read/parse failed: {e}"
-                        ) from e
+                        raise ArxivUnavailable(f"arXiv response read/parse failed: {e}") from e
                     # #331: a *complete* non-Atom body (e.g. a well-formed HTML
                     # error page served with 200 by a proxy/CDN) parses cleanly
                     # but is NOT an arXiv result. arXiv's genuine empty result is
@@ -175,7 +173,9 @@ class ArxivClient:
         raise ArxivUnavailable("arXiv rate limit exhausted after retries")
 
     def arxiv_id_lookup(
-        self, arxiv_id: str, expected_title: str,
+        self,
+        arxiv_id: str,
+        expected_title: str,
     ) -> dict[str, Any] | None:
         """arXiv ID lookup with mandatory 0.70 title cross-check.
 
@@ -192,7 +192,9 @@ class ArxivClient:
         return None  # ID_MISMATCH
 
     def title_search(
-        self, title: str, year: int | None = None,
+        self,
+        title: str,
+        year: int | None = None,
     ) -> dict[str, Any] | None:
         """Title search under the #431 exact-title-or-bust gate.
 

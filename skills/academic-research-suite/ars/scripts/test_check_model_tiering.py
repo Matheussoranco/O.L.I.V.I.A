@@ -52,11 +52,12 @@ def _run_on(tmp: Path) -> int:
 
 
 class ModelTieringLintTests(unittest.TestCase):
-
     def test_repo_baseline_passes(self) -> None:
         """The committed manifest + canonical doc + agent files must pass."""
         result = run_script(SCRIPT)
-        self.assertEqual(result.returncode, 0, msg=f"stdout: {result.stdout}\nstderr: {result.stderr}")
+        self.assertEqual(
+            result.returncode, 0, msg=f"stdout: {result.stdout}\nstderr: {result.stderr}"
+        )
         self.assertIn("PASS", result.stdout)
         self.assertIn("39 agents", result.stdout)
 

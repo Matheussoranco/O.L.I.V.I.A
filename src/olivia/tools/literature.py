@@ -12,7 +12,7 @@ import ipaddress
 import logging
 import re
 import socket
-import xml.etree.ElementTree as ET
+import defusedxml.ElementTree as ET
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 

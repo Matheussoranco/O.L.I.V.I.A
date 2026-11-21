@@ -9,7 +9,6 @@ import sys
 from pathlib import Path
 from typing import Any
 
-
 INVENTORY_SCHEMA = Path("shared/contracts/human_subjects/submission_packet_inventory.schema.json")
 MANIFEST_SCHEMA = Path("shared/contracts/human_subjects/submission_packet_manifest.schema.json")
 REGISTRY = Path("shared/human_subjects_authority_registry.json")
@@ -89,9 +88,7 @@ REPLAY_CONTRACT_SNIPPETS = {
         "replay-validated with `validate_submission_packet_manifest("
         "manifest, inventory, packet_root,"
     ),
-    ARCHITECT: (
-        "confirms a successful `validate_submission_packet_manifest(...)` replay"
-    ),
+    ARCHITECT: ("confirms a successful `validate_submission_packet_manifest(...)` replay"),
 }
 
 
@@ -172,7 +169,9 @@ def _runtime_ast_errors(source: str) -> list[str]:
                 errors.append(f"{RUNTIME}: forbidden transport/process import {node.module}")
         elif isinstance(node, ast.Call):
             if isinstance(node.func, ast.Attribute) and node.func.attr in FORBIDDEN_SCAN_CALLS:
-                errors.append(f"{RUNTIME}: forbidden ambient filesystem scan call {node.func.attr}()")
+                errors.append(
+                    f"{RUNTIME}: forbidden ambient filesystem scan call {node.func.attr}()"
+                )
             elif isinstance(node.func, ast.Name) and node.func.id in FORBIDDEN_SCAN_CALLS:
                 errors.append(f"{RUNTIME}: forbidden ambient filesystem scan call {node.func.id}()")
             if (
@@ -265,7 +264,10 @@ def run_checks(root: Path) -> list[str]:
             if row.get("value_type") != "boolean" or row.get("allowed_values") is not None:
                 errors.append(f"{REGISTRY}: {fact_id} must remain an open boolean declaration")
             description = row.get("description")
-            if not isinstance(description, str) or "not a legal or institutional characterization" not in description:
+            if (
+                not isinstance(description, str)
+                or "not a legal or institutional characterization" not in description
+            ):
                 errors.append(f"{REGISTRY}: {fact_id} lost its non-characterization boundary")
         authority_rows = json.dumps(
             {"profiles": registry.get("profiles"), "overlays": registry.get("overlays")},
@@ -274,7 +276,9 @@ def run_checks(root: Path) -> list[str]:
         )
         for fact_id in ENVELOPE_FACTS:
             if fact_id in authority_rows:
-                errors.append(f"{REGISTRY}: capability fact {fact_id} entered authority applicability")
+                errors.append(
+                    f"{REGISTRY}: capability fact {fact_id} entered authority applicability"
+                )
 
     required_tokens: dict[Path, tuple[str, ...]] = {
         CONTRACT_README: (

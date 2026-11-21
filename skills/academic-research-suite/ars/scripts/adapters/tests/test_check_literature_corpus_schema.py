@@ -3,18 +3,16 @@ against their schemas and enforces citation_key uniqueness."""
 import copy
 import json
 import os
-from pathlib import Path
 import subprocess
 import sys
-import yaml
+from pathlib import Path
 
 import pytest
+import yaml
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 SCRIPT = REPO_ROOT / "scripts/check_literature_corpus_schema.py"
-SIGNAL_FIXTURE = (
-    REPO_ROOT / "scripts/fixtures/bibliographic_integrity_signals/retraction.json"
-)
+SIGNAL_FIXTURE = REPO_ROOT / "scripts/fixtures/bibliographic_integrity_signals/retraction.json"
 TORTURED_PHRASE_FIXTURES = REPO_ROOT / "scripts/fixtures/tortured_phrase_screening"
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
@@ -110,11 +108,7 @@ def _runtime_enriched_passport(citation_key="fixture_complete_2026"):
         (TORTURED_PHRASE_FIXTURES / "corpus_input.yaml").read_text(encoding="utf-8")
     )
     entry = copy.deepcopy(
-        next(
-            item
-            for item in source["literature_corpus"]
-            if item["citation_key"] == citation_key
-        )
+        next(item for item in source["literature_corpus"] if item["citation_key"] == citation_key)
     )
     bundle = screening.load_snapshot(
         TORTURED_PHRASE_FIXTURES / "snapshot.json",
@@ -212,10 +206,7 @@ def test_passport_rejects_duplicate_current_tortured_phrase_surface(tmp_path):
     path = _write_yaml(tmp_path, "passport.yaml", passport)
     result = _run(["--passport", str(path)])
     assert result.returncode != 0
-    assert (
-        "multiple current tortured-phrase rows for surface 'cited_title'"
-        in result.stderr
-    )
+    assert "multiple current tortured-phrase rows for surface 'cited_title'" in result.stderr
 
 
 @pytest.mark.parametrize(
@@ -226,9 +217,7 @@ def test_passport_rejects_duplicate_current_tortured_phrase_surface(tmp_path):
         ("checked_at", "exact checked_at value"),
     ],
 )
-def test_passport_rejects_incoherent_current_tortured_phrase_pair(
-    tmp_path, mutation, message
-):
+def test_passport_rejects_incoherent_current_tortured_phrase_pair(tmp_path, mutation, message):
     passport = _runtime_enriched_passport()
     signals = passport["literature_corpus"][0]["bibliographic_integrity_signals"]
     abstract = next(
@@ -262,11 +251,7 @@ def test_passport_rejects_schema_invalid_canonical_signal(tmp_path):
 def test_passport_rejects_duplicate_canonical_signal_ids(tmp_path):
     signal = json.loads(SIGNAL_FIXTURE.read_text(encoding="utf-8"))
     signal["subject"]["citation_key"] = "chen2024"
-    passport = {
-        "literature_corpus": [
-            _entry_with_signals([signal, copy.deepcopy(signal)])
-        ]
-    }
+    passport = {"literature_corpus": [_entry_with_signals([signal, copy.deepcopy(signal)])]}
     path = _write_yaml(tmp_path, "passport.yaml", passport)
     result = _run(["--passport", str(path)])
     assert result.returncode != 0
@@ -349,6 +334,7 @@ def test_default_mode_scans_repo_examples():
 # --- T4 reminder (codex T3-review P2): FORMAT_CHECKER must be wired ---
 # Otherwise format=date-time is silently ignored on generated_at and obtained_at.
 
+
 def test_passport_with_invalid_obtained_at_format_fails(tmp_path):
     passport = {
         "literature_corpus": [
@@ -388,6 +374,7 @@ def test_rejection_log_with_invalid_generated_at_format_fails(tmp_path):
 
 
 # --- additional integration coverage ---
+
 
 def test_help_flag_runs_clean():
     r = _run(["--help"])
@@ -430,6 +417,7 @@ def test_rejection_log_other_reason_with_empty_detail_fails(tmp_path):
 
 
 # --- T4-T6 patch (codex 2026-04-25) ---
+
 
 def test_passport_missing_literature_corpus_key_fails(tmp_path):
     """[P1] A passport YAML without literature_corpus must fail lint.
@@ -520,6 +508,7 @@ def test_default_mode_catches_bad_examples_fixture(tmp_path):
 
 # --- v3.9.0 contamination_signals (openalex_unmatched + crossref_unmatched) ---
 
+
 def test_v3_9_0_passes_on_non_manual_with_openalex_and_crossref(tmp_path):
     """v3.9.0 — lint accepts a non-manual entry with all three lookup fields."""
     passport = {
@@ -597,7 +586,10 @@ def test_v3_10_rejects_laundered_venue_type_source(tmp_path):
         f"Expected validation failure for laundered venue_type_source=OpenAlex. "
         f"stdout={r.stdout}\nstderr={r.stderr}"
     )
-    assert "launder" in (r.stdout + r.stderr).lower() or "lookup index" in (r.stdout + r.stderr).lower()
+    assert (
+        "launder" in (r.stdout + r.stderr).lower()
+        or "lookup index" in (r.stdout + r.stderr).lower()
+    )
 
 
 def test_v3_10_accepts_legitimate_declared_venue_type_source(tmp_path):
@@ -625,7 +617,7 @@ def test_v3_10_non_string_venue_type_source_reports_schema_error_not_crash(tmp_p
     r = _run(["--passport", str(path)])
     assert r.returncode != 0
     combined = r.stdout + r.stderr
-    assert "Traceback" not in combined and "AttributeError" not in combined, (
-        f"validator crashed instead of reporting a schema error: {combined}"
-    )
+    assert (
+        "Traceback" not in combined and "AttributeError" not in combined
+    ), f"validator crashed instead of reporting a schema error: {combined}"
     assert "schema" in combined.lower() or "validation" in combined.lower()

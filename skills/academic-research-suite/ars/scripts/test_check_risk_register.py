@@ -19,7 +19,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from check_risk_register import (
     DOC_RELPATH,
     MATRIX_RELPATH,
@@ -32,9 +31,7 @@ from check_risk_register import (
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 # Files whose real content the lint reads (not merely existence-checks).
-_MIRRORED_FILES = tuple(
-    str(p) for p in (DOC_RELPATH, README_RELPATH, MATRIX_RELPATH)
-)
+_MIRRORED_FILES = tuple(str(p) for p in (DOC_RELPATH, README_RELPATH, MATRIX_RELPATH))
 
 # Extractor witnesses: paths the real register is known to cite. If the
 # extractor regressed, these assertions fail loudly instead of letting the
@@ -182,9 +179,7 @@ def test_doc_side_status_upgrade_fires(repo: Path) -> None:
         "`MEASURED` (capability matrix row `retrieval.citation_existence_gate`)",
     )
     errors = run_all_checks(repo)
-    assert any(
-        "RR-2" in e and "retrieval.citation_existence_gate" in e for e in errors
-    )
+    assert any("RR-2" in e and "retrieval.citation_existence_gate" in e for e in errors)
 
 
 def test_matrix_side_status_change_fires(repo: Path) -> None:
@@ -248,8 +243,7 @@ def test_demoted_matrix_citation_fires_inventory_lock(repo: Path) -> None:
     )
     errors = run_all_checks(repo)
     assert any(
-        "RR-2" in e and "revision.claim_drift_guard" in e and "no longer" in e
-        for e in errors
+        "RR-2" in e and "revision.claim_drift_guard" in e and "no longer" in e for e in errors
     )
 
 
@@ -268,8 +262,7 @@ def test_relocated_matrix_citation_fires_inventory_lock(repo: Path) -> None:
     )
     errors = run_all_checks(repo)
     assert any(
-        "RR-2" in e and "revision.claim_drift_guard" in e and "no longer" in e
-        for e in errors
+        "RR-2" in e and "revision.claim_drift_guard" in e and "no longer" in e for e in errors
     )
 
 

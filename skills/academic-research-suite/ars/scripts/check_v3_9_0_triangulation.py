@@ -36,7 +36,6 @@ import re
 import sys
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_FORMATTER = REPO_ROOT / "academic-paper/agents/formatter_agent.md"
 DEFAULT_ORCHESTRATOR = REPO_ROOT / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
@@ -81,6 +80,7 @@ EXPECTED_ALLOWLIST_TOKENS = {
 # ---------------------------------------------------------------------------
 # Orchestrator helpers (rules 1-4)
 # ---------------------------------------------------------------------------
+
 
 def extract_v3_9_0_finalizer_subsection(orchestrator_text: str) -> str:
     """Return the v3.9.0 finalizer extension subsection (## header until next ## or EOF)."""
@@ -141,9 +141,7 @@ def check_marker_syntax(subsection_text: str) -> list[str]:
     # is strictly stronger than presence (a token on the wrong tier, or absent
     # entirely, fails here), and EXPECTED_DELTA1_ROWS is their single source of truth.
     for token, cell in EXPECTED_DELTA1_ROWS.items():
-        on_correct_row = any(
-            f"`{token}`" in ln and cell in ln for ln in table_rows
-        )
+        on_correct_row = any(f"`{token}`" in ln and cell in ln for ln in table_rows)
         if not on_correct_row:
             failures.append(
                 f"rule 1 (matrix row): `{token}` is not on a suffix-table row "
@@ -158,7 +156,7 @@ def check_preprint_composition_order(subsection_text: str) -> list[str]:
     failures = []
     for tok in tokens:
         # Strip CONTAMINATED- prefix, then check composition ordering.
-        body = tok[len("CONTAMINATED-"):]
+        body = tok[len("CONTAMINATED-") :]
         if "PREPRINT" in body and "+" in body:
             parts = body.split("+")
             if parts[0] != "PREPRINT":
@@ -195,29 +193,29 @@ def check_legacy_compat(subsection_text: str) -> list[str]:
             # Preprint legacy row must carry CONTAMINATED-PREPRINT+UNMATCHED.
             if "`CONTAMINATED-PREPRINT+UNMATCHED`" not in line:
                 failures.append(
-                    f"rule 3 (legacy compat — preprint variant): k=1 k_max=1 "
-                    f"semantic_scholar_unmatched preprint=true row does NOT preserve "
-                    f"`CONTAMINATED-PREPRINT+UNMATCHED` legacy suffix"
+                    "rule 3 (legacy compat — preprint variant): k=1 k_max=1 "
+                    "semantic_scholar_unmatched preprint=true row does NOT preserve "
+                    "`CONTAMINATED-PREPRINT+UNMATCHED` legacy suffix"
                 )
             if "`CONTAMINATED-PREPRINT+COVERAGE-NOISE`" in line:
                 failures.append(
-                    f"rule 3 (legacy compat — preprint drift): preprint legacy row contains "
-                    f"`CONTAMINATED-PREPRINT+COVERAGE-NOISE` (should be "
-                    f"`CONTAMINATED-PREPRINT+UNMATCHED`)"
+                    "rule 3 (legacy compat — preprint drift): preprint legacy row contains "
+                    "`CONTAMINATED-PREPRINT+COVERAGE-NOISE` (should be "
+                    "`CONTAMINATED-PREPRINT+UNMATCHED`)"
                 )
         else:
             seen_bare_legacy = True
             # Bare (preprint=false / absent) legacy row must carry CONTAMINATED-UNMATCHED.
             if "`CONTAMINATED-UNMATCHED`" not in line:
                 failures.append(
-                    f"rule 3 (legacy compat — bare variant): k=1 k_max=1 "
-                    f"semantic_scholar_unmatched preprint=false row does NOT preserve "
-                    f"`CONTAMINATED-UNMATCHED` legacy suffix"
+                    "rule 3 (legacy compat — bare variant): k=1 k_max=1 "
+                    "semantic_scholar_unmatched preprint=false row does NOT preserve "
+                    "`CONTAMINATED-UNMATCHED` legacy suffix"
                 )
             if "`CONTAMINATED-COVERAGE-NOISE`" in line:
                 failures.append(
-                    f"rule 3 (legacy compat — bare drift): bare legacy row contains "
-                    f"`CONTAMINATED-COVERAGE-NOISE` (should be `CONTAMINATED-UNMATCHED`)"
+                    "rule 3 (legacy compat — bare drift): bare legacy row contains "
+                    "`CONTAMINATED-COVERAGE-NOISE` (should be `CONTAMINATED-UNMATCHED`)"
                 )
     if not seen_bare_legacy:
         failures.append(
@@ -248,6 +246,7 @@ def check_no_high_block(subsection_text: str) -> list[str]:
 # ---------------------------------------------------------------------------
 # Formatter helpers (rules 5-6)
 # ---------------------------------------------------------------------------
+
 
 def extract_allowlist_tokens(formatter_text: str) -> set[str]:
     """Parse the pass-through allowlist sentence (anchored at 'DO NOT trigger refusal').
@@ -300,6 +299,7 @@ def extract_refusal_rule_tokens(formatter_text: str) -> set[str]:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="v3.9.0 triangulation spec lint")

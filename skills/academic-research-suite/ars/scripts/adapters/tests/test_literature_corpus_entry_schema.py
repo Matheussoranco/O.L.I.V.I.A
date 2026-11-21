@@ -1,7 +1,8 @@
 """Validates literature_corpus_entry.schema.json self-consistency and
 round-trips a known-good example entry against it."""
-from pathlib import Path
 import json
+from pathlib import Path
+
 import pytest
 from jsonschema import Draft202012Validator
 
@@ -17,9 +18,7 @@ def _load_schema():
 def _validator(schema):
     """Validator with format_checker so format-keyword constraints
     (e.g. date-time on obtained_at) are actually enforced."""
-    return Draft202012Validator(
-        schema, format_checker=Draft202012Validator.FORMAT_CHECKER
-    )
+    return Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
 
 
 def test_schema_file_exists():
@@ -73,6 +72,7 @@ def test_valid_institution_author_entry_passes():
 
 def test_missing_required_field_fails():
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "chen2024ai",
@@ -87,6 +87,7 @@ def test_missing_required_field_fails():
 
 def test_author_must_be_either_personal_or_literal():
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "bad2024",
@@ -101,6 +102,7 @@ def test_author_must_be_either_personal_or_literal():
 
 def test_year_out_of_range_fails():
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "old1",
@@ -115,6 +117,7 @@ def test_year_out_of_range_fails():
 
 def test_citation_key_pattern_rejects_leading_digit():
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "2024chen",
@@ -129,6 +132,7 @@ def test_citation_key_pattern_rejects_leading_digit():
 
 def test_additional_property_fails():
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "chen2024",
@@ -144,6 +148,7 @@ def test_additional_property_fails():
 
 def test_obtained_via_enum_constrained():
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "chen2024",
@@ -161,6 +166,7 @@ def test_obtained_via_other_without_adapter_name_fails():
     """Spec §obtained_via: 'Required when obtained_via=other'.
     Schema MUST enforce this conditionally, not via prose only."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "chen2024",
@@ -209,6 +215,7 @@ def test_invalid_obtained_at_format_fails():
     """obtained_at: format=date-time must be enforced. Without
     format_checker the keyword is silently ignored."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "chen2024",
@@ -263,6 +270,7 @@ def test_valid_legacy_arxiv_id_passes():
 
 def test_invalid_arxiv_id_rejected():
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = {
         "citation_key": "invalid2024",
@@ -330,6 +338,7 @@ def test_arxiv_id_is_optional():
 # --- v3.7.3 contamination_signals (L3-2) -------------------------------
 # Motivation: Zhao et al. arXiv:2605.07723 (2026-05).
 
+
 def _base_entry():
     return {
         "citation_key": "chen2024",
@@ -380,10 +389,9 @@ def test_contamination_signals_both_true_is_valid():
 def test_contamination_signals_unknown_subfield_rejected():
     """additionalProperties: false on contamination_signals."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
-    entry = _base_entry() | {
-        "contamination_signals": {"unknown_signal": True}
-    }
+    entry = _base_entry() | {"contamination_signals": {"unknown_signal": True}}
     with pytest.raises(ValidationError):
         _validator(schema).validate(entry)
 
@@ -391,20 +399,21 @@ def test_contamination_signals_unknown_subfield_rejected():
 def test_contamination_signals_non_boolean_rejected():
     """Sub-fields are strict booleans, not truthy strings."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
-    entry = _base_entry() | {
-        "contamination_signals": {"preprint_post_llm_inflection": "yes"}
-    }
+    entry = _base_entry() | {"contamination_signals": {"preprint_post_llm_inflection": "yes"}}
     with pytest.raises(ValidationError):
         _validator(schema).validate(entry)
 
 
 # --- v3.7.3 gemini review F5 closure: year < 2024 cross-field rule -----
 
+
 def test_preprint_flag_true_with_year_before_2024_rejected():
     """v3.7.3 F5: setting preprint_post_llm_inflection=true with year<2024
     is logically contradictory and schema must reject it."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {
         "year": 2022,
@@ -446,12 +455,14 @@ def test_preprint_flag_absent_with_pre_2024_year_passes():
 
 # --- v3.7.3 codex round-3 F11 closure: manual-entry exemption ----------
 
+
 def test_manual_entry_with_ss_unmatched_field_rejected():
     """v3.7.3 F11: obtained_via=manual + semantic_scholar_unmatched
     present is a contract violation — bibliography_agent SKIPS the
     Semantic Scholar check on user-curated entries and OMITS the
     field. Schema must reject either true or false on manual."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {
         "obtained_via": "manual",
@@ -467,6 +478,7 @@ def test_manual_entry_with_ss_unmatched_false_also_rejected():
     imply 'checked and found' which contradicts the skip-the-check
     exemption."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {
         "obtained_via": "manual",
@@ -546,9 +558,9 @@ def test_contamination_signals_backfilled_at_non_string_rejected():
 # --- v3.9.0 schema additions: openalex_unmatched + crossref_unmatched ----
 # Extended manual-entry not-rule (anyOf: ss / openalex / crossref).
 
+
 def test_v3_9_0_openalex_unmatched_field_accepted():
     """v3.9.0 — schema accepts new openalex_unmatched optional boolean."""
-    import jsonschema
     schema = _load_schema()
     entry = _base_entry() | {
         "contamination_signals": {
@@ -560,7 +572,6 @@ def test_v3_9_0_openalex_unmatched_field_accepted():
 
 def test_v3_9_0_crossref_unmatched_field_accepted():
     """v3.9.0 — schema accepts new crossref_unmatched optional boolean."""
-    import jsonschema
     schema = _load_schema()
     entry = _base_entry() | {
         "contamination_signals": {
@@ -572,7 +583,6 @@ def test_v3_9_0_crossref_unmatched_field_accepted():
 
 def test_v3_9_0_all_four_contamination_fields_accepted():
     """v3.9.0 — schema accepts all four contamination fields together."""
-    import jsonschema
     schema = _load_schema()
     entry = _base_entry() | {
         "contamination_signals": {
@@ -589,6 +599,7 @@ def test_v3_9_0_all_four_contamination_fields_accepted():
 def test_v3_9_0_manual_entry_with_openalex_unmatched_rejected():
     """v3.9.0 — manual entry MUST NOT carry openalex_unmatched (extended not-rule)."""
     import jsonschema
+
     schema = _load_schema()
     entry = _base_entry() | {
         "obtained_via": "manual",
@@ -601,6 +612,7 @@ def test_v3_9_0_manual_entry_with_openalex_unmatched_rejected():
 def test_v3_9_0_manual_entry_with_crossref_unmatched_rejected():
     """v3.9.0 — manual entry MUST NOT carry crossref_unmatched."""
     import jsonschema
+
     schema = _load_schema()
     entry = _base_entry() | {
         "obtained_via": "manual",
@@ -612,7 +624,6 @@ def test_v3_9_0_manual_entry_with_crossref_unmatched_rejected():
 
 def test_v3_9_0_manual_entry_with_preprint_flag_passes():
     """v3.9.0 — manual entry MAY carry preprint_post_llm_inflection (heuristic, not lookup)."""
-    import jsonschema
     schema = _load_schema()
     entry = _base_entry() | {
         "obtained_via": "manual",
@@ -649,6 +660,7 @@ def test_511_omission_unknown_reason_rejected():
     """#511 Part A: the reason enum is closed — api_degraded only (manual /
     no-arxiv-id omissions are derivable from the entry, never recorded)."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {
         "contamination_signal_omissions": {
@@ -664,6 +676,7 @@ def test_511_omission_unknown_key_rejected():
     names are valid omission keys (preprint flag is a heuristic, no lookup to
     degrade)."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {
         "contamination_signal_omissions": {
@@ -678,6 +691,7 @@ def test_511_empty_omissions_object_rejected():
     """#511 Part A: minProperties 1 — an empty object records nothing and is
     a writer bug, not a valid state."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {"contamination_signal_omissions": {}}
     with pytest.raises(ValidationError):
@@ -689,6 +703,7 @@ def test_511_manual_entry_with_omissions_rejected():
     degraded — the omissions object is forbidden (mirrors the manual-entry
     *_unmatched not-rule)."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {
         "obtained_via": "manual",
@@ -704,6 +719,7 @@ def test_511_signal_and_omission_for_same_key_rejected():
     """#511 Part A mutual exclusion: a signal was either computed or
     omitted-with-reason — never both."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {
         "contamination_signals": {"openalex_unmatched": True},
@@ -728,6 +744,7 @@ def test_511_arxiv_omission_requires_arxiv_id():
     """#511 Part A: the arXiv lookup only runs when arxiv_id is present
     (#331), so an arxiv omission without an arxiv_id is contradictory."""
     from jsonschema.exceptions import ValidationError
+
     schema = _load_schema()
     entry = _base_entry() | {
         "contamination_signal_omissions": {"arxiv_unmatched": "api_degraded"},

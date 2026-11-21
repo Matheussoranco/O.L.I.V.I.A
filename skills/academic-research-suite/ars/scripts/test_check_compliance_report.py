@@ -345,6 +345,7 @@ class TestComplianceReportValidator(unittest.TestCase):
         """
         import os as _os
         import sys as _sys
+
         report = _valid_sr_report()
         report["prisma_trAIce"].pop("protocol_maturity", None)
         env = _os.environ.copy()
@@ -364,13 +365,15 @@ class TestComplianceReportValidator(unittest.TestCase):
     def test_missing_maturity_warning_opt_in(self) -> None:
         """With ARS_WARN_MISSING_MATURITY=1, warn when prisma_trAIce lacks protocol_maturity."""
         from tests.test_helpers import run_script as _run_with_env
+
         report = _valid_sr_report()
         report["prisma_trAIce"].pop("protocol_maturity", None)
         with TemporaryDirectory() as tmp:
             p = Path(tmp) / "r.json"
             _write(p, report)
             result = _run_with_env(
-                SCRIPT, str(p),
+                SCRIPT,
+                str(p),
                 extra_env={"ARS_WARN_MISSING_MATURITY": "1"},
             )
         self.assertEqual(result.returncode, 0, msg=result.stderr)

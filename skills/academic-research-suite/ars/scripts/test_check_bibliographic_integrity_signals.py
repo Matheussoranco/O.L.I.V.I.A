@@ -12,7 +12,6 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
-
 SCRIPTS = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
@@ -71,9 +70,7 @@ def test_all_epistemic_class_fixtures_round_trip() -> None:
 
 def test_v1_2_fixtures_replay_except_frozen_unicode_provenance() -> None:
     corpus_path = SCRIPTS / "fixtures/tortured_phrase_screening/corpus_input.yaml"
-    corpus = yaml.safe_load(corpus_path.read_text(encoding="utf-8"))[
-        "literature_corpus"
-    ]
+    corpus = yaml.safe_load(corpus_path.read_text(encoding="utf-8"))["literature_corpus"]
     by_key = {entry["citation_key"]: entry for entry in corpus}
     cases = (
         (
@@ -97,17 +94,11 @@ def test_v1_2_fixtures_replay_except_frozen_unicode_provenance() -> None:
             recorded_at="2026-08-10T01:00:01Z",
         )
         fixture = _fixture(fixture_name)
-        runtime_version = expected["tortured_phrase_context"]["snapshot"][
-            "unicode_data_version"
-        ]
+        runtime_version = expected["tortured_phrase_context"]["snapshot"]["unicode_data_version"]
         assert runtime_version == state.bundle.unicode_data_version
-        fixture_version = fixture["tortured_phrase_context"]["snapshot"][
-            "unicode_data_version"
-        ]
+        fixture_version = fixture["tortured_phrase_context"]["snapshot"]["unicode_data_version"]
         assert fixture_version == checker.V12_FIXTURE_UNICODE_DATA_VERSION
-        expected["tortured_phrase_context"]["snapshot"][
-            "unicode_data_version"
-        ] = fixture_version
+        expected["tortured_phrase_context"]["snapshot"]["unicode_data_version"] = fixture_version
         assert fixture == expected
         screening.validate_cited_signal_binding(fixture, by_key[citation_key])
 
@@ -149,9 +140,7 @@ def test_legacy_migration_preserves_epistemic_boundaries() -> None:
         "contamination_signal_omissions": {"openalex_unmatched": "api_degraded"},
         "retraction_check": True,
     }
-    migrated = signals.migrate_legacy_entry(
-        entry, recorded_at="2026-08-08T00:00:00Z"
-    )
+    migrated = signals.migrate_legacy_entry(entry, recorded_at="2026-08-08T00:00:00Z")
     by_type = {item["signal_type"]: item for item in migrated}
     assert by_type["preprint_post_llm_inflection"]["epistemic_class"] == "heuristic_advisory"
     assert by_type["semantic_scholar_unmatched"]["epistemic_class"] == "deterministic_fact"
@@ -272,9 +261,7 @@ def test_v1_2_renderer_projects_complete_neutral_metadata_for_all_states() -> No
         assert {key: row[key] for key in expected} == expected
 
     for signal in (zero, missing, degraded):
-        assert "phrase-list match requiring review" not in signals.render_advisory_section(
-            [signal]
-        )
+        assert "phrase-list match requiring review" not in signals.render_advisory_section([signal])
 
     legacy = _rendered_row(_fixture("retraction.json"))
     for heading in (
@@ -322,9 +309,10 @@ def test_renderer_is_complete_injection_safe_and_bounds_match_projection() -> No
             "codepoint_start": span["codepoint_start"],
             "codepoint_end": span["codepoint_end"],
         }
-        match["match_id"] = "tpm-" + hashlib.sha256(
-            checker._canonical_json(payload).encode("utf-8")
-        ).hexdigest()[:24]
+        match["match_id"] = (
+            "tpm-"
+            + hashlib.sha256(checker._canonical_json(payload).encode("utf-8")).hexdigest()[:24]
+        )
         projected_matches.append(match)
     context["matches"] = projected_matches
     context["counts"]["rule_match_count"] = 4
@@ -353,9 +341,7 @@ def test_renderer_is_complete_injection_safe_and_bounds_match_projection() -> No
     assert "\\[x\\]" in injected_rendered
 
     corpus_path = SCRIPTS / "fixtures/tortured_phrase_screening/corpus_input.yaml"
-    negative_entry = yaml.safe_load(corpus_path.read_text(encoding="utf-8"))[
-        "literature_corpus"
-    ][2]
+    negative_entry = yaml.safe_load(corpus_path.read_text(encoding="utf-8"))["literature_corpus"][2]
     no_match = screening.build_cited_signal(
         negative_entry,
         surface="cited_title",
@@ -429,9 +415,7 @@ def test_source_independent_phrase_projection_mutations_fail(mutation: str) -> N
 
 
 def test_checked_but_unresolved_attestation_is_visibly_not_clean() -> None:
-    rendered = signals.render_advisory_section(
-        [_fixture("retraction_check_attestation.json")]
-    )
+    rendered = signals.render_advisory_section([_fixture("retraction_check_attestation.json")])
     assert "| checked | NOT CLEAN — UNRESOLVED |" in rendered
 
 
@@ -469,9 +453,7 @@ def test_sync_checker_passes_current_repo() -> None:
 def test_sync_checker_detects_formatter_drift(tmp_path: Path) -> None:
     root = _minimal_repo(tmp_path)
     path = root / "academic-paper/agents/formatter_agent.md"
-    text = path.read_text(encoding="utf-8").replace(
-        "**NOT CLEAN — UNRESOLVED**", "**CLEAN**"
-    )
+    text = path.read_text(encoding="utf-8").replace("**NOT CLEAN — UNRESOLVED**", "**CLEAN**")
     path.write_text(text, encoding="utf-8")
     found = checker.run_checks(root)
     assert any("formatter_agent.md" in error for error in found)
@@ -543,9 +525,7 @@ def test_sync_checker_rejects_v1_2_mutations(
             fixture["provenance"]["stale_after"] = "2026-08-11T01:00:00Z"
             fixture["provenance"]["freshness"] = "stale"
         elif mutation == "unicode_version":
-            fixture["tortured_phrase_context"]["snapshot"][
-                "unicode_data_version"
-            ] = "15.0.0"
+            fixture["tortured_phrase_context"]["snapshot"]["unicode_data_version"] = "15.0.0"
         else:
             fixture["evidence"][0]["evidence_sha256"] = "0" * 64
         detected_path.write_text(
@@ -563,9 +543,7 @@ def test_existing_canonical_record_wins_idempotently() -> None:
         "retraction_check": True,
         "bibliographic_integrity_signals": [copy.deepcopy(fixture)],
     }
-    migrated = signals.migrate_legacy_entry(
-        entry, recorded_at="2026-08-08T01:00:00Z"
-    )
+    migrated = signals.migrate_legacy_entry(entry, recorded_at="2026-08-08T01:00:00Z")
     assert migrated == [fixture]
 
 
@@ -597,12 +575,8 @@ def test_evidence_cannot_be_empty() -> None:
 
 def test_handoff_source_id_projects_to_a_schema_safe_stable_signal_id() -> None:
     entry = {"id": "[S01]", "retraction_check": False}
-    first = signals.migrate_legacy_entry(
-        entry, recorded_at="2026-08-08T01:00:00Z"
-    )
-    second = signals.migrate_legacy_entry(
-        entry, recorded_at="2026-08-08T01:00:00Z"
-    )
+    first = signals.migrate_legacy_entry(entry, recorded_at="2026-08-08T01:00:00Z")
+    second = signals.migrate_legacy_entry(entry, recorded_at="2026-08-08T01:00:00Z")
     assert first == second
     assert first[0]["subject"]["citation_key"] == "[S01]"
     assert first[0]["signal_id"].startswith("bis:source-")

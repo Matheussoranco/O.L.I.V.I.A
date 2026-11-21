@@ -1,7 +1,6 @@
 """Tests for v3.9.4 temporal_integrity_audit.py 5-pass verifier."""
 from __future__ import annotations
 
-import json
 import subprocess
 import sys
 from pathlib import Path
@@ -13,24 +12,42 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = REPO_ROOT / "scripts/temporal_integrity_audit.py"
 
 
-def _run_audit(tmp_path: Path, draft: str, timeline: dict, citation_provenance: dict | None = None,
-               report_reference_date: str = "2026-05-18") -> dict:
+def _run_audit(
+    tmp_path: Path,
+    draft: str,
+    timeline: dict,
+    citation_provenance: dict | None = None,
+    report_reference_date: str = "2026-05-18",
+) -> dict:
     """Helper: write inputs, run audit, return parsed output."""
     (tmp_path / "draft.md").write_text(draft)
     (tmp_path / "timeline.yaml").write_text(yaml.safe_dump(timeline))
-    (tmp_path / "citation_provenance.yaml").write_text(yaml.safe_dump(
-        citation_provenance or {"schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2", "entries": []}
-    ))
+    (tmp_path / "citation_provenance.yaml").write_text(
+        yaml.safe_dump(
+            citation_provenance
+            or {"schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2", "entries": []}
+        )
+    )
     out = tmp_path / "temporal_audit_results.yaml"
     result = subprocess.run(
-        [sys.executable, str(SCRIPT),
-         "--draft", str(tmp_path / "draft.md"),
-         "--timeline", str(tmp_path / "timeline.yaml"),
-         "--citation-provenance", str(tmp_path / "citation_provenance.yaml"),
-         "--output", str(out),
-         "--report-reference-date", report_reference_date,
-         "--audit-run-id", "2026-05-18T12:34:56Z-a1b2"],
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--draft",
+            str(tmp_path / "draft.md"),
+            "--timeline",
+            str(tmp_path / "timeline.yaml"),
+            "--citation-provenance",
+            str(tmp_path / "citation_provenance.yaml"),
+            "--output",
+            str(out),
+            "--report-reference-date",
+            report_reference_date,
+            "--audit-run-id",
+            "2026-05-18T12:34:56Z-a1b2",
+        ],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, f"audit failed: stderr={result.stderr!r}"
     return yaml.safe_load(out.read_text())
@@ -38,7 +55,9 @@ def _run_audit(tmp_path: Path, draft: str, timeline: dict, citation_provenance: 
 
 def test_audit_scaffold_returns_empty_findings_on_empty_draft(tmp_path):
     """Scaffold sanity: empty draft → 0 findings, valid output shape."""
-    result = _run_audit(tmp_path, draft="", timeline={"schema_version": "1.0", "sources": [], "events": []})
+    result = _run_audit(
+        tmp_path, draft="", timeline={"schema_version": "1.0", "sources": [], "events": []}
+    )
     assert result["schema_version"] == "1.0"
     assert result["audit_run_id"] == "2026-05-18T12:34:56Z-a1b2"
     assert result["report_reference_date"] == "2026-05-18"
@@ -110,28 +129,38 @@ def test_p2_2026_handbook_governing_2022_event(tmp_path):
         draft="The 2026 Handbook governed the 2022 review cycle.<!--ref:handbook-2026ed-->\n",
         timeline={
             "schema_version": "1.0",
-            "sources": [{
-                "citation_key": "handbook-2026ed",
-                "type": "institutional-document",
-                "published_date": {
-                    "value": "2026-09-15", "precision": "day", "open_ended": False,
-                    "provenance": {"method": "crossref_lookup", "confidence": "high"},
-                },
-                "effective_date_range": {
-                    "start": {
-                        "value": "2026-09-15", "precision": "day", "open_ended": False,
+            "sources": [
+                {
+                    "citation_key": "handbook-2026ed",
+                    "type": "institutional-document",
+                    "published_date": {
+                        "value": "2026-09-15",
+                        "precision": "day",
+                        "open_ended": False,
                         "provenance": {"method": "crossref_lookup", "confidence": "high"},
                     },
-                    "end": {
-                        "value": None, "precision": "unknown", "open_ended": True,
-                        "provenance": {"method": "user_override", "confidence": "high"},
+                    "effective_date_range": {
+                        "start": {
+                            "value": "2026-09-15",
+                            "precision": "day",
+                            "open_ended": False,
+                            "provenance": {"method": "crossref_lookup", "confidence": "high"},
+                        },
+                        "end": {
+                            "value": None,
+                            "precision": "unknown",
+                            "open_ended": True,
+                            "provenance": {"method": "user_override", "confidence": "high"},
+                        },
                     },
-                },
-            }],
+                }
+            ],
             "events": [],
         },
     )
-    anachronism = [f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-ANACHRONISTIC-CITATION"]
+    anachronism = [
+        f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-ANACHRONISTIC-CITATION"
+    ]
     assert len(anachronism) == 1, f"expected 1 anachronism, got: {result['findings']}"
     f0 = anachronism[0]
     assert f0["mode"] == 2
@@ -146,19 +175,25 @@ def test_p3_unmaterialized_comparator(tmp_path):
         draft="This differs from the 1998 edition of the standard.<!--ref:standard-2020ed-->\n",
         timeline={
             "schema_version": "1.0",
-            "sources": [{
-                "citation_key": "standard-2020ed",
-                "type": "standard",
-                "version_family_id": "standard-family",
-                "published_date": {
-                    "value": "2020-01-01", "precision": "year", "open_ended": False,
-                    "provenance": {"method": "user_override", "confidence": "high"},
-                },
-            }],
+            "sources": [
+                {
+                    "citation_key": "standard-2020ed",
+                    "type": "standard",
+                    "version_family_id": "standard-family",
+                    "published_date": {
+                        "value": "2020-01-01",
+                        "precision": "year",
+                        "open_ended": False,
+                        "provenance": {"method": "user_override", "confidence": "high"},
+                    },
+                }
+            ],
             "events": [],
         },
     )
-    comparator = [f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-COMPARATOR-UNMATERIALIZED"]
+    comparator = [
+        f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-COMPARATOR-UNMATERIALIZED"
+    ]
     assert len(comparator) == 1, f"expected 1 comparator finding, got: {result['findings']}"
     assert comparator[0]["matched_span"] is not None
     assert "1998" in comparator[0]["matched_span"]["text"]
@@ -172,12 +207,26 @@ def test_p4_causal_inversion(tmp_path):
         timeline={
             "schema_version": "1.0",
             "sources": [
-                {"citation_key": "policy-a", "type": "policy",
-                 "published_date": {"value": "2026-03-01", "precision": "day", "open_ended": False,
-                                    "provenance": {"method": "user_override", "confidence": "high"}}},
-                {"citation_key": "policy-b", "type": "policy",
-                 "published_date": {"value": "2020-05-15", "precision": "day", "open_ended": False,
-                                    "provenance": {"method": "user_override", "confidence": "high"}}},
+                {
+                    "citation_key": "policy-a",
+                    "type": "policy",
+                    "published_date": {
+                        "value": "2026-03-01",
+                        "precision": "day",
+                        "open_ended": False,
+                        "provenance": {"method": "user_override", "confidence": "high"},
+                    },
+                },
+                {
+                    "citation_key": "policy-b",
+                    "type": "policy",
+                    "published_date": {
+                        "value": "2020-05-15",
+                        "precision": "day",
+                        "open_ended": False,
+                        "provenance": {"method": "user_override", "confidence": "high"},
+                    },
+                },
             ],
             "events": [],
         },
@@ -193,25 +242,38 @@ def test_p4_causal_inversion(tmp_path):
 FIXTURE_ROOT = REPO_ROOT / "tests/fixtures/v3.9.4-temporal"
 
 
-@pytest.mark.parametrize("fixture_name", [
-    "mode_1_future_as_past",
-    "mode_2_version_as_evidence_past",
-    "mode_3_comparator_unmaterialized",
-    "mode_4_causal_inversion",
-    "mode_5_time_bomb",
-])
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "mode_1_future_as_past",
+        "mode_2_version_as_evidence_past",
+        "mode_3_comparator_unmaterialized",
+        "mode_4_causal_inversion",
+        "mode_5_time_bomb",
+    ],
+)
 def test_positive_fixture_golden(tmp_path, fixture_name):
     fixture_dir = FIXTURE_ROOT / fixture_name
     out = tmp_path / "temporal_audit_results.yaml"
     result = subprocess.run(
-        [sys.executable, str(SCRIPT),
-         "--draft", str(fixture_dir / "draft.md"),
-         "--timeline", str(fixture_dir / "timeline.yaml"),
-         "--citation-provenance", str(fixture_dir / "citation_provenance.yaml"),
-         "--output", str(out),
-         "--report-reference-date", "2026-05-18",
-         "--audit-run-id", "2026-05-18T12:34:56Z-a1b2"],
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--draft",
+            str(fixture_dir / "draft.md"),
+            "--timeline",
+            str(fixture_dir / "timeline.yaml"),
+            "--citation-provenance",
+            str(fixture_dir / "citation_provenance.yaml"),
+            "--output",
+            str(out),
+            "--report-reference-date",
+            "2026-05-18",
+            "--audit-run-id",
+            "2026-05-18T12:34:56Z-a1b2",
+        ],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, f"stderr={result.stderr}"
     actual = yaml.safe_load(out.read_text())
@@ -219,26 +281,39 @@ def test_positive_fixture_golden(tmp_path, fixture_name):
     assert actual == expected, f"diff for {fixture_name}:\nactual={actual}\nexpected={expected}"
 
 
-@pytest.mark.parametrize("fixture_name", [
-    "mode_1_legitimate",
-    "mode_2_legitimate",
-    "mode_3_legitimate",
-    "mode_4_legitimate",
-    "mode_5_legitimate",
-])
+@pytest.mark.parametrize(
+    "fixture_name",
+    [
+        "mode_1_legitimate",
+        "mode_2_legitimate",
+        "mode_3_legitimate",
+        "mode_4_legitimate",
+        "mode_5_legitimate",
+    ],
+)
 def test_negative_fixture_golden(tmp_path, fixture_name):
     """Legitimate prose fixtures: verifier output matches captured baseline (typically zero violation findings)."""
     fixture_dir = FIXTURE_ROOT / fixture_name
     out = tmp_path / "temporal_audit_results.yaml"
     result = subprocess.run(
-        [sys.executable, str(SCRIPT),
-         "--draft", str(fixture_dir / "draft.md"),
-         "--timeline", str(fixture_dir / "timeline.yaml"),
-         "--citation-provenance", str(fixture_dir / "citation_provenance.yaml"),
-         "--output", str(out),
-         "--report-reference-date", "2026-05-18",
-         "--audit-run-id", "2026-05-18T12:34:56Z-a1b2"],
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--draft",
+            str(fixture_dir / "draft.md"),
+            "--timeline",
+            str(fixture_dir / "timeline.yaml"),
+            "--citation-provenance",
+            str(fixture_dir / "citation_provenance.yaml"),
+            "--output",
+            str(out),
+            "--report-reference-date",
+            "2026-05-18",
+            "--audit-run-id",
+            "2026-05-18T12:34:56Z-a1b2",
+        ],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, f"audit failed: stderr={result.stderr!r}"
     actual = yaml.safe_load(out.read_text())
@@ -246,32 +321,49 @@ def test_negative_fixture_golden(tmp_path, fixture_name):
     assert actual == expected, f"diff for {fixture_name}: actual={actual}\nexpected={expected}"
     # Optional: assert no Mode N findings for the matching mode
     mode_n = int(fixture_name.split("_")[1])
-    mode_findings = [f for f in actual["findings"]
-                     if f.get("mode") == mode_n
-                     and f["finding_kind"] != "TEMPORAL-METADATA-MISSING"]
+    mode_findings = [
+        f
+        for f in actual["findings"]
+        if f.get("mode") == mode_n and f["finding_kind"] != "TEMPORAL-METADATA-MISSING"
+    ]
     assert mode_findings == [], f"unexpected mode-{mode_n} violation: {mode_findings}"
 
 
 def test_audit_writes_markdown_report(tmp_path):
     """Audit must write phase4_composition/temporal_audit.md alongside the YAML."""
     (tmp_path / "draft.md").write_text("Currently, the framework is under review.\n")
-    (tmp_path / "timeline.yaml").write_text(yaml.safe_dump(
-        {"schema_version": "1.0", "sources": [], "events": []}))
-    (tmp_path / "citation_provenance.yaml").write_text(yaml.safe_dump(
-        {"schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2", "entries": []}))
+    (tmp_path / "timeline.yaml").write_text(
+        yaml.safe_dump({"schema_version": "1.0", "sources": [], "events": []})
+    )
+    (tmp_path / "citation_provenance.yaml").write_text(
+        yaml.safe_dump(
+            {"schema_version": "1.0", "audit_run_id": "2026-05-18T12:34:56Z-a1b2", "entries": []}
+        )
+    )
     out_yaml = tmp_path / "temporal_audit_results.yaml"
     out_md = tmp_path / "temporal_audit.md"
 
     result = subprocess.run(
-        [sys.executable, str(SCRIPT),
-         "--draft", str(tmp_path / "draft.md"),
-         "--timeline", str(tmp_path / "timeline.yaml"),
-         "--citation-provenance", str(tmp_path / "citation_provenance.yaml"),
-         "--output", str(out_yaml),
-         "--markdown-output", str(out_md),
-         "--report-reference-date", "2026-05-18",
-         "--audit-run-id", "2026-05-18T12:34:56Z-a1b2"],
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--draft",
+            str(tmp_path / "draft.md"),
+            "--timeline",
+            str(tmp_path / "timeline.yaml"),
+            "--citation-provenance",
+            str(tmp_path / "citation_provenance.yaml"),
+            "--output",
+            str(out_yaml),
+            "--markdown-output",
+            str(out_md),
+            "--report-reference-date",
+            "2026-05-18",
+            "--audit-run-id",
+            "2026-05-18T12:34:56Z-a1b2",
+        ],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0, f"stderr={result.stderr}"
     assert out_yaml.exists()
@@ -286,21 +378,33 @@ def test_metadata_missing_fixture(tmp_path):
     fixture_dir = FIXTURE_ROOT / "metadata_missing_p2"
     out = tmp_path / "temporal_audit_results.yaml"
     result = subprocess.run(
-        [sys.executable, str(SCRIPT),
-         "--draft", str(fixture_dir / "draft.md"),
-         "--timeline", str(fixture_dir / "timeline.yaml"),
-         "--citation-provenance", str(fixture_dir / "citation_provenance.yaml"),
-         "--output", str(out),
-         "--report-reference-date", "2026-05-18",
-         "--audit-run-id", "2026-05-18T12:34:56Z-a1b2"],
-        capture_output=True, text=True,
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--draft",
+            str(fixture_dir / "draft.md"),
+            "--timeline",
+            str(fixture_dir / "timeline.yaml"),
+            "--citation-provenance",
+            str(fixture_dir / "citation_provenance.yaml"),
+            "--output",
+            str(out),
+            "--report-reference-date",
+            "2026-05-18",
+            "--audit-run-id",
+            "2026-05-18T12:34:56Z-a1b2",
+        ],
+        capture_output=True,
+        text=True,
     )
     assert result.returncode == 0
     actual = yaml.safe_load(out.read_text())
     expected = yaml.safe_load((fixture_dir / "expected_temporal_audit_results.yaml").read_text())
     assert actual == expected
     # Spec contract: METADATA-MISSING for the ref
-    metadata_missing = [f for f in actual["findings"] if f["finding_kind"] == "TEMPORAL-METADATA-MISSING"]
+    metadata_missing = [
+        f for f in actual["findings"] if f["finding_kind"] == "TEMPORAL-METADATA-MISSING"
+    ]
     assert len(metadata_missing) == 1
     assert metadata_missing[0]["bound_refs"][0]["ref_slug"] == "handbook-2024ed"
 
@@ -317,14 +421,24 @@ def test_freeze_regression_byte_identical_across_dates(tmp_path):
     out2 = tmp_path / "run2.yaml"
     for out in [out1, out2]:
         result = subprocess.run(
-            [sys.executable, str(SCRIPT),
-             "--draft", str(fixture_dir / "draft.md"),
-             "--timeline", str(fixture_dir / "timeline.yaml"),
-             "--citation-provenance", str(fixture_dir / "citation_provenance.yaml"),
-             "--output", str(out),
-             "--report-reference-date", "2026-05-18",
-             "--audit-run-id", "2026-05-18T12:34:56Z-a1b2"],
-            capture_output=True, text=True,
+            [
+                sys.executable,
+                str(SCRIPT),
+                "--draft",
+                str(fixture_dir / "draft.md"),
+                "--timeline",
+                str(fixture_dir / "timeline.yaml"),
+                "--citation-provenance",
+                str(fixture_dir / "citation_provenance.yaml"),
+                "--output",
+                str(out),
+                "--report-reference-date",
+                "2026-05-18",
+                "--audit-run-id",
+                "2026-05-18T12:34:56Z-a1b2",
+            ],
+            capture_output=True,
+            text=True,
         )
         assert result.returncode == 0, f"stderr={result.stderr}"
     assert out1.read_bytes() == out2.read_bytes(), "byte-identical regression failed"
@@ -340,21 +454,24 @@ _audit_mod = importlib.util.module_from_spec(_AUDIT_SPEC)
 _AUDIT_SPEC.loader.exec_module(_audit_mod)
 
 
-@pytest.mark.parametrize("raw,expected", [
-    # Day precision (already worked in v3.9.4)
-    ("2024-09-15", ("2024-09-15", "2024-09-15")),
-    # Year precision (already worked in v3.9.4)
-    ("2024", ("2024-01-01", "2024-12-31")),
-    # Prose month (already worked in v3.9.4)
-    ("March 2025", ("2025-03-01", "2025-03-31")),
-    # v3.9.4.1 hotfix: month precision YYYY-MM
-    ("2024-09", ("2024-09-01", "2024-09-30")),
-    ("2024-02", ("2024-02-01", "2024-02-28")),
-    ("2024-12", ("2024-12-01", "2024-12-31")),
-    # v3.9.4.1 hotfix: interval precision YYYY-MM-DD..YYYY-MM-DD
-    ("2022-04-01..2022-12-31", ("2022-04-01", "2022-12-31")),
-    ("2020-10-01..2024-09-30", ("2020-10-01", "2024-09-30")),
-])
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        # Day precision (already worked in v3.9.4)
+        ("2024-09-15", ("2024-09-15", "2024-09-15")),
+        # Year precision (already worked in v3.9.4)
+        ("2024", ("2024-01-01", "2024-12-31")),
+        # Prose month (already worked in v3.9.4)
+        ("March 2025", ("2025-03-01", "2025-03-31")),
+        # v3.9.4.1 hotfix: month precision YYYY-MM
+        ("2024-09", ("2024-09-01", "2024-09-30")),
+        ("2024-02", ("2024-02-01", "2024-02-28")),
+        ("2024-12", ("2024-12-01", "2024-12-31")),
+        # v3.9.4.1 hotfix: interval precision YYYY-MM-DD..YYYY-MM-DD
+        ("2022-04-01..2022-12-31", ("2022-04-01", "2022-12-31")),
+        ("2020-10-01..2024-09-30", ("2020-10-01", "2024-09-30")),
+    ],
+)
 def test_date_to_interval_parses_all_schema_valid_shapes(raw, expected):
     """v3.9.4.1 hotfix: verifier handles all 5 v3.9.4 schema date shapes.
 
@@ -378,29 +495,41 @@ def test_p2_provenance_low_emits_metadata_missing_skips_anachronism(tmp_path):
     # confidence:low must downgrade to METADATA-MISSING instead of anachronism finding.
     timeline = {
         "schema_version": "1.0",
-        "sources": [{
-            "citation_key": "handbook-2026ed",
-            "type": "institutional-document",
-            "effective_date_range": {
-                "start": {"value": "2026-09-15", "precision": "day", "open_ended": False,
-                          "provenance": {"method": "crossref_lookup", "confidence": "high"}},
-                "end": {"value": None, "precision": "unknown", "open_ended": True,
-                        "provenance": {"method": "user_override", "confidence": "high"}},
-            },
-        }],
+        "sources": [
+            {
+                "citation_key": "handbook-2026ed",
+                "type": "institutional-document",
+                "effective_date_range": {
+                    "start": {
+                        "value": "2026-09-15",
+                        "precision": "day",
+                        "open_ended": False,
+                        "provenance": {"method": "crossref_lookup", "confidence": "high"},
+                    },
+                    "end": {
+                        "value": None,
+                        "precision": "unknown",
+                        "open_ended": True,
+                        "provenance": {"method": "user_override", "confidence": "high"},
+                    },
+                },
+            }
+        ],
         "events": [],
     }
     citation_provenance = {
         "schema_version": "1.0",
         "audit_run_id": "2026-05-19T00:00:00Z-test",
-        "entries": [{
-            "citation_key": "handbook-2026ed",
-            "crossref_issued": None,
-            "pdftotext_cover_first_line": None,
-            "verification_method": "none",
-            "confidence": "low",
-            "notes": None,
-        }],
+        "entries": [
+            {
+                "citation_key": "handbook-2026ed",
+                "crossref_issued": None,
+                "pdftotext_cover_first_line": None,
+                "verification_method": "none",
+                "confidence": "low",
+                "notes": None,
+            }
+        ],
     }
     result = _run_audit(
         tmp_path,
@@ -409,13 +538,22 @@ def test_p2_provenance_low_emits_metadata_missing_skips_anachronism(tmp_path):
         citation_provenance=citation_provenance,
     )
     # No anachronism findings (the v3.9.4 silent-bypass bug would have emitted one).
-    anachronism = [f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-ANACHRONISTIC-CITATION"]
-    assert anachronism == [], f"v3.9.4.1 fix #1 broken — anachronism emitted despite confidence:low: {anachronism}"
+    anachronism = [
+        f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-ANACHRONISTIC-CITATION"
+    ]
+    assert (
+        anachronism == []
+    ), f"v3.9.4.1 fix #1 broken — anachronism emitted despite confidence:low: {anachronism}"
     # Exactly one METADATA-MISSING citing the provenance reason.
-    metadata_missing = [f for f in result["findings"]
-                        if f["finding_kind"] == "TEMPORAL-METADATA-MISSING"
-                        and "confidence=low" in f.get("rationale", "")]
-    assert len(metadata_missing) == 1, f"expected 1 METADATA-MISSING with provenance reason; got {result['findings']}"
+    metadata_missing = [
+        f
+        for f in result["findings"]
+        if f["finding_kind"] == "TEMPORAL-METADATA-MISSING"
+        and "confidence=low" in f.get("rationale", "")
+    ]
+    assert (
+        len(metadata_missing) == 1
+    ), f"expected 1 METADATA-MISSING with provenance reason; got {result['findings']}"
 
 
 def test_p4_direct_date_causal_inversion_no_refs(tmp_path):
@@ -429,7 +567,9 @@ def test_p4_direct_date_causal_inversion_no_refs(tmp_path):
         timeline={"schema_version": "1.0", "sources": [], "events": []},
     )
     causal = [f for f in result["findings"] if f["finding_kind"] == "TEMPORAL-CAUSAL-INVERSION"]
-    assert len(causal) == 1, f"expected 1 causal inversion via direct date binding; got {result['findings']}"
+    assert (
+        len(causal) == 1
+    ), f"expected 1 causal inversion via direct date binding; got {result['findings']}"
     f0 = causal[0]
     assert f0["bound_dates"] is not None
     assert f0["bound_dates"]["left"]["source"] == "draft_capture"

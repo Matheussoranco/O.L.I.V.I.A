@@ -25,6 +25,7 @@ def test_examples_dir_resolves(examples_dir, repo_root):
 
 # --- clean_timestamps ---
 
+
 def test_clean_timestamps_blanks_top_level_field(clean_timestamps):
     doc = {"generated_at": "2026-04-25T10:00:00Z", "x": 1}
     out = clean_timestamps(doc)
@@ -89,6 +90,7 @@ def test_clean_timestamps_extra_blank_widens_set(clean_timestamps):
 
 
 # --- load_yaml ---
+
 
 def test_load_yaml_round_trips(load_yaml, tmp_path: Path):
     p = tmp_path / "x.yaml"

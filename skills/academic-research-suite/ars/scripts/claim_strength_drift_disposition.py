@@ -25,13 +25,10 @@ from typing import Any
 
 import jsonschema
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_ROOT = REPO_ROOT / "shared" / "contracts" / "revision"
 FINDING_SCHEMA_PATH = CONTRACT_ROOT / "claim_strength_drift_findings.schema.json"
-INPUT_SCHEMA_PATH = (
-    CONTRACT_ROOT / "claim_strength_drift_disposition_input.schema.json"
-)
+INPUT_SCHEMA_PATH = CONTRACT_ROOT / "claim_strength_drift_disposition_input.schema.json"
 SIDECAR_SCHEMA_PATH = CONTRACT_ROOT / "claim_strength_drift_disposition.schema.json"
 MAX_ARTIFACT_BYTES = 8 * 1024 * 1024
 
@@ -81,9 +78,7 @@ def _read_path_once(path: Path, label: str) -> bytes:
     return raw
 
 
-def _read_path_once_with_identity(
-    path: Path, label: str
-) -> tuple[bytes, tuple[int, int]]:
+def _read_path_once_with_identity(path: Path, label: str) -> tuple[bytes, tuple[int, int]]:
     flags = os.O_RDONLY
     if hasattr(os, "O_NOFOLLOW"):
         flags |= os.O_NOFOLLOW
@@ -106,9 +101,7 @@ def _read_path_once_with_identity(
             chunks.append(chunk)
             total += len(chunk)
             if total > MAX_ARTIFACT_BYTES:
-                raise ContractError(
-                    [f"{label}: artifact exceeds {MAX_ARTIFACT_BYTES} bytes"]
-                )
+                raise ContractError([f"{label}: artifact exceeds {MAX_ARTIFACT_BYTES} bytes"])
         after = os.fstat(fd)
         before_key = (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns)
         after_key = (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns)
@@ -155,9 +148,7 @@ def _load_schema(path: Path) -> dict[str, Any]:
     return value
 
 
-def _schema_failures(
-    value: dict[str, Any], schema_path: Path, label: str
-) -> list[str]:
+def _schema_failures(value: dict[str, Any], schema_path: Path, label: str) -> list[str]:
     validator = jsonschema.Draft202012Validator(_load_schema(schema_path))
     errors = sorted(
         validator.iter_errors(value),
@@ -193,9 +184,7 @@ def _validate_findings(findings: dict[str, Any]) -> None:
         raise ContractError(failures)
 
 
-def _validate_author_input(
-    findings: dict[str, Any], author_input: dict[str, Any]
-) -> None:
+def _validate_author_input(findings: dict[str, Any], author_input: dict[str, Any]) -> None:
     failures = _schema_failures(author_input, INPUT_SCHEMA_PATH, "author input")
     rows = findings.get("findings", [])
     if findings.get("status") != "completed":
@@ -216,28 +205,20 @@ def _validate_author_input(
     event_ids = [row.get("event_id") for row in events if isinstance(row, dict)]
     if len(event_ids) != len(set(event_ids)):
         failures.append("author input: session-event ids must be unique")
-    paths = [
-        row.get("raw_session_event_path") for row in events if isinstance(row, dict)
-    ]
+    paths = [row.get("raw_session_event_path") for row in events if isinstance(row, dict)]
     if all(isinstance(path, str) for path in paths):
         normalized_paths = [os.path.normpath(path) for path in paths]
         if len(normalized_paths) != len(set(normalized_paths)):
-            failures.append(
-                "author input: raw session-event artifact paths must be unique"
-            )
+            failures.append("author input: raw session-event artifact paths must be unique")
         for index, path in enumerate(paths):
             if not Path(path).is_absolute():
                 failures.append(
                     "author input: session_event_artifacts"
                     f"[{index}].raw_session_event_path must be absolute"
                 )
-    referenced = [
-        row.get("session_event_id") for row in decisions if isinstance(row, dict)
-    ]
+    referenced = [row.get("session_event_id") for row in decisions if isinstance(row, dict)]
     if len(referenced) != len(set(referenced)):
-        failures.append(
-            "author input: each session-event artifact may map to only one disposition"
-        )
+        failures.append("author input: each session-event artifact may map to only one disposition")
     unknown = sorted(set(referenced) - set(event_ids))
     unused = sorted(set(event_ids) - set(referenced))
     if unknown:
@@ -246,8 +227,7 @@ def _validate_author_input(
         failures.append(f"author input: unreferenced session-event artifacts {unused!r}")
     if event_ids != referenced:
         failures.append(
-            "author input: session-event artifacts must be in one-to-one "
-            "disposition order"
+            "author input: session-event artifacts must be in one-to-one " "disposition order"
         )
 
     for index, decision in enumerate(decisions):
@@ -267,9 +247,7 @@ def _validate_event_bytes(
     declared_events: list[dict[str, Any]], event_raw_by_id: dict[str, bytes], label: str
 ) -> None:
     failures: list[str] = []
-    expected_ids = [
-        row.get("event_id") for row in declared_events if isinstance(row, dict)
-    ]
+    expected_ids = [row.get("event_id") for row in declared_events if isinstance(row, dict)]
     actual_ids = list(event_raw_by_id)
     if actual_ids != expected_ids:
         failures.append(
@@ -308,17 +286,12 @@ def _load_build_event_artifacts(
         event_id = event["event_id"]
         path = Path(event["raw_session_event_path"])
         if not path.is_absolute():
-            raise ContractError(
-                [f"event artifact {event_id}: path must be absolute: {path}"]
-            )
+            raise ContractError([f"event artifact {event_id}: path must be absolute: {path}"])
         raw, identity = _read_path_once_with_identity(path, f"event artifact {event_id}")
         prior = identities.get(identity)
         if prior is not None:
             raise ContractError(
-                [
-                    "event artifacts: duplicate file mapping for "
-                    f"{prior!r} and {event_id!r}"
-                ]
+                ["event artifacts: duplicate file mapping for " f"{prior!r} and {event_id!r}"]
             )
         identities[identity] = event_id
         result[event_id] = raw
@@ -363,10 +336,7 @@ def _parse_validate_event_artifacts(specs: list[str]) -> dict[str, bytes]:
         prior = identities.get(identity)
         if prior is not None:
             raise ContractError(
-                [
-                    "event artifacts: duplicate file mapping for "
-                    f"{prior!r} and {event_id!r}"
-                ]
+                ["event artifacts: duplicate file mapping for " f"{prior!r} and {event_id!r}"]
             )
         identities[identity] = event_id
         result[event_id] = raw
@@ -379,9 +349,7 @@ def _validate_evidence_bindings(
     failures: list[str] = []
     if findings.get("final_draft_sha256") != bytes_hash(final_draft_raw):
         failures.append("finding set: final_draft_sha256 does not bind exact draft bytes")
-    if findings.get("revision_evidence_bundle_sha256") != bytes_hash(
-        revision_bundle_raw
-    ):
+    if findings.get("revision_evidence_bundle_sha256") != bytes_hash(revision_bundle_raw):
         failures.append(
             "finding set: revision_evidence_bundle_sha256 does not bind exact bundle bytes"
         )
@@ -409,9 +377,7 @@ def build_sidecar(
     _validate_findings(findings)
     _validate_author_input(findings, author_input)
     _validate_evidence_bindings(findings, final_draft_raw, revision_bundle_raw)
-    _validate_event_bytes(
-        author_input["session_event_artifacts"], event_raw_by_id, "author input"
-    )
+    _validate_event_bytes(author_input["session_event_artifacts"], event_raw_by_id, "author input")
 
     input_by_id = {row["finding_id"]: row for row in author_input["dispositions"]}
     dispositions: list[dict[str, Any]] = []
@@ -445,9 +411,7 @@ def build_sidecar(
         "schema_version": "claim-strength-drift-disposition/1.0",
         "finding_set_sha256": bytes_hash(finding_raw),
         "final_draft_sha256": findings["final_draft_sha256"],
-        "revision_evidence_bundle_sha256": findings[
-            "revision_evidence_bundle_sha256"
-        ],
+        "revision_evidence_bundle_sha256": findings["revision_evidence_bundle_sha256"],
         "disposition_status": "complete",
         "session_event_bindings": session_event_bindings,
         "dispositions": dispositions,
@@ -517,13 +481,9 @@ def validate_sidecar(
     event_ids = [row.get("event_id") for row in events if isinstance(row, dict)]
     if len(event_ids) != len(set(event_ids)):
         failures.append("sidecar: session-event ids must be unique")
-    references = [
-        row.get("session_event_id") for row in sidecar_rows if isinstance(row, dict)
-    ]
+    references = [row.get("session_event_id") for row in sidecar_rows if isinstance(row, dict)]
     if len(references) != len(set(references)):
-        failures.append(
-            "sidecar: each session-event artifact may map to only one disposition"
-        )
+        failures.append("sidecar: each session-event artifact may map to only one disposition")
     unknown = sorted(set(references) - set(event_ids))
     unused = sorted(set(event_ids) - set(references))
     if unknown:
@@ -531,9 +491,7 @@ def validate_sidecar(
     if unused:
         failures.append(f"sidecar: unreferenced session-event bindings {unused!r}")
     if event_ids != references:
-        failures.append(
-            "sidecar: session-event bindings must be in one-to-one disposition order"
-        )
+        failures.append("sidecar: session-event bindings must be in one-to-one disposition order")
 
     if not failures:
         try:
@@ -555,9 +513,9 @@ def validate_sidecar(
 def _atomic_write_json(path: Path, value: dict[str, Any]) -> None:
     if not path.parent.is_dir():
         raise ContractError([f"output: parent directory does not exist: {path.parent}"])
-    payload = json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False).encode(
-        "utf-8"
-    ) + b"\n"
+    payload = (
+        json.dumps(value, indent=2, ensure_ascii=False, allow_nan=False).encode("utf-8") + b"\n"
+    )
     temporary: str | None = None
     try:
         with tempfile.NamedTemporaryFile(

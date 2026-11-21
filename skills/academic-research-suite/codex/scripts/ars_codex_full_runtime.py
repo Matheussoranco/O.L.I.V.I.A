@@ -15,7 +15,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 SCRIPT = Path(__file__).resolve()
 CODEX_ROOT = SCRIPT.parents[1]
 SUITE_ROOT = SCRIPT.parents[2]
@@ -55,7 +54,7 @@ VAGUE_TOPIC_PATTERNS = (
     "논문을 쓰고 싶",
     "논문 주제",
     "연구 방향",
-    "무엇을 연구할지 모르겠"
+    "무엇을 연구할지 모르겠",
 )
 
 ALIAS_SOC_OVERRIDE = {
@@ -146,7 +145,9 @@ def find_alias(request: str) -> str | None:
 def is_vague_paper_topic(request: str) -> bool:
     lowered = request.lower()
     has_topic_signal = any(pattern.lower() in lowered for pattern in VAGUE_TOPIC_PATTERNS)
-    has_clear_question = bool(QUESTION_RE.search(request)) and not bool(UNCLEAR_QUESTION_RE.search(request))
+    has_clear_question = bool(QUESTION_RE.search(request)) and not bool(
+        UNCLEAR_QUESTION_RE.search(request)
+    )
     explicit_skip = "skip scoping" in lowered or "do not ask" in lowered
     return has_topic_signal and not has_clear_question and not explicit_skip
 
@@ -170,11 +171,26 @@ def infer_natural_route(request: str) -> tuple[str, str, str]:
         )
     ):
         return "academic-paper-reviewer", "full", "natural_review_request"
-    if any(signal in lowered for signal in ("systematic review", "meta-analysis", "체계적 문헌고찰", "메타분석")):
+    if any(
+        signal in lowered
+        for signal in ("systematic review", "meta-analysis", "체계적 문헌고찰", "메타분석")
+    ):
         return "deep-research", "systematic-review", "natural_research_request"
-    if any(signal in lowered for signal in ("literature review", "annotated bibliography", "문헌 조사", "문헌 고찰")):
+    if any(
+        signal in lowered
+        for signal in ("literature review", "annotated bibliography", "문헌 조사", "문헌 고찰")
+    ):
         return "deep-research", "lit-review", "natural_research_request"
-    if any(signal in lowered for signal in ("academic pipeline", "research to paper", "full pipeline", "연구부터 논문까지", "논문 전체 워크플로")):
+    if any(
+        signal in lowered
+        for signal in (
+            "academic pipeline",
+            "research to paper",
+            "full pipeline",
+            "연구부터 논문까지",
+            "논문 전체 워크플로",
+        )
+    ):
         return "academic-pipeline", "pipeline", "natural_pipeline_request"
     if any(signal in lowered for signal in ("논문을 수정", "논문 수정", "심사 의견 반영")):
         return "academic-paper", "revision", "natural_revision_request"
@@ -255,7 +271,9 @@ def profile_from_env(env: dict[str, str]) -> dict[str, Any]:
         "full_runtime_enabled": full_runtime,
         "agent_team_enabled": full_runtime and agent_team,
         "hooks_enabled": full_runtime and hooks,
-        "execution_mode": "codex_agent_team" if full_runtime and agent_team else "inline_role_prompts",
+        "execution_mode": "codex_agent_team"
+        if full_runtime and agent_team
+        else "inline_role_prompts",
         "model_tiering_requested": requested_tiering or None,
         "model_tiering_status": tiering_status,
         "cross_model_configured": requested_cross_model or None,
@@ -463,7 +481,9 @@ def validate_topology_plan(plan: dict[str, Any]) -> list[str]:
     if plan.get("information_sharing", {}).get("peer_outputs") == "hidden_until_synthesis":
         review_reports = {f"{seat}_report" for seat in REVIEWER_SEATS}
         for node in nodes:
-            if node.get("phase") == "blind_review" and review_reports.intersection(node.get("reads", [])):
+            if node.get("phase") == "blind_review" and review_reports.intersection(
+                node.get("reads", [])
+            ):
                 errors.append("topology_blind_reviewer_reads_peer_output")
     return sorted(set(errors))
 
@@ -475,10 +495,18 @@ def build_topology_plan(
 ) -> dict[str, Any]:
     experiment = profile["topology_experiment_enabled"]
     requested = profile["topology_arm_requested"] if experiment else None
-    selection_source = "explicit_experiment" if experiment else "explicit_runtime" if profile["agent_team_enabled"] else "default_inline"
+    selection_source = (
+        "explicit_experiment"
+        if experiment
+        else "explicit_runtime"
+        if profile["agent_team_enabled"]
+        else "default_inline"
+    )
     arm_id = requested or (
         "reviewer-full-seven"
-        if profile["agent_team_enabled"] and workflow == "academic-paper-reviewer" and mode == "full"
+        if profile["agent_team_enabled"]
+        and workflow == "academic-paper-reviewer"
+        and mode == "full"
         else "workflow-current"
         if profile["agent_team_enabled"] and workflow == "academic-pipeline"
         else "inline-solo"
@@ -553,8 +581,9 @@ def build_topology_plan(
                 "from": parent,
                 "to": node["id"],
                 "artifacts": sorted(
-                    set(next(item for item in nodes if item["id"] == parent)["emits"])
-                    .intersection(node["reads"])
+                    set(next(item for item in nodes if item["id"] == parent)["emits"]).intersection(
+                        node["reads"]
+                    )
                 ),
             }
             for node in nodes
@@ -579,7 +608,9 @@ def agent_plan_from_topology(topology: dict[str, Any]) -> list[dict[str, Any]]:
             "agent": node["agent"],
             "prompt_path": node["prompt_path"],
             "dispatch": node["phase"],
-            "independence_group": "reviewer_blind_phase" if node["phase"] == "blind_review" else node["phase"],
+            "independence_group": "reviewer_blind_phase"
+            if node["phase"] == "blind_review"
+            else node["phase"],
             "output_contract": node["emits"],
             "order": index + 1,
             "depends_on": node["depends_on"],
@@ -589,7 +620,9 @@ def agent_plan_from_topology(topology: dict[str, Any]) -> list[dict[str, Any]]:
     return plan
 
 
-def build_agent_plan(manifest: dict[str, Any], workflow: str, mode: str, profile: dict[str, Any]) -> list[dict[str, Any]]:
+def build_agent_plan(
+    manifest: dict[str, Any], workflow: str, mode: str, profile: dict[str, Any]
+) -> list[dict[str, Any]]:
     del manifest
     if not profile["agent_team_enabled"] and not profile["topology_experiment_enabled"]:
         return []
@@ -628,18 +661,18 @@ def plan_request(request: str, env: dict[str, str] | None = None) -> dict[str, A
     for item in agent_plan:
         if item["agent"] == "domain_reviewer_agent":
             if profile["cross_model_effective_transport"] == "codex":
-                item["cross_model_reviewer_track"] = (
-                    "excluded_codex_transport_is_citation_only"
-                )
+                item["cross_model_reviewer_track"] = "excluded_codex_transport_is_citation_only"
             elif profile["cross_model_configured"]:
-                item["cross_model_reviewer_track"] = (
-                    "configured_requires_explicit_content_consent"
-                )
+                item["cross_model_reviewer_track"] = "configured_requires_explicit_content_consent"
             else:
-                item["cross_model_reviewer_track"] = (
-                    "not_configured_single_family_disclosure_required"
-                )
-    gates = [gate for gate in manifest["quality_gates"] if gate["kind"] in {"routing", "agent-team", "integrity", "material-passport"}]
+                item[
+                    "cross_model_reviewer_track"
+                ] = "not_configured_single_family_disclosure_required"
+    gates = [
+        gate
+        for gate in manifest["quality_gates"]
+        if gate["kind"] in {"routing", "agent-team", "integrity", "material-passport"}
+    ]
 
     return {
         "adapter": manifest["adapter"]["name"],
@@ -656,7 +689,9 @@ def plan_request(request: str, env: dict[str, str] | None = None) -> dict[str, A
         "agent_team_plan": agent_plan,
         "topology_plan": topology_plan,
         "quality_gates": gates,
-        "degraded_behavior": [] if profile["full_runtime_enabled"] else ["full-runtime disabled; executing inline role prompts only"],
+        "degraded_behavior": []
+        if profile["full_runtime_enabled"]
+        else ["full-runtime disabled; executing inline role prompts only"],
     }
 
 
@@ -675,7 +710,11 @@ def main() -> int:
         result = plan_request(request)
     except ValueError as exc:
         parser.error(str(exc))
-    print(json.dumps(result, ensure_ascii=False, indent=2 if args.pretty else None, sort_keys=args.pretty))
+    print(
+        json.dumps(
+            result, ensure_ascii=False, indent=2 if args.pretty else None, sort_keys=args.pretty
+        )
+    )
     return 0
 
 

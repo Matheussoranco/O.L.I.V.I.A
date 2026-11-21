@@ -14,9 +14,8 @@ import sys
 from pathlib import Path
 
 import pytest
-
-from tests.test_helpers import run_script
 from scripts.check_firm_rules_sync import CIM_SECTION_HEADER, _extract_section
+from tests.test_helpers import run_script
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 LINT = REPO_ROOT / "scripts" / "check_firm_rules_sync.py"
@@ -37,7 +36,12 @@ def _run(root: Path) -> subprocess.CompletedProcess[str]:
 def tree(tmp_path: Path) -> Path:
     """A copy of just the files the lint reads, under a temp root."""
     rels = [
-        SYNTHESIS, COMPILER, WRITER, SCHEMA, FORMATTER, FIRM_RULES,
+        SYNTHESIS,
+        COMPILER,
+        WRITER,
+        SCHEMA,
+        FORMATTER,
+        FIRM_RULES,
         "deep-research/references/crossref_api_protocol.md",
         "deep-research/references/openalex_api_protocol.md",
         "academic-pipeline/agents/pipeline_orchestrator_agent.md",
@@ -60,6 +64,7 @@ def _mutate(root: Path, rel: str, old: str, new: str) -> None:
 
 # --- positive: clean tree passes ---
 
+
 def test_clean_tree_passes(tree: Path) -> None:
     r = _run(tree)
     assert r.returncode == 0, r.stderr
@@ -67,10 +72,12 @@ def test_clean_tree_passes(tree: Path) -> None:
 
 # --- mutation: sync drift in a mirror ---
 
+
 def test_mirror_wording_drift_fails(tree: Path) -> None:
     # Alter the canonical operative clause in the synthesis mirror.
     _mutate(
-        tree, SYNTHESIS,
+        tree,
+        SYNTHESIS,
         "Emit exactly ONE manifest entry per agent invocation",
         "Emit exactly TWO manifest entries per agent invocation",
     )
@@ -81,7 +88,8 @@ def test_mirror_wording_drift_fails(tree: Path) -> None:
 
 def test_mirror_wording_drift_in_writer_fails(tree: Path) -> None:
     _mutate(
-        tree, WRITER,
+        tree,
+        WRITER,
         "BEFORE the first prose block",
         "AFTER the first prose block",
     )
@@ -95,7 +103,8 @@ def test_semantic_edit_in_agent_slot_fails(tree: Path) -> None:
     # smuggled into the self-reference slot. "agent or compiler" is 4 words /
     # contains "or" → must NOT match → flagged as drift.
     _mutate(
-        tree, SYNTHESIS,
+        tree,
+        SYNTHESIS,
         "per agent invocation",
         "per agent or compiler invocation",
     )
@@ -105,6 +114,7 @@ def test_semantic_edit_in_agent_slot_fails(tree: Path) -> None:
 
 
 # --- mutation: collision regression (contamination ID back in claim-manifest) ---
+
 
 def test_renaming_cim_back_to_contamination_id_fails(tree: Path) -> None:
     # Reverting the rule heading to the contamination ID breaks BOTH the sync
@@ -124,7 +134,8 @@ def test_stray_contamination_id_in_section_fails(tree: Path) -> None:
     # can catch this. Regression test for the (v3.8)-header bug that silently
     # disabled the guard.
     _mutate(
-        tree, SYNTHESIS,
+        tree,
+        SYNTHESIS,
         "Three firm rules:\n\n- **R-CIM-A",
         "Three firm rules: (see R-L3-2-A)\n\n- **R-CIM-A",
     )
@@ -144,7 +155,8 @@ def test_stray_contamination_id_behind_fenced_fake_heading_fails(tree: Path) -> 
     # Manifest section — "Three firm rules:" also appears earlier in the prompt,
     # outside the section, so anchoring there would inject out-of-section).
     _mutate(
-        tree, SYNTHESIS,
+        tree,
+        SYNTHESIS,
         "- **R-CIM-A (one-shot pre-commitment):**",
         "```md\n## Legacy copied wording\n- R-L3-2-A here\n```\n- **R-CIM-A (one-shot pre-commitment):**",
     )
@@ -159,7 +171,8 @@ def test_full_contamination_namespace_guarded_in_section(tree: Path) -> None:
     # historically collided. A D/E ID appearing in the claim-manifest section is
     # still a leak (claim-manifest surfaces carry no contamination IDs at all).
     _mutate(
-        tree, SYNTHESIS,
+        tree,
+        SYNTHESIS,
         "- **R-CIM-A (one-shot pre-commitment):**",
         "(stray R-L3-2-D)\n- **R-CIM-A (one-shot pre-commitment):**",
     )
@@ -178,10 +191,12 @@ def test_contamination_id_in_schema_fails(tree: Path) -> None:
 
 # --- mutation: collision regression (R-CIM leaked into contamination context) ---
 
+
 def test_cim_id_in_formatter_fails(tree: Path) -> None:
     # Inject an R-CIM token into the contamination pass-through paragraph.
     _mutate(
-        tree, FORMATTER,
+        tree,
+        FORMATTER,
         "v3.7.3 R-L3-2-A",
         "v3.7.3 R-L3-2-A (see also R-CIM-A)",
     )
@@ -192,11 +207,13 @@ def test_cim_id_in_formatter_fails(tree: Path) -> None:
 
 # --- v3.10 PR-B: contradiction guard (R-L3-2-A reword) ---
 
+
 def test_contradiction_phrase_in_r_l3_2_a_sentence_fails(tree: Path) -> None:
     """Injecting an unqualified non-blocking claim into the R-L3-2-A reference
     sentence must fail — a strict policy can now block."""
     _mutate(
-        tree, "deep-research/references/crossref_api_protocol.md",
+        tree,
+        "deep-research/references/crossref_api_protocol.md",
         "handled per R-L3-2-A (advisory by default",
         "advisory only, handled per R-L3-2-A (",
     )
@@ -217,8 +234,7 @@ def test_contradiction_guard_does_not_flag_collaboration_observer(tree: Path) ->
     # to R-L3-2-A sentences only, not the whole file.
     r = _run(tree)
     assert r.returncode == 0, (
-        "contradiction guard false-flagged the collaboration-observer prose: "
-        + r.stderr
+        "contradiction guard false-flagged the collaboration-observer prose: " + r.stderr
     )
 
 
@@ -227,7 +243,8 @@ def test_contradiction_phrase_after_semicolon_still_caught(tree: Path) -> None:
     semicolon must still be caught — the guard must NOT split on ';' (which would
     put the phrase in a different chunk and miss it)."""
     _mutate(
-        tree, "deep-research/references/crossref_api_protocol.md",
+        tree,
+        "deep-research/references/crossref_api_protocol.md",
         "handled per R-L3-2-A (advisory by default",
         "handled per R-L3-2-A; contamination signals never block emission (",
     )
@@ -240,7 +257,8 @@ def test_contradiction_phrase_outside_r_l3_2_a_sentence_passes(tree: Path) -> No
     """Adding a 'never blocks' clause in a sentence that does NOT name R-L3-2-A
     must pass — the guard scopes to the R-L3-2-A reference, not the file."""
     _mutate(
-        tree, "deep-research/references/crossref_api_protocol.md",
+        tree,
+        "deep-research/references/crossref_api_protocol.md",
         "Mirrors the structure of",
         "This lookup never blocks anything by itself. Mirrors the structure of",
     )
@@ -249,6 +267,7 @@ def test_contradiction_phrase_outside_r_l3_2_a_sentence_passes(tree: Path) -> No
 
 
 # --- mutation: canonical block removed → invocation error ---
+
 
 def test_missing_canonical_block_fails(tree: Path) -> None:
     path = tree / FIRM_RULES
@@ -269,11 +288,13 @@ def test_missing_canonical_block_fails(tree: Path) -> None:
 
 # --- mutation: missing CIM section header / missing guard file → violation ---
 
+
 def test_missing_cim_section_header_fails(tree: Path) -> None:
     # Rename the section header so it no longer matches. The collision guard
     # must REFUSE (flag the missing section), not pass vacuously.
     _mutate(
-        tree, SYNTHESIS,
+        tree,
+        SYNTHESIS,
         "## Claim Intent Manifest Emission",
         "## Manifest Emission Renamed",
     )
@@ -292,6 +313,7 @@ def test_missing_guard_file_fails(tree: Path) -> None:
 
 
 # --- unit: _extract_section header/boundary handling ---
+
 
 def test_extract_section_tolerates_version_suffix() -> None:
     text = "## Claim Intent Manifest Emission (v3.8)\nbody line\n## Next\nafter"

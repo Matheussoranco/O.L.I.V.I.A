@@ -14,15 +14,14 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-
 REQUIRED_COMMANDS = ("ars-mark-read.md", "ars-unmark-read.md")
 
 # Tokens each command body MUST carry to preserve the user-visible contract.
 # Drift on any of these silently weakens the gate.
 REQUIRED_TOKENS = (
     "literature_corpus",  # validation rule reference
-    "human_read_log",     # peer-file write target
-    "model: sonnet",      # routing per feedback_no_haiku.md
+    "human_read_log",  # peer-file write target
+    "model: sonnet",  # routing per feedback_no_haiku.md
 )
 
 # Enforce canonical CLI dispatch pattern (PR #197 local convention):
@@ -45,9 +44,9 @@ def main(argv: list[str] | None = None) -> int:
                 f"2 commands MUST exist)"
             )
             continue
-            
+
         body = path.read_text(encoding="utf-8")
-        
+
         # 1. Check for required tokens
         for token in REQUIRED_TOKENS:
             if token not in body:
@@ -55,7 +54,7 @@ def main(argv: list[str] | None = None) -> int:
                     f"commands/{cmd_name}: missing required token "
                     f"{token!r} (spec §3.6 Step 7 contract)"
                 )
-        
+
         # 2. Check for canonical implementation block (Moved outside token loop)
         if REQUIRED_BLOCK not in body:
             errors.append(
@@ -69,8 +68,7 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        f"[v3.6.8 mark-read commands lint] PASSED "
-        f"({len(REQUIRED_COMMANDS)} command(s) scanned)"
+        f"[v3.6.8 mark-read commands lint] PASSED " f"({len(REQUIRED_COMMANDS)} command(s) scanned)"
     )
     return 0
 

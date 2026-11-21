@@ -45,9 +45,7 @@ def _mark(scope: dict | None, **extra: str) -> dict:
 
 
 class UserAttestedReadResolverTests(unittest.TestCase):
-    def resolve(
-        self, ledger: dict, kind: str = "page", value: str = "12"
-    ) -> dict:
+    def resolve(self, ledger: dict, kind: str = "page", value: str = "12") -> dict:
         return resolve_user_attested_read(
             ledger,
             citation_key="ref1",
@@ -59,9 +57,7 @@ class UserAttestedReadResolverTests(unittest.TestCase):
         out = self.resolve(_ledger())
         self.assertEqual(out["state"], "not_attested")
         self.assertFalse(out["ok_eligible"])
-        self.assertEqual(
-            out["finalizer_disposition"], "unacknowledged_low_warn"
-        )
+        self.assertEqual(out["finalizer_disposition"], "unacknowledged_low_warn")
 
     def test_legacy_missing_scope_remains_coverage_unknown(self) -> None:
         out = self.resolve(_ledger(_mark(None)))
@@ -86,56 +82,32 @@ class UserAttestedReadResolverTests(unittest.TestCase):
         self.assertFalse(out["ok_eligible"])
 
     def test_page_range_locator_is_deterministic(self) -> None:
-        covered = self.resolve(
-            _ledger(
-                _mark({"level": "sections", "locators": ["pp. 10-24"]})
-            )
-        )
-        missed = self.resolve(
-            _ledger(
-                _mark({"level": "sections", "locators": ["pp. 1-9"]})
-            )
-        )
+        covered = self.resolve(_ledger(_mark({"level": "sections", "locators": ["pp. 10-24"]})))
+        missed = self.resolve(_ledger(_mark({"level": "sections", "locators": ["pp. 1-9"]})))
         self.assertTrue(covered["ok_eligible"])
         self.assertEqual(missed["state"], "partial_coverage")
 
     def test_page_locator_rejects_bare_number_and_section_number(self) -> None:
         for locator in ("12", "section 12", "paragraph 12", "DOI 12"):
             with self.subTest(locator=locator):
-                out = self.resolve(
-                    _ledger(
-                        _mark({"level": "sections", "locators": [locator]})
-                    )
-                )
+                out = self.resolve(_ledger(_mark({"level": "sections", "locators": [locator]})))
                 self.assertEqual(out["state"], "partial_coverage")
                 self.assertFalse(out["ok_eligible"])
 
     def test_page_locator_accepts_only_explicit_page_grammar(self) -> None:
         for locator in ("page 12", "page:12", "p. 12", "pp. 10-24", "pages 10-24"):
             with self.subTest(locator=locator):
-                out = self.resolve(
-                    _ledger(
-                        _mark({"level": "sections", "locators": [locator]})
-                    )
-                )
+                out = self.resolve(_ledger(_mark({"level": "sections", "locators": [locator]})))
                 self.assertTrue(out["ok_eligible"])
 
     def test_page_locator_rejects_reversed_range(self) -> None:
-        out = self.resolve(
-            _ledger(
-                _mark({"level": "sections", "locators": ["pp. 24-10"]})
-            )
-        )
+        out = self.resolve(_ledger(_mark({"level": "sections", "locators": ["pp. 24-10"]})))
         self.assertEqual(out["state"], "partial_coverage")
         self.assertFalse(out["ok_eligible"])
 
     def test_section_locator_requires_exact_normalized_match(self) -> None:
         out = self.resolve(
-            _ledger(
-                _mark(
-                    {"level": "sections", "locators": ["section:Methods"]}
-                )
-            ),
+            _ledger(_mark({"level": "sections", "locators": ["section:Methods"]})),
             "section",
             "methods",
         )
@@ -143,28 +115,20 @@ class UserAttestedReadResolverTests(unittest.TestCase):
 
     def test_quote_anchor_requires_full_text(self) -> None:
         out = self.resolve(
-            _ledger(
-                _mark(
-                    {"level": "sections", "locators": ["section:Methods"]}
-                )
-            ),
+            _ledger(_mark({"level": "sections", "locators": ["section:Methods"]})),
             "quote",
             "quoted words",
         )
         self.assertEqual(out["state"], "partial_coverage")
 
     def test_unresolved_anchor_never_promotes(self) -> None:
-        out = self.resolve(
-            _ledger(_mark({"level": "full_text"})), "none", ""
-        )
+        out = self.resolve(_ledger(_mark({"level": "full_text"})), "none", "")
         self.assertEqual(out["state"], "anchor_unresolved")
         self.assertFalse(out["ok_eligible"])
         self.assertEqual(out["finalizer_disposition"], "anchor_precedence")
 
     def test_out_of_enum_anchor_never_promotes(self) -> None:
-        out = self.resolve(
-            _ledger(_mark({"level": "full_text"})), "garbage", "12"
-        )
+        out = self.resolve(_ledger(_mark({"level": "full_text"})), "garbage", "12")
         self.assertEqual(out["state"], "anchor_unresolved")
         self.assertEqual(out["finalizer_disposition"], "anchor_precedence")
 
@@ -175,9 +139,7 @@ class UserAttestedReadResolverTests(unittest.TestCase):
         )
         out = self.resolve(_ledger(row))
         self.assertEqual(out["state"], "rescinded")
-        self.assertEqual(
-            out["finalizer_disposition"], "unacknowledged_low_warn"
-        )
+        self.assertEqual(out["finalizer_disposition"], "unacknowledged_low_warn")
 
     def test_newer_mark_after_rescind_wins_even_same_second(self) -> None:
         old = _mark(
@@ -216,9 +178,7 @@ class UserAttestedReadResolverTests(unittest.TestCase):
                 row["marked_at"] = timestamp
                 out = self.resolve(_ledger(row))
                 self.assertEqual(out["state"], "ledger_invalid")
-                self.assertEqual(
-                    out["finalizer_disposition"], "block_invalid_ledger"
-                )
+                self.assertEqual(out["finalizer_disposition"], "block_invalid_ledger")
 
     def test_rescind_before_mark_fails_closed(self) -> None:
         row = _mark(
@@ -256,9 +216,7 @@ class UserAttestedReadResolverTests(unittest.TestCase):
 
     def test_resolution_is_explicitly_transient(self) -> None:
         out = self.resolve(_ledger(_mark({"level": "full_text"})))
-        self.assertEqual(
-            out["schema_version"], "user-attested-read-resolution/1.0"
-        )
+        self.assertEqual(out["schema_version"], "user-attested-read-resolution/1.0")
         self.assertEqual(out["artifact_role"], "transient_routing_decision")
         self.assertNotIn("ledger_sha256", out)
         self.assertNotIn("anchor_sha256", out)
@@ -296,12 +254,10 @@ class UserAttestedReadResolverTests(unittest.TestCase):
 
     def test_finalizer_and_formatter_consume_closed_mapping(self) -> None:
         repo = Path(__file__).resolve().parent.parent
-        orchestrator = (
-            repo / "academic-pipeline/agents/pipeline_orchestrator_agent.md"
-        ).read_text(encoding="utf-8")
-        formatter = (
-            repo / "academic-paper/agents/formatter_agent.md"
-        ).read_text(encoding="utf-8")
+        orchestrator = (repo / "academic-pipeline/agents/pipeline_orchestrator_agent.md").read_text(
+            encoding="utf-8"
+        )
+        formatter = (repo / "academic-paper/agents/formatter_agent.md").read_text(encoding="utf-8")
 
         for token in (
             "`partial_coverage` or `coverage_unknown`",
@@ -424,9 +380,7 @@ class UserAttestedReadResolverTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0)
         out = json.loads(proc.stdout)
         self.assertEqual(out["state"], "not_attested")
-        self.assertEqual(
-            out["finalizer_disposition"], "unacknowledged_low_warn"
-        )
+        self.assertEqual(out["finalizer_disposition"], "unacknowledged_low_warn")
 
     @unittest.skipIf(jsonschema is None, "jsonschema not installed")
     def test_every_state_shape_validates_against_resolution_schema(self) -> None:

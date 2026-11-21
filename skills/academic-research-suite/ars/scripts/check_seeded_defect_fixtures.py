@@ -32,7 +32,7 @@ from __future__ import annotations
 
 import json
 import sys
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP, localcontext
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation, localcontext
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
@@ -148,15 +148,10 @@ def integer_scale_mean_sd_reachability(oracle: dict) -> tuple[bool, bool]:
     n = oracle["n"]
     scale_min = oracle["scale_min"]
     scale_max = oracle["scale_max"]
-    if (
-        isinstance(n, bool)
-        or not isinstance(n, int)
-        or not 2 <= n <= 30
-    ):
+    if isinstance(n, bool) or not isinstance(n, int) or not 2 <= n <= 30:
         raise ValueError("oracle n must be an integer between 2 and 30")
     if any(
-        isinstance(value, bool) or not isinstance(value, int)
-        for value in (scale_min, scale_max)
+        isinstance(value, bool) or not isinstance(value, int) for value in (scale_min, scale_max)
     ):
         raise ValueError("oracle scale bounds must be integers")
     if scale_min >= scale_max or scale_max - scale_min > 10:
@@ -191,14 +186,8 @@ def integer_scale_mean_sd_reachability(oracle: dict) -> tuple[bool, bool]:
                 continue
             mean_reachable = True
             variance_numerator = n * total_sq - total * total
-            variance_denominator = (
-                n * (n - 1)
-                if oracle["sd_convention"] == "sample"
-                else n * n
-            )
-            sd = (
-                Decimal(variance_numerator) / Decimal(variance_denominator)
-            ).sqrt()
+            variance_denominator = n * (n - 1) if oracle["sd_convention"] == "sample" else n * n
+            sd = (Decimal(variance_numerator) / Decimal(variance_denominator)).sqrt()
             if sd.quantize(sd_quantum, rounding=ROUND_HALF_UP) == reported_sd:
                 return True, True
     return mean_reachable, False
@@ -223,9 +212,7 @@ def check_recompute_oracle(path: Path, row: dict, errors: list[str]) -> None:
     rid = row.get("defect_id", "<missing id>")
     oracle = row.get("recompute_oracle")
     try:
-        mean_reachable, joint_reachable = integer_scale_mean_sd_reachability(
-            oracle
-        )
+        mean_reachable, joint_reachable = integer_scale_mean_sd_reachability(oracle)
     except (ValueError, ArithmeticError) as exc:
         errors.append(f"inv8 {path.name} {rid}: invalid recompute_oracle ({exc})")
         return
@@ -234,22 +221,16 @@ def check_recompute_oracle(path: Path, row: dict, errors: list[str]) -> None:
     # by definition, planted inconsistencies.
     if oracle["expected_consistent"] is not False:
         errors.append(
-            f"inv8 {path.name} {rid}: a grimmer defect must set "
-            "expected_consistent=false"
+            f"inv8 {path.name} {rid}: a grimmer defect must set " "expected_consistent=false"
         )
     if not mean_reachable:
-        errors.append(
-            f"inv8 {path.name} {rid}: GRIMMER prerequisite mean is unreachable"
-        )
+        errors.append(f"inv8 {path.name} {rid}: GRIMMER prerequisite mean is unreachable")
     if joint_reachable:
-        errors.append(
-            f"inv8 {path.name} {rid}: planted grimmer values are reachable"
-        )
+        errors.append(f"inv8 {path.name} {rid}: planted grimmer values are reachable")
     expected_anchor = canonical_recompute_oracle_anchor(oracle)
     if row.get("anchor_quote") != expected_anchor:
         errors.append(
-            f"inv8 {path.name} {rid}: oracle anchor must exactly equal "
-            f"{expected_anchor!r}"
+            f"inv8 {path.name} {rid}: oracle anchor must exactly equal " f"{expected_anchor!r}"
         )
 
 
@@ -309,35 +290,29 @@ def check_manifest(path: Path, errors: list[str]) -> None:
                 check_recompute_oracle(path, row, errors)
             elif "recompute_oracle" in row:
                 errors.append(
-                    f"inv8 {path.name} {rid}: only grimmer rows may carry "
-                    "recompute_oracle"
+                    f"inv8 {path.name} {rid}: only grimmer rows may carry " "recompute_oracle"
                 )
         elif "statistical_kind" in row:
             errors.append(
-                f"inv7 {path.name} {rid}: non-statistical row must not carry "
-                "statistical_kind"
+                f"inv7 {path.name} {rid}: non-statistical row must not carry " "statistical_kind"
             )
         elif "recompute_oracle" in row:
             errors.append(
-                f"inv8 {path.name} {rid}: non-GRIMMER row must not carry "
-                "recompute_oracle"
+                f"inv8 {path.name} {rid}: non-GRIMMER row must not carry " "recompute_oracle"
             )
         if row["expected_severity"] not in SEVERITIES:
             errors.append(
-                f"inv3 {path.name} {rid}: unknown severity "
-                f"{row['expected_severity']!r}"
+                f"inv3 {path.name} {rid}: unknown severity " f"{row['expected_severity']!r}"
             )
         if row["expected_detector"] not in DETECTORS:
             errors.append(
-                f"inv3 {path.name} {rid}: unknown detector "
-                f"{row['expected_detector']!r}"
+                f"inv3 {path.name} {rid}: unknown detector " f"{row['expected_detector']!r}"
             )
         anchor = row["anchor_quote"]
         n_words = len(anchor.split())
         if not 8 <= n_words <= 25:
             errors.append(
-                f"inv4 {path.name} {rid}: anchor_quote is {n_words} words "
-                f"(bound: 8-25)"
+                f"inv4 {path.name} {rid}: anchor_quote is {n_words} words " f"(bound: 8-25)"
             )
         occurrences = text.count(anchor)
         if occurrences != 1:
@@ -371,9 +346,7 @@ def main() -> int:
         expected_ids = EXPECTED_DEFECT_IDS.get(fid)
         if expected_ids is None:
             continue  # unknown fixture_id handled by the set-equality check
-        actual_ids = {
-            row.get("defect_id", "") for row in data.get("defects", [])
-        }
+        actual_ids = {row.get("defect_id", "") for row in data.get("defects", [])}
         if actual_ids != expected_ids:
             errors.append(
                 f"inv6 {path.name}: defect ids {sorted(actual_ids)} != expected "

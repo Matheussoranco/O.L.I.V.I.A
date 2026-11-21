@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, ValidationError
-
 from scripts import build_claim_standing_candidate_ledger as substrate
 from scripts import check_claim_standing_transmissions as transmissions
 from scripts import claim_standing_stance_runner as runner
@@ -117,9 +116,7 @@ def test_one_retrieval_event_per_attempt_in_attempt_order() -> None:
         assert event["purpose"] == "scholarly_discovery"
         assert event["content_classes"] == ["accepted_search_query"]
         assert event["query_sha256"] == query["query_sha256"]
-        assert event["query_utf8_bytes"] == len(
-            query["accepted_query_text"].encode("utf-8")
-        )
+        assert event["query_utf8_bytes"] == len(query["accepted_query_text"].encode("utf-8"))
         assert event["consent_receipt_id"] == plan["consent"]["consent_receipt_id"]
         assert event["retention_state"] == provider["retention_state"]
         assert event["retention_reference"] == provider["retention_reference"]
@@ -144,9 +141,7 @@ def test_failed_attempt_remains_a_visible_event() -> None:
 def test_stance_events_mirror_runner_transmissions_verbatim() -> None:
     _, _, stance_events, doc = _build_full()
     ledger_stance = [
-        event
-        for event in doc["events"]
-        if event["event_kind"] == "stance_classification"
+        event for event in doc["events"] if event["event_kind"] == "stance_classification"
     ]
     assert len(ledger_stance) == len(stance_events)
     for event, source in zip(ledger_stance, stance_events):
@@ -186,9 +181,7 @@ def test_cleared_attempt_array_is_refused_by_the_input_contract() -> None:
     plan, retained = _retrieval_only_setup()
     tampered = copy.deepcopy(retained)
     tampered["attempts"] = []
-    tampered["retrieval_input_sha256"] = substrate.bound_digest(
-        tampered, "retrieval_input_sha256"
-    )
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(tampered, "retrieval_input_sha256")
     with pytest.raises(transmissions.TransmissionError, match="invalid"):
         transmissions.build_transmission_ledger(plan, tampered)
 
@@ -197,9 +190,7 @@ def test_duplicate_attempt_ids_are_refused() -> None:
     plan, retained = _retrieval_only_setup()
     tampered = copy.deepcopy(retained)
     tampered["attempts"].append(copy.deepcopy(tampered["attempts"][0]))
-    tampered["retrieval_input_sha256"] = substrate.bound_digest(
-        tampered, "retrieval_input_sha256"
-    )
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(tampered, "retrieval_input_sha256")
     with pytest.raises(transmissions.TransmissionError, match="unique"):
         transmissions.build_transmission_ledger(plan, tampered)
 
@@ -223,9 +214,7 @@ def test_stance_plan_requires_explicit_stance_transmissions() -> None:
 
 def test_explicit_empty_stance_transmissions_build_zero_stance_events() -> None:
     plan, retained, _ = _stance_setup()
-    doc = transmissions.build_transmission_ledger(
-        plan, retained, stance_transmissions=[]
-    )
+    doc = transmissions.build_transmission_ledger(plan, retained, stance_transmissions=[])
     assert all(event["event_kind"] == "retrieval_query" for event in doc["events"])
 
 
@@ -235,16 +224,12 @@ def test_stance_event_with_unexpected_key_is_refused() -> None:
     stance_events[0] = dict(stance_events[0])
     stance_events[0]["event_kind"] = "retrieval_query"
     with pytest.raises(transmissions.TransmissionError, match="unexpected"):
-        transmissions.build_transmission_ledger(
-            plan, retained, stance_transmissions=stance_events
-        )
+        transmissions.build_transmission_ledger(plan, retained, stance_transmissions=stance_events)
 
 
 def test_stance_record_cross_check_accepts_complete_events() -> None:
     plan, retained, ledger_value = _stance_setup()
-    record, _, events = runner.run_stance(
-        plan, ledger_value, transport=FakeTransport()
-    )
+    record, _, events = runner.run_stance(plan, ledger_value, transport=FakeTransport())
     doc = transmissions.build_transmission_ledger(
         plan, retained, stance_transmissions=events, stance_record=record
     )
@@ -258,18 +243,14 @@ def test_resealed_omission_of_a_planned_attempt_is_refused() -> None:
     plan, retained = _retrieval_only_setup()
     tampered = copy.deepcopy(retained)
     del tampered["attempts"][2]
-    tampered["retrieval_input_sha256"] = substrate.bound_digest(
-        tampered, "retrieval_input_sha256"
-    )
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(tampered, "retrieval_input_sha256")
     with pytest.raises(transmissions.TransmissionError, match="initial attempt"):
         transmissions.build_transmission_ledger(plan, tampered)
 
 
 def test_stance_record_cross_check_compares_prompt_and_result_fields() -> None:
     plan, retained, ledger_value = _stance_setup()
-    record, _, events = runner.run_stance(
-        plan, ledger_value, transport=FakeTransport()
-    )
+    record, _, events = runner.run_stance(plan, ledger_value, transport=FakeTransport())
     tampered = [dict(events[0])]
     tampered[0]["prompt_sha256"] = "0" * 64
     with pytest.raises(transmissions.TransmissionError, match="prompt"):
@@ -308,9 +289,7 @@ def test_stance_record_cross_check_replays_the_record_digest() -> None:
     # An edited record (row dropped, digest left stale) must not be able to
     # vouch for a ledger missing that row's event.
     plan, retained, ledger_value = _stance_setup()
-    record, _, _ = runner.run_stance(
-        plan, ledger_value, transport=FakeTransport()
-    )
+    record, _, _ = runner.run_stance(plan, ledger_value, transport=FakeTransport())
     edited = copy.deepcopy(record)
     edited["rows"] = []
     with pytest.raises(transmissions.TransmissionError, match="digest"):
@@ -321,9 +300,7 @@ def test_stance_record_cross_check_replays_the_record_digest() -> None:
 
 def test_stance_record_cross_check_refuses_omitted_events() -> None:
     plan, retained, ledger_value = _stance_setup()
-    record, _, _ = runner.run_stance(
-        plan, ledger_value, transport=FakeTransport()
-    )
+    record, _, _ = runner.run_stance(plan, ledger_value, transport=FakeTransport())
     with pytest.raises(transmissions.TransmissionError, match="unaccounted"):
         transmissions.build_transmission_ledger(
             plan, retained, stance_transmissions=[], stance_record=record
@@ -384,9 +361,7 @@ def test_tampered_stance_event_is_refused(overrides: dict, match: str) -> None:
     stance_events = _stance_transmissions(plan, ledger_value)
     stance_events[0] = {**stance_events[0], **overrides}
     with pytest.raises(transmissions.TransmissionError, match=match):
-        transmissions.build_transmission_ledger(
-            plan, retained, stance_transmissions=stance_events
-        )
+        transmissions.build_transmission_ledger(plan, retained, stance_transmissions=stance_events)
 
 
 def test_unconsented_recipient_index_refused() -> None:
@@ -394,22 +369,16 @@ def test_unconsented_recipient_index_refused() -> None:
     stance_events = _stance_transmissions(plan, ledger_value)
     tampered = copy.deepcopy(retained)
     tampered["attempts"][0]["index_id"] = "index-unconsented"
-    tampered["retrieval_input_sha256"] = substrate.bound_digest(
-        tampered, "retrieval_input_sha256"
-    )
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(tampered, "retrieval_input_sha256")
     with pytest.raises(transmissions.TransmissionError, match="index"):
-        transmissions.build_transmission_ledger(
-            plan, tampered, stance_transmissions=stance_events
-        )
+        transmissions.build_transmission_ledger(plan, tampered, stance_transmissions=stance_events)
 
 
 def test_unknown_query_id_refused() -> None:
     plan, retained = _retrieval_only_setup()
     tampered = copy.deepcopy(retained)
     tampered["attempts"][0]["query_id"] = "q-unplanned"
-    tampered["retrieval_input_sha256"] = substrate.bound_digest(
-        tampered, "retrieval_input_sha256"
-    )
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(tampered, "retrieval_input_sha256")
     with pytest.raises(transmissions.TransmissionError, match="query"):
         transmissions.build_transmission_ledger(plan, tampered)
 
@@ -418,9 +387,7 @@ def test_attempt_receipt_id_mismatch_refused() -> None:
     plan, retained = _retrieval_only_setup()
     tampered = copy.deepcopy(retained)
     tampered["attempts"][0]["consent_receipt_id"] = "consent-other"
-    tampered["retrieval_input_sha256"] = substrate.bound_digest(
-        tampered, "retrieval_input_sha256"
-    )
+    tampered["retrieval_input_sha256"] = substrate.bound_digest(tampered, "retrieval_input_sha256")
     with pytest.raises(transmissions.TransmissionError, match="receipt"):
         transmissions.build_transmission_ledger(plan, tampered)
 
@@ -430,9 +397,7 @@ def test_retained_input_not_bound_to_plan_refused() -> None:
     stance_events = _stance_transmissions(plan, ledger_value)
     unbound = _retained()  # still hashed against the 1.0 fixture plan
     with pytest.raises(transmissions.TransmissionError, match="plan"):
-        transmissions.build_transmission_ledger(
-            plan, unbound, stance_transmissions=stance_events
-        )
+        transmissions.build_transmission_ledger(plan, unbound, stance_transmissions=stance_events)
 
 
 # --- exact replay validation ------------------------------------------------
@@ -454,9 +419,7 @@ def test_validate_rejects_tampered_byte_count() -> None:
         tampered, "transmission_ledger_sha256"
     )
     with pytest.raises(transmissions.TransmissionError):
-        transmissions.validate_transmission_ledger(
-            plan, retained, stance_events, tampered
-        )
+        transmissions.validate_transmission_ledger(plan, retained, stance_events, tampered)
 
 
 def test_validate_rejects_dropped_event() -> None:
@@ -467,9 +430,7 @@ def test_validate_rejects_dropped_event() -> None:
         tampered, "transmission_ledger_sha256"
     )
     with pytest.raises(transmissions.TransmissionError):
-        transmissions.validate_transmission_ledger(
-            plan, retained, stance_events, tampered
-        )
+        transmissions.validate_transmission_ledger(plan, retained, stance_events, tampered)
 
 
 # --- CLI --------------------------------------------------------------------
@@ -485,8 +446,10 @@ def test_cli_build_prints_ledger_without_output(tmp_path, capsys) -> None:
     rc = transmissions.main(
         [
             "build",
-            "--query-plan", str(_write_json(tmp_path / "plan.json", plan)),
-            "--retrieval-input", str(_write_json(tmp_path / "input.json", retained)),
+            "--query-plan",
+            str(_write_json(tmp_path / "plan.json", plan)),
+            "--retrieval-input",
+            str(_write_json(tmp_path / "input.json", retained)),
             "--stance-transmissions",
             str(_write_json(tmp_path / "events.json", stance_events)),
         ]
@@ -502,9 +465,12 @@ def test_cli_build_refuses_output_path_under_session_only(tmp_path, capsys) -> N
     rc = transmissions.main(
         [
             "build",
-            "--query-plan", str(_write_json(tmp_path / "plan.json", plan)),
-            "--retrieval-input", str(_write_json(tmp_path / "input.json", retained)),
-            "--output", str(output),
+            "--query-plan",
+            str(_write_json(tmp_path / "plan.json", plan)),
+            "--retrieval-input",
+            str(_write_json(tmp_path / "input.json", retained)),
+            "--output",
+            str(output),
         ]
     )
     assert rc == 1
@@ -531,9 +497,12 @@ def test_cli_export_writes_only_the_consent_derived_path(tmp_path, capsys) -> No
     rc = transmissions.main(
         [
             "build",
-            "--query-plan", str(plan_path),
-            "--retrieval-input", str(input_path),
-            "--output", str(somewhere_else),
+            "--query-plan",
+            str(plan_path),
+            "--retrieval-input",
+            str(input_path),
+            "--output",
+            str(somewhere_else),
         ]
     )
     assert rc == 1
@@ -545,9 +514,12 @@ def test_cli_export_writes_only_the_consent_derived_path(tmp_path, capsys) -> No
     rc = transmissions.main(
         [
             "build",
-            "--query-plan", str(plan_path),
-            "--retrieval-input", str(input_path),
-            "--output", str(derived),
+            "--query-plan",
+            str(plan_path),
+            "--retrieval-input",
+            str(input_path),
+            "--output",
+            str(derived),
         ]
     )
     assert rc == 0
@@ -561,11 +533,14 @@ def test_cli_validate_replays_from_files(tmp_path, capsys) -> None:
     rc = transmissions.main(
         [
             "validate",
-            "--query-plan", str(_write_json(tmp_path / "plan.json", plan)),
-            "--retrieval-input", str(_write_json(tmp_path / "input.json", retained)),
+            "--query-plan",
+            str(_write_json(tmp_path / "plan.json", plan)),
+            "--retrieval-input",
+            str(_write_json(tmp_path / "input.json", retained)),
             "--stance-transmissions",
             str(_write_json(tmp_path / "events.json", stance_events)),
-            "--transmission-ledger", str(_write_json(tmp_path / "doc.json", doc)),
+            "--transmission-ledger",
+            str(_write_json(tmp_path / "doc.json", doc)),
         ]
     )
     assert rc == 0
@@ -577,9 +552,12 @@ def test_cli_validate_replays_from_files(tmp_path, capsys) -> None:
     rc = transmissions.main(
         [
             "validate",
-            "--query-plan", str(tmp_path / "plan.json"),
-            "--retrieval-input", str(tmp_path / "input.json"),
-            "--stance-transmissions", str(tmp_path / "events.json"),
+            "--query-plan",
+            str(tmp_path / "plan.json"),
+            "--retrieval-input",
+            str(tmp_path / "input.json"),
+            "--stance-transmissions",
+            str(tmp_path / "events.json"),
             "--transmission-ledger",
             str(_write_json(tmp_path / "tampered.json", tampered)),
         ]
@@ -597,9 +575,7 @@ def test_build_does_not_mutate_inputs() -> None:
     plan_before = copy.deepcopy(plan)
     retained_before = copy.deepcopy(retained)
     events_before = copy.deepcopy(stance_events)
-    transmissions.build_transmission_ledger(
-        plan, retained, stance_transmissions=stance_events
-    )
+    transmissions.build_transmission_ledger(plan, retained, stance_transmissions=stance_events)
     assert plan == plan_before
     assert retained == retained_before
     assert stance_events == events_before

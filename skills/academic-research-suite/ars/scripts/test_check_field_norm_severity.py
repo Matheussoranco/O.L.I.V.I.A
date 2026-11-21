@@ -18,8 +18,7 @@ from scripts import check_field_norm_severity as cfns
 def _load_shipped() -> dict:
     return json.loads(
         (
-            Path(__file__).resolve().parents[1]
-            / "evals/gold/field_norm_severity/gold_set.json"
+            Path(__file__).resolve().parents[1] / "evals/gold/field_norm_severity/gold_set.json"
         ).read_text(encoding="utf-8")
     )
 
@@ -34,9 +33,7 @@ class TestShippedGoldSet(unittest.TestCase):
     def test_shipped_has_required_counts(self) -> None:
         data = _load_shipped()
         subtypes = [it["subtype"] for it in data["items"]]
-        self.assertGreaterEqual(
-            subtypes.count("field_norm_boundary"), 5, "need >=5 W1-shape cases"
-        )
+        self.assertGreaterEqual(subtypes.count("field_norm_boundary"), 5, "need >=5 W1-shape cases")
         self.assertGreaterEqual(
             subtypes.count("significance_boundary"), 5, "need >=5 F.3.4-shape cases"
         )
@@ -92,18 +89,14 @@ class TestValidatorInvariants(unittest.TestCase):
         )
 
     def test_severity_miscalibration_must_be_true(self) -> None:
-        errors = self._mutate(
-            lambda d: d["items"][0].__setitem__("severity_miscalibration", False)
-        )
+        errors = self._mutate(lambda d: d["items"][0].__setitem__("severity_miscalibration", False))
         self.assertTrue(
             any("severity_miscalibration" in e for e in errors),
             msg=f"expected severity flag error: {errors!r}",
         )
 
     def test_duplicate_id_fails(self) -> None:
-        errors = self._mutate(
-            lambda d: d["items"][1].__setitem__("id", d["items"][0]["id"])
-        )
+        errors = self._mutate(lambda d: d["items"][1].__setitem__("id", d["items"][0]["id"]))
         self.assertTrue(
             any("duplicate" in e.lower() and "id" in e.lower() for e in errors),
             msg=f"expected duplicate-id error: {errors!r}",
@@ -112,6 +105,7 @@ class TestValidatorInvariants(unittest.TestCase):
     def test_exception_item_requires_reason(self) -> None:
         """An item flagged exception=true must carry an exception_reason (the SAR case);
         dropping the reason while keeping the flag must fail."""
+
         def drop_reason(d: dict) -> None:
             for it in d["items"]:
                 if it.get("exception") is True:
@@ -126,9 +120,7 @@ class TestValidatorInvariants(unittest.TestCase):
     def test_non_exception_item_must_not_carry_reason(self) -> None:
         """exception_reason on a non-exception item is a labeling error (it implies the
         item is contextual when the flag says it is clean)."""
-        errors = self._mutate(
-            lambda d: d["items"][0].__setitem__("exception_reason", "stray")
-        )
+        errors = self._mutate(lambda d: d["items"][0].__setitem__("exception_reason", "stray"))
         self.assertTrue(
             any("exception_reason" in e for e in errors),
             msg=f"expected stray exception_reason error: {errors!r}",
@@ -138,6 +130,7 @@ class TestValidatorInvariants(unittest.TestCase):
         """codex P1: if the SAR item loses BOTH its exception flag and its reason, the paired
         check is satisfied (both branches false) and the case silently reverts to a clean
         positive. The id-suffix guard must still fail — the declared exception stays contextual."""
+
         def strip_exception(d: dict) -> None:
             for it in d["items"]:
                 if str(it.get("id", "")).endswith("-exception"):

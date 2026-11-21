@@ -6,17 +6,15 @@ import copy
 import fcntl
 import hashlib
 import json
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 import jsonschema
 import pytest
-
 from scripts import adjudication_activity as activity
 from scripts import check_re_review_synthesis as re_review
 from scripts.test_check_re_review_synthesis import emit, scenario_g2d
-
 
 REPO = Path(__file__).resolve().parents[1]
 FIXTURES = REPO / "scripts/fixtures/adjudication_activity"
@@ -57,9 +55,9 @@ def _write(path: Path, value: Any) -> None:
 
 
 def _independent_digest(domain: bytes, value: Any) -> str:
-    canonical = json.dumps(
-        value, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    ).encode("utf-8")
+    canonical = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode(
+        "utf-8"
+    )
     return hashlib.sha256(domain + canonical).hexdigest()
 
 
@@ -95,9 +93,7 @@ def _artifact(
 
 def _empty_rows(capture_state: str = "not_applicable") -> list[dict[str, Any]]:
     reason = (
-        "not_applicable_for_run"
-        if capture_state == "not_applicable"
-        else "source_not_provided"
+        "not_applicable_for_run" if capture_state == "not_applicable" else "source_not_provided"
     )
     return [
         {
@@ -265,10 +261,34 @@ def _all_event_rows(root: Path) -> list[dict[str, Any]]:
             "capture_state": "captured",
             "reason_code": None,
             "artifacts": [
-                _artifact("author-input-3", "author_adjudication_input", "SOURCE-GROUP-author-3", author_paths[0], "pipeline_stage_3"),
-                _artifact("author-output-3", "author_adjudication", "SOURCE-GROUP-author-3", author_paths[1], "pipeline_stage_3"),
-                _artifact("author-input-3p", "author_adjudication_input", "SOURCE-GROUP-author-3p", author_paths[2], "pipeline_stage_3_prime"),
-                _artifact("author-output-3p", "author_adjudication", "SOURCE-GROUP-author-3p", author_paths[3], "pipeline_stage_3_prime"),
+                _artifact(
+                    "author-input-3",
+                    "author_adjudication_input",
+                    "SOURCE-GROUP-author-3",
+                    author_paths[0],
+                    "pipeline_stage_3",
+                ),
+                _artifact(
+                    "author-output-3",
+                    "author_adjudication",
+                    "SOURCE-GROUP-author-3",
+                    author_paths[1],
+                    "pipeline_stage_3",
+                ),
+                _artifact(
+                    "author-input-3p",
+                    "author_adjudication_input",
+                    "SOURCE-GROUP-author-3p",
+                    author_paths[2],
+                    "pipeline_stage_3_prime",
+                ),
+                _artifact(
+                    "author-output-3p",
+                    "author_adjudication",
+                    "SOURCE-GROUP-author-3p",
+                    author_paths[3],
+                    "pipeline_stage_3_prime",
+                ),
             ],
         },
         {
@@ -276,10 +296,30 @@ def _all_event_rows(root: Path) -> list[dict[str, Any]]:
             "capture_state": "captured",
             "reason_code": None,
             "artifacts": [
-                _artifact("compliance-override-report", "compliance_report", "SOURCE-GROUP-compliance-1", override_report),
-                _artifact("compliance-override-action", "compliance_override_action_receipt", "SOURCE-GROUP-compliance-1", override_action),
-                _artifact("compliance-pass-a", "compliance_report", "SOURCE-GROUP-compliance-2", pass_report),
-                _artifact("compliance-pass-b", "compliance_report", "SOURCE-GROUP-compliance-3", pass_report),
+                _artifact(
+                    "compliance-override-report",
+                    "compliance_report",
+                    "SOURCE-GROUP-compliance-1",
+                    override_report,
+                ),
+                _artifact(
+                    "compliance-override-action",
+                    "compliance_override_action_receipt",
+                    "SOURCE-GROUP-compliance-1",
+                    override_action,
+                ),
+                _artifact(
+                    "compliance-pass-a",
+                    "compliance_report",
+                    "SOURCE-GROUP-compliance-2",
+                    pass_report,
+                ),
+                _artifact(
+                    "compliance-pass-b",
+                    "compliance_report",
+                    "SOURCE-GROUP-compliance-3",
+                    pass_report,
+                ),
             ],
         },
         {
@@ -288,9 +328,16 @@ def _all_event_rows(root: Path) -> list[dict[str, Any]]:
             "reason_code": None,
             "artifacts": [
                 _artifact("rereview-manifest", "input_manifest", "SOURCE-GROUP-rereview", manifest),
-                _artifact("rereview-precommitment", "precommitment", "SOURCE-GROUP-rereview", precommitment),
+                _artifact(
+                    "rereview-precommitment",
+                    "precommitment",
+                    "SOURCE-GROUP-rereview",
+                    precommitment,
+                ),
                 _artifact("rereview-verdict", "verdict_record", "SOURCE-GROUP-rereview", verdict),
-                _artifact("rereview-traceability", "traceability", "SOURCE-GROUP-rereview", traceability),
+                _artifact(
+                    "rereview-traceability", "traceability", "SOURCE-GROUP-rereview", traceability
+                ),
             ],
         },
         {
@@ -298,7 +345,12 @@ def _all_event_rows(root: Path) -> list[dict[str, Any]]:
             "capture_state": "captured",
             "reason_code": None,
             "artifacts": [
-                _artifact("explicit-log", "explicit_user_request_log", "SOURCE-GROUP-explicit", explicit_log)
+                _artifact(
+                    "explicit-log",
+                    "explicit_user_request_log",
+                    "SOURCE-GROUP-explicit",
+                    explicit_log,
+                )
             ],
         },
         {
@@ -306,7 +358,12 @@ def _all_event_rows(root: Path) -> list[dict[str, Any]]:
             "capture_state": "captured",
             "reason_code": None,
             "artifacts": [
-                _artifact("mandatory-log", "mandatory_checkpoint_response_log", "SOURCE-GROUP-mandatory", mandatory_log)
+                _artifact(
+                    "mandatory-log",
+                    "mandatory_checkpoint_response_log",
+                    "SOURCE-GROUP-mandatory",
+                    mandatory_log,
+                )
             ],
         },
     ]
@@ -320,9 +377,7 @@ def _compliance_rows(
     report_path = _copy_fixture(root, "compliance_override.json")
     action = _load(FIXTURES / "compliance_override_action.json")
     action["run_id"] = run_id
-    action["interaction_sha256"] = _independent_interaction(
-        run_id, action["interaction_id"]
-    )
+    action["interaction_sha256"] = _independent_interaction(run_id, action["interaction_id"])
     action["report_sha256"] = hashlib.sha256((root / report_path).read_bytes()).hexdigest()
     if mutate_action is not None:
         mutate_action(action)
@@ -443,9 +498,7 @@ def _re_review_rows(
 
 def _recompute_record(run: dict[str, Any]) -> None:
     preimage = {key: value for key, value in run.items() if key != "record_sha256"}
-    run["record_sha256"] = _independent_digest(
-        b"ars.adjudication-activity.run/1.0\0", preimage
-    )
+    run["record_sha256"] = _independent_digest(b"ars.adjudication-activity.run/1.0\0", preimage)
 
 
 def test_contract_schemas_and_closed_positive_negative_payloads() -> None:
@@ -499,9 +552,14 @@ def test_init_build_append_validate_render_and_exact_retry_no_write(
     manifest = _seal_and_build(capsys, root, state, _empty_rows("unavailable"))
     store = tmp_path / "activity.json"
 
-    code, stdout, stderr = _call(capsys, "init-store", "--store", str(store), "--store-id", STORE_ID)
+    code, stdout, stderr = _call(
+        capsys, "init-store", "--store", str(store), "--store-id", STORE_ID
+    )
     assert (code, stderr) == (0, "")
-    assert stdout == f'[ARS-ADJUDICATION-ACTIVITY] initialized store_id="{STORE_ID}"; revision=0; next_sequence=1\n'
+    assert (
+        stdout
+        == f'[ARS-ADJUDICATION-ACTIVITY] initialized store_id="{STORE_ID}"; revision=0; next_sequence=1\n'
+    )
     code, stdout, stderr = _append(capsys, root, store, manifest)
     assert (code, stderr) == (0, "")
     assert "append_sequence=1; revision=1" in stdout
@@ -577,9 +635,7 @@ def test_all_seven_event_types_occurrence_digest_dedup_and_repeated_hashes(
         b"ars.adjudication-activity.input/1.0\0", _load(manifest)
     )
     assert run["input_receipt_sha256"] == expected_input_digest
-    record_without_digest = {
-        key: value for key, value in run.items() if key != "record_sha256"
-    }
+    record_without_digest = {key: value for key, value in run.items() if key != "record_sha256"}
     assert run["record_sha256"] == _independent_digest(
         b"ars.adjudication-activity.run/1.0\0", record_without_digest
     )
@@ -623,9 +679,7 @@ def test_terminal_inventory_is_exact_authority_and_conflicting_retry_fails(
 
     forged_root = tmp_path / "forged-root"
     forged_state = _terminal_state(forged_root, "run-forged-authority")
-    valid_forged_base = _seal_and_build(
-        capsys, forged_root, forged_state, _empty_rows()
-    )
+    valid_forged_base = _seal_and_build(capsys, forged_root, forged_state, _empty_rows())
     forged = _load(valid_forged_base)
     forged["sources"][0] = {
         "source_family": "revision_author_adjudication",
@@ -769,9 +823,7 @@ def test_renderer_rejects_out_of_range_window(
         capsys, "init-store", "--store", str(store), "--store-id", STORE_ID
     )
     assert code == 0
-    code, stdout, stderr = _call(
-        capsys, "render", "--store", str(store), "--window", window
-    )
+    code, stdout, stderr = _call(capsys, "render", "--store", str(store), "--window", window)
     assert code == 2
     assert stdout == ""
     assert "ERROR:USAGE" in stderr
@@ -848,7 +900,9 @@ def test_symlink_artifact_and_lock_contention_fail_without_mutation(
         "capture_state": "captured",
         "reason_code": None,
         "artifacts": [
-            _artifact("explicit-log", "explicit_user_request_log", "SOURCE-GROUP-explicit", "link.json")
+            _artifact(
+                "explicit-log", "explicit_user_request_log", "SOURCE-GROUP-explicit", "link.json"
+            )
         ],
     }
     state = _terminal_state(root, "run-path")
@@ -997,9 +1051,7 @@ def test_short_write_is_completed_and_zero_write_fails_cleanly(
     assert not zero_path.exists()
 
 
-def test_short_read_is_reassembled(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_short_read_is_reassembled(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     payload = b"short-read-fixture" * 64
     path = tmp_path / "read.bin"
     path.write_bytes(payload)
@@ -1051,9 +1103,7 @@ def test_compliance_bad_ordinal_or_scope_is_bounded_source_error(
     root = tmp_path / "artifacts"
     run_id = "run-compliance-edge"
     state = _terminal_state(root, run_id)
-    activity.seal_terminal_inventory(
-        state, root, _compliance_rows(root, run_id, mutation)
-    )
+    activity.seal_terminal_inventory(state, root, _compliance_rows(root, run_id, mutation))
     output = root / "input.json"
     code, stdout, stderr = _call(
         capsys,
@@ -1236,8 +1286,20 @@ def test_author_store_three_hashes_is_rejected(
         "capture_state": "captured",
         "reason_code": None,
         "artifacts": [
-            _artifact("author-input", "author_adjudication_input", "SOURCE-GROUP-author", paths[0], "pipeline_stage_3"),
-            _artifact("author-output", "author_adjudication", "SOURCE-GROUP-author", paths[1], "pipeline_stage_3"),
+            _artifact(
+                "author-input",
+                "author_adjudication_input",
+                "SOURCE-GROUP-author",
+                paths[0],
+                "pipeline_stage_3",
+            ),
+            _artifact(
+                "author-output",
+                "author_adjudication",
+                "SOURCE-GROUP-author",
+                paths[1],
+                "pipeline_stage_3",
+            ),
         ],
     }
     state = _terminal_state(root, "run-author-three-hashes", extra_completed=("3",))
@@ -1370,9 +1432,7 @@ def test_renderer_empty_one_two_full_golden_and_mixed_denominators(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     store = tmp_path / "activity.json"
-    assert _call(
-        capsys, "init-store", "--store", str(store), "--store-id", STORE_ID
-    )[0] == 0
+    assert _call(capsys, "init-store", "--store", str(store), "--store-id", STORE_ID)[0] == 0
     code, stdout, stderr = _call(capsys, "render", "--store", str(store))
     assert (code, stderr) == (0, "")
     assert stdout == "\n".join(
@@ -1476,9 +1536,7 @@ def test_delete_store_identity_swap_is_detected_before_unlink(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     store = tmp_path / "activity.json"
-    assert _call(
-        capsys, "init-store", "--store", str(store), "--store-id", STORE_ID
-    )[0] == 0
+    assert _call(capsys, "init-store", "--store", str(store), "--store-id", STORE_ID)[0] == 0
     original_hash = hashlib.sha256(store.read_bytes()).hexdigest()
     replacement = tmp_path / "replacement.json"
     replacement_bytes = b'{"replacement":true}\n'

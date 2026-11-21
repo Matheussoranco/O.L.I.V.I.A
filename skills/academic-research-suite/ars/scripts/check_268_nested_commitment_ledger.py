@@ -99,7 +99,7 @@ def check_seed(seed: dict) -> list[str]:
                 if status == "fulfilled" and has_rationale:
                     errors.append(
                         f"N3 {where}: fulfilled commitment carries unfulfilled_rationale "
-                        "(omit it — no \"\" placeholder in nested shape)"
+                        '(omit it — no "" placeholder in nested shape)'
                     )
                 if status in NONFULFILLED and has_rationale and _blank_rationale(com):
                     errors.append(
@@ -158,7 +158,9 @@ def main() -> int:
     if not SCHEMA.exists():
         errors.append(f"missing schema file: {SCHEMA}")
     else:
-        errors += check_index_notation("N4 shared/handoff_schemas.md", SCHEMA.read_text(encoding="utf-8"))
+        errors += check_index_notation(
+            "N4 shared/handoff_schemas.md", SCHEMA.read_text(encoding="utf-8")
+        )
 
     if not RE_REVIEW.exists():
         errors.append(f"missing re-review protocol: {RE_REVIEW}")

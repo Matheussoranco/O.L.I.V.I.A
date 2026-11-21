@@ -17,7 +17,6 @@ the guarded property is broken. Two load-bearing families:
 from __future__ import annotations
 
 import json
-import sys
 from pathlib import Path
 
 from check_tools_allowlist import (
@@ -38,18 +37,25 @@ def make_tree(tmp_path: Path) -> Path:
         p = tmp_path / rel
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(
-            f"---\nname: {p.stem}\ndescription: \"x\"\nmodel: inherit\n"
+            f'---\nname: {p.stem}\ndescription: "x"\nmodel: inherit\n'
             f"{PINNED_TOOLS_LINE}\n---\n\nbody\n",
             encoding="utf-8",
         )
     manifest = tmp_path / MANIFEST
     manifest.parent.mkdir(parents=True, exist_ok=True)
-    manifest.write_text(json.dumps({"agents": {
-        "report_compiler_agent": {},
-        "research_architect_agent": {},
-        "synthesis_agent": {},
-        "eic_agent": {},
-    }}), encoding="utf-8")
+    manifest.write_text(
+        json.dumps(
+            {
+                "agents": {
+                    "report_compiler_agent": {},
+                    "research_architect_agent": {},
+                    "synthesis_agent": {},
+                    "eic_agent": {},
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
     # A Bucket A agent with NO tools key (inherit) — must pass untouched.
     eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
     eic.parent.mkdir(parents=True, exist_ok=True)
@@ -67,14 +73,15 @@ def make_tree(tmp_path: Path) -> Path:
 
 def first_pair() -> tuple[str, str]:
     """One (source, mirror) pair for symmetric-edit mutations."""
-    return ("deep-research/agents/research_architect_agent.md",
-            "agents/research_architect_agent.md")
+    return (
+        "deep-research/agents/research_architect_agent.md",
+        "agents/research_architect_agent.md",
+    )
 
 
 def rewrite_tools_line(path: Path, new_line: str) -> None:
     text = path.read_text(encoding="utf-8")
-    path.write_text(text.replace(PINNED_TOOLS_LINE, new_line),
-                    encoding="utf-8")
+    path.write_text(text.replace(PINNED_TOOLS_LINE, new_line), encoding="utf-8")
 
 
 def errs_for(tmp_path: Path, rel: str) -> list[str]:
@@ -83,11 +90,13 @@ def errs_for(tmp_path: Path, rel: str) -> list[str]:
 
 # --- invariant 0: the real tree is green --------------------------------------
 
+
 def test_real_repo_passes():
     assert check(REPO_ROOT) == []
 
 
 # --- green fixture -------------------------------------------------------------
+
 
 def test_green_tree_passes(tmp_path):
     make_tree(tmp_path)
@@ -95,6 +104,7 @@ def test_green_tree_passes(tmp_path):
 
 
 # --- invariant 1: exact value + semantic parse ---------------------------------
+
 
 def test_symmetric_bash_readd_fails_on_both_files(tmp_path):
     # THE #524 drift scenario: source+mirror edited together to re-add Bash.
@@ -148,8 +158,9 @@ def test_missing_tools_key_fails_as_widening(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
     p = tmp_path / src
-    p.write_text(p.read_text(encoding="utf-8").replace(
-        PINNED_TOOLS_LINE + "\n", ""), encoding="utf-8")
+    p.write_text(
+        p.read_text(encoding="utf-8").replace(PINNED_TOOLS_LINE + "\n", ""), encoding="utf-8"
+    )
     assert any("no `tools:` key" in e for e in errs_for(tmp_path, src))
 
 
@@ -162,8 +173,7 @@ def test_escaped_duplicate_key_fails(tmp_path):
     src, _ = first_pair()
     rewrite_tools_line(
         tmp_path / src,
-        '"tool\\u0073": Read, Write, Edit, Grep, Glob, Bash\n'
-        + PINNED_TOOLS_LINE,
+        '"tool\\u0073": Read, Write, Edit, Grep, Glob, Bash\n' + PINNED_TOOLS_LINE,
     )
     assert any("2 `tools` keys" in e for e in errs_for(tmp_path, src))
 
@@ -171,8 +181,7 @@ def test_escaped_duplicate_key_fails(tmp_path):
 def test_quoted_duplicate_key_fails(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
-    rewrite_tools_line(tmp_path / src,
-                       f'{PINNED_TOOLS_LINE}\n"tools": Read, Bash')
+    rewrite_tools_line(tmp_path / src, f'{PINNED_TOOLS_LINE}\n"tools": Read, Bash')
     assert any("2 `tools` keys" in e for e in errs_for(tmp_path, src))
 
 
@@ -194,8 +203,10 @@ def test_uncomposable_frontmatter_fails_closed(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
     p = tmp_path / src
-    p.write_text(p.read_text(encoding="utf-8").replace(
-        PINNED_TOOLS_LINE, "tools: [unclosed"), encoding="utf-8")
+    p.write_text(
+        p.read_text(encoding="utf-8").replace(PINNED_TOOLS_LINE, "tools: [unclosed"),
+        encoding="utf-8",
+    )
     assert any("does not compose" in e for e in errs_for(tmp_path, src))
 
 
@@ -204,20 +215,22 @@ def test_body_tools_line_does_not_satisfy_pin(tmp_path):
     make_tree(tmp_path)
     src, _ = first_pair()
     p = tmp_path / src
-    p.write_text(p.read_text(encoding="utf-8").replace(
-        PINNED_TOOLS_LINE + "\n", "") + f"\n{PINNED_TOOLS_LINE}\n",
-        encoding="utf-8")
+    p.write_text(
+        p.read_text(encoding="utf-8").replace(PINNED_TOOLS_LINE + "\n", "")
+        + f"\n{PINNED_TOOLS_LINE}\n",
+        encoding="utf-8",
+    )
     assert any("no `tools:` key" in e for e in errs_for(tmp_path, src))
 
 
 # --- invariant 2: Bucket A frontmatter must not declare Bash --------------------
 
+
 def bash_fixture(tmp_path, frontmatter_body: str) -> list[str]:
     """Write a Bucket A agent with the given frontmatter body and return the
     errors mentioning it."""
     eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
-    eic.write_text(f"---\n{frontmatter_body}\n---\n\nbody\n",
-                   encoding="utf-8")
+    eic.write_text(f"---\n{frontmatter_body}\n---\n\nbody\n", encoding="utf-8")
     return [e for e in check(tmp_path) if "eic_agent" in e]
 
 
@@ -247,15 +260,13 @@ def test_flow_list_bash_fails(tmp_path):
 
 def test_block_list_bash_fails(tmp_path):
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path,
-                        "name: eic_agent\ntools:\n  - Read\n  - Bash")
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools:\n  - Read\n  - Bash")
     assert any("declares Bash" in e for e in errs)
 
 
 def test_inline_comment_bash_fails(tmp_path):
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path,
-                        "name: eic_agent\ntools: Read, Bash # reviewed")
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Bash # reviewed")
     assert any("declares Bash" in e for e in errs)
 
 
@@ -380,9 +391,9 @@ def test_bom_canonical_allowlist_value_still_fires_byte_witness(tmp_path):
     make_tree(tmp_path)
     target = tmp_path / sorted(ALLOWLISTED_FILES)[0]
     target.write_text(
-        "---\nname: report_compiler_agent\n"
-        "tools: ﻿Read﻿, Write, Edit, Grep, Glob\n---\n\nbody\n",
-        encoding="utf-8")
+        "---\nname: report_compiler_agent\n" "tools: ﻿Read﻿, Write, Edit, Grep, Glob\n---\n\nbody\n",
+        encoding="utf-8",
+    )
     errs = [e for e in check(tmp_path) if "byte-equal" in e]
     assert errs, "byte-witness must still fire on an invisible-char canonical value"
 
@@ -393,8 +404,8 @@ def test_repeated_identical_scalars_are_not_aliases(tmp_path):
     # distinct node), so a clean file repeating a value must still pass.
     make_tree(tmp_path)
     errs = bash_fixture(
-        tmp_path,
-        "name: eic_agent\ntools: Read, Read, Grep\ndescription: Read Read")
+        tmp_path, "name: eic_agent\ntools: Read, Read, Grep\ndescription: Read Read"
+    )
     assert errs == []
 
 
@@ -405,7 +416,9 @@ def test_non_string_manifest_agent_key_still_reconciles(tmp_path):
     (tmp_path / MANIFEST).write_text(
         '{"agents": {"123": {}, "report_compiler_agent": {}, '
         '"research_architect_agent": {}, "synthesis_agent": {}, '
-        '"eic_agent": {}}}', encoding="utf-8")
+        '"eic_agent": {}}}',
+        encoding="utf-8",
+    )
     errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Bash")
     assert any("declares Bash" in e for e in errs)
 
@@ -453,9 +466,7 @@ def test_merge_nested_in_sequence_fails_closed(tmp_path):
     # The merge/alias walk must recurse into sequence values, not only
     # mapping values — a `<<`/alias buried in a list still fails closed.
     make_tree(tmp_path)
-    errs = bash_fixture(
-        tmp_path,
-        "name: eic_agent\n_a: &a {tools: [Read, Bash]}\nx: [<<, *a]")
+    errs = bash_fixture(tmp_path, "name: eic_agent\n_a: &a {tools: [Read, Bash]}\nx: [<<, *a]")
     assert any("merge key / alias" in e for e in errs)
 
 
@@ -466,9 +477,7 @@ def test_merge_tagged_complex_key_fails_closed(tmp_path):
     # fire on any node type, not just scalars.
     make_tree(tmp_path)
     for key in ("!!merge [x]", "!!merge {a: 1}"):
-        errs = bash_fixture(
-            tmp_path,
-            f"name: eic_agent\n? {key}\n: {{tools: [Read, Bash]}}")
+        errs = bash_fixture(tmp_path, f"name: eic_agent\n? {key}\n: {{tools: [Read, Bash]}}")
         assert any("merge key / alias" in e for e in errs), key
 
 
@@ -540,9 +549,7 @@ def test_merge_key_injecting_bash_fails_closed(tmp_path):
     # literal `<<` key). The composed node tree carries the `merge` tag —
     # detected there, not by text, and failed closed.
     make_tree(tmp_path)
-    errs = bash_fixture(
-        tmp_path,
-        "_base: &b {tools: [Read, Bash]}\n<<: *b\nname: eic_agent")
+    errs = bash_fixture(tmp_path, "_base: &b {tools: [Read, Bash]}\n<<: *b\nname: eic_agent")
     assert any("merge key / alias" in e for e in errs)
 
 
@@ -552,18 +559,17 @@ def test_flow_merge_with_quoted_hash_key_fails_closed(tmp_path):
     make_tree(tmp_path)
     eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
     eic.write_text(
-        '---\n{ "x#": y, name: eic_agent, <<: &b {tools: "Read, Bash"} }\n'
-        "---\n\nbody\n", encoding="utf-8")
-    assert any("merge key / alias" in e
-               for e in check(tmp_path) if "eic_agent" in e)
+        '---\n{ "x#": y, name: eic_agent, <<: &b {tools: "Read, Bash"} }\n' "---\n\nbody\n",
+        encoding="utf-8",
+    )
+    assert any("merge key / alias" in e for e in check(tmp_path) if "eic_agent" in e)
 
 
 def test_alias_value_bash_fails_closed(tmp_path):
     # An alias makes `tools` share another node's value — the node tree sees
     # the SAME node object twice (shared identity). Fail closed.
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path,
-                        "name: eic_agent\n_x: &a [Read, Bash]\ntools: *a")
+    errs = bash_fixture(tmp_path, "name: eic_agent\n_x: &a [Read, Bash]\ntools: *a")
     assert any("merge key / alias" in e for e in errs)
 
 
@@ -573,9 +579,9 @@ def test_ampersand_in_quoted_value_is_not_an_anchor(tmp_path):
     # fail the clean file — the node-tree detector, unlike a text scan, sees
     # this correctly.
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path,
-                        'name: eic_agent\ndescription: "A & B, 3 * 4"\n'
-                        "tools: Read, Grep")
+    errs = bash_fixture(
+        tmp_path, 'name: eic_agent\ndescription: "A & B, 3 * 4"\n' "tools: Read, Grep"
+    )
     assert errs == []
 
 
@@ -587,7 +593,9 @@ def test_allowlisted_file_with_alias_fails_closed(tmp_path):
     p = tmp_path / src
     p.write_text(
         "---\nname: research_architect_agent\n_t: &t Read, Write, Edit, "
-        "Grep, Glob\ntools: *t\n---\n\nbody\n", encoding="utf-8")
+        "Grep, Glob\ntools: *t\n---\n\nbody\n",
+        encoding="utf-8",
+    )
     assert any("merge key / alias" in e for e in errs_for(tmp_path, src))
 
 
@@ -599,10 +607,10 @@ def test_indented_fence_in_block_scalar_does_not_truncate(tmp_path):
     make_tree(tmp_path)
     eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
     eic.write_text(
-        "---\ndescription: |\n  ---\nname: eic_agent\ntools: Read, Bash\n"
-        "---\n\nbody\n", encoding="utf-8")
-    assert any("declares Bash" in e
-               for e in check(tmp_path) if "eic_agent" in e)
+        "---\ndescription: |\n  ---\nname: eic_agent\ntools: Read, Bash\n" "---\n\nbody\n",
+        encoding="utf-8",
+    )
+    assert any("declares Bash" in e for e in check(tmp_path) if "eic_agent" in e)
 
 
 def test_bom_prefixed_bucket_a_bash_fails_closed(tmp_path):
@@ -612,19 +620,14 @@ def test_bom_prefixed_bucket_a_bash_fails_closed(tmp_path):
     # strips the BOM so the two agree; the smuggled Bash fails closed.
     make_tree(tmp_path)
     eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
-    eic.write_bytes(
-        "﻿---\nname: eic_agent\ntools: Read, Bash\n---\n\nbody\n"
-        .encode("utf-8"))
-    assert any("declares Bash" in e
-               for e in check(tmp_path) if "eic_agent" in e)
+    eic.write_bytes("﻿---\nname: eic_agent\ntools: Read, Bash\n---\n\nbody\n".encode())
+    assert any("declares Bash" in e for e in check(tmp_path) if "eic_agent" in e)
 
 
 def test_bom_prefixed_clean_file_passes(tmp_path):
     make_tree(tmp_path)
     eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
-    eic.write_bytes(
-        "﻿---\nname: eic_agent\ntools: Read, Grep\n---\n\nbody\n"
-        .encode("utf-8"))
+    eic.write_bytes("﻿---\nname: eic_agent\ntools: Read, Grep\n---\n\nbody\n".encode())
     assert not [e for e in check(tmp_path) if "eic_agent" in e]
 
 
@@ -639,7 +642,9 @@ def test_block_scalar_containing_tools_text_no_false_positive(tmp_path):
     p.write_text(
         f"---\nname: research_architect_agent\n{PINNED_TOOLS_LINE}\n"
         "description: |\n  tools: this is documentation, not the key\n"
-        "---\n\nbody\n", encoding="utf-8")
+        "---\n\nbody\n",
+        encoding="utf-8",
+    )
     assert errs_for(tmp_path, src) == []
 
 
@@ -650,8 +655,8 @@ def test_block_scalar_containing_triple_dash_is_not_a_fence(tmp_path):
     make_tree(tmp_path)
     errs = bash_fixture(
         tmp_path,
-        "name: eic_agent\ndescription: |\n  intro\n  --- not a fence\n"
-        "tools: Read, Grep")
+        "name: eic_agent\ndescription: |\n  intro\n  --- not a fence\n" "tools: Read, Grep",
+    )
     assert errs == []
 
 
@@ -664,7 +669,9 @@ def test_escaped_tools_key_fires_byte_witness_on_allowlisted(tmp_path):
     p = tmp_path / src
     p.write_text(
         '---\nname: research_architect_agent\n"tool\\u0073": Read, Write, '
-        "Edit, Grep, Glob\n---\n\nbody\n", encoding="utf-8")
+        "Edit, Grep, Glob\n---\n\nbody\n",
+        encoding="utf-8",
+    )
     assert any("not byte-equal" in e for e in errs_for(tmp_path, src))
 
 
@@ -673,15 +680,13 @@ def test_duplicate_tools_on_bucket_a_fails_closed(tmp_path):
     # first-wins parser would grant Bash. Duplicate-key resolution is
     # parser-dependent, so invariant 2 fails closed (as invariant 1 does).
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path,
-                        "name: eic_agent\ntools: Read, Bash\ntools: Read, Grep")
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Bash\ntools: Read, Grep")
     assert any("`tools` keys" in e and "parser-dependent" in e for e in errs)
 
 
 def test_duplicate_tools_first_wins_bash_fails_closed(tmp_path):
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path,
-                        "name: eic_agent\ntools: Read, Grep\ntools: Read, Bash")
+    errs = bash_fixture(tmp_path, "name: eic_agent\ntools: Read, Grep\ntools: Read, Bash")
     assert any("`tools` keys" in e and "parser-dependent" in e for e in errs)
 
 
@@ -690,8 +695,7 @@ def test_duplicate_name_one_bucket_a_fails_closed(tmp_path):
     # last-wins name would skip the file, hiding a Bucket A first-wins name +
     # Bash. Fail closed.
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path,
-                        "name: safe_agent\nname: eic_agent\ntools: Read, Bash")
+    errs = bash_fixture(tmp_path, "name: safe_agent\nname: eic_agent\ntools: Read, Bash")
     assert any("`name` keys" in e and "parser-dependent" in e for e in errs)
 
 
@@ -699,8 +703,7 @@ def test_duplicate_name_neither_bucket_a_passes(tmp_path):
     # If NO resolution is a Bucket A name, the file is out of scope whichever
     # way a parser resolves it — no need to fail closed.
     make_tree(tmp_path)
-    errs = bash_fixture(tmp_path,
-                        "name: safe_one\nname: safe_two\ntools: Read, Bash")
+    errs = bash_fixture(tmp_path, "name: safe_one\nname: safe_two\ntools: Read, Bash")
     assert errs == []
 
 
@@ -709,13 +712,10 @@ def test_nested_bucket_a_agent_declaring_bash_fails_closed(tmp_path):
     # glob) — the runtime guard keys on `name` regardless of path, so a
     # `agents/subdir/x.md` with a Bucket A name + Bash is a real exposure.
     make_tree(tmp_path)
-    nested = (tmp_path
-              / "academic-paper-reviewer/agents/subdir/eic_agent.md")
+    nested = tmp_path / "academic-paper-reviewer/agents/subdir/eic_agent.md"
     nested.parent.mkdir(parents=True, exist_ok=True)
-    nested.write_text("---\nname: eic_agent\ntools: Read, Bash\n---\nbody\n",
-                      encoding="utf-8")
-    assert any("declares Bash" in e for e in check(tmp_path)
-               if "eic_agent" in e)
+    nested.write_text("---\nname: eic_agent\ntools: Read, Bash\n---\nbody\n", encoding="utf-8")
+    assert any("declares Bash" in e for e in check(tmp_path) if "eic_agent" in e)
 
 
 def test_directory_symlink_under_agent_dir_fails_closed(tmp_path):
@@ -728,12 +728,13 @@ def test_directory_symlink_under_agent_dir_fails_closed(tmp_path):
     payload = tmp_path / "payload"
     payload.mkdir()
     (payload / "eic_agent.md").write_text(
-        "---\nname: eic_agent\ntools: Read, Bash\n---\nbody\n",
-        encoding="utf-8")
+        "---\nname: eic_agent\ntools: Read, Bash\n---\nbody\n", encoding="utf-8"
+    )
     try:
         (agents / "nested").symlink_to(payload, target_is_directory=True)
     except (OSError, NotImplementedError):
         import pytest
+
         pytest.skip("symlinks unavailable on this platform")
     assert any("directory symlink" in e for e in check(tmp_path))
 
@@ -745,10 +746,8 @@ def test_bare_cr_frontmatter_bucket_a_bash_fails_closed(tmp_path):
     # the declaration is caught.
     make_tree(tmp_path)
     eic = tmp_path / "academic-paper-reviewer/agents/eic_agent.md"
-    eic.write_bytes(
-        "---\rname: eic_agent\rtools: Read, Bash\r---\r".encode("utf-8"))
-    assert any("declares Bash" in e for e in check(tmp_path)
-               if "eic_agent" in e)
+    eic.write_bytes(b"---\rname: eic_agent\rtools: Read, Bash\r---\r")
+    assert any("declares Bash" in e for e in check(tmp_path) if "eic_agent" in e)
 
 
 def test_unicode_line_break_before_tools_no_false_positive(tmp_path):
@@ -766,9 +765,9 @@ def test_unicode_line_break_before_tools_no_false_positive(tmp_path):
         f"---\nname: research_architect_agent\n"
         'description: "ab c d"\n'
         f"{PINNED_TOOLS_LINE}\n---\n\nbody\n",
-        encoding="utf-8")
+        encoding="utf-8",
+    )
     assert errs_for(tmp_path, src) == []
-
 
 
 def test_non_bucket_a_agent_with_bash_passes(tmp_path):
@@ -816,6 +815,7 @@ def test_non_mapping_agents_value_fails_closed(tmp_path):
 
 
 # --- lock shape ------------------------------------------------------------------
+
 
 def test_pinned_line_is_the_frozen_514_value():
     # Editing the allowlist is a deliberate security-surface change: it must

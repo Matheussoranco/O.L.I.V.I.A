@@ -9,10 +9,11 @@ from __future__ import annotations
 
 import json
 import re
-import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
+
+import tomllib
 
 
 @dataclass
@@ -179,9 +180,7 @@ def _check_value_types(data: dict[str, Any]) -> None:
         _require_str(cs.get(key), field=f"changelog.{key}")
     whitelist = cs.get("near_miss_whitelist")
     if whitelist is not None:
-        if not isinstance(whitelist, list) or any(
-            not isinstance(item, str) for item in whitelist
-        ):
+        if not isinstance(whitelist, list) or any(not isinstance(item, str) for item in whitelist):
             raise ManifestError(
                 kind="manifest_invalid_type",
                 message="changelog.near_miss_whitelist must be an array of strings",
@@ -212,9 +211,7 @@ _DEFAULT_CHANGELOG: dict[str, Any] = {
     "comment_close": "-->",
     "near_miss_whitelist": ["Unreleased", "unreleased", "TBD", "Pending"],
 }
-_DEFAULT_CHANGELOG_PATTERN: str = (
-    r"^## \[(?P<version>\S+)\] - (?P<date>\d{4}-\d{2}-\d{2})\s*$"
-)
+_DEFAULT_CHANGELOG_PATTERN: str = r"^## \[(?P<version>\S+)\] - (?P<date>\d{4}-\d{2}-\d{2})\s*$"
 
 
 def changelog_settings(data: dict[str, Any]) -> dict[str, Any]:
@@ -520,7 +517,7 @@ def _strip_inline_comments(line: str, opener: str, closer: str) -> str:
         end = line.find(closer, start + len(opener))
         if end < 0:
             return line
-        line = line[:start] + line[end + len(closer):]
+        line = line[:start] + line[end + len(closer) :]
 
 
 def _comment_still_open(line: str, opener: str, closer: str) -> bool:
@@ -542,8 +539,15 @@ def _is_release_like_heading(line: str, whitelist: list[str]) -> bool:
     return has_bracket or has_bare_version
 
 
-def scan_changelog(text: str, *, pattern: re.Pattern[str], fence_marker: str, comment_open: str,
-                   comment_close: str, near_miss_whitelist: list[str]) -> list[dict[str, Any]]:
+def scan_changelog(
+    text: str,
+    *,
+    pattern: re.Pattern[str],
+    fence_marker: str,
+    comment_open: str,
+    comment_close: str,
+    near_miss_whitelist: list[str],
+) -> list[dict[str, Any]]:
     """Per §8: state-aware fence + comment scanner. Returns parsed entries.
 
     Raises ScannerError on duplicate_version or near_miss_heading.
@@ -575,7 +579,7 @@ def scan_changelog(text: str, *, pattern: re.Pattern[str], fence_marker: str, co
 
         stripped = _strip_inline_comments(line, comment_open, comment_close)
         if _comment_still_open(stripped, comment_open, comment_close):
-            stripped = stripped[:stripped.rindex(comment_open)].rstrip()
+            stripped = stripped[: stripped.rindex(comment_open)].rstrip()
             state = IN_COMMENT_BLOCK
 
         m = pattern.match(stripped)
@@ -818,8 +822,7 @@ def extract_package_version(
             raise PackageError(
                 kind="package_version_ambiguous",
                 message=(
-                    f"regex pattern matched {len(matches)} lines in {path}"
-                    " (expected exactly 1)"
+                    f"regex pattern matched {len(matches)} lines in {path}" " (expected exactly 1)"
                 ),
                 path=str(path),
             )
@@ -963,12 +966,14 @@ def check_release_block_presence(
         needle = release_block_form.replace("{version}", entry["version"]).replace(
             "{date}", entry["date"] or ""
         )
-        results.append({
-            "kind": "release_block_presence",
-            "version": entry["version"],
-            "expected_needle": needle,
-            "status": "pass" if needle in text else "fail",
-        })
+        results.append(
+            {
+                "kind": "release_block_presence",
+                "version": entry["version"],
+                "expected_needle": needle,
+                "status": "pass" if needle in text else "fail",
+            }
+        )
     return results
 
 

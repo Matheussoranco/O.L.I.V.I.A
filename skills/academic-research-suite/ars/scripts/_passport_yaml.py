@@ -31,7 +31,6 @@ from typing import Any
 
 from ruamel.yaml import YAML
 
-
 # Single shared YAML round-tripper. ruamel.yaml preserves comments,
 # key order, and quoting style across read → mutate → write.
 _yaml = YAML()

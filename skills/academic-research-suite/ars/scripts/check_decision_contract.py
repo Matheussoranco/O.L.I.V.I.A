@@ -50,56 +50,69 @@ CONTRACTS = (
     "shared/contracts/reviewer/methodology_focus.json",
 )
 CONDITION_FIELDS = (
-    "condition_id", "severity", "cross_reviewer_quantifier", "expression", "action",
+    "condition_id",
+    "severity",
+    "cross_reviewer_quantifier",
+    "expression",
+    "action",
 )
 EXPECTED_CONDITIONS = {
     CONTRACTS[0]: (
-        ("F1", 95, "any", "any mandatory dimension has a fatal block",
-         "editorial_decision=reject"),
-        ("F2", 90, "any", "any mandatory dimension scores 'block'",
-         "editorial_decision=major_revision"),
-        ("F3", 70, "majority",
-         "two or more mandatory dimensions score 'warn' or worse",
-         "editorial_decision=major_revision"),
-        ("F4", 60, "any", "any high-priority dimension scores 'block'",
-         "editorial_decision=major_revision"),
-        ("F5", 40, "any", "any dimension scores 'warn' or worse",
-         "editorial_decision=minor_revision"),
-        ("F0", 10, "all", "every dimension scores 'pass'",
-         "editorial_decision=accept"),
+        ("F1", 95, "any", "any mandatory dimension has a fatal block", "editorial_decision=reject"),
+        (
+            "F2",
+            90,
+            "any",
+            "any mandatory dimension scores 'block'",
+            "editorial_decision=major_revision",
+        ),
+        (
+            "F3",
+            70,
+            "majority",
+            "two or more mandatory dimensions score 'warn' or worse",
+            "editorial_decision=major_revision",
+        ),
+        (
+            "F4",
+            60,
+            "any",
+            "any high-priority dimension scores 'block'",
+            "editorial_decision=major_revision",
+        ),
+        (
+            "F5",
+            40,
+            "any",
+            "any dimension scores 'warn' or worse",
+            "editorial_decision=minor_revision",
+        ),
+        ("F0", 10, "all", "every dimension scores 'pass'", "editorial_decision=accept"),
     ),
     CONTRACTS[1]: (
-        ("F1", 95, "any", "D1 has a fatal block",
-         "editorial_decision=reject"),
-        ("F2", 90, "any", "D1 scores 'block'",
-         "editorial_decision=major_revision"),
-        ("F3", 70, "any", "D1 scores 'warn'",
-         "editorial_decision=major_revision"),
-        ("F4", 40, "any", "D2 scores 'warn' or worse",
-         "editorial_decision=minor_revision"),
-        ("F0", 10, "all", "every dimension scores 'pass'",
-         "editorial_decision=accept"),
+        ("F1", 95, "any", "D1 has a fatal block", "editorial_decision=reject"),
+        ("F2", 90, "any", "D1 scores 'block'", "editorial_decision=major_revision"),
+        ("F3", 70, "any", "D1 scores 'warn'", "editorial_decision=major_revision"),
+        ("F4", 40, "any", "D2 scores 'warn' or worse", "editorial_decision=minor_revision"),
+        ("F0", 10, "all", "every dimension scores 'pass'", "editorial_decision=accept"),
     ),
 }
 EXPECTED_AUTHORITY_ROWS = (
     (
         "`full` (sprint contract)",
-        "Mechanical synthesizer over reviewer contract v2; the matrix below "
-        "never overrides it",
+        "Mechanical synthesizer over reviewer contract v2; the matrix below " "never overrides it",
         "`block/warn/pass` + `block_class`",
         "Accept / Minor Revision / Major Revision / Reject",
     ),
     (
         "`methodology-focus` (sprint contract)",
-        "Same mechanical engine, scoped to methods + presentation; no "
-        "venue-fit dimension",
+        "Same mechanical engine, scoped to methods + presentation; no " "venue-fit dimension",
         "same",
         "four-value enum",
     ),
     (
         "`full` / `methodology-focus` without a contract",
-        "Synthesis Protocol + the qualitative criteria and recommendation "
-        "matrix in this file",
+        "Synthesis Protocol + the qualitative criteria and recommendation " "matrix in this file",
         "reviewer recommendations",
         "four-value enum",
     ),
@@ -111,10 +124,13 @@ EXPECTED_AUTHORITY_ROWS = (
         "Accept / Minor Revision / Major Revision / user_review_required "
         "(Reject is not a Stage 3' decision)",
     ),
-    ("`quick`", "Journal-Fit Reviewer assessment only; advisory, not an editorial decision",
-     "—", "signal"),
-    ("`guided`", "Issue-list dialogue; no editorial decision letter",
-     "—", "—"),
+    (
+        "`quick`",
+        "Journal-Fit Reviewer assessment only; advisory, not an editorial decision",
+        "—",
+        "signal",
+    ),
+    ("`guided`", "Issue-list dialogue; no editorial decision letter", "—", "—"),
     (
         "`calibration`",
         "Exact panel verdicts and criterion-bound judgements compared with a "
@@ -128,7 +144,10 @@ LIVE_ROOTS = (
     "shared/contracts/reviewer",
 )
 LIVE_FILES = (
-    SCHEMA, HANDOFF, PANEL, "scripts/check_sprint_contract.py",
+    SCHEMA,
+    HANDOFF,
+    PANEL,
+    "scripts/check_sprint_contract.py",
 )
 THRESHOLD_DRIFT_PATTERNS = (
     (
@@ -239,8 +258,7 @@ def _panel_action_enum(panel: str) -> tuple[str, ...] | None:
         if not isinstance(node, ast.Assign):
             continue
         if not any(
-            isinstance(target, ast.Name) and target.id == "ACTION_ENUM"
-            for target in node.targets
+            isinstance(target, ast.Name) and target.id == "ACTION_ENUM" for target in node.targets
         ):
             continue
         value = node.value
@@ -323,15 +341,19 @@ def _nearby_threshold_drift(text: str) -> bool:
 def check(root: Path) -> list[str]:
     errors: list[str] = []
     schema = json.loads(_read(root, SCHEMA))
-    branch4 = schema["allOf"][3]["then"]["properties"]["failure_conditions"][
-        "items"]["properties"]["action"]["enum"]
+    branch4 = schema["allOf"][3]["then"]["properties"]["failure_conditions"]["items"]["properties"][
+        "action"
+    ]["enum"]
     if tuple(branch4) != ACTIONS:
         errors.append(f"{SCHEMA}: branch 4 enum drift: {branch4}")
 
     panel = _read(root, PANEL)
     panel_actions = _panel_action_enum(panel)
-    if panel_actions is None or len(panel_actions) != len(ACTIONS) or \
-            set(panel_actions) != set(ACTIONS):
+    if (
+        panel_actions is None
+        or len(panel_actions) != len(ACTIONS)
+        or set(panel_actions) != set(ACTIONS)
+    ):
         errors.append(f"{PANEL}: ACTION_ENUM must be exactly {list(ACTIONS)}")
 
     for rel in CONTRACTS:
@@ -340,8 +362,7 @@ def check(root: Path) -> list[str]:
         if not actions <= set(ACTIONS) or not set(ACTIONS) <= actions:
             errors.append(f"{rel}: four-action coverage drift: {sorted(actions)}")
         actual = tuple(
-            tuple(condition[field] for field in CONDITION_FIELDS)
-            for condition in conditions
+            tuple(condition[field] for field in CONDITION_FIELDS) for condition in conditions
         )
         if actual != EXPECTED_CONDITIONS[rel]:
             errors.append(f"{rel}: failure-condition table drift: {actual}")
@@ -354,9 +375,7 @@ def check(root: Path) -> list[str]:
         errors.append(f"{HANDOFF}: Schema 6 section missing")
     else:
         if handoff.count(SCHEMA6_ENUM_ROW) != 1:
-            errors.append(
-                f"{HANDOFF}: Schema 6 decision enum must be exactly {list(VALUES)}"
-            )
+            errors.append(f"{HANDOFF}: Schema 6 decision enum must be exactly {list(VALUES)}")
 
     authority = heading_section(_read(root, STANDARDS), "## 0. Decision Authority by Mode")
     if authority is None:
@@ -374,17 +393,14 @@ def check(root: Path) -> list[str]:
             cells = tuple(cell.strip() for cell in stripped.split("|"))
             if cells == ("Mode", "Decision engine", "Working scale", "Output"):
                 continue
-            if len(cells) == 4 and all(
-                re.fullmatch(r":?-{3,}:?", cell) for cell in cells
-            ):
+            if len(cells) == 4 and all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
                 continue
             authority_rows.append(cells)
         if tuple(authority_rows) != EXPECTED_AUTHORITY_ROWS:
-            errors.append(
-                f"{STANDARDS}: authority table semantic drift: {authority_rows}"
-            )
-        if norm_ws("Under a sprint contract, the mechanical synthesizer governs") \
-                not in norm_ws(authority):
+            errors.append(f"{STANDARDS}: authority table semantic drift: {authority_rows}")
+        if norm_ws("Under a sprint contract, the mechanical synthesizer governs") not in norm_ws(
+            authority
+        ):
             errors.append(f"{STANDARDS}: mechanical governor sentence missing")
     if "canonical per-mode decision authority table" not in _read(root, SKILL):
         errors.append(f"{SKILL}: §0 authority pointer missing")
@@ -429,17 +445,13 @@ def check(root: Path) -> list[str]:
                 errors.append(f"{rel}: retired score-to-decision row is prohibited: {row}")
         for label, pattern in THRESHOLD_DRIFT_PATTERNS:
             if pattern.search(text):
-                errors.append(
-                    f"{rel}: {label} is prohibited"
-                )
+                errors.append(f"{rel}: {label} is prohibited")
         if (
             _inline_threshold_drift(text)
             or _nearby_threshold_drift(text)
             or _heading_threshold_drift(text)
         ):
-            errors.append(
-                f"{rel}: decision-linked numerical threshold variant is prohibited"
-            )
+            errors.append(f"{rel}: decision-linked numerical threshold variant is prohibited")
     standards = _read(root, STANDARDS)
     for retired in ("4.0", "3.5", "2.5-3.4", "< 2.5", "score = 1", "score = 2"):
         if retired in standards:

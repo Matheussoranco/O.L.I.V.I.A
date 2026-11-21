@@ -6,7 +6,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 CODEX_ROOT = Path(__file__).resolve().parents[1]
 HOOK_PATH = CODEX_ROOT / "scripts" / "ars_codex_hook.py"
 MANIFEST_PATH = CODEX_ROOT / "full-runtime-manifest.json"

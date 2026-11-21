@@ -17,7 +17,6 @@ import sys
 from pathlib import Path
 
 import yaml
-
 from check_compliance_report import validate
 
 REPO_ROOT = Path(__file__).resolve().parent.parent

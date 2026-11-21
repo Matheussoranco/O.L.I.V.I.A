@@ -35,9 +35,7 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ORCHESTRATOR = (
-    REPO_ROOT / "academic-pipeline" / "agents" / "pipeline_orchestrator_agent.md"
-)
+ORCHESTRATOR = REPO_ROOT / "academic-pipeline" / "agents" / "pipeline_orchestrator_agent.md"
 
 FINALIZER_HEADING = "## Cite-Time Provenance Finalizer (v3.7.1)"
 
@@ -59,9 +57,7 @@ def _extract_finalizer_block(text: str) -> str | None:
     """
     # Anchor on a Markdown heading line (line-start, optional indent,
     # 1-3 hashes, the canonical title, optional trailing whitespace, EOL).
-    anchor = re.compile(
-        r"(?m)^[ \t]*##[ \t]+Cite-Time Provenance Finalizer \(v3\.7\.1\)[ \t]*$"
-    )
+    anchor = re.compile(r"(?m)^[ \t]*##[ \t]+Cite-Time Provenance Finalizer \(v3\.7\.1\)[ \t]*$")
     m = anchor.search(text)
     if m is None:
         return None
@@ -124,8 +120,7 @@ _REQUIRED_CLAUSES: list[tuple[str, str, str]] = [
     (
         "matrix row 4 (OK) — resolved marker form",
         "<!--ref:slug ok-->",
-        "Row 4 maps all-true triple → <!--ref:slug ok--> "
-        "(spec §3.3 line 179)",
+        "Row 4 maps all-true triple → <!--ref:slug ok--> " "(spec §3.3 line 179)",
     ),
     (
         "matrix row 4 (OK) — canonical row clause",
@@ -201,10 +196,7 @@ def check_finalizer_subsection(verbose: bool = True) -> int:
     failures: list[str] = []
     for label, marker, diagnostic in _REQUIRED_CLAUSES:
         if marker not in block:
-            failures.append(
-                f"  [{label}] missing canonical phrase {marker!r}. "
-                f"{diagnostic}"
-            )
+            failures.append(f"  [{label}] missing canonical phrase {marker!r}. " f"{diagnostic}")
 
     if failures:
         print(
@@ -217,8 +209,10 @@ def check_finalizer_subsection(verbose: bool = True) -> int:
 
     if verbose:
         rel = ORCHESTRATOR.relative_to(REPO_ROOT)
-        print(f"  [{rel}] Step 3b finalizer subsection PASS "
-              f"({len(_REQUIRED_CLAUSES)} canonical clauses present)")
+        print(
+            f"  [{rel}] Step 3b finalizer subsection PASS "
+            f"({len(_REQUIRED_CLAUSES)} canonical clauses present)"
+        )
         print("[v3.7.1 Step 3b finalizer] PASSED")
     return 0
 

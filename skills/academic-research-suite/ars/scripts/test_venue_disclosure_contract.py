@@ -8,7 +8,6 @@ import sys
 from pathlib import Path
 
 import pytest
-
 from venue_disclosure_contract_harness import (
     ALL_CATEGORIES,
     ALL_OPERATIONS,
@@ -21,7 +20,6 @@ from venue_disclosure_contract_harness import (
     surface_sync_errors,
     unknown,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 POLICY_CHECKER = REPO_ROOT / "scripts" / "check_venue_disclosure_policies.py"
@@ -78,9 +76,8 @@ def _base_case(
     facts.update(global_facts or {})
     return {
         "venue": venue,
-        "categories": categories or _categories(
-            **({records[0].category: "USED"} if records else {})
-        ),
+        "categories": categories
+        or _categories(**({records[0].category: "USED"} if records else {})),
         "records": records,
         "global_facts": facts,
     }
@@ -94,7 +91,9 @@ def _iclrfacts() -> dict[str, Fact]:
     }
 
 
-def _jama_facts(*, llm: bool, included: bool = False, protected_input: bool = False) -> dict[str, Fact]:
+def _jama_facts(
+    *, llm: bool, included: bool = False, protected_input: bool = False
+) -> dict[str, Fact]:
     facts = {
         "author_review_accuracy": known(True),
         "author_accepts_content_integrity_responsibility": known(True),
@@ -110,21 +109,29 @@ def _jama_facts(*, llm: bool, included: bool = False, protected_input: bool = Fa
         "ai_generated_content_included_in_submission": known(included),
     }
     if llm:
-        facts.update({
-            "llm_prompts": known(("classify record", "explain exclusion")),
-            "llm_prompt_sequence": known((1, 2)),
-            "llm_prompt_revisions": known("second prompt narrowed the date range"),
-        })
+        facts.update(
+            {
+                "llm_prompts": known(("classify record", "explain exclusion")),
+                "llm_prompt_sequence": known((1, 2)),
+                "llm_prompt_revisions": known("second prompt narrowed the date range"),
+            }
+        )
     if protected_input:
-        facts.update({
-            "copyright_permission_copy": known("permissions/input-license.pdf"),
-            "copyright_permission_methods_description": known("licensed corpus under agreement 7"),
-        })
+        facts.update(
+            {
+                "copyright_permission_copy": known("permissions/input-license.pdf"),
+                "copyright_permission_methods_description": known(
+                    "licensed corpus under agreement 7"
+                ),
+            }
+        )
     if included:
-        facts.update({
-            "included_content_type": known("supplementary classification table"),
-            "publication_rights_basis": known("service terms grant publication rights"),
-        })
+        facts.update(
+            {
+                "included_content_type": known("supplementary classification table"),
+                "publication_rights_basis": known("service terms grant publication rights"),
+            }
+        )
     return facts
 
 
@@ -152,11 +159,13 @@ def _ies_facts(*, data: bool, clinical: bool = False) -> dict[str, Fact]:
         "generated_proportion": known("8%"),
     }
     if data:
-        facts.update({
-            "data_types": known(("coded outcome labels",)),
-            "data_verification_status": known("dual human verification complete"),
-            "data_involves_clinical_or_case_data": known(clinical),
-        })
+        facts.update(
+            {
+                "data_types": known(("coded outcome labels",)),
+                "data_verification_status": known("dual human verification complete"),
+                "data_involves_clinical_or_case_data": known(clinical),
+            }
+        )
     if clinical:
         facts["de_identification_measures"] = known("direct identifiers removed before use")
     return facts
@@ -284,7 +293,9 @@ def test_citation_checking_is_a_first_class_used_category() -> None:
         targets=("REFERENCE_OR_CITATION",),
         facts=_iclrfacts(),
     )
-    result = evaluate(_base_case("ICLR", (record,), categories=_categories(CITATION_CHECKING="USED")))
+    result = evaluate(
+        _base_case("ICLR", (record,), categories=_categories(CITATION_CHECKING="USED"))
+    )
     assert (result.outcome, result.execution_status) == ("REQUIRED", "READY")
     assert result.ledger[record.record_id]["specific_assisted_tasks"].value
 
@@ -294,7 +305,9 @@ def test_unknown_external_inventory_halts_before_categorization() -> None:
     case["global_facts"]["external_use_inventory_confirmed"] = unknown()  # type: ignore[index]
     result = evaluate(case)
     assert (result.outcome, result.execution_status, result.halt_reason) == (
-        "UNKNOWN", "HALTED", "UNRESOLVED_INPUT"
+        "UNKNOWN",
+        "HALTED",
+        "UNRESOLVED_INPUT",
     )
     assert "Phase 2a" not in result.phases
 
@@ -317,7 +330,9 @@ def test_used_other_unclassified_is_preserved_and_halted() -> None:
 def test_unknown_venue_never_falls_back_or_emits_placeholders() -> None:
     result = evaluate(_base_case("Imaginary Journal"))
     assert (result.outcome, result.execution_status, result.halt_reason) == (
-        "UNKNOWN", "HALTED", "UNCURATED_POLICY"
+        "UNKNOWN",
+        "HALTED",
+        "UNCURATED_POLICY",
     )
     rendered = " ".join(block.text for block in result.blocks)
     assert result.blocks == ()
@@ -345,37 +360,74 @@ def test_all_four_outcomes_are_exercised() -> None:
     action_only = evaluate(
         _base_case(
             "The Lancet",
-            (_record(category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",), facts=cover_facts),),
+            (
+                _record(
+                    category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+                    operations=("GENERATED",),
+                    targets=("RESEARCH_FIGURE_OR_MEDIA",),
+                    facts=cover_facts,
+                ),
+            ),
             categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED"),
         )
     )
-    assert {required.outcome, not_required.outcome, unknown_result.outcome, action_only.outcome} == ALL_OUTCOMES
+    assert {
+        required.outcome,
+        not_required.outcome,
+        unknown_result.outcome,
+        action_only.outcome,
+    } == ALL_OUTCOMES
     assert action_only.blocks == ()
     assert "editor permission" in " ".join(action_only.actions).casefold()
 
 
 def test_unknown_required_fact_and_incompatible_confirmed_fact_halt_before_render() -> None:
     missing = _record(facts=_iclrfacts() | {"author_accepts_full_responsibility": unknown()})
-    incompatible = _record(facts=_iclrfacts() | {"author_accepts_full_responsibility": known(False)})
-    missing_result = evaluate(_base_case("ICLR", (missing,), categories=_categories(DRAFTING_ASSISTANCE="USED")))
-    incompatible_result = evaluate(_base_case("ICLR", (incompatible,), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    incompatible = _record(
+        facts=_iclrfacts() | {"author_accepts_full_responsibility": known(False)}
+    )
+    missing_result = evaluate(
+        _base_case("ICLR", (missing,), categories=_categories(DRAFTING_ASSISTANCE="USED"))
+    )
+    incompatible_result = evaluate(
+        _base_case("ICLR", (incompatible,), categories=_categories(DRAFTING_ASSISTANCE="USED"))
+    )
     assert (missing_result.outcome, missing_result.halt_reason, missing_result.blocks) == (
-        "REQUIRED", "UNRESOLVED_INPUT", ()
+        "REQUIRED",
+        "UNRESOLVED_INPUT",
+        (),
     )
-    assert (incompatible_result.outcome, incompatible_result.halt_reason, incompatible_result.blocks) == (
-        "REQUIRED", "INCOMPATIBLE_FACT", ()
-    )
+    assert (
+        incompatible_result.outcome,
+        incompatible_result.halt_reason,
+        incompatible_result.blocks,
+    ) == ("REQUIRED", "INCOMPATIBLE_FACT", ())
 
 
 def test_policy_anchor_never_enters_venue_phases() -> None:
-    result = evaluate({"policy_anchor": "icmje", "categories": _categories(), "records": (), "global_facts": {"external_use_inventory_confirmed": known("none")}})
+    result = evaluate(
+        {
+            "policy_anchor": "icmje",
+            "categories": _categories(),
+            "records": (),
+            "global_facts": {"external_use_inventory_confirmed": known("none")},
+        }
+    )
     assert result.track == "anchor"
     assert all(not phase.startswith("Venue Phase") for phase in result.phases)
     assert result.outcome is None
 
 
 def test_nature_consistent_dual_selector_routes_to_anchor() -> None:
-    result = evaluate({"venue": "Nature Medicine", "policy_anchor": "nature", "categories": _categories(), "records": (), "global_facts": {"external_use_inventory_confirmed": known("none")}})
+    result = evaluate(
+        {
+            "venue": "Nature Medicine",
+            "policy_anchor": "nature",
+            "categories": _categories(),
+            "records": (),
+            "global_facts": {"external_use_inventory_confirmed": known("none")},
+        }
+    )
     assert result.track == "anchor"
     assert "Venue Phase 2a" not in result.phases
 
@@ -388,8 +440,15 @@ def test_multi_placement_blocks_are_distinct_and_purpose_specific() -> None:
         "technology_description": known("ExampleAI 2.1"),
         "produced_content": known("citation verification notes"),
     }
-    record = _record(category="CITATION_CHECKING", operations=("CHECKED_CITATIONS",), targets=("REFERENCE_OR_CITATION",), facts=facts)
-    result = evaluate(_base_case("NEJM", (record,), categories=_categories(CITATION_CHECKING="USED")))
+    record = _record(
+        category="CITATION_CHECKING",
+        operations=("CHECKED_CITATIONS",),
+        targets=("REFERENCE_OR_CITATION",),
+        facts=facts,
+    )
+    result = evaluate(
+        _base_case("NEJM", (record,), categories=_categories(CITATION_CHECKING="USED"))
+    )
     assert [block.placement for block in result.blocks] == ["COVER_LETTER", "SUBMITTED_WORK"]
     assert len({block.text for block in result.blocks}) == 2
     assert len({block.purpose for block in result.blocks}) == 2
@@ -399,7 +458,9 @@ def test_multi_placement_blocks_are_distinct_and_purpose_specific() -> None:
 
 
 def test_per_record_facts_cannot_be_borrowed_across_tools_or_figures() -> None:
-    first = _record("figure-1", artifact="figure-1.png", facts=_frontiers_facts(represents_data=False))
+    first = _record(
+        "figure-1", artifact="figure-1.png", facts=_frontiers_facts(represents_data=False)
+    )
     borrowed = _frontiers_facts(represents_data=True)
     borrowed["model"] = Fact("KNOWN", "Example Vision", "figure-1")
     second = _record("figure-2", artifact="figure-2.png", facts=borrowed)
@@ -431,7 +492,11 @@ def test_frontiers_conceptual_vs_data_figure_actions(
         targets=("RESEARCH_FIGURE_OR_MEDIA",),
         facts=_frontiers_facts(represents_data=represents_data),
     )
-    result = evaluate(_base_case("Frontiers", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case(
+            "Frontiers", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")
+        )
+    )
     actions = " ".join(result.actions).casefold()
     assert result.execution_status == "READY"
     assert all(item in actions for item in expected)
@@ -446,7 +511,11 @@ def test_frontiers_unknown_data_routing_is_outstanding_not_halted() -> None:
         targets=("RESEARCH_FIGURE_OR_MEDIA",),
         facts=_frontiers_facts(represents_data=None, created=False),
     )
-    result = evaluate(_base_case("Frontiers", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case(
+            "Frontiers", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")
+        )
+    )
     assert result.execution_status == "READY"
     assert "resolve figure_represents_data" in result.actions
     assert "accuracy to data" not in " ".join(result.actions).casefold()
@@ -456,7 +525,9 @@ def test_frontiers_missing_model_or_source_halts() -> None:
     facts = _frontiers_facts(represents_data=False)
     facts["source_provider"] = unknown()
     record = _record(facts=facts)
-    result = evaluate(_base_case("Frontiers", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case("Frontiers", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED"))
+    )
     assert (result.execution_status, result.halt_reason) == ("HALTED", "UNRESOLVED_INPUT")
 
 
@@ -465,9 +536,13 @@ def test_frontiers_mixed_genai_and_other_ai_scope_halts_without_partial_bundle()
     other_facts = _frontiers_facts(represents_data=False)
     other_facts["policy_tool_scope"] = known("OTHER_AI")
     other = _record("other-ai", tool="Classifier", task="screen", facts=other_facts)
-    result = evaluate(_base_case("Frontiers", (genai, other), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case("Frontiers", (genai, other), categories=_categories(DRAFTING_ASSISTANCE="USED"))
+    )
     assert (result.outcome, result.halt_reason, result.blocks) == (
-        "UNKNOWN", "POLICY_SCOPE_GAP", ()
+        "UNKNOWN",
+        "POLICY_SCOPE_GAP",
+        (),
     )
 
 
@@ -477,7 +552,9 @@ def test_jama_non_llm_study_requires_date_and_rights_but_not_prompt_history() ->
         "jama_submission_type_is_prohibited": known(False),
     }
     record = _record(research_use=True, facts=facts)
-    result = evaluate(_base_case("JAMA", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case("JAMA", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED"))
+    )
     assert result.execution_status == "READY"
     ledger = result.ledger[record.record_id]
     assert ledger["dates_of_use"].value == "2026-07-30"
@@ -492,23 +569,42 @@ def test_jama_llm_study_requires_prompt_sequence_and_revisions() -> None:
         "jama_submission_type_is_prohibited": known(False),
     }
     record = _record(research_use=True, facts=facts)
-    result = evaluate(_base_case("JAMA", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case("JAMA", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED"))
+    )
     assert result.execution_status == "READY"
     assert result.ledger[record.record_id]["llm_prompt_sequence"].value == (1, 2)
 
 
 def test_conditional_children_are_not_applicable_only_after_explicit_false_parent() -> None:
     facts = _jama_facts(llm=False)
-    facts.update({
-        "jama_submission_type": known("ORIGINAL_INVESTIGATION"),
-        "jama_submission_type_is_prohibited": known(False),
-    })
-    ready = evaluate(_base_case("JAMA", (_record(research_use=True, facts=facts),), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    facts.update(
+        {
+            "jama_submission_type": known("ORIGINAL_INVESTIGATION"),
+            "jama_submission_type_is_prohibited": known(False),
+        }
+    )
+    ready = evaluate(
+        _base_case(
+            "JAMA",
+            (_record(research_use=True, facts=facts),),
+            categories=_categories(DRAFTING_ASSISTANCE="USED"),
+        )
+    )
     assert ready.ledger["use-1"]["llm_prompt_sequence"].state == "NOT_APPLICABLE"
     facts["study_uses_llm"] = unknown()
-    halted = evaluate(_base_case("JAMA", (_record(research_use=True, facts=facts),), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    halted = evaluate(
+        _base_case(
+            "JAMA",
+            (_record(research_use=True, facts=facts),),
+            categories=_categories(DRAFTING_ASSISTANCE="USED"),
+        )
+    )
     assert halted.execution_status == "HALTED"
-    assert "llm_prompt_sequence" not in halted.ledger.get("use-1", {}) or halted.ledger["use-1"]["llm_prompt_sequence"].state != "NOT_APPLICABLE"
+    assert (
+        "llm_prompt_sequence" not in halted.ledger.get("use-1", {})
+        or halted.ledger["use-1"]["llm_prompt_sequence"].state != "NOT_APPLICABLE"
+    )
 
 
 def test_jama_prohibited_manuscript_class_halts_as_known_prohibited_use() -> None:
@@ -517,7 +613,9 @@ def test_jama_prohibited_manuscript_class_halts_as_known_prohibited_use() -> Non
         "jama_submission_type_is_prohibited": known(True),
     }
     record = _record(research_use=False, facts=facts)
-    result = evaluate(_base_case("JAMA", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case("JAMA", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED"))
+    )
     assert (result.outcome, result.halt_reason) == ("REQUIRED", "PROHIBITED_USE")
 
 
@@ -529,7 +627,13 @@ def test_international_eye_science_non_core_data_and_deidentification_fields() -
         research_use=True,
         facts=_ies_facts(data=True, clinical=True),
     )
-    result = evaluate(_base_case("International Eye Science", (record,), categories=_categories(ANALYSIS_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case(
+            "International Eye Science",
+            (record,),
+            categories=_categories(ANALYSIS_ASSISTANCE="USED"),
+        )
+    )
     assert result.execution_status == "READY"
     ledger = result.ledger[record.record_id]
     assert ledger["generated_proportion"].value == "8%"
@@ -544,9 +648,17 @@ def test_international_eye_science_other_ai_only_and_mixed_halt_as_scope_gap() -
     other_facts["policy_tool_scope"] = known("OTHER_AI")
     other = _record("other", facts=other_facts)
     for records in ((other,), (genai, other)):
-        result = evaluate(_base_case("International Eye Science", records, categories=_categories(DRAFTING_ASSISTANCE="USED")))
+        result = evaluate(
+            _base_case(
+                "International Eye Science",
+                records,
+                categories=_categories(DRAFTING_ASSISTANCE="USED"),
+            )
+        )
         assert (result.outcome, result.halt_reason, result.blocks) == (
-            "UNKNOWN", "POLICY_SCOPE_GAP", ()
+            "UNKNOWN",
+            "POLICY_SCOPE_GAP",
+            (),
         )
 
 
@@ -559,7 +671,13 @@ def test_chinese_nursing_scientific_contribution_hard_prohibition() -> None:
         "used_unverified_genai_reference": known(False),
     }
     record = _record(facts=facts)
-    result = evaluate(_base_case("Chinese Nursing Journals Publishing House", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case(
+            "Chinese Nursing Journals Publishing House",
+            (record,),
+            categories=_categories(DRAFTING_ASSISTANCE="USED"),
+        )
+    )
     assert result.halt_reason == "PROHIBITED_USE"
 
 
@@ -592,8 +710,16 @@ def test_chinese_nursing_confirmed_non_core_use_reaches_render() -> None:
 
 
 def test_nature_venue_image_is_contained_before_phase2b() -> None:
-    record = _record(category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",))
-    result = evaluate(_base_case("Nature", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    record = _record(
+        category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+        operations=("GENERATED",),
+        targets=("RESEARCH_FIGURE_OR_MEDIA",),
+    )
+    result = evaluate(
+        _base_case(
+            "Nature", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")
+        )
+    )
     assert (result.outcome, result.halt_reason) == ("UNKNOWN", "CONTRACT_GAP")
     assert "Venue Phase 2b" not in result.phases
     assert "NATURE_VENUE_IMAGE_CONTAINMENT" in result.diagnostics
@@ -602,14 +728,36 @@ def test_nature_venue_image_is_contained_before_phase2b() -> None:
 @pytest.mark.parametrize(
     ("venue", "facts", "target"),
     (
-        ("ICMJE", {"ai_generated_material_used_as_primary_source": known(True), "ai_cited_as_author": known(False)}, "REFERENCE_OR_CITATION"),
-        ("NEJM", {"ai_generated_material_used_as_primary_source": known(True)}, "REFERENCE_OR_CITATION"),
-        ("PLOS", {"ai_fabricated_or_misrepresented_primary_research_data": known(True)}, "ORIGINAL_RESEARCH_DATA"),
+        (
+            "ICMJE",
+            {
+                "ai_generated_material_used_as_primary_source": known(True),
+                "ai_cited_as_author": known(False),
+            },
+            "REFERENCE_OR_CITATION",
+        ),
+        (
+            "NEJM",
+            {"ai_generated_material_used_as_primary_source": known(True)},
+            "REFERENCE_OR_CITATION",
+        ),
+        (
+            "PLOS",
+            {"ai_fabricated_or_misrepresented_primary_research_data": known(True)},
+            "ORIGINAL_RESEARCH_DATA",
+        ),
     ),
 )
 def test_western_hard_prohibitions_halt(venue: str, facts: dict[str, Fact], target: str) -> None:
-    record = _record(category="CITATION_CHECKING", operations=("CHECKED_CITATIONS",), targets=(target,), facts=facts)
-    result = evaluate(_base_case(venue, (record,), categories=_categories(CITATION_CHECKING="USED")))
+    record = _record(
+        category="CITATION_CHECKING",
+        operations=("CHECKED_CITATIONS",),
+        targets=(target,),
+        facts=facts,
+    )
+    result = evaluate(
+        _base_case(venue, (record,), categories=_categories(CITATION_CHECKING="USED"))
+    )
     assert result.halt_reason == "PROHIBITED_USE"
 
 
@@ -620,7 +768,9 @@ def test_icmje_member_venue_gets_separate_advisory_without_channel_merge() -> No
         "how_used": known("outlined the discussion"),
     }
     record = _record(facts=facts)
-    result = evaluate(_base_case("BMJ", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED")))
+    result = evaluate(
+        _base_case("BMJ", (record,), categories=_categories(DRAFTING_ASSISTANCE="USED"))
+    )
     assert result.execution_status == "READY"
     assert "ICMJE-alongside advisory" in result.advisories
     assert all(block.purpose != "ICMJE-alongside advisory" for block in result.blocks)
@@ -630,11 +780,22 @@ def test_lancet_graphical_abstract_uses_dedicated_caption_path() -> None:
     facts = _lancet_common() | {
         "artifact_class": known("GRAPHICAL_ABSTRACT"),
         "graphical_abstract_used_ai_or_ai_assisted_illustration": known(True),
-        "graphical_abstract_tool_class": known("DEDICATED_SCIENTIFIC_OR_PROFESSIONAL_ILLUSTRATION_TOOL"),
+        "graphical_abstract_tool_class": known(
+            "DEDICATED_SCIENTIFIC_OR_PROFESSIONAL_ILLUSTRATION_TOOL"
+        ),
         "publication_rights_basis": known("tool terms grant publication rights"),
     }
-    record = _record(category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",), facts=facts)
-    result = evaluate(_base_case("The Lancet", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    record = _record(
+        category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+        operations=("GENERATED",),
+        targets=("RESEARCH_FIGURE_OR_MEDIA",),
+        facts=facts,
+    )
+    result = evaluate(
+        _base_case(
+            "The Lancet", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")
+        )
+    )
     assert result.execution_status == "READY"
     assert [block.placement for block in result.blocks] == ["GRAPHICAL_ABSTRACT_CAPTION"]
 
@@ -645,8 +806,17 @@ def test_lancet_general_purpose_graphical_abstract_tool_is_prohibited() -> None:
         "graphical_abstract_used_ai_or_ai_assisted_illustration": known(True),
         "graphical_abstract_tool_class": known("GENERAL_PURPOSE_GENERATIVE_AI_IMAGE_TOOL"),
     }
-    record = _record(category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",), facts=facts)
-    result = evaluate(_base_case("The Lancet", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    record = _record(
+        category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+        operations=("GENERATED",),
+        targets=("RESEARCH_FIGURE_OR_MEDIA",),
+        facts=facts,
+    )
+    result = evaluate(
+        _base_case(
+            "The Lancet", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")
+        )
+    )
     assert result.halt_reason == "PROHIBITED_USE"
 
 
@@ -656,7 +826,20 @@ def test_lancet_primary_image_vs_research_method_paths() -> None:
         "ai_is_formal_research_design_or_method": known(False),
         "image_output_directly_obtained_in_research_through_that_method": known(False),
     }
-    prohibited = evaluate(_base_case("The Lancet", (_record(category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",), facts=primary),), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    prohibited = evaluate(
+        _base_case(
+            "The Lancet",
+            (
+                _record(
+                    category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+                    operations=("GENERATED",),
+                    targets=("RESEARCH_FIGURE_OR_MEDIA",),
+                    facts=primary,
+                ),
+            ),
+            categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED"),
+        )
+    )
     assert prohibited.halt_reason == "PROHIBITED_USE"
 
     method = _lancet_common() | {
@@ -668,7 +851,20 @@ def test_lancet_primary_image_vs_research_method_paths() -> None:
         "developer_or_manufacturer_applicable": known(True),
         "developer_or_manufacturer": known("Example Labs"),
     }
-    ready = evaluate(_base_case("The Lancet", (_record(category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",), facts=method),), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    ready = evaluate(
+        _base_case(
+            "The Lancet",
+            (
+                _record(
+                    category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+                    operations=("GENERATED",),
+                    targets=("RESEARCH_FIGURE_OR_MEDIA",),
+                    facts=method,
+                ),
+            ),
+            categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED"),
+        )
+    )
     assert ready.execution_status == "READY"
     assert [block.placement for block in ready.blocks] == ["METHODS"]
 
@@ -677,8 +873,17 @@ def test_lancet_protected_subject_halts_before_visual_classification() -> None:
     facts = _lancet_common() | {
         "generated_media_duplicates_or_refers_to_protected_subject": known(True),
     }
-    record = _record(category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",), facts=facts)
-    result = evaluate(_base_case("The Lancet", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    record = _record(
+        category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+        operations=("GENERATED",),
+        targets=("RESEARCH_FIGURE_OR_MEDIA",),
+        facts=facts,
+    )
+    result = evaluate(
+        _base_case(
+            "The Lancet", (record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")
+        )
+    )
     assert result.halt_reason == "PROHIBITED_USE"
     assert "artifact_class" not in result.ledger.get(record.record_id, {})
 
@@ -691,12 +896,30 @@ def test_lancet_cover_art_permission_missing_halts_and_mixed_use_is_required() -
         "cover_art_contains_third_party_material": known(False),
         "content_attribution": known("none_applicable"),
     }
-    cover_record = _record("cover", category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",), facts=cover)
-    halted = evaluate(_base_case("The Lancet", (cover_record,), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED")))
+    cover_record = _record(
+        "cover",
+        category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+        operations=("GENERATED",),
+        targets=("RESEARCH_FIGURE_OR_MEDIA",),
+        facts=cover,
+    )
+    halted = evaluate(
+        _base_case(
+            "The Lancet",
+            (cover_record,),
+            categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED"),
+        )
+    )
     assert halted.halt_reason == "INCOMPATIBLE_FACT"
 
     cover["publisher_permission"] = known(True)
-    cover_record = _record("cover", category="VISUAL_ARTWORK_MEDIA_ASSISTANCE", operations=("GENERATED",), targets=("RESEARCH_FIGURE_OR_MEDIA",), facts=cover)
+    cover_record = _record(
+        "cover",
+        category="VISUAL_ARTWORK_MEDIA_ASSISTANCE",
+        operations=("GENERATED",),
+        targets=("RESEARCH_FIGURE_OR_MEDIA",),
+        facts=cover,
+    )
     prep = _lancet_common() | {
         "tool_service_name": known("ExampleAI"),
         "purpose": known("language revision"),
@@ -705,7 +928,15 @@ def test_lancet_cover_art_permission_missing_halts_and_mixed_use_is_required() -
         "author_accepts_full_responsibility": known(True),
     }
     prep_record = _record("prep", facts=prep)
-    mixed = evaluate(_base_case("The Lancet", (cover_record, prep_record), categories=_categories(VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED", DRAFTING_ASSISTANCE="USED")))
+    mixed = evaluate(
+        _base_case(
+            "The Lancet",
+            (cover_record, prep_record),
+            categories=_categories(
+                VISUAL_ARTWORK_MEDIA_ASSISTANCE="USED", DRAFTING_ASSISTANCE="USED"
+            ),
+        )
+    )
     assert mixed.outcome == "REQUIRED"
     assert mixed.blocks
     assert "editor permission" in " ".join(mixed.actions).casefold()

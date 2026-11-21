@@ -7,9 +7,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_670_revision_roadmap_integration as guard
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 COPIED = tuple(
@@ -87,15 +85,11 @@ def test_current_roadmap_version_and_legacy_fields_are_load_bearing(
 
 
 @pytest.mark.parametrize("surface", ["current", "legacy"])
-def test_patch_current_1_1_and_legacy_1_0_are_isolated(
-    tmp_path: Path, surface: str
-) -> None:
+def test_patch_current_1_1_and_legacy_1_0_are_isolated(tmp_path: Path, surface: str) -> None:
     root = _tree(tmp_path)
     if surface == "current":
         schema = _read_json(root, guard.PATCH_SCHEMA)
-        schema["$defs"]["review_patch"]["properties"]["patch_format_version"][  # type: ignore[index]
-            "const"
-        ] = "1.0"
+        schema["$defs"]["review_patch"]["properties"]["patch_format_version"]["const"] = "1.0"  # type: ignore[index]
         _write_json(root, guard.PATCH_SCHEMA, schema)
         expected = "review_patch no longer pins current patch 1.1"
     else:
@@ -112,9 +106,7 @@ def test_every_shipped_schema_id_is_globally_unique(tmp_path: Path) -> None:
     legacy = _read_json(root, guard.PATCH_LEGACY_SCHEMA)
     legacy["$id"] = current["$id"]
     _write_json(root, guard.PATCH_LEGACY_SCHEMA, legacy)
-    assert any(
-        "duplicate shipped schema $id" in error for error in guard.run_checks(root)
-    )
+    assert any("duplicate shipped schema $id" in error for error in guard.run_checks(root))
 
 
 def test_re_review_current_version_is_load_bearing(tmp_path: Path) -> None:
@@ -123,10 +115,7 @@ def test_re_review_current_version_is_load_bearing(tmp_path: Path) -> None:
     schema = _read_json(root, relative)
     schema["properties"]["contract_version"]["const"] = "1.0"  # type: ignore[index]
     _write_json(root, relative, schema)
-    assert any(
-        "current contract_version must be 1.1" in error
-        for error in guard.run_checks(root)
-    )
+    assert any("current contract_version must be 1.1" in error for error in guard.run_checks(root))
 
 
 def test_re_review_legacy_field_name_is_rejected(tmp_path: Path) -> None:
@@ -139,17 +128,13 @@ def test_re_review_legacy_field_name_is_rejected(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("artifact", ["author_adjudication", "revision_evidence_bundle"])
-def test_re_review_requires_author_sidecar_and_bundle(
-    tmp_path: Path, artifact: str
-) -> None:
+def test_re_review_requires_author_sidecar_and_bundle(tmp_path: Path, artifact: str) -> None:
     root = _tree(tmp_path)
     relative = guard.RE_REVIEW_SCHEMAS[0]
     schema = _read_json(root, relative)
     schema["properties"]["artifacts"]["required"].remove(artifact)  # type: ignore[index]
     _write_json(root, relative, schema)
-    assert any(
-        "exactly eleven artifact keys" in error for error in guard.run_checks(root)
-    )
+    assert any("exactly eleven artifact keys" in error for error in guard.run_checks(root))
 
 
 def test_re_review_original_schema_cannot_degrade_to_optional_absence(
@@ -172,10 +157,7 @@ def test_frozen_detection_surface_drift_fails(tmp_path: Path) -> None:
     root = _tree(tmp_path)
     relative = next(iter(guard.DETECTION_HASHES))
     _append(root, relative, "\n<!-- unauthorized detection drift -->\n")
-    assert any(
-        "reviewer detection surface drifted" in error
-        for error in guard.run_checks(root)
-    )
+    assert any("reviewer detection surface drifted" in error for error in guard.run_checks(root))
 
 
 @pytest.mark.parametrize(
@@ -188,15 +170,12 @@ def test_frozen_detection_surface_drift_fails(tmp_path: Path) -> None:
         "| Rank |",
     ],
 )
-def test_author_facing_rank_or_time_presentation_fails(
-    tmp_path: Path, phrase: str
-) -> None:
+def test_author_facing_rank_or_time_presentation_fails(tmp_path: Path, phrase: str) -> None:
     root = _tree(tmp_path)
     relative = guard.AUTHOR_PRESENTATION_FILES[0]
     _append(root, relative, f"\n{phrase}\n")
     assert any(
-        "author-facing work-rank/time presentation" in error
-        for error in guard.run_checks(root)
+        "author-facing work-rank/time presentation" in error for error in guard.run_checks(root)
     )
 
 
@@ -209,9 +188,7 @@ def test_required_documentation_pointer_removal_fails(tmp_path: Path) -> None:
         "immutable reviewer-owned core",
         "mutable reviewer-owned core",
     )
-    assert any(
-        "missing required #670 pointer" in error for error in guard.run_checks(root)
-    )
+    assert any("missing required #670 pointer" in error for error in guard.run_checks(root))
 
 
 def test_runtime_forbidden_import_fails(tmp_path: Path) -> None:
@@ -252,9 +229,7 @@ def test_legacy_loader_path_is_load_bearing(tmp_path: Path) -> None:
         '{"type":"number","minimum":NaN}',
     ],
 )
-def test_duplicate_or_nonfinite_schema_json_fails_closed(
-    tmp_path: Path, payload: str
-) -> None:
+def test_duplicate_or_nonfinite_schema_json_fails_closed(tmp_path: Path, payload: str) -> None:
     root = _tree(tmp_path)
     (root / guard.REVISION_SCHEMAS[0]).write_text(payload, encoding="utf-8")
     assert any("schema load/check failed" in error for error in guard.run_checks(root))

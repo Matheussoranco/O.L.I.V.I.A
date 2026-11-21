@@ -12,7 +12,6 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
-
 from resolve_review_target_context import (
     ContractError,
     digest,
@@ -22,7 +21,6 @@ from resolve_review_target_context import (
     validate_registry,
 )
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = REPO_ROOT / "scripts" / "fixtures" / "review_target_context"
 CONTRACTS = REPO_ROOT / "shared" / "contracts" / "review_target"
@@ -31,16 +29,10 @@ LIVE_REGISTRY = REPO_ROOT / "shared" / "review_criteria_registry.json"
 SOURCE_PATH = REPO_ROOT / "academic-paper-reviewer" / "references" / "review_criteria_framework.md"
 MSR_DECLARATION = FIXTURES / "msr-2027-technical-full-declaration.json"
 MSR_SOURCE_RECEIPT = (
-    REPO_ROOT
-    / "shared"
-    / "review_criteria_sources"
-    / "msr-2027-technical-papers.2026-08-24.json"
+    REPO_ROOT / "shared" / "review_criteria_sources" / "msr-2027-technical-papers.2026-08-24.json"
 )
 SIGSOFT_SOURCE_RECEIPT = (
-    REPO_ROOT
-    / "shared"
-    / "review_criteria_sources"
-    / "sigsoft-empirical-standards.2026-08-24.json"
+    REPO_ROOT / "shared" / "review_criteria_sources" / "sigsoft-empirical-standards.2026-08-24.json"
 )
 MSR_PANE_SHA256 = "2546217a5f2b7dccb3b617b976e75cf7427c9a3881fda3092323c94a35231795"
 MSR_CRITERION_VERSION = f"2027-cfp.pane-sha256-{MSR_PANE_SHA256}"
@@ -93,7 +85,9 @@ def _validator(schema_name: str) -> Draft202012Validator:
 
 def _row(registry: dict[str, object], criterion_id: str) -> dict[str, object]:
     return next(
-        item for item in registry["criteria"] if item["criterion_id"] == criterion_id  # type: ignore[index,union-attr]
+        item
+        for item in registry["criteria"]
+        if item["criterion_id"] == criterion_id  # type: ignore[index,union-attr]
     )
 
 
@@ -187,7 +181,7 @@ def test_live_sigsoft_rows_require_confirmed_scope(mutation: str) -> None:
     context = resolve(declaration, live)
 
     assert not (set(context["selected_criterion_ids"]) & SIGSOFT_IDS)  # type: ignore[arg-type]
-    assert MSR_OFFICIAL_IDS <= set(context["selected_criterion_ids"])  # type: ignore[arg-type]
+    assert set(context["selected_criterion_ids"]) >= MSR_OFFICIAL_IDS  # type: ignore[arg-type]
 
 
 def test_live_msr_rows_respect_first_verified_effective_date() -> None:
@@ -234,12 +228,8 @@ def test_live_registry_provenance_by_partition() -> None:
         assert row["version"] == MSR_CRITERION_VERSION
         assert row["source"]["uri"] == expected_uri  # type: ignore[index]
     expected_sigsoft_versions = {
-        "field.sigsoft.empirical.general-essential": (
-            "d131d7209f2fad7e8dfd30afbd2b8ea605ea3141"
-        ),
-        "overlay.sigsoft.repository-mining.essential": (
-            "53c14e1a85aac1aeafb0788a622c5aaafec5c8b9"
-        ),
+        "field.sigsoft.empirical.general-essential": ("d131d7209f2fad7e8dfd30afbd2b8ea605ea3141"),
+        "overlay.sigsoft.repository-mining.essential": ("53c14e1a85aac1aeafb0788a622c5aaafec5c8b9"),
     }
     for criterion_id, expected_version in expected_sigsoft_versions.items():
         row = _row(live, criterion_id)
@@ -270,9 +260,7 @@ def test_live_msr_rows_are_bound_to_committed_source_receipt() -> None:
     }
     assert receipt["receipt_version"] == "review-criteria-source-receipt/1.0"
     assert receipt["receipt_kind"] == "mutable_web_semantic_snapshot"
-    assert receipt["source_uri"] == (
-        "https://2027.msrconf.org/track/msr-2027-technical-papers"
-    )
+    assert receipt["source_uri"] == ("https://2027.msrconf.org/track/msr-2027-technical-papers")
     assert receipt["capture"] == {
         "method": "HTTPS GET with curl 8.7.1; response body decoded as UTF-8",
         "http_status": 200,
@@ -280,18 +268,22 @@ def test_live_msr_rows_are_bound_to_committed_source_receipt() -> None:
         "etag": None,
         "last_modified": None,
         "raw_body_size_bytes": 45702,
-        "raw_body_sha256": (
-            "10221162dbd1907c46eb9104808243f0d49c9df5cc7e81c335c8aeb9f15b28a7"
-        ),
+        "raw_body_sha256": ("10221162dbd1907c46eb9104808243f0d49c9df5cc7e81c335c8aeb9f15b28a7"),
     }
     semantic = receipt["semantic_snapshot"]
-    assert semantic["selection"] == (  # type: ignore[index]
-        "the first div whose id is exactly Call-for-Papers, including descendant "
-        "text nodes through its matching closing tag"
+    assert (
+        semantic["selection"]
+        == (  # type: ignore[index]
+            "the first div whose id is exactly Call-for-Papers, including descendant "
+            "text nodes through its matching closing tag"
+        )
     )
-    assert semantic["normalization"] == (  # type: ignore[index]
-        "HTMLParser(convert_charrefs=True), join data chunks with U+0020, then "
-        "replace every Unicode whitespace run with one U+0020 and strip the ends"
+    assert (
+        semantic["normalization"]
+        == (  # type: ignore[index]
+            "HTMLParser(convert_charrefs=True), join data chunks with U+0020, then "
+            "replace every Unicode whitespace run with one U+0020 and strip the ends"
+        )
     )
     assert semantic["encoding"] == "UTF-8"  # type: ignore[index]
     assert semantic["size_bytes"] == 16601  # type: ignore[index]
@@ -626,8 +618,8 @@ def test_live_registry_release_rotates_existing_context_digest_visibly(
     before = resolve(field_general_declaration, predecessor)
     after = resolve(field_general_declaration, live)
 
-    assert predecessor["registry_id"] == live["registry_id"] == (
-        "ars-field-general-review-criteria"
+    assert (
+        predecessor["registry_id"] == live["registry_id"] == ("ars-field-general-review-criteria")
     )
     assert digest(predecessor) == (
         "3209e681cc6dbc8ece2b0961ad3c516b7dd78aa32d045dacce76b54b5962f549"
@@ -694,7 +686,14 @@ def test_cli_rejects_duplicate_json_keys(tmp_path: Path, registry: dict[str, obj
     declaration_path.write_text('{"schema_version":"a","schema_version":"b"}', encoding="utf-8")
     registry_path.write_text(json.dumps(registry), encoding="utf-8")
     completed = subprocess.run(
-        [sys.executable, str(RESOLVER), "--context", str(declaration_path), "--registry", str(registry_path)],
+        [
+            sys.executable,
+            str(RESOLVER),
+            "--context",
+            str(declaration_path),
+            "--registry",
+            str(registry_path),
+        ],
         text=True,
         capture_output=True,
         check=False,

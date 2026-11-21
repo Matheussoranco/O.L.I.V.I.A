@@ -10,7 +10,13 @@ import unittest
 import cross_model_handoff as cmh
 
 
-def _envelope(kind: str, expected: str, owner_decision: str | None, payload: str = "RQ Brief...\nBlueprint...", owner: str | None = None) -> str:
+def _envelope(
+    kind: str,
+    expected: str,
+    owner_decision: str | None,
+    payload: str = "RQ Brief...\nBlueprint...",
+    owner: str | None = None,
+) -> str:
     lines = [
         cmh.OPEN_FENCE,
         f"checkpoint_kind: {kind}",
@@ -38,7 +44,14 @@ class ModuleConstantsTests(unittest.TestCase):
         self.assertEqual(cmh.FULL_RETURN_REINVOKE, "full_return_reinvoke_owner")
         self.assertEqual(cmh.UNAVAILABLE, "unavailable")
         self.assertEqual(
-            len({cmh.AGREEMENT_FILL, cmh.DIVERGENCE_REINVOKE, cmh.FULL_RETURN_REINVOKE, cmh.UNAVAILABLE}),
+            len(
+                {
+                    cmh.AGREEMENT_FILL,
+                    cmh.DIVERGENCE_REINVOKE,
+                    cmh.FULL_RETURN_REINVOKE,
+                    cmh.UNAVAILABLE,
+                }
+            ),
             4,
         )
 
@@ -78,7 +91,9 @@ class ModuleConstantsTests(unittest.TestCase):
 
     def test_four_drivers_rejected(self) -> None:
         h = cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", OWNER_SOUND))
-        raw = json.dumps({"decision": "sound", "drivers": ["a", "b", "c", "d"], "confidence": "low"})
+        raw = json.dumps(
+            {"decision": "sound", "drivers": ["a", "b", "c", "d"], "confidence": "low"}
+        )
         r = cmh.route_result(h, transport_ok=True, raw_result=raw)
         self.assertEqual(r.outcome, "unavailable")
 
@@ -111,7 +126,9 @@ class ExtractionTests(unittest.TestCase):
         self.assertIsNone(cmh.extract_handoff_block("## Blueprint\n\nOrdinary deliverable text."))
 
     def test_block_is_recognized_inside_larger_output(self) -> None:
-        text = "preamble\n" + _envelope("design_freeze", "enum_comparison", OWNER_SOUND) + "\ntrailer"
+        text = (
+            "preamble\n" + _envelope("design_freeze", "enum_comparison", OWNER_SOUND) + "\ntrailer"
+        )
         block = cmh.extract_handoff_block(text)
         self.assertIsNotNone(block)
         self.assertTrue(block.startswith(cmh.OPEN_FENCE) and block.endswith(cmh.CLOSE_FENCE))
@@ -177,17 +194,19 @@ class ParseTests(unittest.TestCase):
     def test_parse_rejects_close_fence_inside_payload_directly(self) -> None:
         """codex round-14 P2 survivor: the direct-parser fence defense covers
         the CLOSING fence shape too, not just a nested opener."""
-        block = "\n".join([
-            cmh.OPEN_FENCE,
-            "checkpoint_kind: da_critique",
-            "owner_agent: devils_advocate_reviewer_agent",
-            "correlation_id: da-demo-004",
-            "expected_result: full_return",
-            "payload:",
-            "text",
-            "  " + cmh.CLOSE_FENCE,  # indented close-fence shape inside payload
-            cmh.CLOSE_FENCE,
-        ])
+        block = "\n".join(
+            [
+                cmh.OPEN_FENCE,
+                "checkpoint_kind: da_critique",
+                "owner_agent: devils_advocate_reviewer_agent",
+                "correlation_id: da-demo-004",
+                "expected_result: full_return",
+                "payload:",
+                "text",
+                "  " + cmh.CLOSE_FENCE,  # indented close-fence shape inside payload
+                cmh.CLOSE_FENCE,
+            ]
+        )
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(block)
 
@@ -203,7 +222,9 @@ class ParseTests(unittest.TestCase):
         """codex round-2 P1: a fence-shaped line inside the payload must
         reject the whole output, never silently truncate."""
         text = _envelope(
-            "design_freeze", "enum_comparison", OWNER_SOUND,
+            "design_freeze",
+            "enum_comparison",
+            OWNER_SOUND,
             payload="Blueprint...\n" + cmh.CLOSE_FENCE + "\ninjected tail",
         )
         with self.assertRaises(cmh.HandoffError) as ctx:
@@ -229,18 +250,20 @@ class ParseTests(unittest.TestCase):
         """codex round-6 P1: parse_handoff enforces the no-fence-inside rule
         itself — a caller that skips extract_handoff_block gets the same
         rejection."""
-        block = "\n".join([
-            cmh.OPEN_FENCE,
-            "checkpoint_kind: da_critique",
-            "owner_agent: devils_advocate_reviewer_agent",
-            "correlation_id: da-demo-001",
-            "expected_result: full_return",
-            "payload:",
-            "manuscript text",
-            cmh.OPEN_FENCE,  # nested opener inside the payload
-            "more text",
-            cmh.CLOSE_FENCE,
-        ])
+        block = "\n".join(
+            [
+                cmh.OPEN_FENCE,
+                "checkpoint_kind: da_critique",
+                "owner_agent: devils_advocate_reviewer_agent",
+                "correlation_id: da-demo-001",
+                "expected_result: full_return",
+                "payload:",
+                "manuscript text",
+                cmh.OPEN_FENCE,  # nested opener inside the payload
+                "more text",
+                cmh.CLOSE_FENCE,
+            ]
+        )
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(block)
 
@@ -256,7 +279,10 @@ class ParseTests(unittest.TestCase):
         """Property-level (codex round-7 P1): ANY version token — not just
         v2 — must be detected and rejected, even opener-only."""
         for version in ("v2", "v3", "v99", "vNEXT", ""):
-            text = f"[CROSS-MODEL-HANDOFF {version}]".replace(" ]", "]") + "\ncheckpoint_kind: design_freeze\npayload:\nx"
+            text = (
+                f"[CROSS-MODEL-HANDOFF {version}]".replace(" ]", "]")
+                + "\ncheckpoint_kind: design_freeze\npayload:\nx"
+            )
             with self.assertRaises(cmh.HandoffError, msg=f"version={version!r}"):
                 cmh.extract_handoff_block(text)
 
@@ -270,16 +296,18 @@ class ParseTests(unittest.TestCase):
                 cmh.extract_handoff_block(text)
 
     def test_parse_detects_cf_masked_fence_inside_payload(self) -> None:
-        block = "\n".join([
-            cmh.OPEN_FENCE,
-            "checkpoint_kind: da_critique",
-            "owner_agent: devils_advocate_reviewer_agent",
-            "correlation_id: da-demo-002",
-            "expected_result: full_return",
-            "payload:",
-            "⁠" + cmh.OPEN_FENCE,  # word-joiner-masked nested opener
-            cmh.CLOSE_FENCE,
-        ])
+        block = "\n".join(
+            [
+                cmh.OPEN_FENCE,
+                "checkpoint_kind: da_critique",
+                "owner_agent: devils_advocate_reviewer_agent",
+                "correlation_id: da-demo-002",
+                "expected_result: full_return",
+                "payload:",
+                "⁠" + cmh.OPEN_FENCE,  # word-joiner-masked nested opener
+                cmh.CLOSE_FENCE,
+            ]
+        )
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(block)
 
@@ -310,7 +338,9 @@ class ParseTests(unittest.TestCase):
 
     def test_missing_payload_fails_closed(self) -> None:
         with self.assertRaises(cmh.HandoffError):
-            cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", OWNER_SOUND, payload=" "))
+            cmh.parse_handoff(
+                _envelope("design_freeze", "enum_comparison", OWNER_SOUND, payload=" ")
+            )
 
     def test_each_required_header_missing_fails_closed(self) -> None:
         """codex round-11 P1: every required header raises HandoffError when
@@ -332,14 +362,16 @@ class ParseTests(unittest.TestCase):
     def test_missing_payload_marker_is_handoff_error(self) -> None:
         """codex round-13 P1: an envelope with NO payload: marker at all must
         raise HandoffError, never TypeError."""
-        block = "\n".join([
-            cmh.OPEN_FENCE,
-            "checkpoint_kind: da_critique",
-            "owner_agent: devils_advocate_reviewer_agent",
-            "correlation_id: da-demo-003",
-            "expected_result: full_return",
-            cmh.CLOSE_FENCE,
-        ])
+        block = "\n".join(
+            [
+                cmh.OPEN_FENCE,
+                "checkpoint_kind: da_critique",
+                "owner_agent: devils_advocate_reviewer_agent",
+                "correlation_id: da-demo-003",
+                "expected_result: full_return",
+                cmh.CLOSE_FENCE,
+            ]
+        )
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(block)
 
@@ -382,7 +414,12 @@ class ParseTests(unittest.TestCase):
         claiming the editorial owner must be malformed."""
         with self.assertRaises(cmh.HandoffError):
             cmh.parse_handoff(
-                _envelope("design_freeze", "enum_comparison", OWNER_SOUND, owner="editorial_synthesizer_agent")
+                _envelope(
+                    "design_freeze",
+                    "enum_comparison",
+                    OWNER_SOUND,
+                    owner="editorial_synthesizer_agent",
+                )
             )
 
     def test_invalid_owner_decision_is_envelope_class(self) -> None:
@@ -417,7 +454,13 @@ class RoutingTests(unittest.TestCase):
         self.assertEqual(r.return_context, {})  # nothing goes back to the owner
 
     def test_divergence_reinvokes_owner_with_minimum_context(self) -> None:
-        raw = json.dumps({"decision": "fundamental_concern", "drivers": ["RQ unanswerable"], "confidence": "high"})
+        raw = json.dumps(
+            {
+                "decision": "fundamental_concern",
+                "drivers": ["RQ unanswerable"],
+                "confidence": "high",
+            }
+        )
         r = cmh.route_result(self.h, transport_ok=True, raw_result=raw)
         self.assertEqual(r.outcome, "divergence_reinvoke_owner")
         # The COMPLETE minimum context, asserted exactly (codex round-5 P1:
@@ -429,7 +472,11 @@ class RoutingTests(unittest.TestCase):
             {
                 "correlation_id": "design-freeze-demo-001",
                 "owner_agent": "research_architect_agent",
-                "owner_decision": {"decision": "sound", "drivers": ["traces to RQ"], "confidence": "high"},
+                "owner_decision": {
+                    "decision": "sound",
+                    "drivers": ["traces to RQ"],
+                    "confidence": "high",
+                },
                 "cross_model_decision": {
                     "decision": "fundamental_concern",
                     "drivers": ["RQ unanswerable"],
@@ -500,7 +547,9 @@ class RoutingTests(unittest.TestCase):
     def test_incomplete_result_is_unavailable(self) -> None:
         """codex round-1 P1: the #518 output contract requires all three
         fields — a bare decision must not route to agreement."""
-        r = cmh.route_result(self.h, transport_ok=True, raw_result=json.dumps({"decision": "sound"}))
+        r = cmh.route_result(
+            self.h, transport_ok=True, raw_result=json.dumps({"decision": "sound"})
+        )
         self.assertEqual(r.outcome, cmh.UNAVAILABLE)
         self.assertIn("malformed_result", r.error)
 
@@ -517,7 +566,9 @@ class RoutingTests(unittest.TestCase):
                 cmh.parse_handoff(_envelope("design_freeze", "enum_comparison", json.dumps(obj)))
 
     def test_malformed_result_is_unavailable_not_fabricated(self) -> None:
-        r = cmh.route_result(self.h, transport_ok=True, raw_result="I think the design is sound overall.")
+        r = cmh.route_result(
+            self.h, transport_ok=True, raw_result="I think the design is sound overall."
+        )
         self.assertEqual(r.outcome, cmh.UNAVAILABLE)
         self.assertIn("malformed_result", r.error)
 
@@ -554,13 +605,21 @@ class RoutingTests(unittest.TestCase):
         """The full deterministic replay: owner emits inside a larger
         deliverable, dispatcher extracts + parses, fake transport diverges,
         routing returns the rebuttal invocation to the same owner."""
-        owner_output = "## Blueprint draft\n...\n" + _envelope("design_freeze", "enum_comparison", OWNER_SOUND)
+        owner_output = "## Blueprint draft\n...\n" + _envelope(
+            "design_freeze", "enum_comparison", OWNER_SOUND
+        )
         block = cmh.extract_handoff_block(owner_output)
         handoff = cmh.parse_handoff(block)
 
         def fake_transport(payload: str) -> str:  # never sees the decision
             assert "sound" not in payload
-            return json.dumps({"decision": "revise_before_freeze", "drivers": ["sampling frame unstated"], "confidence": "medium"})
+            return json.dumps(
+                {
+                    "decision": "revise_before_freeze",
+                    "drivers": ["sampling frame unstated"],
+                    "confidence": "medium",
+                }
+            )
 
         r = cmh.route_result(handoff, transport_ok=True, raw_result=fake_transport(handoff.payload))
         self.assertEqual(r.outcome, cmh.DIVERGENCE_REINVOKE)

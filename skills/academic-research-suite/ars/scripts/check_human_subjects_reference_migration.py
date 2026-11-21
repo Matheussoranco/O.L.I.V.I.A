@@ -12,10 +12,10 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
-
+from typing import Any
 
 IRB_REFERENCE = Path("deep-research/references/irb_decision_tree.md")
 ETHICS_CHECKLIST = Path("deep-research/references/ethics_checklist.md")
@@ -76,8 +76,7 @@ ARCHITECT_REPLAY_CONTRACT = (
     "`scripts/resolve_human_subjects_authority.py`."
 )
 ARCHITECT_NO_SIMULATION = (
-    "This role has no shell authority and must not claim to have run replay "
-    "validation."
+    "This role has no shell authority and must not claim to have run replay " "validation."
 )
 AGENT_GATE_CONTRACTS = {
     ETHICS_AGENT: (ETHICS_GATE_CONTRACT, ETHICS_CLOSED_GATE),
@@ -114,8 +113,7 @@ SCENARIO = re.compile(
     re.IGNORECASE,
 )
 EXPLANATORY_SECTION = re.compile(
-    r"\b(?:historical|legacy|deprecated|removed|forbidden|banned|prohibited|"
-    r"anti[- ]pattern)\b",
+    r"\b(?:historical|legacy|deprecated|removed|forbidden|banned|prohibited|" r"anti[- ]pattern)\b",
     re.IGNORECASE,
 )
 COMMITTEE_PROMOTION = re.compile(
@@ -126,9 +124,7 @@ COMMITTEE_PROMOTION = re.compile(
 )
 INLINE_CODE = re.compile(r"^`([^`]+)`$")
 MARKDOWN_LINK = re.compile(r"^\[([^\]]+)\]\((https://[^\s()]+)\)$")
-PARAGRAPH_SINGLE_LINE = re.compile(
-    r"^\s*(?:#{1,6}\s|\||```|~~~|---\s*$)", re.IGNORECASE
-)
+PARAGRAPH_SINGLE_LINE = re.compile(r"^\s*(?:#{1,6}\s|\||```|~~~|---\s*$)", re.IGNORECASE)
 NEW_LIST_ITEM = re.compile(r"^\s*(?:[-*+]\s|[0-9]+[.)]\s)")
 
 
@@ -190,9 +186,7 @@ def _load_registry(path: Path) -> tuple[dict[str, RequirementMeta], list[str]]:
     requirements: dict[str, RequirementMeta] = {}
     errors: list[str] = []
     for profile_index, profile in enumerate(value["profiles"]):
-        if not isinstance(profile, dict) or not isinstance(
-            profile.get("requirements"), list
-        ):
+        if not isinstance(profile, dict) or not isinstance(profile.get("requirements"), list):
             raise MigrationInputError(
                 f"{path}: profiles[{profile_index}].requirements must be an array"
             )
@@ -218,9 +212,7 @@ def _load_registry(path: Path) -> tuple[dict[str, RequirementMeta], list[str]]:
                     "provision/authority URL"
                 )
             if requirement_id in requirements:
-                raise MigrationInputError(
-                    f"{path}: duplicate requirement_id: {requirement_id}"
-                )
+                raise MigrationInputError(f"{path}: duplicate requirement_id: {requirement_id}")
             requirements[requirement_id] = RequirementMeta(
                 obligated_actor=actor,
                 consumer_scopes=tuple(scopes),
@@ -246,9 +238,7 @@ def _assertion_clauses(paragraph: str) -> tuple[str, ...]:
     """Split assertions after Markdown line wrapping has been joined."""
 
     return tuple(
-        clause.strip()
-        for clause in re.split(r"(?<=[.!?;])\s+", paragraph)
-        if clause.strip()
+        clause.strip() for clause in re.split(r"(?<=[.!?;])\s+", paragraph) if clause.strip()
     )
 
 
@@ -257,18 +247,12 @@ def _code_cell(cell: str) -> str | None:
     return match.group(1) if match else None
 
 
-def _parse_requirement_table(
-    text: str, requirements: dict[str, RequirementMeta]
-) -> list[str]:
+def _parse_requirement_table(text: str, requirements: dict[str, RequirementMeta]) -> list[str]:
     errors: list[str] = []
     if text.count(REQUIREMENT_TABLE_HEADER) != 2:
-        errors.append(
-            f"{IRB_REFERENCE}: exact six-column requirement header must appear twice"
-        )
+        errors.append(f"{IRB_REFERENCE}: exact six-column requirement header must appear twice")
     if text.count(REQUIREMENT_TABLE_SEPARATOR) != 2:
-        errors.append(
-            f"{IRB_REFERENCE}: exact six-column requirement separator must appear twice"
-        )
+        errors.append(f"{IRB_REFERENCE}: exact six-column requirement separator must appear twice")
 
     rows: dict[str, RequirementTableRow] = {}
     for line_number, line in enumerate(text.splitlines(), start=1):
@@ -282,9 +266,7 @@ def _parse_requirement_table(
         if requirement_id is None or REQUIREMENT_ID.fullmatch(requirement_id) is None:
             continue
         if len(cells) != 6:
-            errors.append(
-                f"{IRB_REFERENCE}:{line_number}: requirement row must have six columns"
-            )
+            errors.append(f"{IRB_REFERENCE}:{line_number}: requirement row must have six columns")
             continue
         if requirement_id in rows:
             errors.append(
@@ -306,16 +288,13 @@ def _parse_requirement_table(
         try:
             scopes_value = json.loads(scopes_json)
         except json.JSONDecodeError as exc:
-            errors.append(
-                f"{IRB_REFERENCE}:{line_number}: consumer scopes are not JSON: {exc.msg}"
-            )
+            errors.append(f"{IRB_REFERENCE}:{line_number}: consumer scopes are not JSON: {exc.msg}")
             continue
         if not isinstance(scopes_value, list) or not all(
             isinstance(scope, str) for scope in scopes_value
         ):
             errors.append(
-                f"{IRB_REFERENCE}:{line_number}: consumer scopes must be a JSON "
-                "string array"
+                f"{IRB_REFERENCE}:{line_number}: consumer scopes must be a JSON " "string array"
             )
             continue
         rows[requirement_id] = RequirementTableRow(
@@ -332,9 +311,7 @@ def _parse_requirement_table(
     for missing in sorted(registry_ids - table_ids):
         errors.append(f"{IRB_REFERENCE}: missing exact requirement table row: {missing}")
     for unexpected in sorted(table_ids - registry_ids):
-        errors.append(
-            f"{IRB_REFERENCE}: table requirement is absent from {REGISTRY}: {unexpected}"
-        )
+        errors.append(f"{IRB_REFERENCE}: table requirement is absent from {REGISTRY}: {unexpected}")
 
     for requirement_id in sorted(table_ids & registry_ids):
         row = rows[requirement_id]
@@ -396,8 +373,7 @@ def _paragraph_contexts(text: str) -> dict[int, tuple[int, str]]:
 def _is_positive_profile_use(paragraph: str) -> bool:
     patterns = (
         r"profile-dependent.{0,96}?\b(?:is )?(?:allowed|permitted)\b",
-        r"\bmay\s+(?:dereference|consume|emit|use|produce|return)\b"
-        r".{0,96}profile-dependent",
+        r"\bmay\s+(?:dereference|consume|emit|use|produce|return)\b" r".{0,96}profile-dependent",
         r"profile-dependent.{0,96}?\bmay\s+(?:be\s+)?"
         r"(?:dereferenced|consumed|emitted|used|produced|returned)\b",
         r"\bmay\b.{0,40}?\bdereference authority rows\b",
@@ -538,15 +514,18 @@ def _is_scenario_mapping(line: str) -> bool:
 
 
 def _automatic_mapping_is_negated(value: str) -> bool:
-    return re.search(
-        r"\b(?:do|does|did|is|are|was|were|must|may|can|will|shall)\s+"
-        r"(?:not|never)\b(?:\s+\w+){0,4}\s+"
-        r"(?:automatic\w*|always|requir\w*|impli\w*|map\w*|qualif\w*)\b|"
-        r"\bnever\s+(?:automatic\w*|always|requir\w*|impli\w*|map\w*|"
-        r"qualif\w*)\b|"
-        r"\bno\s+(?:automatic\w*\s+)?full[ -]board\b",
-        value,
-    ) is not None
+    return (
+        re.search(
+            r"\b(?:do|does|did|is|are|was|were|must|may|can|will|shall)\s+"
+            r"(?:not|never)\b(?:\s+\w+){0,4}\s+"
+            r"(?:automatic\w*|always|requir\w*|impli\w*|map\w*|qualif\w*)\b|"
+            r"\bnever\s+(?:automatic\w*|always|requir\w*|impli\w*|map\w*|"
+            r"qualif\w*)\b|"
+            r"\bno\s+(?:automatic\w*\s+)?full[ -]board\b",
+            value,
+        )
+        is not None
+    )
 
 
 def _verified_artifacts(clause: str) -> set[str]:
@@ -561,8 +540,7 @@ def _verified_artifacts(clause: str) -> set[str]:
     for name, noun in artifacts.items():
         matches = (
             re.search(
-                rf"\b{noun}\b.{{0,64}}\b(?:is|are|was|were|has been|have been)\s+"
-                r"verified\b",
+                rf"\b{noun}\b.{{0,64}}\b(?:is|are|was|were|has been|have been)\s+" r"verified\b",
                 normalized,
             ),
             re.search(
@@ -571,8 +549,7 @@ def _verified_artifacts(clause: str) -> set[str]:
             ),
         )
         if any(
-            match is not None
-            and not re.search(r"\b(?:not|never|no)\b", match.group(0))
+            match is not None and not re.search(r"\b(?:not|never|no)\b", match.group(0))
             for match in matches
         ):
             verified.add(name)
@@ -596,8 +573,7 @@ def _uses_immediately_prior_verified_artifact(
         "facts": "fact",
     }
     for match in re.finditer(
-        r"\b(?:that|those|the verified)\s+"
-        r"(configuration(?:s)?|settings?|exports?|facts?)\b",
+        r"\b(?:that|those|the verified)\s+" r"(configuration(?:s)?|settings?|exports?|facts?)\b",
         _normalized(clause),
     ):
         referenced.add(aliases[match.group(1)])
@@ -638,9 +614,7 @@ def _forbidden_clause_reason(
         "ip address" in normalized
         and (fixed_ip_promise or reverse_ip_promise or no_ip_promise)
         and not verified_condition
-        and not _uses_immediately_prior_verified_artifact(
-            clause, immediately_prior_clause
-        )
+        and not _uses_immediately_prior_verified_artifact(clause, immediately_prior_clause)
     ):
         return "fixed IP-address-not-recorded promise"
     if re.search(
@@ -726,37 +700,25 @@ def run_checks(root: Path) -> list[str]:
     for rel, (positive_gate, closed_gate) in AGENT_GATE_CONTRACTS.items():
         text = texts[rel]
         if positive_gate not in text:
-            errors.append(
-                f"{rel}: missing exact resolved+true dereference condition"
-            )
+            errors.append(f"{rel}: missing exact resolved+true dereference condition")
         if closed_gate not in text:
             errors.append(f"{rel}: missing exact unresolved/closed-gate fallback")
         if text.count(f"`{TRUE_GATE}`") != 1 or text.count(f"`{RESOLVED_STATE}`") != 1:
-            errors.append(
-                f"{rel}: resolved+true gate expressions must each appear exactly once"
-            )
+            errors.append(f"{rel}: resolved+true gate expressions must each appear exactly once")
         gate_contexts = _paragraph_contexts(text)
         positive_paragraphs: list[tuple[int, str]] = []
         for line_number, line in enumerate(text.splitlines(), start=1):
-            owner_line, paragraph = gate_contexts.get(
-                line_number, (line_number, line)
-            )
+            owner_line, paragraph = gate_contexts.get(line_number, (line_number, line))
             if owner_line != line_number:
                 continue
             if _is_positive_profile_use(paragraph):
                 positive_paragraphs.append((owner_line, paragraph))
             replay_adverse = _adverse_replay_reason(paragraph)
             if replay_adverse is not None:
-                errors.append(
-                    f"{rel}:{owner_line}: adverse replay contract: {replay_adverse}"
-                )
-        canonical_positive = [
-            item for item in positive_paragraphs if positive_gate in item[1]
-        ]
+                errors.append(f"{rel}:{owner_line}: adverse replay contract: {replay_adverse}")
+        canonical_positive = [item for item in positive_paragraphs if positive_gate in item[1]]
         if len(canonical_positive) != 1:
-            errors.append(
-                f"{rel}: exactly one canonical positive-use gate paragraph is required"
-            )
+            errors.append(f"{rel}: exactly one canonical positive-use gate paragraph is required")
         for owner_line, paragraph in positive_paragraphs:
             if positive_gate not in paragraph:
                 errors.append(
@@ -796,9 +758,7 @@ def run_checks(root: Path) -> list[str]:
 
         paragraph_contexts = _paragraph_contexts(text)
         for line_number, line, headings in _active_lines(text):
-            owner_line, paragraph = paragraph_contexts.get(
-                line_number, (line_number, line)
-            )
+            owner_line, paragraph = paragraph_contexts.get(line_number, (line_number, line))
             if owner_line != line_number:
                 continue
             promoted_ids: set[str] = set()

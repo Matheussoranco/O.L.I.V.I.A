@@ -92,7 +92,7 @@ def _resolve_default_branch() -> tuple[str | None, str | None]:
     """
     rc, out, _ = _run_git(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"])
     if rc == 0 and out.startswith("origin/"):
-        return out[len("origin/"):], None
+        return out[len("origin/") :], None
     env_default = os.environ.get("GITHUB_DEFAULT_BRANCH")
     if env_default:
         return env_default, None
@@ -133,10 +133,15 @@ def _v3_6_7_base_commit() -> tuple[str | None, str | None]:
     (round-4 R4-002 + round-5 R5-001 + round-6 R6-002 amend; no stored
     base_commit field, no dual truth).
     """
-    rc, out, stderr = _run_git([
-        "log", "-1", "--format=%H", "--",
-        "scripts/v3_6_7_inversion_manifest.json",
-    ])
+    rc, out, stderr = _run_git(
+        [
+            "log",
+            "-1",
+            "--format=%H",
+            "--",
+            "scripts/v3_6_7_inversion_manifest.json",
+        ]
+    )
     if rc != 0 or not out:
         return None, (
             "[ARS-V3.7.1 LINT ERROR: cannot derive v3.6.7 base commit "
@@ -206,9 +211,15 @@ def _v3_6_7_manifest_unchanged_in_pr() -> tuple[bool, str | None]:
     # bytes. This catches the "touch and revert" pattern where a PR commit
     # modifies the manifest + a protected block, then a later PR commit
     # reverts only the manifest.
-    rc_log, log_out, log_err = _run_git([
-        "log", "--format=%H", f"{mb}..HEAD", "--", rel,
-    ])
+    rc_log, log_out, log_err = _run_git(
+        [
+            "log",
+            "--format=%H",
+            f"{mb}..HEAD",
+            "--",
+            rel,
+        ]
+    )
     if rc_log != 0:
         # Couldn't list touching commits — be loud, don't pass silently.
         return False, (
@@ -276,7 +287,7 @@ def _strip_file_bom(file_bytes: bytes) -> bytes:
     before `## PATTERN PROTECTION (v3.6.7)` are caught).
     """
     if file_bytes.startswith(_BOM):
-        return file_bytes[len(_BOM):]
+        return file_bytes[len(_BOM) :]
     return file_bytes
 
 
@@ -342,9 +353,7 @@ def _extract_block_bytes(file_bytes: bytes) -> bytes | None:
     # Pattern: line start, optional indent, 1-3 `#`, whitespace, the marker
     # text. NO `\b` after the marker (ends with `)`, a non-word char).
     # `(?m)` makes `^` match line starts; `(?i)` is the v3.6.7 convention.
-    heading_re = re.compile(
-        r"(?im)^[ \t]*#{1,3}[ \t]+" + re.escape(V3_6_7_PROTECTION_BLOCK)
-    )
+    heading_re = re.compile(r"(?im)^[ \t]*#{1,3}[ \t]+" + re.escape(V3_6_7_PROTECTION_BLOCK))
     match = heading_re.search(text)
     if match is None:
         # Heading-anchored search found nothing; the marker may exist only
@@ -373,8 +382,7 @@ def _read_blob_at_commit(commit: str, repo_relpath: str) -> tuple[bytes | None, 
     if result.returncode != 0:
         stderr = result.stderr.decode("utf-8", errors="replace").strip()
         return None, (
-            f"[ARS-V3.7.1 LINT ERROR: `git show {commit}:{repo_relpath}` "
-            f"failed: {stderr!r}]"
+            f"[ARS-V3.7.1 LINT ERROR: `git show {commit}:{repo_relpath}` " f"failed: {stderr!r}]"
         )
     return result.stdout, None
 
@@ -508,8 +516,7 @@ def _load_v3_6_7_manifest() -> tuple[list[str] | None, str | None]:
     files = data.get("files")
     if not isinstance(files, list) or not all(isinstance(p, str) for p in files):
         return None, (
-            "[ARS-V3.7.1 LINT ERROR: v3.6.7 manifest 'files' must be a list "
-            "of strings]"
+            "[ARS-V3.7.1 LINT ERROR: v3.6.7 manifest 'files' must be a list " "of strings]"
         )
     return files, None
 
@@ -621,8 +628,12 @@ _FRONTMATTER_READ_VERB_RE = re.compile(
     r"access|accesses|accessing|"
     r"query|queries|querying|"
     r"fetch|fetches|fetching"
-    r")" + _NON_IDENT_AFTER + r"[\s\S]{0,80}?" + _NON_IDENT_BEFORE
-    + _FRONTMATTER_TARGET_RE + _NON_IDENT_AFTER,
+    r")"
+    + _NON_IDENT_AFTER
+    + r"[\s\S]{0,80}?"
+    + _NON_IDENT_BEFORE
+    + _FRONTMATTER_TARGET_RE
+    + _NON_IDENT_AFTER,
     re.IGNORECASE,
 )
 # Negation tokens that turn "read frontmatter" into a prohibition. Anchored
@@ -677,7 +688,7 @@ def _negation_anchored_to_verb(block: str, verb_pos: int) -> bool:
     for m in _SENTENCE_TERMINATOR_RE.finditer(window):
         last_term = m
     if last_term is not None:
-        window = window[last_term.end():]
+        window = window[last_term.end() :]
     return _FRONTMATTER_NEGATION_TOKENS_RE.search(window) is not None
 
 
@@ -737,7 +748,7 @@ def _find_drift_titles(text: str) -> list[tuple[int, str]]:
     for m in _TWO_LAYER_TITLE_DRIFT_RE.finditer(text):
         trailing = m.group("trailing")
         if trailing.strip() != "":
-            line = text[m.start(): m.end()]
+            line = text[m.start() : m.end()]
             drifts.append((m.start(), line))
     return drifts
 
@@ -823,9 +834,7 @@ def check_step3a_invariants(verbose: bool = True) -> int:
     for rel in files:
         agent_path = REPO_ROOT / rel
         if not agent_path.exists():
-            failures.append(
-                f"  [{rel}] manifest references missing file"
-            )
+            failures.append(f"  [{rel}] manifest references missing file")
             continue
         text = agent_path.read_text(encoding="utf-8")
         # R1 P2 + R2 P2 + R3 P1-A closure: require exactly one canonical
@@ -873,9 +882,7 @@ def check_step3a_invariants(verbose: bool = True) -> int:
         # layer) and for `author-year` or `author, year` (anchors the
         # visible layer). The combination is the two-layer contract.
         has_ref_marker = "<!--ref:" in block
-        has_author_year = bool(
-            re.search(r"author[\s-]year|author,\s*year", block, re.IGNORECASE)
-        )
+        has_author_year = bool(re.search(r"author[\s-]year|author,\s*year", block, re.IGNORECASE))
         if not has_ref_marker:
             failures.append(
                 f"  [{rel}] invariant (i) FAIL: two-layer form missing "
@@ -932,9 +939,7 @@ def check_step3a_invariants(verbose: bool = True) -> int:
             print(line)
         return 1
     if verbose:
-        print(
-            f"[v3.7.1 Step 3a invariants] PASSED ({len(files)} manifest agent(s))"
-        )
+        print(f"[v3.7.1 Step 3a invariants] PASSED ({len(files)} manifest agent(s))")
     return 0
 
 

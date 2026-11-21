@@ -18,7 +18,6 @@ import tempfile
 from pathlib import Path
 from typing import Any, NoReturn
 
-
 MAX_BYTES = 8 * 1024 * 1024
 SHA = set("0123456789abcdef")
 ARMS = ("baseline", "treatment")
@@ -69,13 +68,9 @@ def _open_nofollow(path: Path) -> int:
             )
             os.close(directory_fd)
             directory_fd = next_fd
-        return os.open(
-            components[-1], os.O_RDONLY | nofollow, dir_fd=directory_fd
-        )
+        return os.open(components[-1], os.O_RDONLY | nofollow, dir_fd=directory_fd)
     except OSError as exc:
-        raise ScoreError(
-            f"cannot traverse explicit input without symlinks {path}: {exc}"
-        ) from exc
+        raise ScoreError(f"cannot traverse explicit input without symlinks {path}: {exc}") from exc
     finally:
         os.close(directory_fd)
 
@@ -97,7 +92,13 @@ def _read(path: Path) -> tuple[dict[str, Any], bytes]:
             if total > MAX_BYTES:
                 raise ScoreError("input exceeds byte cap")
         after = os.fstat(fd)
-        if (before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns, before.st_ctime_ns) != (
+        if (
+            before.st_dev,
+            before.st_ino,
+            before.st_size,
+            before.st_mtime_ns,
+            before.st_ctime_ns,
+        ) != (
             after.st_dev,
             after.st_ino,
             after.st_size,
@@ -181,7 +182,10 @@ def _array(value: Any, path: str, *, minimum: int = 0) -> list[Any]:
 
 
 def _unique_texts(value: Any, path: str, *, minimum: int = 0) -> list[str]:
-    rows = [_text(item, f"{path}[{index}]") for index, item in enumerate(_array(value, path, minimum=minimum))]
+    rows = [
+        _text(item, f"{path}[{index}]")
+        for index, item in enumerate(_array(value, path, minimum=minimum))
+    ]
     if len(set(rows)) != len(rows):
         _fail(path, "must contain unique strings")
     return rows
@@ -264,8 +268,9 @@ def _blank_counts() -> dict[str, Any]:
     }
 
 
-def _require_expert_ids(value: Any, path: str, expert_ids: list[str],
-                        keys: set[str]) -> list[dict[str, Any]]:
+def _require_expert_ids(
+    value: Any, path: str, expert_ids: list[str], keys: set[str]
+) -> list[dict[str, Any]]:
     rows = _array(value, path)
     if len(rows) != len(expert_ids):
         _fail(path, "must contain exactly one row for every declared expert")
@@ -281,8 +286,7 @@ def _require_expert_ids(value: Any, path: str, expert_ids: list[str],
     return result
 
 
-def _require_unanimous_consistency(values: list[Any], adjudicated: Any,
-                                   path: str) -> None:
+def _require_unanimous_consistency(values: list[Any], adjudicated: Any, path: str) -> None:
     if len(set(values)) == 1 and adjudicated != values[0]:
         _fail(path, "cannot overturn a unanimous expert label")
 
@@ -297,13 +301,32 @@ def _validate_and_count(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
     subject = _object(
         record["subject"],
         "$.subject",
-        {"suite_commit", "model_id", "model_family", "tools", "sampling", "input_token_cap", "output_token_cap", "replicates_per_item"},
+        {
+            "suite_commit",
+            "model_id",
+            "model_family",
+            "tools",
+            "sampling",
+            "input_token_cap",
+            "output_token_cap",
+            "replicates_per_item",
+        },
     )
     commit = _text(subject["suite_commit"], "$.subject.suite_commit")
     if len(commit) != 40 or any(char not in SHA for char in commit):
         _fail("$.subject.suite_commit", "must be 40 lowercase hex")
     subject_budget = _budget(
-        {key: subject[key] for key in ("model_id", "model_family", "tools", "sampling", "input_token_cap", "output_token_cap")},
+        {
+            key: subject[key]
+            for key in (
+                "model_id",
+                "model_family",
+                "tools",
+                "sampling",
+                "input_token_cap",
+                "output_token_cap",
+            )
+        },
         "$.subject",
     )
     replicate_count = _integer(subject["replicates_per_item"], "$.subject.replicates_per_item", 2)
@@ -368,14 +391,20 @@ def _validate_and_count(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
         arm_map: dict[str, dict[str, Any]] = {}
         for arm_index, arm_value in enumerate(arms):
             arm_path = f"{path}.arms[{arm_index}]"
-            arm = _object(arm_value, arm_path, {"arm_id", "mechanism", "target_context", "budget", "replicates"})
+            arm = _object(
+                arm_value,
+                arm_path,
+                {"arm_id", "mechanism", "target_context", "budget", "replicates"},
+            )
             arm_id = _enum(arm["arm_id"], f"{arm_path}.arm_id", set(ARMS))
             if arm_id in arm_map:
                 _fail(f"{path}.arms", f"duplicate arm {arm_id}")
             expected_mechanism = "pre_684" if arm_id == "baseline" else "criteria_binding_v1"
             if arm["mechanism"] != expected_mechanism:
                 _fail(f"{arm_path}.mechanism", f"must be {expected_mechanism}")
-            if _canonical(_context(arm["target_context"], f"{arm_path}.target_context")) != _canonical(authority):
+            if _canonical(
+                _context(arm["target_context"], f"{arm_path}.target_context")
+            ) != _canonical(authority):
                 _fail(f"{arm_path}.target_context", "must equal the sealed item context")
             budget = _budget(arm["budget"], f"{arm_path}.budget")
             if _canonical(budget) != _canonical(subject_budget):
@@ -387,19 +416,34 @@ def _validate_and_count(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
             _fail(f"{path}.arms", "baseline and treatment budgets differ")
 
         for arm_id in ARMS:
-            replicates = _array(arm_map[arm_id]["replicates"], f"{path}.{arm_id}.replicates", minimum=2)
+            replicates = _array(
+                arm_map[arm_id]["replicates"], f"{path}.{arm_id}.replicates", minimum=2
+            )
             if len(replicates) != replicate_count:
                 _fail(f"{path}.{arm_id}.replicates", "must equal subject.replicates_per_item")
             replicate_ids: list[str] = []
             for rep_index, rep_value in enumerate(replicates):
                 rep_path = f"{path}.{arm_id}.replicates[{rep_index}]"
-                rep = _object(rep_value, rep_path, {"replicate_id", "profile", "applicability", "findings"})
+                rep = _object(
+                    rep_value, rep_path, {"replicate_id", "profile", "applicability", "findings"}
+                )
                 replicate_ids.append(_id(rep["replicate_id"], f"{rep_path}.replicate_id"))
-                profile = _object(rep["profile"], f"{rep_path}.profile", {"resolved_digest", "selected_criterion_ids"})
+                profile = _object(
+                    rep["profile"],
+                    f"{rep_path}.profile",
+                    {"resolved_digest", "selected_criterion_ids"},
+                )
                 _sha(profile["resolved_digest"], f"{rep_path}.profile.resolved_digest")
-                _unique_texts(profile["selected_criterion_ids"], f"{rep_path}.profile.selected_criterion_ids", minimum=1)
+                _unique_texts(
+                    profile["selected_criterion_ids"],
+                    f"{rep_path}.profile.selected_criterion_ids",
+                    minimum=1,
+                )
                 counts[arm_id]["profile"][1] += 1
-                if profile["resolved_digest"] == authority["resolved_digest"] and profile["selected_criterion_ids"] == selected:
+                if (
+                    profile["resolved_digest"] == authority["resolved_digest"]
+                    and profile["selected_criterion_ids"] == selected
+                ):
                     counts[arm_id]["profile"][0] += 1
 
                 applications = _array(rep["applicability"], f"{rep_path}.applicability")
@@ -412,8 +456,16 @@ def _validate_and_count(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
                         {"criterion_id", "predicted", "expert_labels", "expert_label"},
                     )
                     app_ids.append(_criterion_id(app["criterion_id"], f"{app_path}.criterion_id"))
-                    predicted = _enum(app["predicted"], f"{app_path}.predicted", {"applicable", "not_applicable", "unresolved"})
-                    label = _enum(app["expert_label"], f"{app_path}.expert_label", {"applicable", "not_applicable", "unresolved"})
+                    predicted = _enum(
+                        app["predicted"],
+                        f"{app_path}.predicted",
+                        {"applicable", "not_applicable", "unresolved"},
+                    )
+                    label = _enum(
+                        app["expert_label"],
+                        f"{app_path}.expert_label",
+                        {"applicable", "not_applicable", "unresolved"},
+                    )
                     raw_labels = _require_expert_ids(
                         app["expert_labels"],
                         f"{app_path}.expert_labels",
@@ -438,22 +490,56 @@ def _validate_and_count(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
                     if predicted == label:
                         counts[arm_id]["applicability"][0] += 1
                 if app_ids != selected:
-                    _fail(f"{rep_path}.applicability", "must cover selected criterion ids in authority order")
+                    _fail(
+                        f"{rep_path}.applicability",
+                        "must cover selected criterion ids in authority order",
+                    )
 
                 finding_ids: list[str] = []
-                for finding_index, finding_value in enumerate(_array(rep["findings"], f"{rep_path}.findings")):
+                for finding_index, finding_value in enumerate(
+                    _array(rep["findings"], f"{rep_path}.findings")
+                ):
                     finding_path = f"{rep_path}.findings[{finding_index}]"
                     finding = _object(
                         finding_value,
                         finding_path,
-                        {"finding_id", "expert_labels", "support_label", "predicted_severity", "expert_severity", "predicted_venue_alignment", "expert_venue_alignment", "usefulness"},
+                        {
+                            "finding_id",
+                            "expert_labels",
+                            "support_label",
+                            "predicted_severity",
+                            "expert_severity",
+                            "predicted_venue_alignment",
+                            "expert_venue_alignment",
+                            "usefulness",
+                        },
                     )
                     finding_ids.append(_id(finding["finding_id"], f"{finding_path}.finding_id"))
-                    support = _enum(finding["support_label"], f"{finding_path}.support_label", {"supported", "unsupported", "unresolved"})
-                    predicted_severity = _enum(finding["predicted_severity"], f"{finding_path}.predicted_severity", {"critical", "major", "minor", "none"})
-                    expert_severity = _enum(finding["expert_severity"], f"{finding_path}.expert_severity", {"critical", "major", "minor", "none", "unresolved"})
-                    predicted_venue = _enum(finding["predicted_venue_alignment"], f"{finding_path}.predicted_venue_alignment", {"aligned", "not_aligned", "not_claimed"})
-                    expert_venue = _enum(finding["expert_venue_alignment"], f"{finding_path}.expert_venue_alignment", {"aligned", "not_aligned", "not_claimed", "unresolved"})
+                    support = _enum(
+                        finding["support_label"],
+                        f"{finding_path}.support_label",
+                        {"supported", "unsupported", "unresolved"},
+                    )
+                    predicted_severity = _enum(
+                        finding["predicted_severity"],
+                        f"{finding_path}.predicted_severity",
+                        {"critical", "major", "minor", "none"},
+                    )
+                    expert_severity = _enum(
+                        finding["expert_severity"],
+                        f"{finding_path}.expert_severity",
+                        {"critical", "major", "minor", "none", "unresolved"},
+                    )
+                    predicted_venue = _enum(
+                        finding["predicted_venue_alignment"],
+                        f"{finding_path}.predicted_venue_alignment",
+                        {"aligned", "not_aligned", "not_claimed"},
+                    )
+                    expert_venue = _enum(
+                        finding["expert_venue_alignment"],
+                        f"{finding_path}.expert_venue_alignment",
+                        {"aligned", "not_aligned", "not_claimed", "unresolved"},
+                    )
                     usefulness = _integer(finding["usefulness"], f"{finding_path}.usefulness", 1, 5)
                     raw_labels = _require_expert_ids(
                         finding["expert_labels"],
@@ -467,14 +553,42 @@ def _validate_and_count(record: dict[str, Any]) -> dict[str, dict[str, Any]]:
                     raw_usefulness: list[int] = []
                     for expert_index, expert in enumerate(raw_labels):
                         raw_path = f"{finding_path}.expert_labels[{expert_index}]"
-                        raw_support.append(_enum(expert["support_label"], f"{raw_path}.support_label", {"supported", "unsupported", "unresolved"}))
-                        raw_severity.append(_enum(expert["severity"], f"{raw_path}.severity", {"critical", "major", "minor", "none", "unresolved"}))
-                        raw_venue.append(_enum(expert["venue_alignment"], f"{raw_path}.venue_alignment", {"aligned", "not_aligned", "not_claimed", "unresolved"}))
-                        raw_usefulness.append(_integer(expert["usefulness"], f"{raw_path}.usefulness", 1, 5))
-                    _require_unanimous_consistency(raw_support, support, f"{finding_path}.support_label")
-                    _require_unanimous_consistency(raw_severity, expert_severity, f"{finding_path}.expert_severity")
-                    _require_unanimous_consistency(raw_venue, expert_venue, f"{finding_path}.expert_venue_alignment")
-                    _require_unanimous_consistency(raw_usefulness, usefulness, f"{finding_path}.usefulness")
+                        raw_support.append(
+                            _enum(
+                                expert["support_label"],
+                                f"{raw_path}.support_label",
+                                {"supported", "unsupported", "unresolved"},
+                            )
+                        )
+                        raw_severity.append(
+                            _enum(
+                                expert["severity"],
+                                f"{raw_path}.severity",
+                                {"critical", "major", "minor", "none", "unresolved"},
+                            )
+                        )
+                        raw_venue.append(
+                            _enum(
+                                expert["venue_alignment"],
+                                f"{raw_path}.venue_alignment",
+                                {"aligned", "not_aligned", "not_claimed", "unresolved"},
+                            )
+                        )
+                        raw_usefulness.append(
+                            _integer(expert["usefulness"], f"{raw_path}.usefulness", 1, 5)
+                        )
+                    _require_unanimous_consistency(
+                        raw_support, support, f"{finding_path}.support_label"
+                    )
+                    _require_unanimous_consistency(
+                        raw_severity, expert_severity, f"{finding_path}.expert_severity"
+                    )
+                    _require_unanimous_consistency(
+                        raw_venue, expert_venue, f"{finding_path}.expert_venue_alignment"
+                    )
+                    _require_unanimous_consistency(
+                        raw_usefulness, usefulness, f"{finding_path}.usefulness"
+                    )
                     for metric, values in (
                         ("support", raw_support),
                         ("severity", raw_severity),
@@ -536,8 +650,7 @@ def _render_arm(counts: dict[str, Any]) -> dict[str, Any]:
             "distribution": distribution,
         },
         "raw_expert_unanimity": {
-            metric: _rate(*value)
-            for metric, value in counts["agreement"].items()
+            metric: _rate(*value) for metric, value in counts["agreement"].items()
         },
     }
 

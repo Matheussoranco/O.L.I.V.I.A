@@ -140,11 +140,15 @@ def validate(data: dict[str, Any], manifest: dict[str, Any] | None = None) -> li
 
         framing = item.get("framing_style")
         if framing not in VALID_FRAMING_STYLES:
-            errors.append(f"{where}: framing_style={framing!r} not in {sorted(VALID_FRAMING_STYLES)}")
+            errors.append(
+                f"{where}: framing_style={framing!r} not in {sorted(VALID_FRAMING_STYLES)}"
+            )
 
         ptype = item.get("provenance_type")
         if ptype not in VALID_PROVENANCE_TYPES:
-            errors.append(f"{where}: provenance_type={ptype!r} not in {sorted(VALID_PROVENANCE_TYPES)}")
+            errors.append(
+                f"{where}: provenance_type={ptype!r} not in {sorted(VALID_PROVENANCE_TYPES)}"
+            )
 
         if item.get("expected_correctness") not in VALID_CORRECTNESS:
             errors.append(
@@ -220,10 +224,14 @@ def validate(data: dict[str, Any], manifest: dict[str, Any] | None = None) -> li
             # paper_verbatim-source + claim/verdict/framing checks entirely.
             df_val = item.get("derived_from")
             if not isinstance(df_val, str) or not df_val.strip():
-                errors.append(f"{where}: counterfactual_rewrite missing a non-empty string derived_from")
+                errors.append(
+                    f"{where}: counterfactual_rewrite missing a non-empty string derived_from"
+                )
             ser = item.get("semantic_equivalence_rationale")
             if not isinstance(ser, str) or not ser.strip():
-                errors.append(f"{where}: counterfactual_rewrite missing semantic_equivalence_rationale")
+                errors.append(
+                    f"{where}: counterfactual_rewrite missing semantic_equivalence_rationale"
+                )
             # Symmetric source honesty (codex P2 round 12): a maintainer-authored item must carry a
             # maintainer source, never human/ai — else a synthetic rewrite could be labelled
             # source-authored once the manifest is updated.
@@ -287,7 +295,9 @@ def validate(data: dict[str, Any], manifest: dict[str, Any] | None = None) -> li
             continue
         a, b = members
         if a.get("canonical_claim") != b.get("canonical_claim"):
-            errors.append(f"pair {pid!r}: members have different canonical_claim (pair must hold claim constant)")
+            errors.append(
+                f"pair {pid!r}: members have different canonical_claim (pair must hold claim constant)"
+            )
         if a.get("expected_correctness") != b.get("expected_correctness"):
             errors.append(
                 f"pair {pid!r}: members have different expected_correctness "
@@ -344,13 +354,20 @@ def validate(data: dict[str, Any], manifest: dict[str, Any] | None = None) -> li
                 f"manifest.sample_n={manifest.get('sample_n')} != item count {len(items)}"
             )
         actual_dist = Counter(i.get("provenance_type") for i in items)
-        declared = {d.get("provenance_type"): d.get("n") for d in manifest.get("provenance_distribution", [])}
+        declared = {
+            d.get("provenance_type"): d.get("n")
+            for d in manifest.get("provenance_distribution", [])
+        }
         if dict(actual_dist) != declared:
             errors.append(
                 f"manifest.provenance_distribution {declared} != actual {dict(actual_dist)}"
             )
-        man_pairs = {p.get("pair_id"): sorted(p.get("members", [])) for p in manifest.get("pairs", [])}
-        gold_pairs = {pid: sorted(i.get("id") for i in m) for pid, m in pairs.items() if len(m) == 2}
+        man_pairs = {
+            p.get("pair_id"): sorted(p.get("members", [])) for p in manifest.get("pairs", [])
+        }
+        gold_pairs = {
+            pid: sorted(i.get("id") for i in m) for pid, m in pairs.items() if len(m) == 2
+        }
         if man_pairs != gold_pairs:
             errors.append(f"manifest.pairs {man_pairs} != gold pairs {gold_pairs}")
 

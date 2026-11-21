@@ -10,10 +10,11 @@ import hashlib
 import json
 import re
 import sqlite3
+from collections.abc import Mapping, Sequence
 from contextlib import closing
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Mapping, Sequence
+from typing import Any
 
 try:
     from bibliographic_integrity_signals import _signal_id, validation_errors
@@ -56,9 +57,9 @@ def normalize_doi(value: Any) -> str | None:
 
 
 def _canonical_sha(value: Any) -> str:
-    encoded = json.dumps(
-        value, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
+    encoded = json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
+        "utf-8"
+    )
     return hashlib.sha256(encoded).hexdigest()
 
 
@@ -72,8 +73,10 @@ def _event_date(event: Mapping[str, Any]) -> str | None:
         if isinstance(parts, list) and parts and isinstance(parts[0], list):
             try:
                 year, month, day = (parts[0] + [1, 1])[:3]
-                return datetime(year, month, day, tzinfo=timezone.utc).isoformat().replace(
-                    "+00:00", "Z"
+                return (
+                    datetime(year, month, day, tzinfo=timezone.utc)
+                    .isoformat()
+                    .replace("+00:00", "Z")
                 )
             except (TypeError, ValueError):
                 return None
@@ -107,9 +110,9 @@ def _crossref_events(records: Sequence[Mapping[str, Any]], cited_doi: str) -> li
                     if not isinstance(raw, Mapping):
                         continue
                     target = normalize_doi(raw.get("DOI") or raw.get("id"))
-                    relevant = (
-                        direction == "updated-by" and record_doi == cited_doi
-                    ) or (direction == "update-to" and target == cited_doi)
+                    relevant = (direction == "updated-by" and record_doi == cited_doi) or (
+                        direction == "update-to" and target == cited_doi
+                    )
                     kind = _event_kind(raw)
                     if not relevant or kind not in {"retraction", "reinstatement"}:
                         continue
@@ -119,7 +122,9 @@ def _crossref_events(records: Sequence[Mapping[str, Any]], cited_doi: str) -> li
                         "date": _event_date(raw),
                         "notice_doi": target if direction == "updated-by" else record_doi,
                         "source": raw.get("source") if isinstance(raw.get("source"), str) else None,
-                        "record_id": str(raw["record-id"]) if raw.get("record-id") is not None else None,
+                        "record_id": str(raw["record-id"])
+                        if raw.get("record-id") is not None
+                        else None,
                     }
                     key = _canonical_sha(event)
                     if key not in seen:
@@ -139,7 +144,10 @@ def _reduce_crossref(records: Sequence[Mapping[str, Any]], cited_doi: str) -> di
         }
     status_events = [event for event in events if event["kind"] in {"retraction", "reinstatement"}]
     dated = [(event, _parse_datetime(event["date"])) for event in status_events]
-    if any(parsed is None for _, parsed in dated) and len({event["kind"] for event in status_events}) > 1:
+    if (
+        any(parsed is None for _, parsed in dated)
+        and len({event["kind"] for event in status_events}) > 1
+    ):
         return {"verdict": "disputed", "event_date": None, "events": events}
     latest = max(dated, key=lambda item: item[1] or datetime.min.replace(tzinfo=timezone.utc))[0]
     return {
@@ -165,53 +173,63 @@ def _resolver_observations(
         verdict = "retracted" if raw is True else "not_retracted" if raw is False else "unknown"
         locator = oa_record.get("id") if isinstance(oa_record.get("id"), str) else None
         observations.append({"resolver": "OpenAlex", "status": "checked", "verdict": verdict})
-        evidence.append({
-            "evidence_type": "resolver_response",
-            "source_name": "OpenAlex",
-            "record_locator": locator,
-            "observed_value": verdict,
-            "evidence_sha256": _canonical_sha(oa_record),
-        })
+        evidence.append(
+            {
+                "evidence_type": "resolver_response",
+                "source_name": "OpenAlex",
+                "record_locator": locator,
+                "observed_value": verdict,
+                "evidence_sha256": _canonical_sha(oa_record),
+            }
+        )
     else:
         status = oa_status if oa_status in {"degraded", "not_checked"} else "unknown"
         observations.append({"resolver": "OpenAlex", "status": status, "verdict": "unknown"})
-        evidence.append({
-            "evidence_type": "degradation_record" if status == "degraded" else "metadata_rule",
-            "source_name": "OpenAlex",
-            "record_locator": None,
-            "observed_value": status,
-            "evidence_sha256": None,
-        })
+        evidence.append(
+            {
+                "evidence_type": "degradation_record" if status == "degraded" else "metadata_rule",
+                "source_name": "OpenAlex",
+                "record_locator": None,
+                "observed_value": status,
+                "evidence_sha256": None,
+            }
+        )
 
     cr_status = crossref.get("status")
     cr_records = crossref.get("records")
     if cr_status == "checked" and isinstance(cr_records, list):
         records = [record for record in cr_records if isinstance(record, Mapping)]
         reduced = _reduce_crossref(records, cited_doi)
-        observations.append({
-            "resolver": "Crossref",
-            "status": "checked",
-            "verdict": reduced["verdict"],
-            "event_date": reduced["event_date"],
-            "events": reduced["events"],
-        })
-        evidence.append({
-            "evidence_type": "resolver_response",
-            "source_name": "Crossref",
-            "record_locator": f"https://api.crossref.org/works/{cited_doi}",
-            "observed_value": reduced["verdict"],
-            "evidence_sha256": _canonical_sha(records),
-        })
+        observations.append(
+            {
+                "resolver": "Crossref",
+                "status": "checked",
+                "verdict": reduced["verdict"],
+                "event_date": reduced["event_date"],
+                "events": reduced["events"],
+            }
+        )
+        evidence.append(
+            {
+                "evidence_type": "resolver_response",
+                "source_name": "Crossref",
+                "record_locator": f"https://api.crossref.org/works/{cited_doi}",
+                "observed_value": reduced["verdict"],
+                "evidence_sha256": _canonical_sha(records),
+            }
+        )
     else:
         status = cr_status if cr_status in {"degraded", "not_checked"} else "unknown"
         observations.append({"resolver": "Crossref", "status": status, "verdict": "unknown"})
-        evidence.append({
-            "evidence_type": "degradation_record" if status == "degraded" else "metadata_rule",
-            "source_name": "Crossref",
-            "record_locator": None,
-            "observed_value": status,
-            "evidence_sha256": None,
-        })
+        evidence.append(
+            {
+                "evidence_type": "degradation_record" if status == "degraded" else "metadata_rule",
+                "source_name": "Crossref",
+                "record_locator": None,
+                "observed_value": status,
+                "evidence_sha256": None,
+            }
+        )
     return observations, evidence
 
 
@@ -219,8 +237,17 @@ def _reconcile(observations: Sequence[Mapping[str, Any]]) -> tuple[str, str, str
     known = [item for item in observations if item.get("verdict") != "unknown"]
     verdicts = {item["verdict"] for item in known}
     event_dates = [item.get("event_date") for item in known if item.get("event_date")]
-    event_date = max(event_dates, key=lambda value: _parse_datetime(value) or datetime.min.replace(tzinfo=timezone.utc)) if event_dates else None
-    if "disputed" in verdicts or ("retracted" in verdicts and verdicts & {"not_retracted", "reinstated"}):
+    event_date = (
+        max(
+            event_dates,
+            key=lambda value: _parse_datetime(value) or datetime.min.replace(tzinfo=timezone.utc),
+        )
+        if event_dates
+        else None
+    )
+    if "disputed" in verdicts or (
+        "retracted" in verdicts and verdicts & {"not_retracted", "reinstated"}
+    ):
         return "disputed", "disagree", event_date
     if not known:
         return "unknown", "unknown", event_date
@@ -239,7 +266,9 @@ def _load_bearing(affected_claims: Sequence[str], claim_impacts: Mapping[str, st
 
 
 def _timing(source_acquisition_date: Any, event_date: str | None) -> str:
-    acquired = _parse_datetime(source_acquisition_date if isinstance(source_acquisition_date, str) else None)
+    acquired = _parse_datetime(
+        source_acquisition_date if isinstance(source_acquisition_date, str) else None
+    )
     event = _parse_datetime(event_date)
     if acquired is None or event is None:
         return "not_decidable"
@@ -284,13 +313,15 @@ def resolve_retraction_signal(
             {"resolver": "OpenAlex", "status": "not_checked", "verdict": "unknown"},
             {"resolver": "Crossref", "status": "not_checked", "verdict": "unknown"},
         ]
-        evidence = [{
-            "evidence_type": "metadata_rule",
-            "source_name": "DOI applicability rule",
-            "record_locator": entry.get("source_pointer"),
-            "observed_value": "doi_absent",
-            "evidence_sha256": None,
-        }]
+        evidence = [
+            {
+                "evidence_type": "metadata_rule",
+                "source_name": "DOI applicability rule",
+                "record_locator": entry.get("source_pointer"),
+                "observed_value": "doi_absent",
+                "evidence_sha256": None,
+            }
+        ]
         effective, agreement, event_date = "unknown", "unknown", None
         check_status = "not_checked"
     else:
@@ -299,25 +330,46 @@ def resolve_retraction_signal(
         )
         effective, agreement, event_date = _reconcile(observations)
         statuses = {item["status"] for item in observations}
-        check_status = "checked" if "checked" in statuses else "degraded" if "degraded" in statuses else "not_checked"
+        check_status = (
+            "checked"
+            if "checked" in statuses
+            else "degraded"
+            if "degraded" in statuses
+            else "not_checked"
+        )
 
     served_reasons = crossref.get("retraction_reasons")
-    reasons = sorted(
-        {
-            reason.strip()
-            for reason in served_reasons
-            if isinstance(reason, str) and reason.strip()
-        }
-    ) if isinstance(served_reasons, list) and effective == "retracted" else []
+    reasons = (
+        sorted(
+            {
+                reason.strip()
+                for reason in served_reasons
+                if isinstance(reason, str) and reason.strip()
+            }
+        )
+        if isinstance(served_reasons, list) and effective == "retracted"
+        else []
+    )
 
-    freshness = "stale" if (_parse_datetime(recorded_at) or datetime.max.replace(tzinfo=timezone.utc)) > (_parse_datetime(stale_after) or datetime.min.replace(tzinfo=timezone.utc)) else "current"
+    freshness = (
+        "stale"
+        if (_parse_datetime(recorded_at) or datetime.max.replace(tzinfo=timezone.utc))
+        > (_parse_datetime(stale_after) or datetime.min.replace(tzinfo=timezone.utc))
+        else "current"
+    )
     strict_eligible = (
         effective == "retracted"
         and agreement != "disagree"
         and freshness == "current"
         and not legitimate_exception
     )
-    finding = "detected" if effective == "retracted" else "not_detected" if effective in {"not_retracted", "reinstated"} else "unresolved"
+    finding = (
+        "detected"
+        if effective == "retracted"
+        else "not_detected"
+        if effective in {"not_retracted", "reinstated"}
+        else "unresolved"
+    )
     if finding == "unresolved" and check_status == "checked":
         check_status = "unknown"
     any_resolver_checked = any(
@@ -344,7 +396,9 @@ def resolve_retraction_signal(
         },
         "subject": {
             "citation_key": citation_key,
-            "source_pointer": entry.get("source_pointer") if isinstance(entry.get("source_pointer"), str) else None,
+            "source_pointer": entry.get("source_pointer")
+            if isinstance(entry.get("source_pointer"), str)
+            else None,
             "affected_claims": list(affected_claims),
         },
         "terminal_policy": {
@@ -369,13 +423,17 @@ def resolve_retraction_signal(
             "reason_availability": "served" if reasons else "not_served",
             "load_bearing": _load_bearing(affected_claims, claim_impacts or {}),
             "claim_join_rule": "worst_tier_wins",
-            "source_acquisition_date": entry.get("source_acquisition_date") if isinstance(entry.get("source_acquisition_date"), str) else None,
+            "source_acquisition_date": entry.get("source_acquisition_date")
+            if isinstance(entry.get("source_acquisition_date"), str)
+            else None,
             "timing_vs_acquisition": _timing(entry.get("source_acquisition_date"), event_date),
             "declared_legitimate_citation": {
                 "declared": declared,
                 "declaration_id": declaration_id if isinstance(declaration_id, str) else None,
                 "retraction_notice_cited": notice_cited,
-                "notice_citation_key": notice_citation_key if isinstance(notice_citation_key, str) else None,
+                "notice_citation_key": notice_citation_key
+                if isinstance(notice_citation_key, str)
+                else None,
                 "deterministic_exception": legitimate_exception,
                 "contextual_judgment": "not_performed",
             },
@@ -400,7 +458,9 @@ def evaluate_retraction_policy(signal: Mapping[str, Any], policy: str | None) ->
 
 def citation_policy_slug(policies: Mapping[str, Any]) -> str | None:
     keys = ("citation_existence", "contamination_triangulation", "retraction", "temporal_integrity")
-    parts = [f"{key}.{policies[key]}" for key in keys if policies.get(key) not in {None, "advisory"}]
+    parts = [
+        f"{key}.{policies[key]}" for key in keys if policies.get(key) not in {None, "advisory"}
+    ]
     return "+".join(sorted(parts)) or None
 
 
@@ -424,7 +484,9 @@ class RetractionStatusCache:
         with closing(sqlite3.connect(self.path)) as conn, conn:
             conn.execute(self._SCHEMA)
 
-    def put(self, doi: str, resolver_name: str, observation: Mapping[str, Any], *, checked_at: str) -> None:
+    def put(
+        self, doi: str, resolver_name: str, observation: Mapping[str, Any], *, checked_at: str
+    ) -> None:
         normalized = normalize_doi(doi)
         if normalized is None:
             raise ValueError("cache key requires a DOI")
@@ -435,7 +497,13 @@ class RetractionStatusCache:
         with closing(sqlite3.connect(self.path)) as conn, conn:
             conn.execute(
                 "INSERT OR REPLACE INTO retraction_status_cache_v1 VALUES (?, ?, ?, ?, ?)",
-                (normalized, resolver_name, json.dumps(dict(observation), sort_keys=True), checked_at, CACHE_SCHEMA_VERSION),
+                (
+                    normalized,
+                    resolver_name,
+                    json.dumps(dict(observation), sort_keys=True),
+                    checked_at,
+                    CACHE_SCHEMA_VERSION,
+                ),
             )
 
     def lookup(self, doi: str, resolver_name: str, *, now: str) -> dict[str, Any] | None:

@@ -10,7 +10,6 @@ from pathlib import Path
 import pytest
 from jsonschema import Draft202012Validator
 
-
 SCRIPTS = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS.parent
 sys.path.insert(0, str(SCRIPTS))
@@ -18,7 +17,6 @@ sys.path.insert(0, str(SCRIPTS))
 import bibliographic_integrity_signals as carrier  # noqa: E402
 import openalex_client  # noqa: E402
 import retraction_status as status  # noqa: E402
-
 
 NOW = "2026-08-08T00:00:00Z"
 STALE_AFTER = "2026-09-07T00:00:00Z"
@@ -118,12 +116,14 @@ def test_crossref_updated_by_is_parsed_on_original() -> None:
 def test_crossref_update_to_is_parsed_from_notice() -> None:
     notice = {
         "DOI": "10.1234/notice.1",
-        "update-to": [{
-            "DOI": DOI,
-            "type": "retraction",
-            "source": "publisher",
-            "updated": {"date-time": "2026-06-01T00:00:00Z"},
-        }],
+        "update-to": [
+            {
+                "DOI": DOI,
+                "type": "retraction",
+                "source": "publisher",
+                "updated": {"date-time": "2026-06-01T00:00:00Z"},
+            }
+        ],
     }
     signal = _resolve(
         openalex={"status": "degraded"},
@@ -223,25 +223,35 @@ def test_doi_less_entry_ignores_supplied_title_match_metadata() -> None:
 def test_declaration_without_notice_does_not_waive_strict() -> None:
     signal = _resolve(declaration={"declared": True, "declaration_id": "decl-1"})
     assert signal["terminal_policy"]["eligible"] is True
-    assert signal["retraction_context"]["declared_legitimate_citation"]["deterministic_exception"] is False
+    assert (
+        signal["retraction_context"]["declared_legitimate_citation"]["deterministic_exception"]
+        is False
+    )
 
 
 def test_boolean_declaration_without_auditable_ids_does_not_waive_strict() -> None:
-    signal = _resolve(declaration={
-        "declared": True,
-        "retraction_notice_cited": True,
-    })
-    assert signal["retraction_context"]["declared_legitimate_citation"]["deterministic_exception"] is False
+    signal = _resolve(
+        declaration={
+            "declared": True,
+            "retraction_notice_cited": True,
+        }
+    )
+    assert (
+        signal["retraction_context"]["declared_legitimate_citation"]["deterministic_exception"]
+        is False
+    )
     assert signal["terminal_policy"]["eligible"] is True
 
 
 def test_declaration_plus_notice_disables_strict_without_context_judgment() -> None:
-    signal = _resolve(declaration={
-        "declared": True,
-        "declaration_id": "decl-1",
-        "retraction_notice_cited": True,
-        "notice_citation_key": "notice2026",
-    })
+    signal = _resolve(
+        declaration={
+            "declared": True,
+            "declaration_id": "decl-1",
+            "retraction_notice_cited": True,
+            "notice_citation_key": "notice2026",
+        }
+    )
     context = signal["retraction_context"]["declared_legitimate_citation"]
     assert context["deterministic_exception"] is True
     assert context["contextual_judgment"] == "not_performed"
@@ -256,7 +266,10 @@ def test_advisory_default_never_emits_terminal_token() -> None:
 
 def test_strict_emits_generic_terminal_token() -> None:
     token = status.evaluate_retraction_policy(_resolve(), "strict")
-    assert token == "TERMINAL-BLOCK severity=HIGH-BLOCK policy=retraction reason=retracted_reference mode=strict"
+    assert (
+        token
+        == "TERMINAL-BLOCK severity=HIGH-BLOCK policy=retraction reason=retracted_reference mode=strict"
+    )
     assert "CONTAMINATED-" not in token
 
 
@@ -275,10 +288,12 @@ def test_stale_signal_is_visible_but_not_strict_eligible() -> None:
 
 def test_reason_codes_are_only_carried_when_served() -> None:
     plain = _resolve()
-    enriched = _resolve(crossref={
-        **_cr(_event("retraction")),
-        "retraction_reasons": ["Data falsification", "Data falsification", "Error"],
-    })
+    enriched = _resolve(
+        crossref={
+            **_cr(_event("retraction")),
+            "retraction_reasons": ["Data falsification", "Data falsification", "Error"],
+        }
+    )
     assert plain["retraction_context"]["reason_availability"] == "not_served"
     assert plain["retraction_context"]["retraction_reasons"] == []
     assert enriched["retraction_context"]["reason_availability"] == "served"
@@ -286,17 +301,21 @@ def test_reason_codes_are_only_carried_when_served() -> None:
 
 
 def test_policy_slug_composes_in_sorted_existing_grammar() -> None:
-    slug = status.citation_policy_slug({
-        "retraction": "strict",
-        "citation_existence": "strict",
-        "submission_package": "strict",
-    })
+    slug = status.citation_policy_slug(
+        {
+            "retraction": "strict",
+            "citation_existence": "strict",
+            "submission_package": "strict",
+        }
+    )
     assert slug == "citation_existence.strict+retraction.strict"
 
 
 def test_retraction_cache_current_round_trip(tmp_path: Path) -> None:
     cache = status.RetractionStatusCache(tmp_path / "cache.sqlite")
-    cache.put(DOI.upper(), "openalex", {"status": "checked", "verdict": "not_retracted"}, checked_at=NOW)
+    cache.put(
+        DOI.upper(), "openalex", {"status": "checked", "verdict": "not_retracted"}, checked_at=NOW
+    )
     found = cache.lookup(DOI, "openalex", now="2026-08-20T00:00:00Z")
     assert found == {
         "cache_state": "current",
@@ -330,14 +349,18 @@ def test_cache_rejects_untyped_status(tmp_path: Path) -> None:
 
 def test_v1_carrier_remains_backward_compatible() -> None:
     fixture = json.loads(
-        (SCRIPTS / "fixtures/bibliographic_integrity_signals/retraction.json").read_text(encoding="utf-8")
+        (SCRIPTS / "fixtures/bibliographic_integrity_signals/retraction.json").read_text(
+            encoding="utf-8"
+        )
     )
     assert not carrier.validation_errors(fixture)
 
 
 def test_v11_schema_requires_retraction_context() -> None:
     fixture = json.loads(
-        (SCRIPTS / "fixtures/bibliographic_integrity_signals/retraction.json").read_text(encoding="utf-8")
+        (SCRIPTS / "fixtures/bibliographic_integrity_signals/retraction.json").read_text(
+            encoding="utf-8"
+        )
     )
     fixture["schema_version"] = status.SCHEMA_VERSION
     validator = Draft202012Validator(
@@ -390,7 +413,9 @@ def test_retraction_context_survives_advisory_projection() -> None:
 
 def test_terminal_policy_schema_accepts_retraction_without_default() -> None:
     schema = json.loads(
-        (REPO_ROOT / "shared/contracts/passport/terminal_policies.schema.json").read_text(encoding="utf-8")
+        (REPO_ROOT / "shared/contracts/passport/terminal_policies.schema.json").read_text(
+            encoding="utf-8"
+        )
     )
     retraction = schema["properties"]["retraction"]
     assert set(retraction["enum"]) == {"advisory", "strict"}
@@ -437,20 +462,24 @@ def test_schema_rejects_stale_strict_eligible_row() -> None:
 
 
 def test_schema_rejects_fabricated_legitimate_exception() -> None:
-    signal = _resolve(declaration={
-        "declared": True,
-        "declaration_id": "decl-1",
-        "retraction_notice_cited": True,
-        "notice_citation_key": "notice2026",
-    })
+    signal = _resolve(
+        declaration={
+            "declared": True,
+            "declaration_id": "decl-1",
+            "retraction_notice_cited": True,
+            "notice_citation_key": "notice2026",
+        }
+    )
     signal["retraction_context"]["declared_legitimate_citation"]["declared"] = False
     assert carrier.validation_errors(signal)
 
 
 def test_schema_binds_reason_availability_to_nonempty_reasons() -> None:
-    signal = _resolve(crossref={
-        **_cr(_event("retraction")),
-        "retraction_reasons": ["Error"],
-    })
+    signal = _resolve(
+        crossref={
+            **_cr(_event("retraction")),
+            "retraction_reasons": ["Error"],
+        }
+    )
     signal["retraction_context"]["retraction_reasons"] = []
     assert carrier.validation_errors(signal)

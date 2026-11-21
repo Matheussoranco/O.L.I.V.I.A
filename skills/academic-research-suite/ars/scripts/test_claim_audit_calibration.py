@@ -35,8 +35,9 @@ from __future__ import annotations
 
 import json
 import unittest
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from scripts.claim_audit_calibration import (
     GoldSetValidationError,
@@ -283,15 +284,14 @@ class TC3GoldSetShape(unittest.TestCase):
         # is unmeasurable and T-C1 cannot fail-on-threshold on the
         # constraint line. Spec §7.7 rule (d).
         not_violated = [
-            t for t in self.gold_set
-            if t.get("tuple_kind") == "constraint"
-            and t.get("expected_judgment") == "NOT_VIOLATED"
+            t
+            for t in self.gold_set
+            if t.get("tuple_kind") == "constraint" and t.get("expected_judgment") == "NOT_VIOLATED"
         ]
         self.assertGreaterEqual(
             len(not_violated),
             3,
-            f"gold set must include ≥3 NOT_VIOLATED constraint tuples; "
-            f"got {len(not_violated)}",
+            f"gold set must include ≥3 NOT_VIOLATED constraint tuples; " f"got {len(not_violated)}",
         )
 
     def test_validate_gold_set_rejects_invalid_tuple_kind(self) -> None:
@@ -659,8 +659,7 @@ class TC1ThresholdEnforcementBadJudge(unittest.TestCase):
             self.assertGreater(
                 per_class[cls]["FNR"],
                 0.0,
-                f"bad-judge flip should drive non-zero FNR on {cls!r}; "
-                f"got {per_class[cls]!r}",
+                f"bad-judge flip should drive non-zero FNR on {cls!r}; " f"got {per_class[cls]!r}",
             )
 
 
@@ -868,7 +867,9 @@ class PartialSupportSubsetMetric(unittest.TestCase):
         # verification was gameable.
         report = run_calibration(self.gold_set, judge_fn=_dummy_breakdown_judge())
         self.assertLess(
-            report["FNR"], 0.15, f"dummy-breakdown judge should pass aggregate; got {report['FNR']!r}"
+            report["FNR"],
+            0.15,
+            f"dummy-breakdown judge should pass aggregate; got {report['FNR']!r}",
         )
         self.assertEqual(
             report["partial_support"]["miss_rate"],

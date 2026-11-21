@@ -18,9 +18,10 @@ import os
 import re
 import stat
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 import jsonschema
 from referencing import Registry, Resource
@@ -45,9 +46,7 @@ CLAIM_SURFACE_SCHEMA_PATH = REVISION_CONTRACTS / "claim_surface_manifest.schema.
 BUNDLE_SCHEMA_PATH = REVISION_CONTRACTS / "revision_evidence_bundle.schema.json"
 INTEGRITY_RECEIPT_SCHEMA_PATH = REVISION_CONTRACTS / "integrity_pass_receipt.schema.json"
 INTEGRITY_LIST_SCHEMA_PATH = REVISION_CONTRACTS / "integrity_correction_list.schema.json"
-INTEGRITY_AUTH_SCHEMA_PATH = (
-    REVISION_CONTRACTS / "integrity_correction_authorization.schema.json"
-)
+INTEGRITY_AUTH_SCHEMA_PATH = REVISION_CONTRACTS / "integrity_correction_authorization.schema.json"
 INTEGRITY_AUTH_INPUT_SCHEMA_PATH = (
     REVISION_CONTRACTS / "integrity_correction_authorization_input.schema.json"
 )
@@ -112,7 +111,9 @@ def bytes_hash(value: bytes) -> str:
 
 def _reject_non_jcs_numbers(value: Any, path: str = "$") -> None:
     if isinstance(value, float):
-        raise ContractError([f"{path}: floating-point values are outside this contract's JCS value domain"])
+        raise ContractError(
+            [f"{path}: floating-point values are outside this contract's JCS value domain"]
+        )
     if isinstance(value, dict):
         for key, child in value.items():
             _reject_non_jcs_numbers(child, f"{path}.{key}")
@@ -139,9 +140,7 @@ def author_decision_projection(adjudication: dict) -> dict:
         "author_events": copy.deepcopy(adjudication.get("author_events")),
         "display_order": copy.deepcopy(adjudication.get("display_order")),
         "author_adjudications": copy.deepcopy(adjudication.get("author_adjudications")),
-        "collateral_authorizations": copy.deepcopy(
-            adjudication.get("collateral_authorizations")
-        ),
+        "collateral_authorizations": copy.deepcopy(adjudication.get("collateral_authorizations")),
     }
 
 
@@ -182,9 +181,7 @@ def _schema_validator(schema_path: Path) -> jsonschema.Draft202012Validator:
     for path in REVISION_SCHEMA_PATHS:
         candidate = _load_schema(path)
         if "$id" in candidate:
-            registry = registry.with_resource(
-                candidate["$id"], Resource.from_contents(candidate)
-            )
+            registry = registry.with_resource(candidate["$id"], Resource.from_contents(candidate))
     return jsonschema.Draft202012Validator(schema, registry=registry)
 
 
@@ -232,7 +229,9 @@ def _read_path_once(path: Path, label: str) -> bytes:
     try:
         fd = os.open(path, flags)
     except OSError as exc:
-        raise ContractError([f"{label}: cannot open regular non-symlink file {path}: {exc}"]) from exc
+        raise ContractError(
+            [f"{label}: cannot open regular non-symlink file {path}: {exc}"]
+        ) from exc
     try:
         before = os.fstat(fd)
         if not stat.S_ISREG(before.st_mode):
@@ -394,12 +393,10 @@ def validate_block_manifest(manifest: dict, manifest_raw: bytes, base_raw: bytes
     if manifest["base_draft_hash"] != expected_base:
         failures.append("block manifest base_draft_hash does not match exact base bytes")
     expected_blocks = [
-        {"block_id": block.block_id, "old_hash": block.norm_hash}
-        for block in parsed.blocks
+        {"block_id": block.block_id, "old_hash": block.norm_hash} for block in parsed.blocks
     ]
     actual_blocks = [
-        {"block_id": row["block_id"], "old_hash": row["old_hash"]}
-        for row in manifest["blocks"]
+        {"block_id": row["block_id"], "old_hash": row["old_hash"]} for row in manifest["blocks"]
     ]
     if actual_blocks != expected_blocks:
         failures.append("block manifest block_id/old_hash sequence does not match parsed base")
@@ -489,7 +486,9 @@ def validate_roadmap(
         if roadmap["block_manifest_sha256"] != bytes_hash(block_manifest_raw):
             failures.append("roadmap block_manifest_sha256 does not match exact manifest bytes")
         if block_manifest is None or base_raw is None:
-            failures.append("roadmap block-manifest replay requires both manifest JSON and base bytes")
+            failures.append(
+                "roadmap block-manifest replay requires both manifest JSON and base bytes"
+            )
         else:
             try:
                 parsed = validate_block_manifest(block_manifest, block_manifest_raw, base_raw)
@@ -513,7 +512,9 @@ def validate_roadmap(
         refs = item["source_refs"]
         keys = [_source_key(ref) for ref in refs]
         if keys != sorted(keys):
-            failures.append(f"roadmap item {item['id']}: source_refs must be in immutable source order")
+            failures.append(
+                f"roadmap item {item['id']}: source_refs must be in immutable source order"
+            )
         all_source_keys.extend(keys)
         for field in ("suggested_action", "verification_criteria"):
             if _has_forbidden_work_language(item[field]):
@@ -549,7 +550,9 @@ def validate_roadmap(
         )
     if len(all_source_keys) != len(set(all_source_keys)):
         failures.append("roadmap source_refs: each immutable source position must be unique")
-    expected_order = sorted(items, key=lambda item: (_source_key(item["source_refs"][0]), item["id"]))
+    expected_order = sorted(
+        items, key=lambda item: (_source_key(item["source_refs"][0]), item["id"])
+    )
     if items != expected_order:
         failures.append("roadmap items must use deterministic primary-source order")
     if roadmap["obligation_counts"] != counts:
@@ -567,9 +570,7 @@ def validate_claim_surface_manifest(
     base_raw: bytes,
     artifact_store: ArtifactStore,
 ) -> dict[str, dict]:
-    failures = _schema_failures(
-        claim_surface, CLAIM_SURFACE_SCHEMA_PATH, "claim surface manifest"
-    )
+    failures = _schema_failures(claim_surface, CLAIM_SURFACE_SCHEMA_PATH, "claim surface manifest")
     if failures:
         raise ContractError(failures)
     if claim_surface["roadmap_sha256"] != bytes_hash(roadmap_raw):
@@ -590,17 +591,13 @@ def validate_claim_surface_manifest(
             continue
         source_ids.add(manifest_id)
         try:
-            artifact = artifact_store.read(
-                source["artifact"], f"claim_intent_sources[{index}]"
-            )
+            artifact = artifact_store.read(source["artifact"], f"claim_intent_sources[{index}]")
             manifest = artifact.json(f"claim intent source {manifest_id}")
             failures.extend(
                 _schema_failures(manifest, CLAIM_INTENT_SCHEMA_PATH, f"claim intent {manifest_id}")
             )
             if manifest.get("manifest_id") != manifest_id:
-                failures.append(
-                    f"claim intent source {manifest_id}: artifact manifest_id differs"
-                )
+                failures.append(f"claim intent source {manifest_id}: artifact manifest_id differs")
             seen_claim_ids: set[str] = set()
             for claim in manifest.get("claims", []):
                 claim_id = claim.get("claim_id")
@@ -626,9 +623,7 @@ def validate_claim_surface_manifest(
         referenced_sources.add(key[0])
         claim = claims.get(key)
         if claim is None:
-            failures.append(
-                f"claim surface {surface_id}: ({key[0]}, {key[1]}) does not resolve"
-            )
+            failures.append(f"claim surface {surface_id}: ({key[0]}, {key[1]}) does not resolve")
         elif bytes_hash(claim["claim_text"].encode("utf-8")) != surface["intent_claim_text_sha256"]:
             failures.append(
                 f"claim surface {surface_id}: intent_claim_text_sha256 does not match source claim"
@@ -642,7 +637,9 @@ def validate_claim_surface_manifest(
             failures.append(f"claim surface {surface_id}: original_text_sha256 mismatch")
         start, end = surface["utf8_start"], surface["utf8_end"]
         if not (start < end <= len(base_raw)) or base_raw[start:end] != original_raw:
-            failures.append(f"claim surface {surface_id}: UTF-8 span does not select exact original_text")
+            failures.append(
+                f"claim surface {surface_id}: UTF-8 span does not select exact original_text"
+            )
         block = blocks.get(surface["block_id"])
         if block is None:
             failures.append(f"claim surface {surface_id}: block does not exist")
@@ -669,9 +666,7 @@ def validate_claim_surface_manifest(
     byte_ranges.sort()
     for prior, current in zip(byte_ranges, byte_ranges[1:]):
         if current[0] < prior[1]:
-            failures.append(
-                f"claim surfaces {prior[2]} and {current[2]} overlap in the base draft"
-            )
+            failures.append(f"claim surfaces {prior[2]} and {current[2]} overlap in the base draft")
     if failures:
         raise ContractError(failures)
     return surfaces_by_id
@@ -808,7 +803,9 @@ def validate_author_adjudication(
             if bytes_hash(replacement) != authorization["replacement_text_sha256"]:
                 failures.append(f"claim authorization {auth_id}: replacement_text_sha256 mismatch")
             compatible_ops = authorized.get(authorization["block_id"], set())
-            needed_op = "delete_block" if authorization["replacement_text"] == "" else "replace_block"
+            needed_op = (
+                "delete_block" if authorization["replacement_text"] == "" else "replace_block"
+            )
             if needed_op not in compatible_ops:
                 failures.append(
                     f"claim authorization {auth_id}: authorized target lacks compatible {needed_op}"
@@ -886,9 +883,7 @@ def build_author_adjudication(
         "author_events": copy.deepcopy(choice_input["author_events"]),
         "display_order": copy.deepcopy(choice_input["display_order"]),
         "author_adjudications": copy.deepcopy(choice_input["author_adjudications"]),
-        "collateral_authorizations": copy.deepcopy(
-            choice_input["collateral_authorizations"]
-        ),
+        "collateral_authorizations": copy.deepcopy(choice_input["collateral_authorizations"]),
     }
     raw = canonical_bytes(adjudication)
     validate_author_adjudication(
@@ -1002,7 +997,9 @@ def validate_review_patch_authorization(
                     f"patch op {index}: claim move {auth_id} differs from exact author authorization"
                 )
             if authorization["block_id"] != op["block_id"]:
-                failures.append(f"patch op {index}: claim authorization {auth_id} targets another block")
+                failures.append(
+                    f"patch op {index}: claim authorization {auth_id} targets another block"
+                )
             op_claim_auths[authorization["surface_id"]] = authorization
 
         cited_collateral = op.get("collateral_authorization_ids", [])
@@ -1015,7 +1012,9 @@ def validate_review_patch_authorization(
             used_collateral.add(auth_id)
             authorization = collateral.get(auth_id)
             if authorization is None:
-                failures.append(f"patch op {index}: collateral authorization {auth_id} does not resolve")
+                failures.append(
+                    f"patch op {index}: collateral authorization {auth_id} does not resolve"
+                )
                 continue
             if authorization["authorizing_item_id"] not in cited:
                 failures.append(
@@ -1025,7 +1024,9 @@ def validate_review_patch_authorization(
                 authorization["block_id"] != op["block_id"]
                 or authorization["operation"] != op["op"]
             ):
-                failures.append(f"patch op {index}: collateral {auth_id} does not match exact target/op")
+                failures.append(
+                    f"patch op {index}: collateral {auth_id} does not match exact target/op"
+                )
             covered_declined.add(authorization["constrained_item_id"])
         required_declined = declined_by_block.get(op["block_id"], set())
         if covered_declined != required_declined:
@@ -1038,7 +1039,9 @@ def validate_review_patch_authorization(
         touched_surfaces = surfaces_by_block.get(op["block_id"], [])
         touched_surface_ids = {surface["surface_id"] for surface in touched_surfaces}
         if set(op_claim_auths) - touched_surface_ids:
-            failures.append(f"patch op {index}: claim authorization cites a surface outside target block")
+            failures.append(
+                f"patch op {index}: claim authorization cites a surface outside target block"
+            )
         for surface in touched_surfaces:
             protected_surfaces_checked += 1
             authorization = op_claim_auths.get(surface["surface_id"])
@@ -1144,7 +1147,9 @@ def validate_integrity_authorization(
     if authorization["issue_list_sha256"] != bytes_hash(issue_list_raw):
         failures.append("integrity authorization issue_list_sha256 does not match exact bytes")
     if authorization["revision_patch_sha256"] != bytes_hash(patch_raw):
-        failures.append("integrity authorization revision_patch_sha256 does not match exact patch bytes")
+        failures.append(
+            "integrity authorization revision_patch_sha256 does not match exact patch bytes"
+        )
     if patch.get("authorization_context") != "integrity_correction":
         failures.append("integrity authorization requires an integrity_correction patch")
     if patch.get("issue_list_sha256") != bytes_hash(issue_list_raw):
@@ -1162,9 +1167,7 @@ def validate_integrity_authorization(
     for decision in authorization["author_decisions"]:
         correction_id = decision["correction_id"]
         if correction_id in decisions:
-            failures.append(
-                f"integrity authorization: duplicate correction_id {correction_id}"
-            )
+            failures.append(f"integrity authorization: duplicate correction_id {correction_id}")
         decisions[correction_id] = decision
         issue = issues.get(correction_id)
         if issue is None:
@@ -1185,9 +1188,7 @@ def validate_integrity_authorization(
         proposed = _target_map(issue["proposed_targets"])
         for target in decision["authorized_targets"]:
             proposed_ops = proposed.get(target["block_id"])
-            if proposed_ops is None or not set(target["allowed_operations"]).issubset(
-                proposed_ops
-            ):
+            if proposed_ops is None or not set(target["allowed_operations"]).issubset(proposed_ops):
                 failures.append(
                     f"integrity authorization {correction_id}: authorized target exceeds proposed scope"
                 )
@@ -1358,8 +1359,10 @@ def _replay_patch_and_report(
     """
     from scripts.ars_apply_revision_patch import (  # local: avoids import cycle
         ApplyRejection,
-        apply_patch as apply_patch_bytes,
         validate_patch,
+    )
+    from scripts.ars_apply_revision_patch import (
+        apply_patch as apply_patch_bytes,
     )
 
     failures: list[str] = []
@@ -1388,9 +1391,7 @@ def _replay_patch_and_report(
         )
         replayed_text, phase2 = apply_patch_bytes(pre_text, parsed, analysis)
     except ApplyRejection as exc:
-        details = "; ".join(
-            f"{row.get('kind')}: {row.get('message')}" for row in exc.failures
-        )
+        details = "; ".join(f"{row.get('kind')}: {row.get('message')}" for row in exc.failures)
         return [f"{label}: deterministic patch replay rejected ({details})"]
     except ContractError as exc:
         return [f"{label}: deterministic patch replay rejected ({'; '.join(exc.failures)})"]
@@ -1527,9 +1528,7 @@ def validate_bundle(bundle: dict, *, root: Path) -> None:
                             [f"bundle {label}: review_noop pre/post draft bytes must be identical"]
                         )
                 else:
-                    patch_artifact = store.read(
-                        entry["revision_patch"], f"{label}.revision_patch"
-                    )
+                    patch_artifact = store.read(entry["revision_patch"], f"{label}.revision_patch")
                     patch = patch_artifact.json(f"bundle {label} patch")
                     witness = validate_review_patch_authorization(
                         patch,
@@ -1542,9 +1541,7 @@ def validate_bundle(bundle: dict, *, root: Path) -> None:
                         claim_surface_raw=claim_artifact.raw,
                         surfaces_by_id=surfaces,
                     )
-                    report_artifact = store.read(
-                        entry["apply_report"], f"{label}.apply_report"
-                    )
+                    report_artifact = store.read(entry["apply_report"], f"{label}.apply_report")
                     report = report_artifact.json(f"bundle {label} apply report")
                     failures.extend(
                         _validate_apply_report(
@@ -1677,7 +1674,10 @@ def render_markdown(
     validate_roadmap(roadmap)
     records: dict[str, dict] = {}
     if adjudication is None:
-        display = {"mode": "source_traceability", "item_ids": [item["id"] for item in roadmap["items"]]}
+        display = {
+            "mode": "source_traceability",
+            "item_ids": [item["id"] for item in roadmap["items"]],
+        }
     else:
         required_inputs = {
             "adjudication_raw": adjudication_raw,
@@ -1826,9 +1826,7 @@ def main(argv: list[str] | None = None) -> int:
     integrity_parent.add_argument("--base", type=Path, required=True)
     integrity_parent.add_argument("--patch", type=Path, required=True)
 
-    p_integrity_build = sub.add_parser(
-        "build-integrity-authorization", parents=[integrity_parent]
-    )
+    p_integrity_build = sub.add_parser("build-integrity-authorization", parents=[integrity_parent])
     p_integrity_build.add_argument("--author-choices", type=Path, required=True)
     p_integrity_build.add_argument("--output", type=Path, required=True)
 
@@ -1854,9 +1852,7 @@ def main(argv: list[str] | None = None) -> int:
             patch, patch_raw = load_json_path(args.patch, "integrity patch")
             if args.command == "build-integrity-authorization":
                 if args.output.exists():
-                    raise ContractError(
-                        ["build-integrity-authorization output already exists"]
-                    )
+                    raise ContractError(["build-integrity-authorization output already exists"])
                 choices, _choices_raw = load_json_path(
                     args.author_choices,
                     "integrity correction authorization input",
@@ -1869,9 +1865,7 @@ def main(argv: list[str] | None = None) -> int:
                     patch_raw=patch_raw,
                     base_raw=base_raw,
                 )
-                atomic_write_bytes(
-                    args.output, canonical_bytes(authorization) + b"\n"
-                )
+                atomic_write_bytes(args.output, canonical_bytes(authorization) + b"\n")
                 print(f"integrity correction authorization built: {args.output}")
             else:
                 authorization, authorization_raw = load_json_path(
@@ -1912,9 +1906,7 @@ def main(argv: list[str] | None = None) -> int:
                 author = None
                 author_raw = None
                 if args.adjudication is not None:
-                    author, author_raw = load_json_path(
-                        args.adjudication, "author adjudication"
-                    )
+                    author, author_raw = load_json_path(args.adjudication, "author adjudication")
                 sys.stdout.write(
                     render_markdown(
                         roadmap,

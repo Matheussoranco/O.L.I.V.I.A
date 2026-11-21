@@ -6,7 +6,6 @@ import json
 from pathlib import Path
 
 import pytest
-
 from scripts import check_panel_synthesis as cps
 
 REPO = Path(__file__).resolve().parents[1]
@@ -115,12 +114,14 @@ def report_text(role: str, overrides=None, da_ids=()) -> str:
                 lines += ["score: warn", 'trigger: "warn trigger"']
             elif value == "block":
                 lines += [
-                    "score: block", "block_class: repairable",
+                    "score: block",
+                    "block_class: repairable",
                     'trigger: "block trigger"',
                 ]
             elif value == "fatal":
                 lines += [
-                    "score: block", "block_class: fatal",
+                    "score: block",
+                    "block_class: fatal",
                     'trigger: "fatal trigger"',
                 ]
             elif value == "abstain":
@@ -150,9 +151,7 @@ def report_text(role: str, overrides=None, da_ids=()) -> str:
             "|---|-------|-----------------|",
         ]
         for finding_id in da_ids:
-            lines.append(
-                f'| {finding_id} | Issue | text: "quoted evidence" p. 1 |'
-            )
+            lines.append(f'| {finding_id} | Issue | text: "quoted evidence" p. 1 |')
         lines += [
             "",
             "#### MAJOR",
@@ -175,35 +174,32 @@ def reports(overrides=None, da_ids=()):
 
 
 def synthesis_for(
-    panel_reports, adjudications=None, decision_override=None,
-    marker_count=None, rationales=None,
+    panel_reports,
+    adjudications=None,
+    decision_override=None,
+    marker_count=None,
+    rationales=None,
 ):
     contract, expressions = cps.load_contract(FULL_PATH)
-    assessed, fired, decision = cps.recompute_panel(
-        panel_reports, contract, expressions, []
-    )
+    assessed, fired, decision = cps.recompute_panel(panel_reports, contract, expressions, [])
     verdicts = cps.compute_dimension_verdicts(assessed)
     adjudications = adjudications or {}
     rationales = rationales or {}
     lines = [
-        "dimension_verdicts: [" + ", ".join(
-            f"{did}={value}" for did, value in verdicts.items()
-        ) + "]",
+        "dimension_verdicts: ["
+        + ", ".join(f"{did}={value}" for did, value in verdicts.items())
+        + "]",
         "fired_conditions: [" + ", ".join(fired) + "]",
-        "da_critical_adjudications: [" + ", ".join(
-            f"{finding_id}={value}"
-            for finding_id, value in adjudications.items()
-        ) + "]",
+        "da_critical_adjudications: ["
+        + ", ".join(f"{finding_id}={value}" for finding_id, value in adjudications.items())
+        + "]",
     ]
     lines += [
-        f"{finding_id} rejection rationale: {text}"
-        for finding_id, text in rationales.items()
+        f"{finding_id} rejection rationale: {text}" for finding_id, text in rationales.items()
     ]
     lines.append(decision_override or decision)
     if marker_count is not None:
-        lines.append(
-            f"[DA-CRITICAL-VS-ACCEPT: {marker_count} validated/unresolved]"
-        )
+        lines.append(f"[DA-CRITICAL-VS-ACCEPT: {marker_count} validated/unresolved]")
     return "\n".join(lines), expressions
 
 
@@ -254,8 +250,12 @@ def test_expression_patterns_parse(expression):
 
 @pytest.mark.parametrize(
     "expression",
-    ["some dimension fails", "D99 scores 'pass'",
-     "any high dimension has a fatal block", "D4 has a fatal block"],
+    [
+        "some dimension fails",
+        "D99 scores 'pass'",
+        "any high dimension has a fatal block",
+        "D4 has a fatal block",
+    ],
 )
 def test_expression_fail_closed(expression):
     dimensions = {d["id"]: d for d in FULL["acceptance_dimensions"]}
@@ -295,7 +295,10 @@ def test_v1_sections_fail_loudly():
 @pytest.mark.parametrize(
     "action",
     (
-        "reject", "Reject", "reject-or-major-revision", "unknown_v1_value",
+        "reject",
+        "Reject",
+        "reject-or-major-revision",
+        "unknown_v1_value",
         "mixed_key_case",
     ),
 )
@@ -314,18 +317,14 @@ def test_indented_v1_bare_decision_line_fails_loudly(indent):
 
 
 def test_fenced_v1_bare_decision_decoy_is_ignored():
-    text = (
-        report_text("eic")
-        + "\n```text\neditorial_decision=Reject\n```\n"
-    )
+    text = report_text("eic") + "\n```text\neditorial_decision=Reject\n```\n"
     cps.parse_report("eic.md", text, FULL)
 
 
 @pytest.mark.parametrize("fence", ("```", "~~~"))
 def test_malformed_fence_closer_does_not_expose_bare_decision(fence):
     text = (
-        report_text("eic")
-        + f"\n{fence}text\n{fence}not-a-close\n"
+        report_text("eic") + f"\n{fence}text\n{fence}not-a-close\n"
         "editorial_decision=accept\n"
         f"{fence}\n"
     )
@@ -351,12 +350,7 @@ def test_malformed_fence_closer_synthesis_parses_as_fenced_content():
 
 @pytest.mark.parametrize("separator", ("\x85", "\u2028", "\u2029"))
 def test_unicode_separator_cannot_close_commonmark_fence(separator):
-    text = (
-        "```text\n```"
-        + separator
-        + report_text("methodology", {"D1": "fatal"})
-        + "\n```\n"
-    )
+    text = "```text\n```" + separator + report_text("methodology", {"D1": "fatal"}) + "\n```\n"
     with pytest.raises(cps.ReportError, match="Dimension Scores"):
         cps.parse_report("hidden-methodology.md", text, FULL)
 
@@ -377,9 +371,7 @@ def test_fenced_audit_block_parses_as_observed_in_637_cohort():
     """Every synthesis first attempt of the 2026-08-03 baseline cohort (6/6)
     emitted the four audit lines inside a plain code fence."""
     synthesis, _ = synthesis_for(reports())
-    parsed = cps.parse_synthesis(
-        "s.md", "```\n" + synthesis + "\n```\n", FULL
-    )
+    parsed = cps.parse_synthesis("s.md", "```\n" + synthesis + "\n```\n", FULL)
     assert parsed.fired == ["F0"]
     assert parsed.decision == "editorial_decision=accept"
 
@@ -397,8 +389,9 @@ def test_identical_duplicate_audit_lines_collapse():
     """A byte-identical re-statement (plain line plus its fenced copy) is
     one candidate, not a duplicate abort."""
     synthesis, _ = synthesis_for(reports())
-    fired_line = next(line for line in synthesis.split("\n")
-                      if line.startswith("fired_conditions:"))
+    fired_line = next(
+        line for line in synthesis.split("\n") if line.startswith("fired_conditions:")
+    )
     text = synthesis + "\n```\n" + fired_line + "\n```\n"
     parsed = cps.parse_synthesis("s.md", text, FULL)
     assert parsed.fired == ["F0"]
@@ -422,9 +415,7 @@ def test_prose_quoted_checker_diagnostic_is_not_a_candidate():
         "`[SYNTHESIS-PARSE: expected exactly one fired_conditions line, "
         "found 0]` and the canonical block is re-emitted plainly above."
     )
-    parsed = cps.parse_synthesis(
-        "s.md", synthesis + "\n" + note + "\n", FULL
-    )
+    parsed = cps.parse_synthesis("s.md", synthesis + "\n" + note + "\n", FULL)
     assert parsed.fired == ["F0"]
 
 
@@ -453,8 +444,7 @@ def test_fenced_rationale_and_marker_document_an_accepted_miss():
     deliberately."""
     synthesis, _ = synthesis_for(reports())
     text = (
-        synthesis
-        + "\n```\nC9 rejection rationale: quoted example\n"
+        synthesis + "\n```\nC9 rejection rationale: quoted example\n"
         "[DA-CRITICAL-VS-ACCEPT: 2 validated/unresolved]\n```\n"
     )
     parsed = cps.parse_synthesis("s.md", text, FULL)
@@ -465,8 +455,7 @@ def test_fenced_rationale_and_marker_document_an_accepted_miss():
     # and this fenced one stays invisible rather than aborting — the
     # decision channel is pinned independently by the layer-2 recompute.
     assert not any(
-        "marker forbidden" in diag
-        for diag in cps.check_da_terminal_gate(reports(), parsed)
+        "marker forbidden" in diag for diag in cps.check_da_terminal_gate(reports(), parsed)
     )
 
 
@@ -493,9 +482,7 @@ def test_all_space_span_body_is_not_stripped():
     """CommonMark strips padding only when the body is not all spaces; an
     all-space span stays as-is and is simply a non-candidate."""
     synthesis, _ = synthesis_for(reports())
-    parsed = cps.parse_synthesis(
-        "s.md", synthesis + "\n`   `\n", FULL
-    )
+    parsed = cps.parse_synthesis("s.md", synthesis + "\n`   `\n", FULL)
     assert parsed.decision == "editorial_decision=accept"
 
 
@@ -526,10 +513,7 @@ def test_malformed_closer_fence_state_pins_wrapped_decoy_hidden():
     before the fence parses. A mutation that accepts the malformed closer
     unwraps the decoy and flips this to a found-2 abort."""
     synthesis, _ = synthesis_for(reports())
-    text = (
-        synthesis
-        + "\n~~~text\n~~~not-a-close\n`fired_conditions: [F1]`\n~~~\n"
-    )
+    text = synthesis + "\n~~~text\n~~~not-a-close\n`fired_conditions: [F1]`\n~~~\n"
     parsed = cps.parse_synthesis("s.md", text, FULL)
     assert parsed.fired == ["F0"]
 
@@ -539,10 +523,7 @@ def test_short_closer_fence_state_pins_wrapped_decoy_hidden():
     fence (CommonMark length rule), so the wrapped decoy after it stays
     fenced and hidden."""
     synthesis, _ = synthesis_for(reports())
-    text = (
-        synthesis
-        + "\n````\n```\n`fired_conditions: [F1]`\n````\n"
-    )
+    text = synthesis + "\n````\n```\n`fired_conditions: [F1]`\n````\n"
     parsed = cps.parse_synthesis("s.md", text, FULL)
     assert parsed.fired == ["F0"]
 
@@ -551,10 +532,7 @@ def test_mismatched_closer_fence_state_pins_wrapped_decoy_hidden():
     """A backtick closer cannot close a tilde fence; the wrapped decoy
     after it stays fenced and hidden."""
     synthesis, _ = synthesis_for(reports())
-    text = (
-        synthesis
-        + "\n~~~\n```\n`fired_conditions: [F1]`\n~~~\n"
-    )
+    text = synthesis + "\n~~~\n```\n`fired_conditions: [F1]`\n~~~\n"
     parsed = cps.parse_synthesis("s.md", text, FULL)
     assert parsed.fired == ["F0"]
 
@@ -566,11 +544,7 @@ def test_unicode_separator_fence_state_pins_wrapped_decoy_hidden(separator):
     decoy after it stays fenced and hidden. A mutation that splits on the
     separator closes the fence and flips this to a found-2 abort."""
     synthesis, _ = synthesis_for(reports())
-    text = (
-        synthesis
-        + "\n~~~text\n~~~" + separator + "note\n"
-        "`fired_conditions: [F1]`\n~~~\n"
-    )
+    text = synthesis + "\n~~~text\n~~~" + separator + "note\n" "`fired_conditions: [F1]`\n~~~\n"
     parsed = cps.parse_synthesis("s.md", text, FULL)
     assert parsed.fired == ["F0"]
 
@@ -585,9 +559,7 @@ def test_unterminated_fence_content_stays_candidate():
 
 @pytest.mark.parametrize("score", ("warn", "block"))
 def test_eligible_nonpass_score_requires_trigger(score):
-    text = report_text("methodology", {"D1": score}).replace(
-        f'trigger: "{score} trigger"\n', "", 1
-    )
+    text = report_text("methodology", {"D1": score}).replace(f'trigger: "{score} trigger"\n', "", 1)
     with pytest.raises(cps.ReportError, match="TRIGGER-GRAMMAR"):
         cps.parse_report("methodology.md", text, FULL)
 
@@ -600,10 +572,10 @@ def test_eligible_nonpass_score_requires_trigger(score):
     ),
 )
 def test_nontriggering_score_forbids_trigger(role, did, score_line):
-    text = report_text(role).replace(
-        f"### {did}:", f'### {did}:', 1
-    ).replace(
-        score_line, score_line + '\ntrigger: "post hoc trigger"', 1
+    text = (
+        report_text(role)
+        .replace(f"### {did}:", f"### {did}:", 1)
+        .replace(score_line, score_line + '\ntrigger: "post hoc trigger"', 1)
     )
     with pytest.raises(cps.ReportError, match="TRIGGER-GRAMMAR"):
         cps.parse_report(f"{role}.md", text, FULL)
@@ -613,7 +585,7 @@ def test_nonmandatory_block_cannot_carry_block_class():
     text = report_text("perspective", {"D4": "pass"}).replace(
         "### D4: cross_disciplinary_relevance\nscore: pass",
         "### D4: cross_disciplinary_relevance\nscore: block\n"
-        "block_class: repairable\ntrigger: \"block trigger\"",
+        'block_class: repairable\ntrigger: "block trigger"',
     )
     with pytest.raises(cps.ReportError, match="BLOCK-CLASS"):
         cps.parse_report("p.md", text, FULL)
@@ -622,9 +594,7 @@ def test_nonmandatory_block_cannot_carry_block_class():
 def test_denominator_excludes_ineligible_seats():
     panel_reports = reports({"methodology": {"D1": "warn"}})
     _, expressions = cps.load_contract(FULL_PATH)
-    _, fired, decision = cps.recompute_panel(
-        panel_reports, FULL, expressions, []
-    )
+    _, fired, decision = cps.recompute_panel(panel_reports, FULL, expressions, [])
     assert "F5" in fired
     assert decision == "editorial_decision=minor_revision"
 
@@ -634,9 +604,7 @@ def test_denominator_exclusion_ignores_decision_flipping_ineligible_score():
     eic_report = next(report for report in panel_reports if report.role == "eic")
     eic_report.scores["D1"] = state("fatal")
     contract, expressions = cps.load_contract(FULL_PATH)
-    assessed, fired, decision = cps.recompute_panel(
-        panel_reports, contract, expressions, []
-    )
+    assessed, fired, decision = cps.recompute_panel(panel_reports, contract, expressions, [])
     assert len(assessed["D1"]) == 1
     assert assessed["D1"][0].score == "pass"
     assert fired == ["F0"]
@@ -646,12 +614,17 @@ def test_denominator_exclusion_ignores_decision_flipping_ineligible_score():
 def test_roles_cross_check_rejects_dispatch_role_swap(tmp_path, capsys):
     report_path = tmp_path / "eic.md"
     report_path.write_text(report_text("eic"), encoding="utf-8")
-    result = cps.main([
-        "--contract", str(FULL_PATH),
-        "--report", str(report_path),
-        "--roles", "methodology",
-        "--layer1-only",
-    ])
+    result = cps.main(
+        [
+            "--contract",
+            str(FULL_PATH),
+            "--report",
+            str(report_path),
+            "--roles",
+            "methodology",
+            "--layer1-only",
+        ]
+    )
     assert result == cps.EXIT_REVIEWER
     assert "[ROLE-BINDING:" in capsys.readouterr().out
 
@@ -659,21 +632,28 @@ def test_roles_cross_check_rejects_dispatch_role_swap(tmp_path, capsys):
 def test_roles_cross_check_accepts_matching_dispatch_role(tmp_path, capsys):
     report_path = tmp_path / "eic.md"
     report_path.write_text(report_text("eic"), encoding="utf-8")
-    result = cps.main([
-        "--contract", str(FULL_PATH),
-        "--report", str(report_path),
-        "--roles", "eic",
-        "--layer1-only",
-    ])
+    result = cps.main(
+        [
+            "--contract",
+            str(FULL_PATH),
+            "--report",
+            str(report_path),
+            "--roles",
+            "eic",
+            "--layer1-only",
+        ]
+    )
     assert result == cps.EXIT_PASS
     assert "LAYER1-ONLY: PASS" in capsys.readouterr().out
 
 
 def test_dimension_unassessed_aborts():
-    panel_reports = reports({
-        "methodology": {"D3": "abstain"},
-        "da": {"D3": "abstain"},
-    })
+    panel_reports = reports(
+        {
+            "methodology": {"D3": "abstain"},
+            "da": {"D3": "abstain"},
+        }
+    )
     _, expressions = cps.load_contract(FULL_PATH)
     with pytest.raises(cps.ContractError, match="DIMENSION-UNASSESSED: D3"):
         cps.recompute_panel(panel_reports, FULL, expressions, [])
@@ -684,15 +664,19 @@ def test_dimension_verdict_mismatch_is_synthesis_failure():
     text, expressions = synthesis_for(panel_reports)
     text = text.replace("D1=pass", "D1=warn")
     synthesis = cps.parse_synthesis("s.md", text, FULL)
-    assert any("PANEL-SYNTHESIS-MISMATCH" in item for item in
-               cps.layer2_check(panel_reports, FULL, expressions, synthesis, []))
+    assert any(
+        "PANEL-SYNTHESIS-MISMATCH" in item
+        for item in cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+    )
 
 
 def test_fatal_precedence_over_repairable():
-    panel_reports = reports({
-        "methodology": {"D1": "fatal"},
-        "domain": {"D2": "block"},
-    })
+    panel_reports = reports(
+        {
+            "methodology": {"D1": "fatal"},
+            "domain": {"D2": "block"},
+        }
+    )
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     assert synthesis.fired[:2] == ["F1", "F2"]
@@ -703,18 +687,15 @@ def test_fatal_precedence_over_repairable():
 @pytest.mark.parametrize("adjudication", ["VALIDATED", "UNRESOLVED"])
 def test_da_accept_conflict_requires_counted_marker(adjudication):
     panel_reports = reports(da_ids=("C1",))
-    text, expressions = synthesis_for(
-        panel_reports, {"C1": adjudication}, marker_count=1
-    )
+    text, expressions = synthesis_for(panel_reports, {"C1": adjudication}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     assert cps.layer2_check(panel_reports, FULL, expressions, synthesis, []) == []
     missing = cps.parse_synthesis(
-        "s.md", text.replace(
-            "\n[DA-CRITICAL-VS-ACCEPT: 1 validated/unresolved]", ""
-        ), FULL
+        "s.md", text.replace("\n[DA-CRITICAL-VS-ACCEPT: 1 validated/unresolved]", ""), FULL
     )
-    assert any("MARKER" in item for item in
-               cps.layer2_check(panel_reports, FULL, expressions, missing, []))
+    assert any(
+        "MARKER" in item for item in cps.layer2_check(panel_reports, FULL, expressions, missing, [])
+    )
 
 
 def test_da_rejected_with_rationale_accepts_without_marker():
@@ -732,23 +713,24 @@ def test_da_rejected_with_rationale_accepts_without_marker():
     "adjudications,rationales,marker,fragment",
     [
         ({}, {}, None, "MISMATCH"),  # omitted C1
-        ({"C1": "REJECTED", "C3": "VALIDATED"},
-         {"C1": "rationale"}, 1, "MISMATCH"),  # phantom C3
+        ({"C1": "REJECTED", "C3": "VALIDATED"}, {"C1": "rationale"}, 1, "MISMATCH"),  # phantom C3
         ({"C1": "REJECTED"}, {}, None, "RATIONALE"),
         ({"C1": "VALIDATED"}, {}, 2, "MARKER"),
     ],
 )
-def test_da_gate_negative_fixtures(
-    adjudications, rationales, marker, fragment
-):
+def test_da_gate_negative_fixtures(adjudications, rationales, marker, fragment):
     panel_reports = reports(da_ids=("C1",))
     text, expressions = synthesis_for(
-        panel_reports, adjudications, marker_count=marker,
+        panel_reports,
+        adjudications,
+        marker_count=marker,
         rationales=rationales,
     )
     synthesis = cps.parse_synthesis("s.md", text, FULL)
-    assert any(fragment in item for item in
-               cps.layer2_check(panel_reports, FULL, expressions, synthesis, []))
+    assert any(
+        fragment in item
+        for item in cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+    )
 
 
 @pytest.mark.parametrize(
@@ -809,9 +791,7 @@ def test_da_separator_drift_fails_in_synthesis_path(old, new):
     panel_reports = reports(da_ids=("C1",))
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text = da_report.text.replace(old, new, 1)
-    text, expressions = synthesis_for(
-        panel_reports, {"C1": "VALIDATED"}, marker_count=1
-    )
+    text, expressions = synthesis_for(panel_reports, {"C1": "VALIDATED"}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="separator"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
@@ -838,17 +818,12 @@ def test_da_pre_table_prose_passes_in_synthesis_path():
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text = da_report.text.replace(
         "#### CRITICAL",
-        "Ordinary adversarial commentary precedes the terminal tables.\n\n"
-        "#### CRITICAL",
+        "Ordinary adversarial commentary precedes the terminal tables.\n\n" "#### CRITICAL",
         1,
     )
-    synthesis_text, expressions = synthesis_for(
-        panel_reports, {"C1": "VALIDATED"}, marker_count=1
-    )
+    synthesis_text, expressions = synthesis_for(panel_reports, {"C1": "VALIDATED"}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
-    assert cps.layer2_check(
-        panel_reports, FULL, expressions, synthesis, []
-    ) == []
+    assert cps.layer2_check(panel_reports, FULL, expressions, synthesis, []) == []
 
 
 def test_da_bare_comment_closer_passes_in_synthesis_path():
@@ -856,21 +831,16 @@ def test_da_bare_comment_closer_passes_in_synthesis_path():
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text = da_report.text.replace(
         "#### CRITICAL",
-        "The reported N moves 41 --> 38 without explanation.\n\n"
-        "#### CRITICAL",
+        "The reported N moves 41 --> 38 without explanation.\n\n" "#### CRITICAL",
         1,
     ).replace(
         'text: "quoted evidence" p. 1',
         'text: "N moves 41 --> 38" p. 1',
         1,
     )
-    synthesis_text, expressions = synthesis_for(
-        panel_reports, {"C1": "VALIDATED"}, marker_count=1
-    )
+    synthesis_text, expressions = synthesis_for(panel_reports, {"C1": "VALIDATED"}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
-    assert cps.layer2_check(
-        panel_reports, FULL, expressions, synthesis, []
-    ) == []
+    assert cps.layer2_check(panel_reports, FULL, expressions, synthesis, []) == []
 
 
 def test_da_post_critical_table_prose_fails_in_synthesis_path():
@@ -920,9 +890,7 @@ def test_da_post_boundary_table_surfaces_fail_in_synthesis_path(
         f"\n\n{late_surface}\n\n#### MAJOR",
         1,
     )
-    synthesis_text, expressions = synthesis_for(
-        panel_reports, {"C1": "VALIDATED"}, marker_count=1
-    )
+    synthesis_text, expressions = synthesis_for(panel_reports, {"C1": "VALIDATED"}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
     with pytest.raises(cps.ReportError, match="issue tables are terminal"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
@@ -935,9 +903,7 @@ def test_da_post_major_table_surfaces_fail_in_synthesis_path(
     panel_reports = reports(da_ids=("C1",))
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text += f"\n\n{late_surface}"
-    synthesis_text, expressions = synthesis_for(
-        panel_reports, {"C1": "VALIDATED"}, marker_count=1
-    )
+    synthesis_text, expressions = synthesis_for(panel_reports, {"C1": "VALIDATED"}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
     with pytest.raises(cps.ReportError, match="issue tables are terminal"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
@@ -947,13 +913,9 @@ def test_da_fenced_payload_after_major_fails_in_synthesis_path():
     panel_reports = reports(da_ids=("C1",))
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text += (
-        "\n\n```markdown\n"
-        '| C2 | Hidden critical issue | text: "hidden evidence" p. 2 |\n'
-        "```"
+        "\n\n```markdown\n" '| C2 | Hidden critical issue | text: "hidden evidence" p. 2 |\n' "```"
     )
-    synthesis_text, expressions = synthesis_for(
-        panel_reports, {"C1": "VALIDATED"}, marker_count=1
-    )
+    synthesis_text, expressions = synthesis_for(panel_reports, {"C1": "VALIDATED"}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
     with pytest.raises(cps.ReportError, match="issue tables are terminal"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
@@ -972,9 +934,7 @@ def test_da_html_comment_inside_fence_fails_in_synthesis_path():
 def test_da_html_commented_tables_fail_in_synthesis_path():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
-    da_report.text = da_report.text.replace(
-        "#### CRITICAL", "<!--\n#### CRITICAL", 1
-    )
+    da_report.text = da_report.text.replace("#### CRITICAL", "<!--\n#### CRITICAL", 1)
     da_report.text += "\n-->"
     synthesis_text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", synthesis_text, FULL)
@@ -1012,9 +972,7 @@ def test_da_html_commented_tables_fail_in_synthesis_path():
         ),
     ],
 )
-def test_da_header_and_critical_id_gates_fail_in_synthesis_path(
-    old, new, fragment
-):
+def test_da_header_and_critical_id_gates_fail_in_synthesis_path(old, new, fragment):
     panel_reports = reports(da_ids=("C1", "C2"))
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text = da_report.text.replace(old, new, 1)
@@ -1032,16 +990,16 @@ def test_da_shadow_table_fails_in_synthesis_path():
     panel_reports = reports(da_ids=("C1",))
     da_report = next(report for report in panel_reports if report.role == "da")
     canonical = (
-        '| # | Issue | Evidence Anchor |\n'
-        '|---|-------|-----------------|\n'
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|\n"
         '| C1 | Issue | text: "quoted evidence" p. 1 |'
     )
     shadowed = (
-        '| ID | Issue | Anchor |\n'
-        '|---|-------|--------|\n'
+        "| ID | Issue | Anchor |\n"
+        "|---|-------|--------|\n"
         '| C1 | Issue | text: "quoted evidence" p. 1 |\n\n'
-        '| # | Issue | Evidence Anchor |\n'
-        '|---|-------|-----------------|'
+        "| # | Issue | Evidence Anchor |\n"
+        "|---|-------|-----------------|"
     )
     da_report.text = da_report.text.replace(canonical, shadowed, 1)
     text, expressions = synthesis_for(panel_reports)
@@ -1104,15 +1062,12 @@ def test_da_extra_issue_table_band_fails_in_synthesis_path():
 @pytest.mark.parametrize(
     ("lead_in", "header"),
     (
-        ("The following issues invalidate the claim:\n\n",
-         "| # | Issue | Evidence Anchor |"),
+        ("The following issues invalidate the claim:\n\n", "| # | Issue | Evidence Anchor |"),
         ("", "| # | Issue | evidence anchor |"),
         ("", "# | Issue | Evidence Anchor"),
     ),
 )
-def test_da_disguised_extra_issue_table_band_fails_in_synthesis_path(
-    lead_in, header
-):
+def test_da_disguised_extra_issue_table_band_fails_in_synthesis_path(lead_in, header):
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
     da_report.text = da_report.text.replace(
@@ -1140,9 +1095,7 @@ def test_da_issue_table_outside_canonical_bands_fails_synthesis(placement):
         '| C9 | impossible df | text: "n=41" p. 4 |\n'
     )
     if placement == "preamble":
-        da_report.text = da_report.text.replace(
-            "#### CRITICAL", table + "\n#### CRITICAL", 1
-        )
+        da_report.text = da_report.text.replace("#### CRITICAL", table + "\n#### CRITICAL", 1)
     else:
         da_report.text += "\n## Appendix\n" + table
     text, expressions = synthesis_for(panel_reports)
@@ -1226,8 +1179,7 @@ def test_da_balanced_link_destination_header_fails_synthesis():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
     header = (
-        r"| [\#](<https://x.test/a(b)>) | Issue | "
-        r"[Evidence Anchor](<https://x.test/a(b)>) |"
+        r"| [\#](<https://x.test/a(b)>) | Issue | " r"[Evidence Anchor](<https://x.test/a(b)>) |"
     )
     da_report.text = da_report.text.replace(
         "#### MAJOR",
@@ -1248,8 +1200,7 @@ def test_da_typed_anchor_payload_alone_fails_synthesis():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
     header = (
-        r"| [\#](<https://x.test/a(b)>) | Issue | "
-        r"[Evidence Anchor](<https://x.test/a(b)>) |"
+        r"| [\#](<https://x.test/a(b)>) | Issue | " r"[Evidence Anchor](<https://x.test/a(b)>) |"
     )
     da_report.text = da_report.text.replace(
         "#### MAJOR",
@@ -1272,14 +1223,14 @@ def test_da_escaped_pipe_cell_evasion_fails_synthesis():
     block = (
         "#### ADDITIONAL CRITICAL FINDINGS\n"
         r"| [\#<!--\|-->](https://x.test) | Issue | "
-        r"[Evidence<!--\|--> Anchor](https://x.test) |" "\n"
+        r"[Evidence<!--\|--> Anchor](https://x.test) |"
+        "\n"
         "|---|---|---|\n"
         r"| [C<!--\|-->9](https://x.test) | impossible df | "
-        r'[text<!--\|-->: "n=41" p. 4](https://x.test) |' "\n\n"
+        r'[text<!--\|-->: "n=41" p. 4](https://x.test) |'
+        "\n\n"
     )
-    da_report.text = da_report.text.replace(
-        "#### MAJOR", block + "#### MAJOR", 1
-    )
+    da_report.text = da_report.text.replace("#### MAJOR", block + "#### MAJOR", 1)
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="HTML comments are forbidden"):
@@ -1300,8 +1251,7 @@ def test_da_canonical_rows_allow_escaped_pipes():
 
 def test_da_repeated_absence_separators_fail_in_synthesis_path():
     malformed = (
-        "absence: Methods — expected ; checked appendix "
-        "— expected ethics; checked supplement"
+        "absence: Methods — expected ; checked appendix " "— expected ethics; checked supplement"
     )
     text = report_text("da", da_ids=("C1",)).replace(
         'text: "quoted evidence" p. 1',
@@ -1330,9 +1280,7 @@ def test_da_misordered_absence_or_padded_wrapper_fails_synthesis(malformed):
         cps.parse_da_tables(text, "da.md")
 
 
-@pytest.mark.parametrize(
-    "invisible", ("\u0600", "\u200b", "\u034f", "\ufe0e", "\u3164", "\ufff0")
-)
+@pytest.mark.parametrize("invisible", ("\u0600", "\u200b", "\u034f", "\ufe0e", "\u3164", "\ufff0"))
 def test_da_invisible_issue_payload_fails_synthesis(invisible):
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
@@ -1342,9 +1290,7 @@ def test_da_invisible_issue_payload_fails_synthesis(invisible):
         "|---|---|---|\n"
         f'| C{invisible}9 | impossible df | text{invisible}: "n=41" p. 4 |\n\n'
     )
-    da_report.text = da_report.text.replace(
-        "#### MAJOR", block + "#### MAJOR", 1
-    )
+    da_report.text = da_report.text.replace("#### MAJOR", block + "#### MAJOR", 1)
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="unexpected issue-table"):
@@ -1360,9 +1306,7 @@ def test_da_fullwidth_issue_payload_fails_synthesis():
         "|---|---|---|\n"
         '| Ｃ９ | impossible df | ｔｅｘｔ： "n=41" p. 4 |\n\n'
     )
-    da_report.text = da_report.text.replace(
-        "#### MAJOR", block + "#### MAJOR", 1
-    )
+    da_report.text = da_report.text.replace("#### MAJOR", block + "#### MAJOR", 1)
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="unexpected issue-table"):
@@ -1377,9 +1321,7 @@ def test_da_raw_html_issue_table_fails_synthesis():
         "<table><tr><th>ID</th><th>Evidence</th></tr>"
         "<tr><td>C9</td><td>text: n=41</td></tr></table>\n\n"
     )
-    da_report.text = da_report.text.replace(
-        "#### MAJOR", block + "#### MAJOR", 1
-    )
+    da_report.text = da_report.text.replace("#### MAJOR", block + "#### MAJOR", 1)
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="raw HTML issue-table"):
@@ -1394,9 +1336,7 @@ def test_da_nested_html_issue_table_in_canonical_row_fails_synthesis():
         '<tr><td>C9</td><td>text: "impossible df" p. 4</td></tr></table>'
     )
     da_report.text = da_report.text.replace(
-        "#### MAJOR\n"
-        "| # | Issue | Evidence Anchor |\n"
-        "|---|-------|-----------------|",
+        "#### MAJOR\n" "| # | Issue | Evidence Anchor |\n" "|---|-------|-----------------|",
         "#### MAJOR\n"
         "| # | Issue | Evidence Anchor |\n"
         "|---|-------|-----------------|\n"
@@ -1412,13 +1352,8 @@ def test_da_nested_html_issue_table_in_canonical_row_fails_synthesis():
 def test_da_bare_html_row_fails_synthesis():
     panel_reports = reports()
     da_report = next(report for report in panel_reports if report.role == "da")
-    block = (
-        "#### ADDITIONAL CRITICAL FINDINGS\n"
-        "<tr><td>C9</td><td>text: n=41</td></tr>\n\n"
-    )
-    da_report.text = da_report.text.replace(
-        "#### MAJOR", block + "#### MAJOR", 1
-    )
+    block = "#### ADDITIONAL CRITICAL FINDINGS\n" "<tr><td>C9</td><td>text: n=41</td></tr>\n\n"
+    da_report.text = da_report.text.replace("#### MAJOR", block + "#### MAJOR", 1)
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="raw HTML issue-table"):
@@ -1430,14 +1365,10 @@ def test_da_empty_major_id_fails_in_synthesis_path():
     da_report = next(report for report in panel_reports if report.role == "da")
     marker = "|---|-------|-----------------|"
     before, trailing = da_report.text.rsplit(marker, 1)
-    da_report.text = (
-        before + marker + '\n|  | Issue | text: "quote" |' + trailing
-    )
+    da_report.text = before + marker + '\n|  | Issue | text: "quote" |' + trailing
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
-    with pytest.raises(
-        (cps.ReportError, cps.SynthesisError), match="empty MAJOR # cell"
-    ):
+    with pytest.raises((cps.ReportError, cps.SynthesisError), match="empty MAJOR # cell"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
 
 
@@ -1449,9 +1380,7 @@ def test_da_empty_critical_anchor_fails_in_synthesis_path():
         "| C1 | Issue |  |",
         1,
     )
-    text, expressions = synthesis_for(
-        panel_reports, {"C1": "VALIDATED"}, marker_count=1
-    )
+    text, expressions = synthesis_for(panel_reports, {"C1": "VALIDATED"}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match="ANCHOR-MISSING"):
         cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
@@ -1469,9 +1398,7 @@ def test_da_major_anchor_fails_in_synthesis_path(anchor, fragment):
     da_report = next(report for report in panel_reports if report.role == "da")
     marker = "|---|-------|-----------------|"
     before, trailing = da_report.text.rsplit(marker, 1)
-    da_report.text = (
-        before + marker + f"\n| M1 | Issue | {anchor} |" + trailing
-    )
+    da_report.text = before + marker + f"\n| M1 | Issue | {anchor} |" + trailing
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     with pytest.raises(cps.ReportError, match=fragment):
@@ -1483,27 +1410,21 @@ def test_da_valid_major_anchor_passes_in_synthesis_path():
     da_report = next(report for report in panel_reports if report.role == "da")
     marker = "|---|-------|-----------------|"
     before, trailing = da_report.text.rsplit(marker, 1)
-    da_report.text = (
-        before + marker
-        + '\n| M1 | Issue | text: "short quote" |'
-        + trailing
-    )
+    da_report.text = before + marker + '\n| M1 | Issue | text: "short quote" |' + trailing
     text, expressions = synthesis_for(panel_reports)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
-    assert cps.layer2_check(
-        panel_reports, FULL, expressions, synthesis, []
-    ) == []
+    assert cps.layer2_check(panel_reports, FULL, expressions, synthesis, []) == []
 
 
 def test_marker_forbidden_under_nonaccept():
     panel_reports = reports({"methodology": {"D1": "warn"}}, da_ids=("C1",))
-    text, expressions = synthesis_for(
-        panel_reports, {"C1": "VALIDATED"}, marker_count=1
-    )
+    text, expressions = synthesis_for(panel_reports, {"C1": "VALIDATED"}, marker_count=1)
     synthesis = cps.parse_synthesis("s.md", text, FULL)
     assert synthesis.decision == "editorial_decision=minor_revision"
-    assert any("forbidden" in item for item in
-               cps.layer2_check(panel_reports, FULL, expressions, synthesis, []))
+    assert any(
+        "forbidden" in item
+        for item in cps.layer2_check(panel_reports, FULL, expressions, synthesis, [])
+    )
 
 
 def _evaluate_profile(contract, expressions, assessed):
@@ -1517,9 +1438,7 @@ def _evaluate_profile(contract, expressions, assessed):
             [],
         )
     ]
-    return fired, cps.resolve_decision(
-        contract["failure_conditions"], set(fired)
-    )
+    return fired, cps.resolve_decision(contract["failure_conditions"], set(fired))
 
 
 def test_full_contract_exhaustive_13824_profiles():
@@ -1527,15 +1446,19 @@ def test_full_contract_exhaustive_13824_profiles():
     mandatory_single = ("pass", "warn", "block", "fatal")
     nonmandatory_single = ("pass", "warn", "block")
     d3_states = [
-        pair for pair in itertools.product(
-            ("pass", "warn", "block", "fatal", "abstain"), repeat=2
-        ) if pair != ("abstain", "abstain")
+        pair
+        for pair in itertools.product(("pass", "warn", "block", "fatal", "abstain"), repeat=2)
+        if pair != ("abstain", "abstain")
     ]
     count = 0
     decisions = set()
     for d1, d2, d6, d3, d4, d5 in itertools.product(
-        mandatory_single, mandatory_single, mandatory_single, d3_states,
-        nonmandatory_single, nonmandatory_single,
+        mandatory_single,
+        mandatory_single,
+        mandatory_single,
+        d3_states,
+        nonmandatory_single,
+        nonmandatory_single,
     ):
         assessed = {
             "D1": [state(d1)],
@@ -1591,14 +1514,11 @@ def test_methodology_focus_layer2_has_empty_da_gate():
         for dim in contract["acceptance_dimensions"]:
             lines += [
                 f"### {dim['id']}: {dim['name']}",
-                "score: pass" if role in dim["eligible_roles"]
-                else "score: not_assessed",
+                "score: pass" if role in dim["eligible_roles"] else "score: not_assessed",
                 "",
             ]
         lines += ["## Review Body", "", "No scored findings.", ""]
-        panel_reports.append(cps.parse_report(
-            f"{role}.md", "\n".join(lines), contract
-        ))
+        panel_reports.append(cps.parse_report(f"{role}.md", "\n".join(lines), contract))
     synthesis = cps.parse_synthesis(
         "s.md",
         "dimension_verdicts: [D1=pass, D2=pass]\n"
@@ -1607,9 +1527,7 @@ def test_methodology_focus_layer2_has_empty_da_gate():
         "editorial_decision=accept\n",
         contract,
     )
-    assert cps.layer2_check(
-        panel_reports, contract, expressions, synthesis, []
-    ) == []
+    assert cps.layer2_check(panel_reports, contract, expressions, synthesis, []) == []
 
 
 def test_boundary_decisions_and_d3_split_dynamic_majority():
@@ -1618,20 +1536,24 @@ def test_boundary_decisions_and_d3_split_dynamic_majority():
     base["D3"] = [state("pass"), state("pass")]
 
     one_warn = {**base, "D1": [state("warn")]}
-    assert _evaluate_profile(contract, expressions, one_warn)[1] == \
-        "editorial_decision=minor_revision"
+    assert (
+        _evaluate_profile(contract, expressions, one_warn)[1] == "editorial_decision=minor_revision"
+    )
 
     normal_block = {**base, "D5": [state("block")]}
-    assert _evaluate_profile(contract, expressions, normal_block)[1] == \
-        "editorial_decision=minor_revision"
+    assert (
+        _evaluate_profile(contract, expressions, normal_block)[1]
+        == "editorial_decision=minor_revision"
+    )
 
     high_block = {**base, "D4": [state("block")]}
-    assert _evaluate_profile(contract, expressions, high_block)[1] == \
-        "editorial_decision=major_revision"
+    assert (
+        _evaluate_profile(contract, expressions, high_block)[1]
+        == "editorial_decision=major_revision"
+    )
 
     fatal_venue = {**base, "D6": [state("fatal")]}
-    assert _evaluate_profile(contract, expressions, fatal_venue)[1] == \
-        "editorial_decision=reject"
+    assert _evaluate_profile(contract, expressions, fatal_venue)[1] == "editorial_decision=reject"
 
     split = {**base, "D3": [state("block"), state("pass")]}
     fired, _ = _evaluate_profile(contract, expressions, split)

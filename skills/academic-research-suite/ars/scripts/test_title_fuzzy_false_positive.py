@@ -108,4 +108,5 @@ def test_negated_title_is_rejected_as_distinct_work():
 
 if __name__ == "__main__":
     import pytest
+
     sys.exit(pytest.main([__file__, "-v"]))

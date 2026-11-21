@@ -7,9 +7,8 @@ from pathlib import Path
 import pytest
 import yaml
 from jsonschema import Draft202012Validator
-
-from scripts import run_evals
 from scripts import _eval_threshold_gate as gate
+from scripts import run_evals
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_PATH = REPO_ROOT / "shared" / "evals_lift_report.schema.json"
@@ -27,7 +26,9 @@ def validator(schema):
     return Draft202012Validator(schema)
 
 
-def _make_task(tmp_path: Path, *, expected: dict, manifest: dict, tuples: dict | None = None) -> Path:
+def _make_task(
+    tmp_path: Path, *, expected: dict, manifest: dict, tuples: dict | None = None
+) -> Path:
     """Build a minimal gold-set task dir under a tmp gold root and return the root."""
     gold_root = tmp_path / "gold"
     task_dir = gold_root / manifest["task_name"]
@@ -36,14 +37,17 @@ def _make_task(tmp_path: Path, *, expected: dict, manifest: dict, tuples: dict |
     (task_dir / "expected_outcomes.json").write_text(json.dumps(expected), encoding="utf-8")
     tuples = tuples or {}
     for tid in expected:
-        tup = tuples.get(tid, {
-            "tuple_id": tid,
-            "kind": "valid_doi",
-            "corpus_entry": {},
-            "arxiv_id": None,
-            "human_expert_verdict": None,
-            "fabrication_intent": False,
-        })
+        tup = tuples.get(
+            tid,
+            {
+                "tuple_id": tid,
+                "kind": "valid_doi",
+                "corpus_entry": {},
+                "arxiv_id": None,
+                "human_expert_verdict": None,
+                "fabrication_intent": False,
+            },
+        )
         (task_dir / "tuples" / f"{tid}.json").write_text(json.dumps(tup), encoding="utf-8")
     return gold_root
 
@@ -60,11 +64,19 @@ def _citation_manifest(task_name="citation_extraction"):
         },
         "labels": ["true", "false", "unresolvable"],
         "thresholds": {
-            "aggregate": {"metric": "accuracy", "direction": "higher_is_better",
-                          "comparison": ">=", "threshold_value": 0.90},
-            "per_class": {"metric": "accuracy", "direction": "higher_is_better",
-                          "comparison": ">=", "threshold_value": 0.85,
-                          "classes": ["true", "false", "unresolvable"]},
+            "aggregate": {
+                "metric": "accuracy",
+                "direction": "higher_is_better",
+                "comparison": ">=",
+                "threshold_value": 0.90,
+            },
+            "per_class": {
+                "metric": "accuracy",
+                "direction": "higher_is_better",
+                "comparison": ">=",
+                "threshold_value": 0.85,
+                "classes": ["true", "false", "unresolvable"],
+            },
         },
         "tuple_distribution": [
             {"kind": "valid_doi", "n": 1, "expected_lookup_verified": "true"},
@@ -79,6 +91,7 @@ def _ro(crossref=None, openalex=None, semantic_scholar=None, arxiv=None):
     (status, queried_by) tuple. A bare 'unmatched' string defaults
     queried_by='id' so it stays an ID-keyed (false-producing) unmatched under
     the v3.11 narrowed-false reducer — the prior un-narrowed default semantics."""
+
     def cell(v):
         if isinstance(v, tuple):
             status, queried_by = v
@@ -86,6 +99,7 @@ def _ro(crossref=None, openalex=None, semantic_scholar=None, arxiv=None):
             status = v or "skipped"
             queried_by = "id" if status == "unmatched" else None
         return {"status": status, "queried_by": queried_by, "response_summary": None}
+
     return {
         "crossref": cell(crossref),
         "openalex": cell(openalex),
@@ -132,7 +146,10 @@ def test_per_class_accuracy_correct(tmp_path):
     # One wrong "true" tuple (resolvers all skipped -> reducer says unresolvable).
     expected = {
         "001-a": {"lookup_verified": "true", "resolver_outcomes": _ro(crossref="matched")},
-        "002-b": {"lookup_verified": "true", "resolver_outcomes": _ro()},  # predicted unresolvable -> wrong
+        "002-b": {
+            "lookup_verified": "true",
+            "resolver_outcomes": _ro(),
+        },  # predicted unresolvable -> wrong
         "003-c": {"lookup_verified": "false", "resolver_outcomes": _ro(openalex="unmatched")},
     }
     gold_root = _make_task(tmp_path, expected=expected, manifest=_citation_manifest())
@@ -150,8 +167,10 @@ def test_unresolvable_not_collapsed_into_false(tmp_path):
         "001-outage": {
             "lookup_verified": "unresolvable",
             "resolver_outcomes": _ro(
-                crossref="unreachable", openalex="unreachable",
-                semantic_scholar="unreachable", arxiv="unreachable",
+                crossref="unreachable",
+                openalex="unreachable",
+                semantic_scholar="unreachable",
+                arxiv="unreachable",
             ),
         },
     }
@@ -172,19 +191,44 @@ def test_expert_concordance_only_over_labeled_subset(tmp_path):
         "003-c": {"lookup_verified": "false", "resolver_outcomes": _ro(crossref="unmatched")},
     }
     tuples = {
-        "001-a": {"tuple_id": "001-a", "kind": "valid_doi", "corpus_entry": {},
-                  "arxiv_id": None, "fabrication_intent": False,
-                  "human_expert_verdict": {"verdict": "true", "labeled_by": "x",
-                                           "labeled_at": "2026-05-24T00:00:00Z", "notes": None}},
-        "002-b": {"tuple_id": "002-b", "kind": "valid_doi", "corpus_entry": {},
-                  "arxiv_id": None, "fabrication_intent": False,
-                  "human_expert_verdict": None},
-        "003-c": {"tuple_id": "003-c", "kind": "fabricated", "corpus_entry": {},
-                  "arxiv_id": None, "fabrication_intent": True,
-                  "human_expert_verdict": {"verdict": "false", "labeled_by": "x",
-                                           "labeled_at": "2026-05-24T00:00:00Z", "notes": None}},
+        "001-a": {
+            "tuple_id": "001-a",
+            "kind": "valid_doi",
+            "corpus_entry": {},
+            "arxiv_id": None,
+            "fabrication_intent": False,
+            "human_expert_verdict": {
+                "verdict": "true",
+                "labeled_by": "x",
+                "labeled_at": "2026-05-24T00:00:00Z",
+                "notes": None,
+            },
+        },
+        "002-b": {
+            "tuple_id": "002-b",
+            "kind": "valid_doi",
+            "corpus_entry": {},
+            "arxiv_id": None,
+            "fabrication_intent": False,
+            "human_expert_verdict": None,
+        },
+        "003-c": {
+            "tuple_id": "003-c",
+            "kind": "fabricated",
+            "corpus_entry": {},
+            "arxiv_id": None,
+            "fabrication_intent": True,
+            "human_expert_verdict": {
+                "verdict": "false",
+                "labeled_by": "x",
+                "labeled_at": "2026-05-24T00:00:00Z",
+                "notes": None,
+            },
+        },
     }
-    gold_root = _make_task(tmp_path, expected=expected, manifest=_citation_manifest(), tuples=tuples)
+    gold_root = _make_task(
+        tmp_path, expected=expected, manifest=_citation_manifest(), tuples=tuples
+    )
     result = run_evals.run_task("citation_extraction", gold_root)
     conc = {c["class_name"]: c for c in result.get("expert_concordance", [])}
     # Only 001-a (true) and 003-c (false) carry verdicts; 002-b is unlabeled.
@@ -200,12 +244,23 @@ def test_low_concordance_does_not_gate(tmp_path):
         "001-a": {"lookup_verified": "true", "resolver_outcomes": _ro(crossref="matched")},
     }
     tuples = {
-        "001-a": {"tuple_id": "001-a", "kind": "valid_doi", "corpus_entry": {},
-                  "arxiv_id": None, "fabrication_intent": False,
-                  "human_expert_verdict": {"verdict": "false", "labeled_by": "x",
-                                           "labeled_at": "2026-05-24T00:00:00Z", "notes": None}},
+        "001-a": {
+            "tuple_id": "001-a",
+            "kind": "valid_doi",
+            "corpus_entry": {},
+            "arxiv_id": None,
+            "fabrication_intent": False,
+            "human_expert_verdict": {
+                "verdict": "false",
+                "labeled_by": "x",
+                "labeled_at": "2026-05-24T00:00:00Z",
+                "notes": None,
+            },
+        },
     }
-    gold_root = _make_task(tmp_path, expected=expected, manifest=_citation_manifest(), tuples=tuples)
+    gold_root = _make_task(
+        tmp_path, expected=expected, manifest=_citation_manifest(), tuples=tuples
+    )
     result = run_evals.run_task("citation_extraction", gold_root)
     conc = {c["class_name"]: c for c in result["expert_concordance"]}
     assert conc["true"]["agreement_rate"] == pytest.approx(0.0)
@@ -279,8 +334,11 @@ def test_missing_entrypoint_skips_cleanly(tmp_path, validator):
     assert "notice" in result
     # The pending result must still slot into a schema-valid report.
     report = {
-        "harness_version": "1.0.0", "run_id": "x", "gold_set_version": "y",
-        "per_task": [result], "caveats": ["pending task present"],
+        "harness_version": "1.0.0",
+        "run_id": "x",
+        "gold_set_version": "y",
+        "per_task": [result],
+        "caveats": ["pending task present"],
     }
     assert sorted(validator.iter_errors(report), key=lambda e: e.path) == []
 
@@ -313,11 +371,8 @@ def test_implemented_task_corrupt_gold_raises(tmp_path):
     gold_root = tmp_path / "gold"
     task_dir = gold_root / "citation_extraction"
     (task_dir / "tuples").mkdir(parents=True)
-    (task_dir / "manifest.yaml").write_text(
-        yaml.safe_dump(_citation_manifest()), encoding="utf-8"
-    )
-    (task_dir / "expected_outcomes.json").write_text("{ this is not valid json",
-                                                     encoding="utf-8")
+    (task_dir / "manifest.yaml").write_text(yaml.safe_dump(_citation_manifest()), encoding="utf-8")
+    (task_dir / "expected_outcomes.json").write_text("{ this is not valid json", encoding="utf-8")
     with pytest.raises(run_evals.TaskExecutionError):
         run_evals.run_task("citation_extraction", gold_root)
 
@@ -328,9 +383,7 @@ def test_implemented_task_missing_gold_raises(tmp_path):
     gold_root = tmp_path / "gold"
     task_dir = gold_root / "citation_extraction"
     task_dir.mkdir(parents=True)
-    (task_dir / "manifest.yaml").write_text(
-        yaml.safe_dump(_citation_manifest()), encoding="utf-8"
-    )
+    (task_dir / "manifest.yaml").write_text(yaml.safe_dump(_citation_manifest()), encoding="utf-8")
     # No expected_outcomes.json, no tuples/ dir.
     with pytest.raises(run_evals.TaskExecutionError):
         run_evals.run_task("citation_extraction", gold_root)
@@ -351,9 +404,7 @@ def test_citation_missing_tuple_dir_raises(tmp_path):
     gold_root = tmp_path / "gold"
     task_dir = gold_root / "citation_extraction"
     task_dir.mkdir(parents=True)
-    (task_dir / "manifest.yaml").write_text(
-        yaml.safe_dump(_citation_manifest()), encoding="utf-8"
-    )
+    (task_dir / "manifest.yaml").write_text(yaml.safe_dump(_citation_manifest()), encoding="utf-8")
     (task_dir / "expected_outcomes.json").write_text(
         json.dumps({"x": {"lookup_verified": "unresolvable", "resolver_outcomes": {}}}),
         encoding="utf-8",
@@ -398,8 +449,12 @@ def _task(name, *, status="measured", passed=None, metric="accuracy"):
     agg = {"metric": metric, "value": 0.5, "direction": "higher_is_better"}
     if passed is not None:
         agg["passed"] = passed
-    return {"task_name": name, "manifest_version": "1.0.0",
-            "status": status, "aggregate_metric": agg}
+    return {
+        "task_name": name,
+        "manifest_version": "1.0.0",
+        "status": status,
+        "aggregate_metric": agg,
+    }
 
 
 def test_gate_flags_below_threshold_task():
@@ -408,18 +463,23 @@ def test_gate_flags_below_threshold_task():
 
 
 def test_gate_passes_when_all_above_threshold():
-    report = {"per_task": [_task("citation_extraction", passed=True),
-                           _task("rq_framing_patterns", passed=True,
-                                 metric="balanced_accuracy")]}
+    report = {
+        "per_task": [
+            _task("citation_extraction", passed=True),
+            _task("rq_framing_patterns", passed=True, metric="balanced_accuracy"),
+        ]
+    }
     assert gate.failed_tasks(report) == []
 
 
 def test_gate_ignores_pending_and_thresholdless_tasks():
-    report = {"per_task": [
-        _task("status_classification", status="pending"),   # not measured
-        _task("citation_extraction", passed=None),          # no threshold declared
-        _task("rq_framing_patterns", passed=False, metric="balanced_accuracy"),
-    ]}
+    report = {
+        "per_task": [
+            _task("status_classification", status="pending"),  # not measured
+            _task("citation_extraction", passed=None),  # no threshold declared
+            _task("rq_framing_patterns", passed=False, metric="balanced_accuracy"),
+        ]
+    }
     # Only the measured, threshold-declaring, failing task is flagged.
     assert gate.failed_tasks(report) == ["rq_framing_patterns.aggregate.balanced_accuracy"]
 

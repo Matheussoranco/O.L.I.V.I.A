@@ -38,7 +38,7 @@ REQUIRED_FILTERS = [
 
 # Safety branches the documented patterns must retain (the whole point of the guard).
 REQUIRED_BRANCHES = [
-    "NOT_SEARCHED",       # ungrounded / from-memory downgrade
+    "NOT_SEARCHED",  # ungrounded / from-memory downgrade
     "CROSS-MODEL-ERROR",  # non-2xx transport-failure split (distinct from NOT_SEARCHED)
 ]
 
@@ -160,8 +160,12 @@ def main() -> int:
     #    plain verdict-TEXT extraction (`.candidates[0].content.parts...`), which references none of
     #    these tokens. Both single- and double-quoted inline programs are scanned.
     GROUNDING_TOKENS = (
-        "web_search_call", "url_citation", "groundingSupports",
-        "groundingChunkIndices", "groundingChunks", "webSearchQueries",
+        "web_search_call",
+        "url_citation",
+        "groundingSupports",
+        "groundingChunkIndices",
+        "groundingChunks",
+        "webSearchQueries",
     )
     # An inline jq invocation is `jq [flags, none being -f] '<program>'` or "<program>".
     for m in re.finditer(r"jq\s+((?:-[A-Za-z]+\s+)*)(['\"])(.*?)\2", bash_code, re.DOTALL):
@@ -215,7 +219,8 @@ def main() -> int:
     #    gone before this check sees it — the pipe requirement is belt-and-braces on top.)
     if "openai_compatible" in bash_code:
         compat_blocks = [
-            "\n".join(b) for b in _bash_blocks(text)
+            "\n".join(b)
+            for b in _bash_blocks(text)
             if "ARS_OPENAI_COMPAT_BASE_URL%/}/chat/completions" in "\n".join(b)
         ]
         if not compat_blocks:

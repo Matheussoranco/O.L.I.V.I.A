@@ -7,9 +7,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_submission_packet_manifest_integration as check
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CHECKED = (
@@ -55,17 +53,21 @@ def test_current_tree_passes() -> None:
 @pytest.mark.parametrize(
     ("rel", "token"),
     [
-        (check.CONTRACT_README, "shared/contracts/human_subjects/submission_packet_manifest.schema.json"),
+        (
+            check.CONTRACT_README,
+            "shared/contracts/human_subjects/submission_packet_manifest.schema.json",
+        ),
         (check.AUTHORITY_PROTOCOL, "shared/references/submission_packet_manifest_protocol.md"),
         (check.PACKET_PROTOCOL, "validate_submission_packet_manifest"),
-        (check.DEEP_SKILL, "shared/contracts/human_subjects/submission_packet_manifest.schema.json"),
+        (
+            check.DEEP_SKILL,
+            "shared/contracts/human_subjects/submission_packet_manifest.schema.json",
+        ),
         (check.ETHICS_AGENT, "validate_submission_packet_manifest"),
         (check.ARCHITECT, "validate_submission_packet_manifest"),
     ],
 )
-def test_required_pointer_or_replay_text_removal_fails(
-    tree: Path, rel: Path, token: str
-) -> None:
+def test_required_pointer_or_replay_text_removal_fails(tree: Path, rel: Path, token: str) -> None:
     _replace(tree, rel, token, "removed-token")
     assert _errors(tree)
 
@@ -105,9 +107,7 @@ def test_unscoped_duplicate_cannot_mask_primary_replay_contract(
         "structured_expectations",
     ],
 )
-def test_manifest_cannot_grow_a_determination_or_content_field(
-    tree: Path, field: str
-) -> None:
+def test_manifest_cannot_grow_a_determination_or_content_field(tree: Path, field: str) -> None:
     path = tree / check.MANIFEST_SCHEMA
     value = json.loads(path.read_text(encoding="utf-8"))
     value["properties"][field] = {"type": "string"}
@@ -124,8 +124,7 @@ def test_missing_or_retyped_envelope_fact_fails(tree: Path) -> None:
     path = tree / check.REGISTRY
     value = json.loads(path.read_text(encoding="utf-8"))
     row = next(
-        row for row in value["fact_definitions"]
-        if row["fact_id"] == "packet_v1.non_clinical"
+        row for row in value["fact_definitions"] if row["fact_id"] == "packet_v1.non_clinical"
     )
     row["value_type"] = "string"
     path.write_text(json.dumps(value), encoding="utf-8")
@@ -156,9 +155,7 @@ def test_capability_fact_cannot_enter_profile_applicability(tree: Path) -> None:
         "\ndef forbidden_description(row):\n    return row.get('description')\n",
     ],
 )
-def test_runtime_transport_scan_or_content_drift_fails(
-    tree: Path, payload: str
-) -> None:
+def test_runtime_transport_scan_or_content_drift_fails(tree: Path, payload: str) -> None:
     path = tree / check.RUNTIME
     path.write_text(path.read_text(encoding="utf-8") + payload, encoding="utf-8")
     assert _errors(tree)
@@ -173,5 +170,8 @@ def test_architect_mirror_drift_fails(tree: Path) -> None:
 def test_duplicate_registry_key_fails_closed(tree: Path) -> None:
     path = tree / check.REGISTRY
     text = path.read_text(encoding="utf-8")
-    path.write_text(text.replace('"schema_version":', '"schema_version":"duplicate",\n"schema_version":', 1), encoding="utf-8")
+    path.write_text(
+        text.replace('"schema_version":', '"schema_version":"duplicate",\n"schema_version":', 1),
+        encoding="utf-8",
+    )
     assert any("duplicate key" in error for error in _errors(tree))

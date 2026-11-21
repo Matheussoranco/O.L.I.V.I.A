@@ -11,7 +11,6 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SPEC = Path("docs/design/2026-08-11-684-review-criteria-consumer-binding-spec.md")
 BINDING_SCHEMA = Path("shared/contracts/review_target/review_criteria_binding_manifest.schema.json")
@@ -28,13 +27,23 @@ ORCHESTRATOR = Path("academic-pipeline/agents/pipeline_orchestrator_agent.md")
 STATE = Path("academic-pipeline/agents/state_tracker_agent.md")
 HANDOFFS = Path("shared/handoff_schemas.md")
 MEASUREMENT = Path("evals/heldout/review_criteria_constructive_value/measurement_plan.md")
-ADJUDICATION_SCHEMA = Path("evals/heldout/review_criteria_constructive_value/paired_adjudication.schema.json")
+ADJUDICATION_SCHEMA = Path(
+    "evals/heldout/review_criteria_constructive_value/paired_adjudication.schema.json"
+)
 SCENARIOS_SCHEMA = Path("evals/heldout/review_criteria_constructive_value/scenarios.schema.json")
 SCENARIOS = Path("evals/heldout/review_criteria_constructive_value/scenarios.json")
-SUBJECT_OUTPUT_SCHEMA = Path("evals/heldout/review_criteria_constructive_value/subject_output.schema.json")
-EXPERT_PACKET_SCHEMA = Path("evals/heldout/review_criteria_constructive_value/expert_packet.schema.json")
-EXPERT_LABELS_SCHEMA = Path("evals/heldout/review_criteria_constructive_value/expert_labels.schema.json")
-DECISIONS_SCHEMA = Path("evals/heldout/review_criteria_constructive_value/adjudication_decisions.schema.json")
+SUBJECT_OUTPUT_SCHEMA = Path(
+    "evals/heldout/review_criteria_constructive_value/subject_output.schema.json"
+)
+EXPERT_PACKET_SCHEMA = Path(
+    "evals/heldout/review_criteria_constructive_value/expert_packet.schema.json"
+)
+EXPERT_LABELS_SCHEMA = Path(
+    "evals/heldout/review_criteria_constructive_value/expert_labels.schema.json"
+)
+DECISIONS_SCHEMA = Path(
+    "evals/heldout/review_criteria_constructive_value/adjudication_decisions.schema.json"
+)
 CALL_PLAN = Path("evals/heldout/review_criteria_constructive_value/call_plan.json")
 SUITE_LOCK = Path("evals/heldout/review_criteria_constructive_value/suite_lock.json")
 HELDOUT_SET = Path("evals/heldout/review_criteria_constructive_value/heldout_set.json")
@@ -145,7 +154,11 @@ REQUIRED_TEXT: dict[Path, tuple[str, ...]] = {
         "formative_planning",
         "## 4. Internal evaluator",
         "external_panel",
-        "EIC", "R1", "R2", "R3", "DA",
+        "EIC",
+        "R1",
+        "R2",
+        "R3",
+        "DA",
         "criteria_binding_unavailable",
     ),
     FORMATIVE: (
@@ -181,7 +194,7 @@ REQUIRED_TEXT: dict[Path, tuple[str, ...]] = {
         "No composite score",
         "PRE-REGISTERED / NOT RUN",
         "dispatches exactly 24 subject calls",
-        "judge_plan.exception: \"human_expert_panel\"",
+        'judge_plan.exception: "human_expert_panel"',
         "`judges` is empty",
         "No model judge is",
         "independent blinded human experts",
@@ -309,7 +322,10 @@ def check_contracts(texts: dict[Path, str]) -> list[str]:
             errors.append("adjudication schema: adjudicator_type must be human")
 
     registry = _read_json(texts[SUITE_REGISTRY], str(SUITE_REGISTRY), errors)
-    if registry is not None and registry.get("review_criteria_constructive_value") != "paired_controls":
+    if (
+        registry is not None
+        and registry.get("review_criteria_constructive_value") != "paired_controls"
+    ):
         errors.append("suite registry: #684 suite must be paired_controls")
     return errors
 
@@ -412,9 +428,7 @@ def check_measurement_runner(source: str) -> list[str]:
                     and isinstance(keyword.value, ast.Constant)
                     and keyword.value.value is True
                 ):
-                    errors.append(
-                        f"{MEASUREMENT_RUNNER}:{node.lineno}: shell=True is forbidden"
-                    )
+                    errors.append(f"{MEASUREMENT_RUNNER}:{node.lineno}: shell=True is forbidden")
     commands = {
         node.args[0].value
         for node in ast.walk(tree)
@@ -426,13 +440,18 @@ def check_measurement_runner(source: str) -> list[str]:
         and isinstance(node.args[0].value, str)
     }
     if commands != MEASUREMENT_COMMANDS:
-        errors.append(
-            f"{MEASUREMENT_RUNNER}: measurement CLI command drift: {sorted(commands)}"
-        )
+        errors.append(f"{MEASUREMENT_RUNNER}: measurement CLI command drift: {sorted(commands)}")
     disabled = _assignment(tree, "DISABLED_FEATURES")
     required_disabled = {
-        "shell_tool", "unified_exec", "apps", "plugins", "multi_agent",
-        "computer_use", "browser_use", "in_app_browser", "image_generation",
+        "shell_tool",
+        "unified_exec",
+        "apps",
+        "plugins",
+        "multi_agent",
+        "computer_use",
+        "browser_use",
+        "in_app_browser",
+        "image_generation",
     }
     if not isinstance(disabled, tuple) or not required_disabled.issubset(set(disabled)):
         errors.append(f"{MEASUREMENT_RUNNER}: contained disabled-feature set drift")
@@ -449,9 +468,7 @@ def check_measurement_runner(source: str) -> list[str]:
         '"read-only"',
     ):
         if needle not in source:
-            errors.append(
-                f"{MEASUREMENT_RUNNER}: missing containment text {needle!r}"
-            )
+            errors.append(f"{MEASUREMENT_RUNNER}: missing containment text {needle!r}")
     return errors
 
 
@@ -485,7 +502,7 @@ def check_measurement_assets(texts: dict[Path, str]) -> list[str]:
             errors.append("call plan: sequence must remain contiguous 1..24")
         else:
             for offset in range(6):
-                arms = [row.get("arm") for row in calls[offset * 4:(offset + 1) * 4]]
+                arms = [row.get("arm") for row in calls[offset * 4 : (offset + 1) * 4]]
                 expected = ["baseline", "treatment", "treatment", "baseline"]
                 if offset % 2:
                     expected = ["treatment", "baseline", "baseline", "treatment"]

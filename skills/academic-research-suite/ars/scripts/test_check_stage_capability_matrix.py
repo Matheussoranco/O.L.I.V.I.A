@@ -41,9 +41,7 @@ def _valid_matrix() -> dict:
                 "mechanism": f"Synthetic mechanism {i}",
                 "mechanism_status": "IMPLEMENTED",
                 "deterministic_conformance": "CI_GATED",
-                "conformance_pinned_by": [
-                    "scripts/check_stage_capability_matrix.py::run"
-                ],
+                "conformance_pinned_by": ["scripts/check_stage_capability_matrix.py::run"],
                 "behavioral_evidence": {"status": "NOT_RUN"},
                 "external_outcome_evidence": "none",
                 "known_exclusions": ["synthetic exclusion"],
@@ -55,9 +53,7 @@ def _valid_matrix() -> dict:
     rows[0]["behavioral_evidence"] = {
         "status": "MEASURED",
         "eval_ref": "evals/heldout/revision_claim_drift",
-        "measurement_report": (
-            "evals/heldout/revision_claim_drift/measurement-2026-08-07.json"
-        ),
+        "measurement_report": ("evals/heldout/revision_claim_drift/measurement-2026-08-07.json"),
         "model": "claude-fable-5",
         "population": "synthetic fixtures",
         "measured_at": "2026-08-07",
@@ -73,9 +69,7 @@ def _valid_matrix() -> dict:
 
 def _write(tmp_path: Path, data) -> Path:
     p = tmp_path / "matrix.json"
-    p.write_text(
-        data if isinstance(data, str) else json.dumps(data), encoding="utf-8"
-    )
+    p.write_text(data if isinstance(data, str) else json.dumps(data), encoding="utf-8")
     return p
 
 
@@ -265,9 +259,9 @@ def test_overclaim_stem_on_unmeasured_row_fires(tmp_path):
 
 def test_overclaim_stem_allowed_when_measured(tmp_path):
     data = _valid_matrix()
-    data["rows"][0]["max_licensed_claim"] = (
-        "Improved the offlist miss rate on the recorded eval only."
-    )
+    data["rows"][0][
+        "max_licensed_claim"
+    ] = "Improved the offlist miss rate on the recorded eval only."
     assert _errors_for(tmp_path, data) == []
 
 
@@ -317,9 +311,9 @@ def test_stale_measurement_with_note_passes(tmp_path):
     data = _valid_matrix()
     _measured_without_reports(data)
     data["rows"][0]["behavioral_evidence"]["measured_at"] = "2024-01-01"
-    data["rows"][0]["behavioral_evidence"]["staleness_note"] = (
-        "measured two model generations ago; re-run queued"
-    )
+    data["rows"][0]["behavioral_evidence"][
+        "staleness_note"
+    ] = "measured two model generations ago; re-run queued"
     assert _errors_for(tmp_path, data) == []
 
 
@@ -352,9 +346,7 @@ def test_report_binding_date_mismatch_fires(tmp_path):
 def test_superseded_report_binding_fires(tmp_path):
     data = _valid_matrix()
     ev = data["rows"][0]["behavioral_evidence"]
-    ev["measurement_report"] = (
-        "evals/heldout/revision_claim_drift/measurement-2026-07-22.json"
-    )
+    ev["measurement_report"] = "evals/heldout/revision_claim_drift/measurement-2026-07-22.json"
     ev["measured_at"] = "2026-07-22"
     _assert_fires(_errors_for(tmp_path, data), "M11")
 
@@ -362,9 +354,7 @@ def test_superseded_report_binding_fires(tmp_path):
 def test_superseded_report_binding_with_note_passes(tmp_path):
     data = _valid_matrix()
     ev = data["rows"][0]["behavioral_evidence"]
-    ev["measurement_report"] = (
-        "evals/heldout/revision_claim_drift/measurement-2026-07-22.json"
-    )
+    ev["measurement_report"] = "evals/heldout/revision_claim_drift/measurement-2026-07-22.json"
     ev["measured_at"] = "2026-07-22"
     ev["staleness_note"] = "pre-guard baseline row kept deliberately"
     assert _errors_for(tmp_path, data) == []
@@ -372,17 +362,17 @@ def test_superseded_report_binding_with_note_passes(tmp_path):
 
 def test_missing_report_file_fires(tmp_path):
     data = _valid_matrix()
-    data["rows"][0]["behavioral_evidence"]["measurement_report"] = (
-        "evals/heldout/revision_claim_drift/measurement-2099-01-01.json"
-    )
+    data["rows"][0]["behavioral_evidence"][
+        "measurement_report"
+    ] = "evals/heldout/revision_claim_drift/measurement-2099-01-01.json"
     _assert_fires(_errors_for(tmp_path, data), "M11")
 
 
 def test_report_binding_outside_eval_ref_fires(tmp_path):
     data = _valid_matrix()
-    data["rows"][0]["behavioral_evidence"]["measurement_report"] = (
-        "evals/heldout/tortured_phrase_conformance/measurement-2026-08-10.json"
-    )
+    data["rows"][0]["behavioral_evidence"][
+        "measurement_report"
+    ] = "evals/heldout/tortured_phrase_conformance/measurement-2026-08-10.json"
     _assert_fires(_errors_for(tmp_path, data), "M11")
 
 
@@ -407,9 +397,9 @@ def test_eval_ref_escape_fires(tmp_path):
 def test_report_binding_must_match_report_pattern(tmp_path):
     """Arbitrary same-directory JSON cannot stand in for a measurement report."""
     data = _valid_matrix()
-    data["rows"][0]["behavioral_evidence"]["measurement_report"] = (
-        "evals/heldout/revision_claim_drift/heldout_set.json"
-    )
+    data["rows"][0]["behavioral_evidence"][
+        "measurement_report"
+    ] = "evals/heldout/revision_claim_drift/heldout_set.json"
     _assert_fires(_errors_for(tmp_path, data), "M11")
 
 
@@ -434,9 +424,9 @@ def test_non_object_behavioral_evidence_reports_not_crashes(tmp_path):
 
 def test_never_licensed_stem_fires_even_on_measured_row(tmp_path):
     data = _valid_matrix()
-    data["rows"][0]["max_licensed_claim"] = (
-        "Guaranteed state-of-the-art performance across every model."
-    )
+    data["rows"][0][
+        "max_licensed_claim"
+    ] = "Guaranteed state-of-the-art performance across every model."
     _assert_fires(_errors_for(tmp_path, data), "M6")
 
 
@@ -461,9 +451,7 @@ def _binding_errors(tmp_path, monkeypatch, sibling_text: str) -> list[str]:
     (suite / "measurement-2026-08-07.json").write_text(
         '{"measurement_date": "2026-08-07"}', encoding="utf-8"
     )
-    (suite / "measurement-2026-08-09.json").write_text(
-        sibling_text, encoding="utf-8"
-    )
+    (suite / "measurement-2026-08-09.json").write_text(sibling_text, encoding="utf-8")
     monkeypatch.setattr(mod, "REPO_ROOT", tmp_path)
     errors: list[str] = []
     mod._check_report_binding(
@@ -503,17 +491,13 @@ def test_malformed_claim_anchors_on_locked_row_reports_not_crashes(tmp_path):
 
 def test_percentage_claim_on_measured_row_passes(tmp_path):
     data = _valid_matrix()
-    data["rows"][0]["max_licensed_claim"] = (
-        "On the recorded set only, the miss rate was 9.4%."
-    )
+    data["rows"][0]["max_licensed_claim"] = "On the recorded set only, the miss rate was 9.4%."
     assert _errors_for(tmp_path, data) == []
 
 
 def test_render_includes_anchors():
     data = _valid_matrix()
-    data["rows"][0]["claim_anchors"] = [
-        {"file": "README.md", "anchor": "Academic Research Skills"}
-    ]
+    data["rows"][0]["claim_anchors"] = [{"file": "README.md", "anchor": "Academic Research Skills"}]
     assert "Academic Research Skills" in render(data)
 
 
@@ -523,17 +507,13 @@ def test_render_includes_anchors():
 def test_task_families_match_the_742_design_doc_table():
     """The frozen vocabulary and the #742 §2 table ids stay in lockstep."""
     doc = (
-        REPO_ROOT
-        / "docs/design/2026-08-17-742-research-family-profile-contract-design.md"
+        REPO_ROOT / "docs/design/2026-08-17-742-research-family-profile-contract-design.md"
     ).read_text(encoding="utf-8")
     section = doc.split("## 2. Shared stage and task-family vocabulary", 1)[1]
     section = section.split("## 3.", 1)[0]
     import re
 
-    doc_ids = [
-        m.group(1)
-        for m in re.finditer(r"^\| `([a-z_]+)` \|", section, re.M)
-    ]
+    doc_ids = [m.group(1) for m in re.finditer(r"^\| `([a-z_]+)` \|", section, re.M)]
     assert doc_ids == list(TASK_FAMILIES)
 
 

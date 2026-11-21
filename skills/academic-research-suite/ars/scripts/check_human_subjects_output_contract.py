@@ -11,7 +11,6 @@ import argparse
 import sys
 from pathlib import Path
 
-
 ETHICS_AGENT = Path("deep-research/agents/ethics_review_agent.md")
 ARCHITECT_AGENT = Path("deep-research/agents/research_architect_agent.md")
 DEEP_RESEARCH_SKILL = Path("deep-research/WORKFLOW.md")
@@ -67,9 +66,7 @@ REQUIRED: dict[Path, tuple[str, ...]] = {
         "Authority boundary (#665/#666/#680)",
         "ARS output must use `institutional determination required`",
     ),
-    FAILURE_PATHS: (
-        "any human-subjects authorization remains a separate institutional status",
-    ),
+    FAILURE_PATHS: ("any human-subjects authorization remains a separate institutional status",),
 }
 
 FORBIDDEN: dict[Path, tuple[str, ...]] = {

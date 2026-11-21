@@ -37,7 +37,8 @@ def _run2(root: Path):
     """Run the checker; return (exit_code, stderr) so tests can assert the path."""
     proc = subprocess.run(
         [sys.executable, str(CHECKER), "--root", str(root)],
-        capture_output=True, text=True,
+        capture_output=True,
+        text=True,
     )
     return proc.returncode, proc.stderr
 
@@ -65,6 +66,7 @@ def _first_block_body(text: str) -> str:
 
 # --- positive control --------------------------------------------------------
 
+
 def test_unmutated_tree_passes(tmp_path):
     root = _mirror(tmp_path)
     assert _run(root) == 0, "baseline tree should PASS"
@@ -72,11 +74,15 @@ def test_unmutated_tree_passes(tmp_path):
 
 # --- mutations: each must FAIL (exit 1) --------------------------------------
 
+
 def test_m1_authoritative_section_deleted(tmp_path):
     """Whole canonical block removed from the authoritative file."""
     root = _mirror(tmp_path)
-    _edit(root, AUTHORITATIVE_REL,
-          lambda t: t.replace(OPEN_MARKER + _first_block_body(t) + CLOSE_MARKER, ""))
+    _edit(
+        root,
+        AUTHORITATIVE_REL,
+        lambda t: t.replace(OPEN_MARKER + _first_block_body(t) + CLOSE_MARKER, ""),
+    )
     assert _run(root) == 1
 
 
@@ -88,8 +94,11 @@ def test_m2_heading_kept_body_gutted(tmp_path):
     no OTHER check is what caught it — proving the body compare is load-bearing).
     """
     root = _mirror(tmp_path)
-    _edit(root, AUTHORITATIVE_REL,
-          lambda t: t.replace(_first_block_body(t), "\nTODO: write this later.\n"))
+    _edit(
+        root,
+        AUTHORITATIVE_REL,
+        lambda t: t.replace(_first_block_body(t), "\nTODO: write this later.\n"),
+    )
     code, err = _run2(root)
     assert code == 1
     assert "does not match the verbatim principle" in err
@@ -98,8 +107,9 @@ def test_m2_heading_kept_body_gutted(tmp_path):
 def test_m3_normative_sentence_weakened(tmp_path):
     """A single-word edit to the body must trip the verbatim compare."""
     root = _mirror(tmp_path)
-    _edit(root, AUTHORITATIVE_REL,
-          lambda t: t.replace("is data, not instructions", "is usually data"))
+    _edit(
+        root, AUTHORITATIVE_REL, lambda t: t.replace("is data, not instructions", "is usually data")
+    )
     code, err = _run2(root)
     assert code == 1
     assert "does not match the verbatim principle" in err
@@ -108,9 +118,11 @@ def test_m3_normative_sentence_weakened(tmp_path):
 def test_m4_duplicate_fake_anchor(tmp_path):
     """A second canonical block in the authoritative file must fail (exactly-one)."""
     root = _mirror(tmp_path)
+
     def add_dupe(t: str) -> str:
         block = OPEN_MARKER + _first_block_body(t) + CLOSE_MARKER
         return t + "\n\n## fake\n" + block + "\n"
+
     _edit(root, AUTHORITATIVE_REL, add_dupe)
     assert _run(root) == 1
 
@@ -118,9 +130,13 @@ def test_m4_duplicate_fake_anchor(tmp_path):
 def test_m5_backpoint_removed_from_agent(tmp_path):
     """Agent loses its backpoint citation."""
     root = _mirror(tmp_path)
-    _edit(root, AGENT_REL,
-          lambda t: t.replace("shared/ground_truth_isolation_pattern.md", "(removed)")
-                     .replace("§ 2A", "(removed)"))
+    _edit(
+        root,
+        AGENT_REL,
+        lambda t: t.replace("shared/ground_truth_isolation_pattern.md", "(removed)").replace(
+            "§ 2A", "(removed)"
+        ),
+    )
     code, err = _run2(root)
     assert code == 1
     assert "backpoint missing" in err
@@ -138,9 +154,13 @@ def test_m6_backpoint_wrong_target(tmp_path):
 def test_m7_inlined_principle_missing_from_agent(tmp_path):
     """Pointer-only regression: agent keeps a backpoint but drops the inlined text."""
     root = _mirror(tmp_path)
-    _edit(root, AGENT_REL,
-          lambda t: t.replace(OPEN_MARKER + _first_block_body(t) + CLOSE_MARKER,
-                              "See the authoritative file."))
+    _edit(
+        root,
+        AGENT_REL,
+        lambda t: t.replace(
+            OPEN_MARKER + _first_block_body(t) + CLOSE_MARKER, "See the authoritative file."
+        ),
+    )
     code, err = _run2(root)
     assert code == 1
     assert "canonical block" in err and AGENT_REL in err
@@ -153,9 +173,13 @@ def test_m9_auth_section_heading_removed(tmp_path):
     contain the substring and keep the \\b-anchored heading regex matching).
     """
     root = _mirror(tmp_path)
-    _edit(root, AUTHORITATIVE_REL,
-          lambda t: t.replace("## § 2A — Retrieved content is data, not instructions",
-                              "## § 2Z — something else"))
+    _edit(
+        root,
+        AUTHORITATIVE_REL,
+        lambda t: t.replace(
+            "## § 2A — Retrieved content is data, not instructions", "## § 2Z — something else"
+        ),
+    )
     code, err = _run2(root)
     assert code == 1
     assert "§ 2A" in err and "not found" in err
@@ -164,10 +188,12 @@ def test_m9_auth_section_heading_removed(tmp_path):
 def test_m10_canonical_block_moved_out_of_section(tmp_path):
     """Block kept verbatim but relocated outside the § 2A section."""
     root = _mirror(tmp_path)
+
     def relocate(t: str) -> str:
         block = OPEN_MARKER + _first_block_body(t) + CLOSE_MARKER
         # remove from § 2A, re-add far below under a different H2
         return t.replace(block, "") + "\n\n## § 9 — elsewhere\n\n" + block + "\n"
+
     _edit(root, AUTHORITATIVE_REL, relocate)
     code, err = _run2(root)
     assert code == 1
@@ -177,13 +203,14 @@ def test_m10_canonical_block_moved_out_of_section(tmp_path):
 def test_m11_backpoint_only_inside_fence(tmp_path):
     """The only backpoint sits inside a fenced code block — must not count."""
     root = _mirror(tmp_path)
+
     def fence_the_backpoint(t: str) -> str:
-        bp = ("Authoritative source:\n"
-              "`shared/ground_truth_isolation_pattern.md` § 2A.")
+        bp = "Authoritative source:\n" "`shared/ground_truth_isolation_pattern.md` § 2A."
         # wrap the real backpoint in a code fence so it is excluded. The fence
         # markers must stand on their own lines (the stripper anchors ``` at line
         # start), so prepend/append a newline around each marker.
         return t.replace(bp, "\n```\n" + bp + "\n```\n")
+
     _edit(root, AGENT_REL, fence_the_backpoint)
     code, err = _run2(root)
     assert code == 1
@@ -192,11 +219,11 @@ def test_m11_backpoint_only_inside_fence(tmp_path):
 
 # --- second agent symmetry ---------------------------------------------------
 
+
 def test_m8_second_agent_gutted(tmp_path):
     """The same gutting on bibliography_agent must also fail."""
     root = _mirror(tmp_path)
-    _edit(root, AGENT2_REL,
-          lambda t: t.replace(_first_block_body(t), "\nTODO\n"))
+    _edit(root, AGENT2_REL, lambda t: t.replace(_first_block_body(t), "\nTODO\n"))
     assert _run(root) == 1
 
 

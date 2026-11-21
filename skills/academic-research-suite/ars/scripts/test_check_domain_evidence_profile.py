@@ -11,8 +11,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LINT = REPO_ROOT / "scripts" / "check_domain_evidence_profile.py"
 
@@ -34,8 +32,10 @@ DECISION_TREE_HEADING = "### Literature Screening Decision Tree"
 
 def run_lint(cwd: Path) -> subprocess.CompletedProcess:
     return subprocess.run(
-        [sys.executable, str(LINT)], cwd=str(cwd),
-        capture_output=True, text=True,
+        [sys.executable, str(LINT)],
+        cwd=str(cwd),
+        capture_output=True,
+        text=True,
     )
 
 
@@ -68,14 +68,15 @@ def _mutate(repo: Path, rel: str, old: str, new: str) -> None:
     text = p.read_text(encoding="utf-8")
     assert old in text, f"fixture precondition: '{old}' not found in {rel}"
     p.write_text(text.replace(old, new), encoding="utf-8")
-    assert old not in p.read_text(encoding="utf-8"), (
-        f"fixture postcondition: '{old}' still present in {rel} after replace-all"
-    )
+    assert old not in p.read_text(
+        encoding="utf-8"
+    ), f"fixture postcondition: '{old}' still present in {rel} after replace-all"
 
 
 def test_clone_passes_clean():
     """Sanity: an unmutated clone passes (so each negative isolates one break)."""
     import tempfile
+
     with tempfile.TemporaryDirectory() as d:
         repo = _clone_repo(Path(d))
         assert run_lint(repo).returncode == 0
@@ -263,7 +264,8 @@ def test_pos_historical_contrast_does_not_trip_c7(tmp_path):
     p = repo / CONSUMER
     # Append contrast prose far from the resolution heading range.
     p.write_text(
-        p.read_text() + "\n\n## History\nThe R1-R6 design used the Material Passport and Schema 13.\n",
+        p.read_text()
+        + "\n\n## History\nThe R1-R6 design used the Material Passport and Schema 13.\n",
         encoding="utf-8",
     )
     r = run_lint(repo)
@@ -279,6 +281,7 @@ def test_pos_historical_contrast_does_not_trip_c7(tmp_path):
 # fallback — the feature never activates on the most common path. C8 pins the
 # directive's upper bound so this cannot silently regress; the runtime fix is in
 # intake_agent.md line ~63.
+
 
 def test_neg_h_step12_bound_regression(tmp_path):
     """(h) revert the no-handoff flow directive to a Step-11 upper bound (drop the
@@ -319,7 +322,9 @@ def test_neg_h2_step12_mentioned_but_negated(tmp_path):
         "then Step 12 (Domain Evidence Profile) per its own gating in that step",
         "Do not run Step 12 in this flow",
     )
-    assert mutated != block, "fixture precondition: affirmative directive must be present to replace"
+    assert (
+        mutated != block
+    ), "fixture precondition: affirmative directive must be present to replace"
     p.write_text(text[:idx] + mutated + text[nxt:], encoding="utf-8")
     r = run_lint(repo)
     assert r.returncode != 0 and "C8" in r.stderr
@@ -383,9 +388,9 @@ def test_neg_i3_form_present_but_no_parse_instruction(tmp_path):
     # Remove the two parse/parsing instruction phrases inside the resolution
     # block (verified by grep to be the block's only parse-instruction wording)
     # while leaving the `(requested: …)` display form intact.
-    assert "parse the leading" in text and "Resolve by parsing" in text, (
-        "fixture precondition: both parse-instruction phrases must be present"
-    )
+    assert (
+        "parse the leading" in text and "Resolve by parsing" in text
+    ), "fixture precondition: both parse-instruction phrases must be present"
     mutated = text.replace("parse the leading", "use the leading").replace(
         "Resolve by parsing", "Resolve by reading"
     )

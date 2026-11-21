@@ -95,8 +95,7 @@ def _base_patch(anchored: str, ops: list[dict], round_: int = 1) -> dict:
 
 def _json_bytes(value: dict) -> bytes:
     return (
-        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
+        json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n"
     ).encode("utf-8")
 
 
@@ -111,9 +110,7 @@ def _authority_fixture(root: Path, anchored: str, patch: dict) -> dict:
     item_targets: dict[str, dict[str, set[str]]] = {}
     for op in patch.get("ops", []):
         for item_id in op.get("roadmap_item_ids", []):
-            item_targets.setdefault(item_id, {}).setdefault(op["block_id"], set()).add(
-                op["op"]
-            )
+            item_targets.setdefault(item_id, {}).setdefault(op["block_id"], set()).add(op["op"])
     op_order = {"replace_block": 0, "insert_after": 1, "delete_block": 2}
     items = []
     for ordinal, item_id in enumerate(sorted(item_targets), start=1):
@@ -728,9 +725,7 @@ class TestPhase1Rejections(ApplyHarness):
         with self.assertRaises(ApplyRejection) as ctx:
             self._run()
         self.assertEqual(ctx.exception.failures[0]["kind"], "artifact_already_exists")
-        self.assertEqual(
-            self.output_path.read_text(), "pre-existing artifact, not ours to replace"
-        )
+        self.assertEqual(self.output_path.read_text(), "pre-existing artifact, not ours to replace")
 
     def test_report_naming_output_is_rejected(self):
         anchored = self.anchored_fixture()
@@ -1134,9 +1129,7 @@ class TestReportOutputHash(ApplyHarness):
         report = self._run()
         self.assertEqual(report["report_format_version"], "1.3")
         self.assertEqual(report["authorization_witness"]["status"], "pass")
-        self.assertTrue(
-            report["authorization_witness"]["unregistered_claim_drift_review_required"]
-        )
+        self.assertTrue(report["authorization_witness"]["unregistered_claim_drift_review_required"])
 
     def test_report_carries_patch_digest_of_exact_patch_bytes(self):
         anchored = self.anchored_fixture()
@@ -1297,9 +1290,7 @@ class TestByteIdentityProperty(ApplyHarness):
             base_doc = parse_document(anchored)
             out_doc = parse_document(out_text)
             named = {op["block_id"] for op in patch["ops"]}
-            inserted_after = {
-                op["block_id"] for op in patch["ops"] if op["op"] == "insert_after"
-            }
+            inserted_after = {op["block_id"] for op in patch["ops"] if op["op"] == "insert_after"}
             out_by_id = out_doc.block_by_id()
 
             base_blocks = base_doc.blocks
@@ -1317,10 +1308,7 @@ class TestByteIdentityProperty(ApplyHarness):
                 # untouched too and nothing was inserted between them.
                 if i + 1 < len(base_blocks):
                     nxt = base_blocks[i + 1]
-                    if (
-                        nxt.block_id not in named
-                        and block.block_id not in inserted_after
-                    ):
+                    if nxt.block_id not in named and block.block_id not in inserted_after:
                         base_sep = anchored[block.span[1] : nxt.full_start]
                         out_nxt = out_by_id[nxt.block_id]
                         out_sep = out_text[out_block.span[1] : out_nxt.full_start]

@@ -41,8 +41,7 @@ def warn_suspicious(report: dict) -> list[str]:
     if isinstance(pt, dict):
         by_tier = pt.get("by_tier", {})
         all_pass = all(
-            isinstance(t, dict) and t.get("total") == t.get("pass")
-            for t in by_tier.values()
+            isinstance(t, dict) and t.get("total") == t.get("pass") for t in by_tier.values()
         )
         if all_pass and by_tier and not report.get("evidence"):
             warnings.append(

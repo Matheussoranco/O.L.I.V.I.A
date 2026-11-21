@@ -10,7 +10,6 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from check_control_availability import (
     DOC_RELPATH,
     SETUP_RELPATH,
@@ -105,8 +104,7 @@ def test_ca1_case_wrong_fragment_is_not_re_slugified(repo: Path) -> None:
     target.write_text("# Mixed Case\n", encoding="utf-8")
     doc = repo / DOC_RELPATH
     doc.write_text(
-        doc.read_text(encoding="utf-8")
-        + "\n[case-wrong](CASE_TARGET.md#Mixed-Case)\n",
+        doc.read_text(encoding="utf-8") + "\n[case-wrong](CASE_TARGET.md#Mixed-Case)\n",
         encoding="utf-8",
     )
 
@@ -157,8 +155,7 @@ def test_ca1_titled_dead_link_fires(repo: Path) -> None:
     # grammar and silently skip CA-1 (codex R2 finding).
     doc = repo / DOC_RELPATH
     doc.write_text(
-        doc.read_text(encoding="utf-8")
-        + '\nSee [dead](NO_SUCH_FILE.md "optional title").\n',
+        doc.read_text(encoding="utf-8") + '\nSee [dead](NO_SUCH_FILE.md "optional title").\n',
         encoding="utf-8",
     )
     errors = run_all_checks(repo)
@@ -206,9 +203,7 @@ def test_ca3_commented_out_inbound_link_fires(repo: Path) -> None:
     text = readme.read_text(encoding="utf-8")
     old = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
     assert old in text
-    readme.write_text(
-        text.replace(old, f"<!-- {old} -->"), encoding="utf-8"
-    )
+    readme.write_text(text.replace(old, f"<!-- {old} -->"), encoding="utf-8")
     errors = run_all_checks(repo)
     assert any("CA-3" in e and "README.md" in e for e in errors)
 
@@ -218,8 +213,7 @@ def test_ca1_commented_out_dead_link_does_not_fire(repo: Path) -> None:
     # inside a comment must not fire CA-1 either.
     doc = repo / DOC_RELPATH
     doc.write_text(
-        doc.read_text(encoding="utf-8")
-        + "\n<!-- [dead](NO_SUCH_FILE.md) -->\n",
+        doc.read_text(encoding="utf-8") + "\n<!-- [dead](NO_SUCH_FILE.md) -->\n",
         encoding="utf-8",
     )
     assert run_all_checks(repo) == []
@@ -249,9 +243,7 @@ def test_ca3_inline_comment_before_link_still_renders(repo: Path) -> None:
     text = readme.read_text(encoding="utf-8")
     old = "[docs/CONTROL_AVAILABILITY.md](docs/CONTROL_AVAILABILITY.md)"
     assert old in text
-    readme.write_text(
-        text.replace(old, f"<!-- note --> {old}"), encoding="utf-8"
-    )
+    readme.write_text(text.replace(old, f"<!-- note --> {old}"), encoding="utf-8")
     assert run_all_checks(repo) == []
 
 
@@ -260,8 +252,7 @@ def test_ca1_unclosed_comment_swallows_rest_of_document(repo: Path) -> None:
     # never renders, so CA-1 must stay quiet.
     doc = repo / DOC_RELPATH
     doc.write_text(
-        doc.read_text(encoding="utf-8")
-        + "\n<!--\n[dead](NO_SUCH_FILE.md)\n",
+        doc.read_text(encoding="utf-8") + "\n<!--\n[dead](NO_SUCH_FILE.md)\n",
         encoding="utf-8",
     )
     assert run_all_checks(repo) == []
@@ -289,8 +280,7 @@ def test_ca1_link_escaping_repo_fires_even_if_target_exists(repo: Path) -> None:
     outside.write_text("# Outside\n", encoding="utf-8")
     doc = repo / DOC_RELPATH
     doc.write_text(
-        doc.read_text(encoding="utf-8")
-        + "\nSee [escapee](../../outside_target.md).\n",
+        doc.read_text(encoding="utf-8") + "\nSee [escapee](../../outside_target.md).\n",
         encoding="utf-8",
     )
     errors = run_all_checks(repo)
@@ -315,8 +305,7 @@ def test_ca2_method_heading_inside_fence_not_counted(repo: Path) -> None:
     # render as a heading and must not demand CA-2 coverage.
     setup = repo / SETUP_RELPATH
     setup.write_text(
-        setup.read_text(encoding="utf-8")
-        + "\n```markdown\n### Method 9: Sample In A Fence\n```\n",
+        setup.read_text(encoding="utf-8") + "\n```markdown\n### Method 9: Sample In A Fence\n```\n",
         encoding="utf-8",
     )
     assert run_all_checks(repo) == []
@@ -339,12 +328,10 @@ def test_ca3_link_inside_four_backtick_fence_fires(repo: Path) -> None:
 
 def test_slug_matches_github_for_punctuated_heading() -> None:
     heading = (
-        "Method 0: Claude Code Plugin (v3.7.0+, recommended for "
-        "Claude Code CLI / IDE users)"
+        "Method 0: Claude Code Plugin (v3.7.0+, recommended for " "Claude Code CLI / IDE users)"
     )
     assert github_slug(heading) == (
-        "method-0-claude-code-plugin-v370-recommended-for-"
-        "claude-code-cli--ide-users"
+        "method-0-claude-code-plugin-v370-recommended-for-" "claude-code-cli--ide-users"
     )
 
 

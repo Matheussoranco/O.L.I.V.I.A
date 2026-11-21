@@ -27,7 +27,9 @@ def _manifest() -> dict | None:
 
 class TestShipped(unittest.TestCase):
     def test_shipped_gold_set_passes(self) -> None:
-        self.assertEqual(csp.validate(_load(), _manifest()), [], msg="shipped gold set should be clean")
+        self.assertEqual(
+            csp.validate(_load(), _manifest()), [], msg="shipped gold set should be clean"
+        )
 
 
 class TestMutations(unittest.TestCase):
@@ -164,7 +166,9 @@ class TestMutations(unittest.TestCase):
             if it["provenance_type"] == "maintainer_boundary":
                 it["provenance"]["mechanism_anchor"] = None
                 break
-        self.assertTrue(any("non-empty string provenance.mechanism_anchor" in e for e in self._v(self.data)))
+        self.assertTrue(
+            any("non-empty string provenance.mechanism_anchor" in e for e in self._v(self.data))
+        )
 
     def test_null_exception_reason_fails(self) -> None:
         """codex P2 round 12: a null exception_reason on an exception item must fail — str(None)
@@ -257,13 +261,21 @@ class TestMutations(unittest.TestCase):
         """codex P2: a rewrite must derive from a paper_verbatim item, not another maintainer
         item. Point a counterfactual's derived_from at the maintainer_boundary item (matching its
         claim/verdict/framing so only the provenance check can catch it)."""
-        boundary = next(it for it in self.data["items"] if it["provenance_type"] == "maintainer_boundary")
-        cf = next(it for it in self.data["items"] if it["provenance_type"] == "counterfactual_rewrite")
+        boundary = next(
+            it for it in self.data["items"] if it["provenance_type"] == "maintainer_boundary"
+        )
+        cf = next(
+            it for it in self.data["items"] if it["provenance_type"] == "counterfactual_rewrite"
+        )
         # align claim/verdict/framing so ONLY the paper_verbatim-source check fires
         cf["derived_from"] = boundary["id"]
         cf["canonical_claim"] = boundary["canonical_claim"]
         cf["expected_correctness"] = boundary["expected_correctness"]
-        cf["framing_style"] = "technical_precise" if boundary["framing_style"] == "informal_vague" else "informal_vague"
+        cf["framing_style"] = (
+            "technical_precise"
+            if boundary["framing_style"] == "informal_vague"
+            else "informal_vague"
+        )
         errors = self._v(self.data)
         self.assertTrue(
             any("must derive from a paper_verbatim item" in e for e in errors),
@@ -315,6 +327,7 @@ class TestMainGuards(unittest.TestCase):
         """codex P2 round 8: a present-but-empty/null manifest must FAIL too — yaml null returns
         None and would silently disable all agreement checks (and crash run_evals later)."""
         import tempfile
+
         with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
             f.write("\n")  # empty -> yaml.safe_load returns None
             path = f.name
@@ -326,6 +339,7 @@ class TestMainGuards(unittest.TestCase):
         """codex P3 round 9: a YAML scalar/list manifest must produce a lint error (rc 1), NOT an
         AttributeError traceback from validate() calling manifest.get on a non-dict."""
         import tempfile
+
         with tempfile.NamedTemporaryFile("w", suffix=".yaml", delete=False) as f:
             f.write("- just\n- a\n- list\n")  # YAML list -> non-dict
             path = f.name
@@ -342,6 +356,7 @@ class TestMainGuards(unittest.TestCase):
         import contextlib
         import io
         import sys as _sys
+
         _missing = object()
         saved = _sys.modules.get("yaml", _missing)
         _sys.modules["yaml"] = None  # type: ignore[assignment]  # forces `import yaml` to raise
@@ -383,7 +398,9 @@ class TestSerializerStrip(unittest.TestCase):
         for i, it in enumerate(self.items):
             view = csp.render_judge_view(it, i)
             leaked = blind & set(view.keys())
-            self.assertEqual(leaked, set(), msg=f"judge view for {it['id']} leaked blind fields: {leaked}")
+            self.assertEqual(
+                leaked, set(), msg=f"judge view for {it['id']} leaked blind fields: {leaked}"
+            )
 
     def test_judge_view_does_not_leak_semantic_id(self) -> None:
         """The fixture id encodes the answer (`-cf` = counterfactual, `-ambiguous` = expected
@@ -392,7 +409,9 @@ class TestSerializerStrip(unittest.TestCase):
         for i, it in enumerate(self.items):
             view = csp.render_judge_view(it, i)
             serialized = json.dumps(view)
-            self.assertNotIn(it["id"], serialized, msg=f"{it['id']}: semantic id leaked into judge view")
+            self.assertNotIn(
+                it["id"], serialized, msg=f"{it['id']}: semantic id leaked into judge view"
+            )
             for suffix in ("-cf", "-ambiguous"):
                 self.assertNotIn(suffix, serialized, msg=f"{it['id']}: leaked id suffix {suffix}")
             # the handle is opaque and derived from the index, NOT caller-controlled
@@ -424,15 +443,19 @@ class TestSerializerStrip(unittest.TestCase):
         for i, it in enumerate(self.items):
             view = csp.render_judge_view(it, i)
             serialized = json.dumps(view)
-            self.assertNotIn("reviewer_source", serialized, msg=f"{it['id']}: leaked reviewer_source")
-            for label in ("\"human\"", "\"ai\"", "maintainer_rewrite", "maintainer_synthetic"):
+            self.assertNotIn(
+                "reviewer_source", serialized, msg=f"{it['id']}: leaked reviewer_source"
+            )
+            for label in ('"human"', '"ai"', "maintainer_rewrite", "maintainer_synthetic"):
                 self.assertNotIn(label, serialized, msg=f"{it['id']}: leaked author label {label}")
 
     def test_judge_view_keeps_the_item_to_judge(self) -> None:
         """Strip must not be so aggressive it removes the thing being evaluated."""
         for i, it in enumerate(self.items):
             view = csp.render_judge_view(it, i)
-            self.assertIn("review_item_text", view, msg=f"{it['id']}: judge view lost review_item_text")
+            self.assertIn(
+                "review_item_text", view, msg=f"{it['id']}: judge view lost review_item_text"
+            )
             self.assertTrue(view["review_item_text"].strip())
 
 

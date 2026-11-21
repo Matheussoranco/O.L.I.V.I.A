@@ -33,19 +33,35 @@ def verify_probe_bytes(raw: bytes) -> bytes:
         )
     return normalized
 
+
 RECEIPT_KEYS = {
-    "schema_version", "request_id", "transport", "auth_mode", "model",
-    "request_digest", "event_stream_digest", "verdict", "searched",
-    "reason_code", "detail", "search_queries", "sources", "containment",
+    "schema_version",
+    "request_id",
+    "transport",
+    "auth_mode",
+    "model",
+    "request_digest",
+    "event_stream_digest",
+    "verdict",
+    "searched",
+    "reason_code",
+    "detail",
+    "search_queries",
+    "sources",
+    "containment",
 }
 VERDICTS = {"VERIFIED", "MISMATCH", "NOT_FOUND", "NOT_SEARCHED"}
 SHAPE_GUARD_CODES = {
-    "EVENT_STREAM_INVALID", "FINAL_OUTPUT_INVALID", "TURN_NOT_COMPLETED",
+    "EVENT_STREAM_INVALID",
+    "FINAL_OUTPUT_INVALID",
+    "TURN_NOT_COMPLETED",
     "FORBIDDEN_TOOL_EVENT",
 }
 BEHAVIOR_CODES = {
-    "MODEL_RETURNED_NOT_SEARCHED", "NO_BOUND_SEARCH_RESULTS",
-    "NO_REFERENCE_BOUND_QUERY", "MISSING_SOURCE_FOR_VERDICT",
+    "MODEL_RETURNED_NOT_SEARCHED",
+    "NO_BOUND_SEARCH_RESULTS",
+    "NO_REFERENCE_BOUND_QUERY",
+    "MISSING_SOURCE_FOR_VERDICT",
     "SOURCE_NOT_IN_SEARCH_RESULTS",
 }
 EXPECTED_CONTAINMENT = {
@@ -64,6 +80,7 @@ _HTTPS_URL = re.compile(r"^https://[^\s\x00-\x1f\x7f]+$")
 
 def validate_receipt(rec: dict, where: str) -> None:
     """Raise SystemExit on the first contract violation; return on success."""
+
     def bail(msg: str) -> None:
         raise SystemExit(f"RECEIPT CONTRACT: {msg} at {where}")
 
@@ -88,9 +105,17 @@ def validate_receipt(rec: dict, where: str) -> None:
         or any(containment[k] is not True for k in EXPECTED_CONTAINMENT)
     ):
         bail(f"containment flags {containment!r}")
-    if not isinstance(rec["request_id"], str) or not (1 <= len(rec["request_id"]) <= 128) or not _IDENTIFIER.fullmatch(rec["request_id"]):
+    if (
+        not isinstance(rec["request_id"], str)
+        or not (1 <= len(rec["request_id"]) <= 128)
+        or not _IDENTIFIER.fullmatch(rec["request_id"])
+    ):
         bail(f"bad request_id {rec['request_id']!r}")
-    if not isinstance(rec["model"], str) or len(rec["model"]) > 128 or not _MODEL_ID.fullmatch(rec["model"]):
+    if (
+        not isinstance(rec["model"], str)
+        or len(rec["model"]) > 128
+        or not _MODEL_ID.fullmatch(rec["model"])
+    ):
         bail(f"bad model {rec['model']!r}")
     if not isinstance(rec["detail"], str) or len(rec["detail"]) > 2048:
         bail("detail is not a string within 2048 chars")
@@ -197,7 +222,9 @@ def validate_row(row: dict, expected_model: str, ref: dict) -> None:
     """
     where = f"{expected_model} {row.get('ref_id')} r{row.get('repeat')}"
     if row.get("error") and row.get("receipt") is not None:
-        raise SystemExit(f"CONTRADICTORY ROW: {where} carries both a receipt and error={row.get('error')!r}")
+        raise SystemExit(
+            f"CONTRADICTORY ROW: {where} carries both a receipt and error={row.get('error')!r}"
+        )
     if row.get("model") != expected_model:
         raise SystemExit(f"IDENTITY: row model {row.get('model')!r} in the {expected_model} fleet")
     if row.get("ref_id") != ref["id"]:
@@ -216,14 +243,20 @@ def validate_row(row: dict, expected_model: str, ref: dict) -> None:
     if rec is None:
         return  # failed trial; carried as a misfire by both consumers
     expected_id = f"{MODEL_SHORT[expected_model]}-{ref['id']}-r{rep}"
-    expected_digest = hashlib.sha256(canonical_json({
-        "schema_version": "ars-codex-citation-request/1.0",
-        "request_id": expected_id,
-        "reference_text": ref["reference_text"],
-        "citation_context": ref["citation_context"],
-    })).hexdigest()
+    expected_digest = hashlib.sha256(
+        canonical_json(
+            {
+                "schema_version": "ars-codex-citation-request/1.0",
+                "request_id": expected_id,
+                "reference_text": ref["reference_text"],
+                "citation_context": ref["citation_context"],
+            }
+        )
+    ).hexdigest()
     if rec.get("model") != expected_model:
-        raise SystemExit(f"IDENTITY: receipt.model {rec.get('model')!r} != {expected_model} at {expected_id}")
+        raise SystemExit(
+            f"IDENTITY: receipt.model {rec.get('model')!r} != {expected_model} at {expected_id}"
+        )
     if rec.get("request_id") != expected_id:
         raise SystemExit(f"IDENTITY: receipt.request_id {rec.get('request_id')!r} != {expected_id}")
     if rec.get("request_digest") != expected_digest:

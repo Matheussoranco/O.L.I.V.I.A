@@ -44,6 +44,7 @@ CANONICAL = REPO_ROOT / "shared/cross_model_verification.md"
 #   # or: export ARS_CROSS_MODEL="gemini-3.1-pro-preview"
 ASSIGNMENT_RE = re.compile(r'ARS_CROSS_MODEL="([^"]+)"')
 
+
 def canonical_model_ids(canonical_text: str) -> set[str]:
     """Backticked ids from the "API ID" column of the canonical doc's model
     tables ONLY. A table starts at a header row containing "API ID" and ends
@@ -64,11 +65,7 @@ def canonical_model_ids(canonical_text: str) -> set[str]:
         if len(cells) > api_id_col:
             # Globs like `gpt-*` (from the compat table's "any non-`gpt-*`
             # id" prose) are prefix patterns, not model ids — exclude them.
-            ids.update(
-                tok
-                for tok in re.findall(r"`([^`]+)`", cells[api_id_col])
-                if "*" not in tok
-            )
+            ids.update(tok for tok in re.findall(r"`([^`]+)`", cells[api_id_col]) if "*" not in tok)
     return ids
 
 
@@ -130,8 +127,10 @@ def main() -> int:
         for err in errors:
             print(f"  - {err}", file=sys.stderr)
         return 1
-    print("SETUP cross-model parity lint PASSED: en/zh-TW examples match and "
-          "all values are in the canonical lineup.")
+    print(
+        "SETUP cross-model parity lint PASSED: en/zh-TW examples match and "
+        "all values are in the canonical lineup."
+    )
     return 0
 
 

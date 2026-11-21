@@ -252,9 +252,7 @@ CONTRADICTION_PHRASES = (
 _SENTENCE_SPLIT_RE = re.compile(r"(?:[.!?](?=\s|$))|\n")
 
 
-def check_contradiction_guard(
-    contamination_texts: dict[str, str], violations: list[str]
-) -> None:
+def check_contradiction_guard(contamination_texts: dict[str, str], violations: list[str]) -> None:
     """No contamination R-L3-2-A reference sentence may assert an unqualified
     non-blocking claim that the v3.10 strict policy contradicts."""
     for rel in CONTAMINATION_CONTEXT_FILES:
@@ -301,7 +299,7 @@ def _extract_section(text: str, header: str) -> str | None:
     for i, line in enumerate(lines):
         stripped = line.rstrip("\n")
         if stripped == header or (
-            stripped.startswith(header) and stripped[len(header):len(header) + 1] == " "
+            stripped.startswith(header) and stripped[len(header) : len(header) + 1] == " "
         ):
             start = i + 1
             break

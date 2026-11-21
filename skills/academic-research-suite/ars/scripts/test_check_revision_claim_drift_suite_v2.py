@@ -11,10 +11,8 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-
 from scripts import check_revision_claim_drift_suite_v2 as guard
 from scripts.check_heldout_measurement_report import validate_report
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SUITE = Path(guard.SUITE_REL)
@@ -126,9 +124,7 @@ def test_protected_historical_file_byte_drift_fails(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("mutation", ["add", "delete", "byte_drift"])
-def test_historical_run_tree_inventory_is_write_once(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_historical_run_tree_inventory_is_write_once(tmp_path: Path, mutation: str) -> None:
     root = _mirror(tmp_path)
     tree = root / guard.HISTORICAL_TREE_REL
     files = sorted(path for path in tree.rglob("*") if path.is_file())
@@ -208,13 +204,9 @@ def test_closed_amendment_ledger_rejects_mutation(tmp_path: Path) -> None:
     ],
     ids=["duplicate-key", "nonfinite", "utf8-bom"],
 )
-def test_new_contract_json_is_parsed_strictly(
-    tmp_path: Path, payload: str
-) -> None:
+def test_new_contract_json_is_parsed_strictly(tmp_path: Path, payload: str) -> None:
     root = _mirror(tmp_path)
-    (root / SUITE / "historical_artifacts.lock.json").write_text(
-        payload, encoding="utf-8"
-    )
+    (root / SUITE / "historical_artifacts.lock.json").write_text(payload, encoding="utf-8")
     with pytest.raises(guard.ContractError, match="duplicate JSON key|non-finite|strict JSON"):
         guard.run_checks(root)
 
@@ -239,9 +231,7 @@ def test_subject_context_schema_hash_is_load_bearing(tmp_path: Path) -> None:
         ("subject_context_attested_only.json", "attestation"),
     ],
 )
-def test_subject_context_nested_branches_are_closed(
-    fixture_name: str, container: str
-) -> None:
+def test_subject_context_nested_branches_are_closed(fixture_name: str, container: str) -> None:
     record = _fixture(fixture_name)
     assert isinstance(record[container], dict)
     record[container]["raw_secret"] = "must-not-be-stored"
@@ -250,9 +240,7 @@ def test_subject_context_nested_branches_are_closed(
 
 
 @pytest.mark.parametrize("mutation", ["add", "delete", "byte_drift"])
-def test_fixture_inventory_and_bytes_are_frozen(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_fixture_inventory_and_bytes_are_frozen(tmp_path: Path, mutation: str) -> None:
     root = _mirror(tmp_path)
     fixture_dir = root / FIXTURES
     if mutation == "add":
@@ -280,9 +268,9 @@ def test_derived_not_isolated_relations_are_load_bearing(
     schema = _read_json(path)
     branches = schema["$defs"]["notIsolatedRecord"]["anyOf"]
     if relation == "inside_repository":
-        branches[2]["properties"]["neutral_cwd"]["properties"][
-            "repo_membership_probe"
-        ]["const"] = "outside_suite_repository"
+        branches[2]["properties"]["neutral_cwd"]["properties"]["repo_membership_probe"][
+            "const"
+        ] = "outside_suite_repository"
         expected = "derived inside-repository record"
     else:
         branches[1]["properties"]["instruction_visibility"]["properties"][
@@ -296,9 +284,7 @@ def test_derived_not_isolated_relations_are_load_bearing(
 
 
 @pytest.mark.parametrize("surface", ["README", "design"])
-def test_protocol_document_markers_are_load_bearing(
-    tmp_path: Path, surface: str
-) -> None:
+def test_protocol_document_markers_are_load_bearing(tmp_path: Path, surface: str) -> None:
     root = _mirror(tmp_path)
     if surface == "README":
         path = root / SUITE / "README.md"
@@ -349,9 +335,7 @@ def test_escaped_contract_marker_is_discovered(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("mutation", ["delete", "hash"])
-def test_canonical_claim_ladder_target_is_required(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_canonical_claim_ladder_target_is_required(tmp_path: Path, mutation: str) -> None:
     root = _mirror(tmp_path)
     ladder = root / LADDER
     if mutation == "delete":
@@ -378,8 +362,6 @@ def test_canonical_claim_ladder_headings_are_load_bearing(
     _sync_v2_rubric(root, monkeypatch)
     with pytest.raises(guard.ContractError, match="ladder target headings drifted"):
         guard._check_rubric(root)
-
-
 
 
 def _future_bundle(
@@ -447,9 +429,7 @@ def _future_bundle(
             "authentication_result": context["cli"]["authentication_result"],
         },
         "working_directory": {
-            "policy": policy_by_membership[
-                context["neutral_cwd"]["repo_membership_probe"]
-            ],
+            "policy": policy_by_membership[context["neutral_cwd"]["repo_membership_probe"]],
             "pwd_p_sha256": context["neutral_cwd"]["pwd_p_sha256"],
         },
         "instruction_loading": {
@@ -465,10 +445,7 @@ def _future_bundle(
         },
     }
     launcher["invocation_sha256"] = _canonical_object_digest(
-        {
-            key: launcher[key]
-            for key in ("launcher", "working_directory", "instruction_loading")
-        }
+        {key: launcher[key] for key in ("launcher", "working_directory", "instruction_loading")}
     )
     _write_json(launcher_path, launcher)
     launcher_binding = {"ref": launcher_ref, "sha256": _digest(launcher_path)}
@@ -518,9 +495,7 @@ def _future_bundle(
     raw_paths = [context_ref, launcher_ref, plan_ref, manifest_ref]
     plan_judges: list[dict[str, Any]] = []
     for judge in judge_specs:
-        template_ref = (
-            run_rel / "raw" / f"judge.{judge['judge_id']}.template.txt"
-        ).as_posix()
+        template_ref = (run_rel / "raw" / f"judge.{judge['judge_id']}.template.txt").as_posix()
         template_path = root / template_ref
         template_path.parent.mkdir(parents=True, exist_ok=True)
         template_path.write_text(
@@ -549,9 +524,7 @@ def _future_bundle(
         output_path = root / output_ref
         prompt_path.parent.mkdir(parents=True, exist_ok=True)
         if role == "subject":
-            prompt_path.write_text(
-                f"synthetic {role} prompt {index}\n", encoding="utf-8"
-            )
+            prompt_path.write_text(f"synthetic {role} prompt {index}\n", encoding="utf-8")
             prompt_binding: dict[str, Any] = {
                 "ref": prompt_ref,
                 "sha256": _digest(prompt_path),
@@ -560,14 +533,10 @@ def _future_bundle(
             plan_judge = judge_plan_by_id[spec["judge_id"]]
             template_ref = plan_judge["prompt_template"]["ref"]
             subject_output_ref = (
-                run_rel
-                / "raw"
-                / f"subject.{spec['item_replicate_id']}.output.txt"
+                run_rel / "raw" / f"subject.{spec['item_replicate_id']}.output.txt"
             ).as_posix()
             subject_prompt_ref = (
-                run_rel
-                / "raw"
-                / f"subject.{spec['item_replicate_id']}.prompt.txt"
+                run_rel / "raw" / f"subject.{spec['item_replicate_id']}.prompt.txt"
             ).as_posix()
             prompt_path.write_bytes(
                 (root / template_ref).read_bytes()
@@ -614,9 +583,7 @@ def _future_bundle(
         "launcher_config": copy.deepcopy(launcher_binding),
         "heldout_set": {
             "ref": f"{guard.SUITE_REL}/heldout_set.json",
-            "sha256": guard.HISTORICAL_FILES[
-                f"{guard.SUITE_REL}/heldout_set.json"
-            ],
+            "sha256": guard.HISTORICAL_FILES[f"{guard.SUITE_REL}/heldout_set.json"],
         },
         "arm_ids": ["single"],
         "judges": plan_judges,
@@ -821,9 +788,7 @@ def _rewrite_plan(root: Path, row: dict[str, Any], plan: dict[str, Any]) -> Path
     _write_json(plan_path, plan)
     digest = _digest(plan_path)
     row["subject"]["config"]["subject_call_plan"]["sha256"] = digest
-    row["preregistration"]["plan_ref"] = row["subject"]["config"][
-        "subject_call_plan"
-    ]["ref"]
+    row["preregistration"]["plan_ref"] = row["subject"]["config"]["subject_call_plan"]["ref"]
     row["preregistration"]["plan_sha256"] = digest
     context_path = root / row["subject"]["config"]["subject_context"]["ref"]
     context = _read_json(context_path)
@@ -833,9 +798,7 @@ def _rewrite_plan(root: Path, row: dict[str, Any], plan: dict[str, Any]) -> Path
     return plan_path
 
 
-def _rewrite_launcher(
-    root: Path, row: dict[str, Any], launcher: dict[str, Any]
-) -> Path:
+def _rewrite_launcher(root: Path, row: dict[str, Any], launcher: dict[str, Any]) -> Path:
     launcher_path = _bound_path(root, row, "launcher_config")
     _write_json(launcher_path, launcher)
     binding = {
@@ -850,9 +813,7 @@ def _rewrite_launcher(
     _write_json(plan_path, plan)
     plan_digest = _digest(plan_path)
     row["subject"]["config"]["subject_call_plan"]["sha256"] = plan_digest
-    row["preregistration"]["plan_ref"] = row["subject"]["config"][
-        "subject_call_plan"
-    ]["ref"]
+    row["preregistration"]["plan_ref"] = row["subject"]["config"]["subject_call_plan"]["ref"]
     row["preregistration"]["plan_sha256"] = plan_digest
 
     context_path = root / row["subject"]["config"]["subject_context"]["ref"]
@@ -949,9 +910,7 @@ def _add_c9_finding(root: Path, row: dict[str, Any]) -> Path:
 @pytest.mark.parametrize(
     "status", ["machine_supported", "attested_only", "not_isolated", "unknown"]
 )
-def test_future_1_1_context_replay_accepts_supported_statuses(
-    tmp_path: Path, status: str
-) -> None:
+def test_future_1_1_context_replay_accepts_supported_statuses(tmp_path: Path, status: str) -> None:
     root, row, _, _ = _future_bundle(tmp_path, status)
     errors, warnings = validate_report(row)
     assert errors == []
@@ -969,9 +928,7 @@ def test_future_1_1_context_replay_accepts_supported_statuses(
         ("raw_path", "appear verbatim in raw_outputs.paths"),
     ],
 )
-def test_future_context_binding_fails_closed(
-    tmp_path: Path, mutation: str, expected: str
-) -> None:
+def test_future_context_binding_fails_closed(tmp_path: Path, mutation: str, expected: str) -> None:
     root, row, context_path, _ = _future_bundle(tmp_path)
     binding = row["subject"]["config"]["subject_context"]
     if mutation == "missing":
@@ -1003,14 +960,10 @@ def test_future_context_run_id_must_match_parent_path(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("mutation", ["ref", "hash"])
-def test_future_manifest_ref_and_hash_are_bound(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_future_manifest_ref_and_hash_are_bound(tmp_path: Path, mutation: str) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     if mutation == "ref":
-        row["execution_manifest"]["ref"] = (
-            f"{guard.RUNS_PREFIX}other-run/execution-manifest.json"
-        )
+        row["execution_manifest"]["ref"] = f"{guard.RUNS_PREFIX}other-run/execution-manifest.json"
         expected = "row/context execution_manifest ref mismatch"
     else:
         row["execution_manifest"]["sha256"] = "0" * 64
@@ -1050,9 +1003,7 @@ def test_attestation_cannot_precede_completed_probe(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("mutation", ["row_suite", "config_commit", "frozen_commit"])
-def test_future_suite_and_frozen_commit_bindings(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_future_suite_and_frozen_commit_bindings(tmp_path: Path, mutation: str) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     if mutation == "row_suite":
         row["suite"] = "other_suite"
@@ -1082,9 +1033,7 @@ def test_future_adjudication_is_flags_only(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("mutation", ["criterion", "scope", "separation", "extra"])
-def test_future_c9_result_layer_is_closed_and_separate(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_future_c9_result_layer_is_closed_and_separate(tmp_path: Path, mutation: str) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     layer = row["results"]["revision_claim_drift_v2"]["citation_attachment"]
     if mutation == "criterion":
@@ -1104,9 +1053,9 @@ def test_c9_cannot_be_smuggled_into_the_generic_aggregate_headline(
 ) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     row["aggregate"]["headline"]["metric_name"] = "C9_citation_attachment_rate"
-    row["aggregate"]["headline"]["construction_rule"] = (
-        "C9 citation-attachment flags-only adjudication defines this lower bound."
-    )
+    row["aggregate"]["headline"][
+        "construction_rule"
+    ] = "C9 citation-attachment flags-only adjudication defines this lower bound."
     with pytest.raises(guard.ContractError):
         guard.validate_prospective_measurement(row, root)
 
@@ -1120,9 +1069,7 @@ def test_c9_cannot_be_smuggled_into_the_generic_aggregate_headline(
         "Repository-instruction isolation was achieved.",
     ],
 )
-def test_unqualified_isolation_language_is_rejected(
-    tmp_path: Path, wording: str
-) -> None:
+def test_unqualified_isolation_language_is_rejected(tmp_path: Path, wording: str) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     row["verdict"] = wording
     with pytest.raises(
@@ -1134,9 +1081,7 @@ def test_unqualified_isolation_language_is_rejected(
 
 def test_status_claim_ceiling_is_exact_for_unknown_status(tmp_path: Path) -> None:
     root, row, _, _ = _future_bundle(tmp_path, "unknown")
-    row["results"]["subject_context_claim"] = (
-        "repository-instruction isolated (machine-supported)"
-    )
+    row["results"]["subject_context_claim"] = "repository-instruction isolated (machine-supported)"
     with pytest.raises(guard.ContractError, match="exact status-derived ceiling"):
         guard.validate_prospective_measurement(row, root)
 
@@ -1202,9 +1147,7 @@ def test_launcher_config_binding_is_canonical_and_replayed(
     if mutation == "missing":
         del config["launcher_config"]
     elif mutation == "ref":
-        config["launcher_config"]["ref"] = (
-            f"{guard.RUNS_PREFIX}other/launcher-config.json"
-        )
+        config["launcher_config"]["ref"] = f"{guard.RUNS_PREFIX}other/launcher-config.json"
     elif mutation == "hash":
         launcher_path.write_bytes(launcher_path.read_bytes() + b"\n")
     elif mutation == "raw":
@@ -1254,9 +1197,7 @@ def test_subject_call_plan_binding_is_canonical_and_precommitted(
     if mutation == "missing":
         del config["subject_call_plan"]
     elif mutation == "ref":
-        config["subject_call_plan"]["ref"] = (
-            f"{guard.RUNS_PREFIX}other/subject-call-plan.json"
-        )
+        config["subject_call_plan"]["ref"] = f"{guard.RUNS_PREFIX}other/subject-call-plan.json"
     elif mutation == "hash":
         plan_path.write_bytes(plan_path.read_bytes() + b"\n")
     elif mutation == "raw":
@@ -1359,9 +1300,7 @@ def test_judge_roster_identity_templates_and_decision_authority_are_frozen(
 
 
 @pytest.mark.parametrize("field", ["plan_ref", "plan_sha256"])
-def test_preregistration_exactly_binds_the_subject_call_plan(
-    tmp_path: Path, field: str
-) -> None:
+def test_preregistration_exactly_binds_the_subject_call_plan(tmp_path: Path, field: str) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     row["preregistration"][field] = "0" * 64 if field.endswith("sha256") else "other"
     with pytest.raises(guard.ContractError, match="preregistration plan binding differs"):
@@ -1463,14 +1402,10 @@ def test_judge_prompts_are_deferred_and_replay_frozen_dependencies(
         judge_call["prompt"]["composition"] = "free_form/1.0"
         _rewrite_plan(root, row, plan)
     elif mutation == "template_ref":
-        judge_call["prompt"]["template_ref"] = plan["judges"][1][
-            "prompt_template"
-        ]["ref"]
+        judge_call["prompt"]["template_ref"] = plan["judges"][1]["prompt_template"]["ref"]
         _rewrite_plan(root, row, plan)
     elif mutation == "subject_prompt_ref":
-        judge_call["prompt"]["subject_prompt_ref"] = plan["calls"][1]["prompt"][
-            "ref"
-        ]
+        judge_call["prompt"]["subject_prompt_ref"] = plan["calls"][1]["prompt"]["ref"]
         _rewrite_plan(root, row, plan)
     elif mutation == "subject_output_ref":
         judge_call["prompt"]["subject_output_ref"] = plan["calls"][1]["output_ref"]
@@ -1667,9 +1602,7 @@ def test_published_c9_finding_requires_typed_raw_flag_authority(
 ) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     _add_c9_finding(root, row)
-    finding = row["results"]["revision_claim_drift_v2"]["citation_attachment"][
-        "findings"
-    ][0]
+    finding = row["results"]["revision_claim_drift_v2"]["citation_attachment"]["findings"][0]
     del finding["raw_flag_judge_ids"]
     with pytest.raises(guard.ContractError):
         guard.validate_prospective_measurement(row, root)
@@ -1735,9 +1668,7 @@ def test_generic_override_cannot_route_c9_or_citation_attachment(
 
 
 @pytest.mark.parametrize("mutation", ["missing_finding", "wrong_reason", "wrong_id"])
-def test_confirmed_c9_decision_mapping_is_closed(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_confirmed_c9_decision_mapping_is_closed(tmp_path: Path, mutation: str) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     _add_c9_finding(root, row)
     layer = row["results"]["revision_claim_drift_v2"]["citation_attachment"]
@@ -1810,9 +1741,7 @@ def test_extra_unjudged_subject_call_is_rejected(tmp_path: Path) -> None:
 def test_c9_evidence_cannot_alias_an_arbitrary_retained_artifact(tmp_path: Path) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     _add_c9_finding(root, row)
-    finding = row["results"]["revision_claim_drift_v2"]["citation_attachment"][
-        "findings"
-    ][0]
+    finding = row["results"]["revision_claim_drift_v2"]["citation_attachment"]["findings"][0]
     context_ref = row["subject"]["config"]["subject_context"]["ref"]
     finding["evidence_ref"] = context_ref
     finding["evidence_sha256"] = _digest(root / context_ref)
@@ -1823,9 +1752,7 @@ def test_c9_evidence_cannot_alias_an_arbitrary_retained_artifact(tmp_path: Path)
 def test_c9_evidence_cannot_use_unreplayed_placeholder_hashes(tmp_path: Path) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     _add_c9_finding(root, row)
-    finding = row["results"]["revision_claim_drift_v2"]["citation_attachment"][
-        "findings"
-    ][0]
+    finding = row["results"]["revision_claim_drift_v2"]["citation_attachment"]["findings"][0]
     finding["citation_tokens_sha256"] = "0" * 64
     finding["original_attachment_sha256"] = "0" * 64
     finding["revised_attachment_sha256"] = "0" * 64
@@ -1836,9 +1763,7 @@ def test_c9_evidence_cannot_use_unreplayed_placeholder_hashes(tmp_path: Path) ->
 def test_boolean_finding_count_is_not_an_integer_count(tmp_path: Path) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     _add_c9_finding(root, row)
-    row["results"]["revision_claim_drift_v2"]["citation_attachment"][
-        "finding_count"
-    ] = True
+    row["results"]["revision_claim_drift_v2"]["citation_attachment"]["finding_count"] = True
     with pytest.raises(guard.ContractError):
         guard.validate_prospective_measurement(row, root)
 
@@ -1860,9 +1785,7 @@ def test_c9_attachment_artifacts_are_canonical_hashed_nonempty_and_retained(
 ) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     _add_c9_finding(root, row)
-    finding = row["results"]["revision_claim_drift_v2"]["citation_attachment"][
-        "findings"
-    ][0]
+    finding = row["results"]["revision_claim_drift_v2"]["citation_attachment"]["findings"][0]
     ref_key = f"{field}_ref"
     hash_key = f"{field}_sha256"
     ref = finding[ref_key]
@@ -1906,9 +1829,7 @@ def test_call_plan_binds_exact_frozen_heldout_set(tmp_path: Path) -> None:
 
 
 @pytest.mark.parametrize("replicates", [1, 11, True])
-def test_future_resource_grammar_bounds_replicates(
-    tmp_path: Path, replicates: int | bool
-) -> None:
+def test_future_resource_grammar_bounds_replicates(tmp_path: Path, replicates: int | bool) -> None:
     root, row, _, _ = _future_bundle(tmp_path)
     row["replicates"]["per_item"] = replicates
     with pytest.raises(

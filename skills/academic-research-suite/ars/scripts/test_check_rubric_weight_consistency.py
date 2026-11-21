@@ -7,7 +7,6 @@ from pathlib import Path
 
 from tests.test_helpers import run_script
 
-
 SCRIPT = Path(__file__).resolve().parent / "check_rubric_weight_consistency.py"
 REPO_ROOT = SCRIPT.parent.parent
 

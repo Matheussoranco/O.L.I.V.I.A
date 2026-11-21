@@ -478,22 +478,16 @@ class Concern7Test(unittest.TestCase):
 class CategoryStateEnumValidationTest(unittest.TestCase):
     def test_lowercase_used_raises(self) -> None:
         with self.assertRaises(referee.InvalidCategoryState):
-            referee.decide_disclosure_output(
-                _inp(ai_used=None, categories={"drafting": "used"})
-            )
+            referee.decide_disclosure_output(_inp(ai_used=None, categories={"drafting": "used"}))
 
     def test_typo_category_state_raises(self) -> None:
         with self.assertRaises(referee.InvalidCategoryState):
-            referee.decide_disclosure_output(
-                _inp(ai_used=None, categories={"drafting": "USE D"})
-            )
+            referee.decide_disclosure_output(_inp(ai_used=None, categories={"drafting": "USE D"}))
 
     def test_valid_states_pass(self) -> None:
         # All three canonical states pass without raising; smoke check.
         for state in ("USED", "NOT USED", "UNCERTAIN"):
-            referee.decide_disclosure_output(
-                _inp(ai_used=None, categories={"drafting": state})
-            )
+            referee.decide_disclosure_output(_inp(ai_used=None, categories={"drafting": state}))
 
 
 # ============================================================================
@@ -612,9 +606,7 @@ class PolicyAnchorEnumValidationTest(unittest.TestCase):
 # ============================================================================
 class Concern10Test(unittest.TestCase):
     def test_bare_ai_used_true_no_categories_triggers_categorization_flow(self) -> None:
-        result = referee.decide_disclosure_output(
-            _inp(ai_used=True, categories={})
-        )
+        result = referee.decide_disclosure_output(_inp(ai_used=True, categories={}))
         # Should trigger v3.2 categorization flow, not full anchor render
         self.assertEqual(result.kind, "prompt_for_categorization")
 

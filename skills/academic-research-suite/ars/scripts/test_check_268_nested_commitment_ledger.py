@@ -12,7 +12,6 @@ import unittest
 
 import scripts.check_268_nested_commitment_ledger as lint
 
-
 CLEAN_SEED = {
     "cases": [
         {
@@ -106,7 +105,9 @@ class TestN2ReintroducedParallelList(unittest.TestCase):
         seed = copy.deepcopy(CLEAN_SEED)
         seed["cases"][0]["expected_unfulfilled_rationale"] = [""]
         errs = lint.check_seed(seed)
-        self.assertTrue(any("N2" in e and "expected_unfulfilled_rationale" in e for e in errs), errs)
+        self.assertTrue(
+            any("N2" in e and "expected_unfulfilled_rationale" in e for e in errs), errs
+        )
 
 
 class TestN3LifecycleCoherence(unittest.TestCase):

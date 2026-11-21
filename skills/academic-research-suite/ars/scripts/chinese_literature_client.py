@@ -88,11 +88,13 @@ _EUTILS_BASE = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
 
 # Every host this client is permitted to contact. The zero-scraping red line
 # (no CNKI / Wanfang / VIP) is enforced here as code, not only as prose.
-_ALLOWED_API_HOSTS = frozenset({
-    "doi.org",
-    "hdl.handle.net",
-    "eutils.ncbi.nlm.nih.gov",
-})
+_ALLOWED_API_HOSTS = frozenset(
+    {
+        "doi.org",
+        "hdl.handle.net",
+        "eutils.ncbi.nlm.nih.gov",
+    }
+)
 
 _CSL_ACCEPT = "application/vnd.citationstyles.csl+json"
 _NCBI_TOOL = "academic-research-skills"
@@ -128,22 +130,24 @@ STATUS_UNMATCHED = "unmatched"
 STATUS_SKIPPED = "skipped"
 
 # Closed reason-code set. Adding a member is a protocol-doc change.
-REASON_CODES = frozenset({
-    "DOI_REFUTED",
-    "DOI_TITLE_MISMATCH",
-    "DOI_TITLE_VERIFIED",
-    "DOI_EXISTS_TITLE_UNVERIFIABLE",
-    "PUBMED_COORDINATE_VERIFIED",
-    "PUBMED_COORDINATE_CANDIDATE_UNVERIFIED",
-    "PUBMED_INDEXED_BUT_COORDINATE_MISS",
-    "PUBMED_COORDINATE_AMBIGUOUS",
-    "INSUFFICIENT_PUBMED_COORDINATES",
-    "JOURNAL_NOT_INDEXED",
-    "NO_ISSN_MAPPING",
-    "DOI_RA_OUT_OF_SCOPE",
-    "DOI_RA_UNRESOLVED",
-    "NOT_CHINESE_LITERATURE",
-})
+REASON_CODES = frozenset(
+    {
+        "DOI_REFUTED",
+        "DOI_TITLE_MISMATCH",
+        "DOI_TITLE_VERIFIED",
+        "DOI_EXISTS_TITLE_UNVERIFIABLE",
+        "PUBMED_COORDINATE_VERIFIED",
+        "PUBMED_COORDINATE_CANDIDATE_UNVERIFIED",
+        "PUBMED_INDEXED_BUT_COORDINATE_MISS",
+        "PUBMED_COORDINATE_AMBIGUOUS",
+        "INSUFFICIENT_PUBMED_COORDINATES",
+        "JOURNAL_NOT_INDEXED",
+        "NO_ISSN_MAPPING",
+        "DOI_RA_OUT_OF_SCOPE",
+        "DOI_RA_UNRESOLVED",
+        "NOT_CHINESE_LITERATURE",
+    }
+)
 
 # Priority is workload ordering for the human, NOT a suspicion score.
 #   P0 = the identifier is absent, or it resolves to a different title (the
@@ -235,9 +239,7 @@ def _quote_url_component(value: str, *, safe: str = "") -> str:
     try:
         return urllib.parse.quote(value, safe=safe)
     except (TypeError, UnicodeError, ValueError):
-        raise ChineseLiteratureUnavailable(
-            "URL component contains invalid Unicode"
-        ) from None
+        raise ChineseLiteratureUnavailable("URL component contains invalid Unicode") from None
 
 
 def _require_api_url(url: str) -> None:
@@ -259,9 +261,7 @@ def _require_api_url(url: str) -> None:
         or parsed.password is not None
         or port is not None
     ):
-        raise ChineseLiteratureUnavailable(
-            f"Refusing non-allowlisted URL: {_redact_url(url)}"
-        )
+        raise ChineseLiteratureUnavailable(f"Refusing non-allowlisted URL: {_redact_url(url)}")
 
 
 class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
@@ -286,16 +286,17 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         _require_api_url(newurl)
         method = req.get_method()
         if not (
-            code in (301, 302, 303, 307, 308) and method in ("GET", "HEAD")
-            or code in (301, 302, 303) and method == "POST"
+            code in (301, 302, 303, 307, 308)
+            and method in ("GET", "HEAD")
+            or code in (301, 302, 303)
+            and method == "POST"
         ):
             raise ChineseLiteratureUnavailable(
                 "redirect response is not permitted for this request method"
             )
         content_headers = {"content-length", "content-type"}
         new_headers = {
-            key: value for key, value in req.headers.items()
-            if key.lower() not in content_headers
+            key: value for key, value in req.headers.items() if key.lower() not in content_headers
         }
         return urllib.request.Request(
             newurl,
@@ -322,16 +323,16 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         try:
             location = headers.get("location") or headers.get("uri")
             if location is None:
-                raise ChineseLiteratureUnavailable(
-                    "redirect response is missing a Location header"
-                )
+                raise ChineseLiteratureUnavailable("redirect response is missing a Location header")
             if not isinstance(location, str):
                 raise ChineseLiteratureUnavailable(
                     "redirect response has a malformed Location header"
                 )
             try:
                 quoted = urllib.parse.quote(
-                    location, encoding="iso-8859-1", safe=string.punctuation,
+                    location,
+                    encoding="iso-8859-1",
+                    safe=string.punctuation,
                 )
                 newurl = urllib.parse.urljoin(req.full_url, quoted)
             except (TypeError, UnicodeError, ValueError):
@@ -350,9 +351,7 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
                     visited.get(newurl, 0) >= self.max_repeats
                     or len(visited) >= self.max_redirections
                 ):
-                    raise ChineseLiteratureUnavailable(
-                        "redirect loop or budget exhausted"
-                    )
+                    raise ChineseLiteratureUnavailable("redirect loop or budget exhausted")
             else:
                 visited = new.redirect_dict = req.redirect_dict = {}
             visited[newurl] = visited.get(newurl, 0) + 1
@@ -376,9 +375,7 @@ class _SafeRedirectHandler(urllib.request.HTTPRedirectHandler):
         try:
             fp.close()
         except (OSError, http.client.HTTPException):
-            raise ChineseLiteratureUnavailable(
-                "redirect response could not be closed"
-            ) from None
+            raise ChineseLiteratureUnavailable("redirect response could not be closed") from None
         return self.parent.open(new, timeout=req.timeout)
 
     http_error_301 = http_error_303 = http_error_307 = http_error_308 = http_error_302
@@ -399,12 +396,8 @@ def _entrez_quoted(value: Any, field: str) -> str:
     them are rejected before a request is built.
     """
     text = str(value or "").strip()
-    if not text or any(
-        ord(ch) < 32 or ch in {'"', "[", "]", "\\"} for ch in text
-    ):
-        raise ChineseLiteratureUnavailable(
-            f"unsafe Entrez {field} literal"
-        )
+    if not text or any(ord(ch) < 32 or ch in {'"', "[", "]", "\\"} for ch in text):
+        raise ChineseLiteratureUnavailable(f"unsafe Entrez {field} literal")
     return f'"{text}"'
 
 
@@ -425,9 +418,7 @@ def _entrez_year(value: Any) -> str:
 
 def _valid_ncbi_email(value: Any) -> bool:
     """Minimal deterministic identity check; NCBI requires a valid email."""
-    return isinstance(value, str) and bool(
-        re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value)
-    )
+    return isinstance(value, str) and bool(re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value))
 
 
 def _first_page(value: Any) -> str:
@@ -544,11 +535,10 @@ def _csl_to_dict(csl: dict[str, Any]) -> dict[str, Any]:
             raise ChineseLiteratureUnavailable("unexpected CSL author entry shape")
         for key in ("given", "family"):
             if entry.get(key) is not None and not isinstance(entry.get(key), str):
-                raise ChineseLiteratureUnavailable(
-                    f"unexpected CSL author {key} shape"
-                )
+                raise ChineseLiteratureUnavailable(f"unexpected CSL author {key} shape")
         name = " ".join(
-            part for part in (entry.get("given"), entry.get("family"))
+            part
+            for part in (entry.get("given"), entry.get("family"))
             if isinstance(part, str) and part
         ).strip()
         if name:
@@ -561,9 +551,7 @@ def _csl_to_dict(csl: dict[str, Any]) -> dict[str, Any]:
     ):
         value = csl.get(source_key)
         if value is not None and type(value) not in (str, int):
-            raise ChineseLiteratureUnavailable(
-                f"unexpected CSL {source_key} shape"
-            )
+            raise ChineseLiteratureUnavailable(f"unexpected CSL {source_key} shape")
         scalar_values[output_key] = str(value) if value is not None else None
 
     metadata_doi = csl.get("DOI")
@@ -760,13 +748,9 @@ class ChineseLiteratureClient:
                             )
                         if len(body) > MAX_BODY_BYTES:
                             raise ChineseLiteratureUnavailable(
-                                f"response body exceeds {MAX_BODY_BYTES} bytes "
-                                f"for {redacted}"
+                                f"response body exceeds {MAX_BODY_BYTES} bytes " f"for {redacted}"
                             )
-                        if (
-                            content_length is not None
-                            and declared_length != len(body)
-                        ):
+                        if content_length is not None and declared_length != len(body):
                             raise ChineseLiteratureUnavailable(
                                 f"truncated response body for {redacted}"
                             )
@@ -774,9 +758,7 @@ class ChineseLiteratureClient:
                     except (OSError, http.client.HTTPException):
                         # IncompleteRead inherits HTTPException, not OSError: a
                         # truncated body must degrade, never become a miss.
-                        raise ChineseLiteratureUnavailable(
-                            f"read failed for {redacted}"
-                        ) from None
+                        raise ChineseLiteratureUnavailable(f"read failed for {redacted}") from None
             except urllib.error.HTTPError as exc:
                 try:
                     error_url = exc.geturl()
@@ -799,9 +781,7 @@ class ChineseLiteratureClient:
                         time.sleep(max(interval, 2.0) * (attempt + 1))
                         setattr(self, throttle_attr, time.monotonic())
                         continue
-                    raise ChineseLiteratureUnavailable(
-                        f"HTTP {exc.code} for {redacted}"
-                    ) from None
+                    raise ChineseLiteratureUnavailable(f"HTTP {exc.code} for {redacted}") from None
                 finally:
                     try:
                         exc.close()
@@ -810,17 +790,13 @@ class ChineseLiteratureClient:
                             f"HTTP error response could not be closed for {redacted}"
                         ) from None
             except (urllib.error.URLError, TimeoutError):
-                raise ChineseLiteratureUnavailable(
-                    f"network error for {redacted}"
-                ) from None
+                raise ChineseLiteratureUnavailable(f"network error for {redacted}") from None
             except OSError:
                 # Some alternate transports and response context managers can
                 # surface a raw OSError rather than wrapping it in URLError.
                 # Keep that close/transport failure inside the same typed
                 # degradation boundary.
-                raise ChineseLiteratureUnavailable(
-                    f"network error for {redacted}"
-                ) from None
+                raise ChineseLiteratureUnavailable(f"network error for {redacted}") from None
             except (http.client.HTTPException, ValueError):
                 # http.client.InvalidURL (an HTTPException raised when a
                 # control character survives into the request line) and any
@@ -828,9 +804,7 @@ class ChineseLiteratureClient:
                 # cleanly, never crash resolve() outside its contract.
                 # Identifiers are percent-encoded before reaching here, so this
                 # is defense in depth, not the primary sanitizer.
-                raise ChineseLiteratureUnavailable(
-                    f"invalid request for {redacted}"
-                ) from None
+                raise ChineseLiteratureUnavailable(f"invalid request for {redacted}") from None
 
         raise ChineseLiteratureUnavailable(f"rate limit exhausted for {redacted}")
 
@@ -875,14 +849,8 @@ class ChineseLiteratureClient:
         )
         if status == 404:
             return None
-        if (
-            not isinstance(rows, list)
-            or len(rows) != 1
-            or not isinstance(rows[0], dict)
-        ):
-            raise ChineseLiteratureUnavailable(
-                f"unexpected RA lookup shape for {prefix}"
-            )
+        if not isinstance(rows, list) or len(rows) != 1 or not isinstance(rows[0], dict):
+            raise ChineseLiteratureUnavailable(f"unexpected RA lookup shape for {prefix}")
         row = rows[0]
         echoed_prefix = row.get("DOI")
         if not isinstance(echoed_prefix, str) or echoed_prefix != prefix:
@@ -898,21 +866,16 @@ class ChineseLiteratureClient:
         # than an invented unknown-prefix observation.
         if ra is None and row.get("status") == "DOI does not exist":
             return None
-        if (
-            not isinstance(ra, str)
-            or not ra
-            or ra != ra.strip()
-            or any(ord(ch) < 32 for ch in ra)
-        ):
-            raise ChineseLiteratureUnavailable(
-                f"unexpected RA value for {prefix}"
-            )
+        if not isinstance(ra, str) or not ra or ra != ra.strip() or any(ord(ch) < 32 for ch in ra):
+            raise ChineseLiteratureUnavailable(f"unexpected RA value for {prefix}")
         return ra
 
     # ---------- stage 1b: ISTIC content negotiation ----------
 
     def doi_lookup_with_title_check(
-        self, doi: str, expected_title: str,
+        self,
+        doi: str,
+        expected_title: str,
     ) -> DoiTitleLookupOutcome:
         """ISTIC path: DOI content negotiation + mandatory title cross-check.
 
@@ -960,19 +923,11 @@ class ChineseLiteratureClient:
             # Some ISTIC CSL responses omit the redundant DOI field. The
             # request path is still DOI-keyed, so retain that key in evidence.
             record["doi"] = doi
-        elif (
-            not metadata_doi.strip()
-            or metadata_doi.strip().lower() != doi.strip().lower()
-        ):
-            raise ChineseLiteratureUnavailable(
-                "CSL DOI does not match the requested DOI"
-            )
+        elif not metadata_doi.strip() or metadata_doi.strip().lower() != doi.strip().lower():
+            raise ChineseLiteratureUnavailable("CSL DOI does not match the requested DOI")
         else:
             record["doi"] = metadata_doi.strip()
-        if (
-            not normalize_cn_title(record.get("title"))
-            or not normalize_cn_title(expected_title)
-        ):
+        if not normalize_cn_title(record.get("title")) or not normalize_cn_title(expected_title):
             return DoiTitleLookupOutcome(DoiTitleState.UNVERIFIABLE, record)
         if _cn_titles_match(record["title"], expected_title):
             return DoiTitleLookupOutcome(DoiTitleState.MATCH, record)
@@ -1019,9 +974,7 @@ class ChineseLiteratureClient:
             return False
         # 2 (internal error), 200 (values not found), anything else: unknown
         # state, degrade rather than guess.
-        raise ChineseLiteratureUnavailable(
-            f"handle responseCode {code!r} for {doi}"
-        )
+        raise ChineseLiteratureUnavailable(f"handle responseCode {code!r} for {doi}")
 
     # ---------- stage 3: ISSN bridge + PubMed coordinate lookup ----------
 
@@ -1074,18 +1027,14 @@ class ChineseLiteratureClient:
             if first_page:
                 volume_term = _entrez_atom(volume, "volume")
                 page_term = _entrez_atom(first_page, "first page")
-                terms.append(
-                    f"{journal_term}[ta] AND {volume_term}[vi] AND {page_term}[pg]"
-                )
+                terms.append(f"{journal_term}[ta] AND {volume_term}[vi] AND {page_term}[pg]")
         # Volume + first page is the stronger coordinate. Author/year is used
         # only when that tuple is unavailable; it must never wash a zero-hit or
         # ambiguous page citation into a positive match.
         if not terms and first_author and year:
             author_term = _entrez_quoted(first_author, "first author")
             year_term = _entrez_year(year)
-            terms.append(
-                f"{journal_term}[ta] AND {author_term}[1au] AND {year_term}[dp]"
-            )
+            terms.append(f"{journal_term}[ta] AND {author_term}[1au] AND {year_term}[dp]")
         if not terms:
             return "insufficient_input", None
         outcome = "zero_hit"
@@ -1100,9 +1049,7 @@ class ChineseLiteratureClient:
     def _eutils_url(self, endpoint: str, params: dict[str, str]) -> str:
         query = dict(params)
         if not self._ncbi_email or not _valid_ncbi_email(self._ncbi_email):
-            raise ChineseLiteratureUnavailable(
-                "NCBI E-utilities requires a valid ncbi_email"
-            )
+            raise ChineseLiteratureUnavailable("NCBI E-utilities requires a valid ncbi_email")
         query["tool"] = _NCBI_TOOL
         query["email"] = self._ncbi_email
         if self._ncbi_api_key:
@@ -1141,19 +1088,12 @@ class ChineseLiteratureClient:
             or not re.fullmatch(r"[0-9]+", count)
             or not isinstance(ids, list)
             or any(
-                not isinstance(pmid, str)
-                or not re.fullmatch(r"[1-9][0-9]*", pmid)
-                for pmid in ids
+                not isinstance(pmid, str) or not re.fullmatch(r"[1-9][0-9]*", pmid) for pmid in ids
             )
         ):
-            raise ChineseLiteratureUnavailable(
-                f"unexpected esearch idlist shape for term {term!r}"
-            )
+            raise ChineseLiteratureUnavailable(f"unexpected esearch idlist shape for term {term!r}")
         count_value = int(count)
-        if (
-            len(ids) != min(count_value, retmax)
-            or len(set(ids)) != len(ids)
-        ):
+        if len(ids) != min(count_value, retmax) or len(set(ids)) != len(ids):
             raise ChineseLiteratureUnavailable(
                 f"inconsistent esearch count/idlist for term {term!r}"
             )
@@ -1169,7 +1109,8 @@ class ChineseLiteratureClient:
         only as a candidate and follows its DOI to Chinese metadata.
         """
         url = self._eutils_url(
-            "esummary.fcgi", {"db": "pubmed", "retmode": "json", "id": pmid},
+            "esummary.fcgi",
+            {"db": "pubmed", "retmode": "json", "id": pmid},
         )
         _status, payload = self._fetch_json(
             url,
@@ -1185,21 +1126,13 @@ class ChineseLiteratureClient:
                 f"unexpected esummary shape for pmid {pmid}"
             ) from exc
         if not isinstance(record, dict):
-            raise ChineseLiteratureUnavailable(
-                f"unexpected esummary record shape for pmid {pmid}"
-            )
+            raise ChineseLiteratureUnavailable(f"unexpected esummary record shape for pmid {pmid}")
         echoed_uids = result.get("uids")
         if echoed_uids is not None and echoed_uids != [pmid]:
-            raise ChineseLiteratureUnavailable(
-                f"unexpected esummary uids for pmid {pmid}"
-            )
+            raise ChineseLiteratureUnavailable(f"unexpected esummary uids for pmid {pmid}")
         echoed_uid = record.get("uid")
-        if echoed_uid is not None and (
-            not isinstance(echoed_uid, str) or echoed_uid != pmid
-        ):
-            raise ChineseLiteratureUnavailable(
-                f"unexpected esummary uid for pmid {pmid}"
-            )
+        if echoed_uid is not None and (not isinstance(echoed_uid, str) or echoed_uid != pmid):
+            raise ChineseLiteratureUnavailable(f"unexpected esummary uid for pmid {pmid}")
         scalar_fields: dict[str, str | None] = {}
         for field in ("pubdate", "title", "source", "volume", "issue", "pages", "issn"):
             value = record.get(field)
@@ -1215,9 +1148,7 @@ class ChineseLiteratureClient:
         elif not isinstance(languages, list) or any(
             not isinstance(language, str) for language in languages
         ):
-            raise ChineseLiteratureUnavailable(
-                f"unexpected esummary lang shape for pmid {pmid}"
-            )
+            raise ChineseLiteratureUnavailable(f"unexpected esummary lang shape for pmid {pmid}")
 
         pubdate = scalar_fields["pubdate"] or ""
         if pubdate:
@@ -1347,7 +1278,9 @@ class ChineseLiteratureClient:
                 return self._resolve_by_doi(entry, doi, ra, attempts)
             if ra is None:
                 return self._skipped_with_checklist(
-                    entry, attempts, "DOI_RA_UNRESOLVED",
+                    entry,
+                    attempts,
+                    "DOI_RA_UNRESOLVED",
                     human_action=(
                         "The DOI registration agency could not be established. "
                         "This resolver will not ignore the supplied DOI and fall "
@@ -1356,7 +1289,9 @@ class ChineseLiteratureClient:
                     ),
                 )
             return self._skipped_with_checklist(
-                entry, attempts, "DOI_RA_OUT_OF_SCOPE",
+                entry,
+                attempts,
+                "DOI_RA_OUT_OF_SCOPE",
                 human_action=(
                     f"This DOI is registered with {ra}, outside this resolver's "
                     "ISTIC/CNKI scope. Route it to the appropriate DOI resolver; "
@@ -1409,10 +1344,12 @@ class ChineseLiteratureClient:
 
         # ISTIC RA: attempt CSL-JSON within the allowlisted HTTPS boundary.
         lookup = self.doi_lookup_with_title_check(doi, expected_title)
-        attempts.append({
-            "stage": "content_negotiation",
-            "outcome": lookup.state.value,
-        })
+        attempts.append(
+            {
+                "stage": "content_negotiation",
+                "outcome": lookup.state.value,
+            }
+        )
 
         if lookup.state is DoiTitleState.MATCH:
             assert lookup.record is not None  # closed-state construction invariant
@@ -1453,10 +1390,12 @@ class ChineseLiteratureClient:
             # independent Handle API also says absent. Some existing handles do
             # not expose a CSL representation at doi.org.
             exists = self.handle_exists(doi)
-            attempts.append({
-                "stage": "handle_existence",
-                "outcome": "exists" if exists else "absent",
-            })
+            attempts.append(
+                {
+                    "stage": "handle_existence",
+                    "outcome": "exists" if exists else "absent",
+                }
+            )
             if not exists:
                 return self._refuted(entry, attempts, resolve_url)
 
@@ -1464,7 +1403,11 @@ class ChineseLiteratureClient:
         # cited title), or content negotiation returned 404 while Handle proves
         # the DOI exists. Neither state permits a mismatch/false verdict.
         return self._doi_title_unverifiable(
-            entry, attempts, doi, ra, resolve_url,
+            entry,
+            attempts,
+            doi,
+            ra,
+            resolve_url,
             resolved_title=(lookup.record or {}).get("title"),
         )
 
@@ -1530,7 +1473,9 @@ class ChineseLiteratureClient:
         }
 
     def _resolve_by_coordinates(
-        self, entry: dict[str, Any], attempts: list[dict[str, Any]],
+        self,
+        entry: dict[str, Any],
+        attempts: list[dict[str, Any]],
     ) -> dict[str, Any]:
         """No Chinese DOI: journal -> ISSN -> NLM TA -> PubMed coordinates."""
         container = entry.get("container_title")
@@ -1538,7 +1483,9 @@ class ChineseLiteratureClient:
         if bridged is None:
             attempts.append({"stage": "issn_bridge", "outcome": "unmapped"})
             return self._skipped_with_checklist(
-                entry, attempts, "NO_ISSN_MAPPING",
+                entry,
+                attempts,
+                "NO_ISSN_MAPPING",
                 human_action=(
                     "This journal is not in the ISSN/NLM bridge table, so no "
                     "automated source applies. Verify the reference by hand. "
@@ -1547,26 +1494,28 @@ class ChineseLiteratureClient:
                 ),
             )
         nlm_ta = bridged["nlm_ta"]
-        attempts.append({
-            "stage": "issn_bridge",
-            "outcome": "mapped",
-            "detail": f"{bridged['issn']} -> {nlm_ta} (NLM {bridged['nlm_id']})",
-        })
+        attempts.append(
+            {
+                "stage": "issn_bridge",
+                "outcome": "mapped",
+                "detail": f"{bridged['issn']} -> {nlm_ta} (NLM {bridged['nlm_id']})",
+            }
+        )
 
         volume = entry.get("volume")
         pages = entry.get("pages")
         first_author = entry.get("first_author_pinyin")
         cited_year = entry.get("year")
-        cited_year_number = (
-            int(_entrez_year(cited_year)) if cited_year is not None else None
-        )
+        cited_year_number = int(_entrez_year(cited_year)) if cited_year is not None else None
         has_volume_page = bool(volume and pages and _first_page(pages))
         has_author_year = bool(first_author and cited_year_number)
         if not has_volume_page and not has_author_year:
-            attempts.append({
-                "stage": "pubmed_coordinate_input",
-                "outcome": "insufficient",
-            })
+            attempts.append(
+                {
+                    "stage": "pubmed_coordinate_input",
+                    "outcome": "insufficient",
+                }
+            )
             return self._skipped_with_checklist(
                 entry,
                 attempts,
@@ -1582,7 +1531,9 @@ class ChineseLiteratureClient:
         if not self.journal_is_indexed(nlm_ta):
             attempts.append({"stage": "pubmed_coverage", "outcome": "not_indexed"})
             return self._skipped_with_checklist(
-                entry, attempts, "JOURNAL_NOT_INDEXED",
+                entry,
+                attempts,
+                "JOURNAL_NOT_INDEXED",
                 human_action=(
                     "This journal has no PubMed records, so a coordinate miss "
                     "would carry no information. Verify by hand. Pending human "
@@ -1598,11 +1549,13 @@ class ChineseLiteratureClient:
             first_author=first_author,
             year=cited_year_number,
         )
-        attempts.append({
-            "stage": "pubmed_coordinate",
-            "outcome": outcome,
-            "detail": "volume_page" if has_volume_page else "author_year",
-        })
+        attempts.append(
+            {
+                "stage": "pubmed_coordinate",
+                "outcome": outcome,
+                "detail": "volume_page" if has_volume_page else "author_year",
+            }
+        )
 
         if outcome == "hit" and record is not None:
             # PubMed's title is only an English shadow title, so a coordinate
@@ -1623,23 +1576,26 @@ class ChineseLiteratureClient:
                 cited_first_page != record_first_page
             )
             year_conflict = bool(
-                cited_year_number and record.get("year")
-                and cited_year_number != record["year"]
+                cited_year_number and record.get("year") and cited_year_number != record["year"]
             )
             structural_conflicts = [
-                label for label, conflict in (
+                label
+                for label, conflict in (
                     ("journal ISSN", issn_conflict),
                     ("volume", volume_conflict),
                     ("first page", page_conflict),
                     ("year", year_conflict),
-                ) if conflict
+                )
+                if conflict
             ]
             if structural_conflicts:
-                attempts.append({
-                    "stage": "pubmed_candidate_verification",
-                    "outcome": "structural_conflict",
-                    "detail": ", ".join(structural_conflicts),
-                })
+                attempts.append(
+                    {
+                        "stage": "pubmed_candidate_verification",
+                        "outcome": "structural_conflict",
+                        "detail": ", ".join(structural_conflicts),
+                    }
+                )
                 return self._pubmed_candidate_unverified(
                     entry,
                     attempts,
@@ -1651,10 +1607,12 @@ class ChineseLiteratureClient:
 
             candidate_doi = record.get("doi")
             if not isinstance(candidate_doi, str) or not candidate_doi.strip():
-                attempts.append({
-                    "stage": "pubmed_candidate_verification",
-                    "outcome": "no_doi",
-                })
+                attempts.append(
+                    {
+                        "stage": "pubmed_candidate_verification",
+                        "outcome": "no_doi",
+                    }
+                )
                 return self._pubmed_candidate_unverified(
                     entry,
                     attempts,
@@ -1665,18 +1623,23 @@ class ChineseLiteratureClient:
             candidate_doi = candidate_doi.strip()
 
             candidate_ra = self.ra_for(candidate_doi)
-            attempts.append({
-                "stage": "pubmed_candidate_ra",
-                "outcome": candidate_ra or "unknown_prefix",
-            })
+            attempts.append(
+                {
+                    "stage": "pubmed_candidate_ra",
+                    "outcome": candidate_ra or "unknown_prefix",
+                }
+            )
             if candidate_ra == _RA_ISTIC:
                 title_lookup = self.doi_lookup_with_title_check(
-                    candidate_doi, entry.get("title") or "",
+                    candidate_doi,
+                    entry.get("title") or "",
                 )
-                attempts.append({
-                    "stage": "pubmed_candidate_title",
-                    "outcome": title_lookup.state.value,
-                })
+                attempts.append(
+                    {
+                        "stage": "pubmed_candidate_title",
+                        "outcome": title_lookup.state.value,
+                    }
+                )
                 machine_title = (title_lookup.record or {}).get("title")
                 if (
                     title_lookup.state is DoiTitleState.MATCH
@@ -1704,18 +1667,23 @@ class ChineseLiteratureClient:
 
             if candidate_ra == _RA_CNKI:
                 exists = self.handle_exists(candidate_doi)
-                attempts.append({
-                    "stage": "pubmed_candidate_handle",
-                    "outcome": "exists" if exists else "absent",
-                })
+                attempts.append(
+                    {
+                        "stage": "pubmed_candidate_handle",
+                        "outcome": "exists" if exists else "absent",
+                    }
+                )
                 detail = (
                     "The PubMed candidate DOI exists, but CNKI supplies no "
                     "key-free machine-readable Chinese title."
-                    if exists else
-                    "The PubMed candidate DOI could not be confirmed by Handle."
+                    if exists
+                    else "The PubMed candidate DOI could not be confirmed by Handle."
                 )
                 return self._pubmed_candidate_unverified(
-                    entry, attempts, record, detail,
+                    entry,
+                    attempts,
+                    record,
+                    detail,
                 )
 
             return self._pubmed_candidate_unverified(
@@ -1753,14 +1721,11 @@ class ChineseLiteratureClient:
         # The strength goes into the P1 priority, not into the verdict.
         if has_volume_page:
             miss_description = "the cited volume/page"
-            verification_term = (
-                f'"{nlm_ta}"[ta] AND {volume}[vi] AND {_first_page(pages)}[pg]'
-            )
+            verification_term = f'"{nlm_ta}"[ta] AND {volume}[vi] AND {_first_page(pages)}[pg]'
         else:
             miss_description = "the cited first-author/year coordinates"
             verification_term = (
-                f'"{nlm_ta}"[ta] AND "{first_author}"[1au] '
-                f"AND {cited_year_number}[dp]"
+                f'"{nlm_ta}"[ta] AND "{first_author}"[1au] ' f"AND {cited_year_number}[dp]"
             )
         return {
             "status": STATUS_UNMATCHED,
@@ -1793,9 +1758,7 @@ class ChineseLiteratureClient:
         detail: str,
     ) -> dict[str, Any]:
         """A coordinate candidate is never negative evidence about a citation."""
-        verification_urls = [
-            f"https://pubmed.ncbi.nlm.nih.gov/{record['pmid']}/"
-        ]
+        verification_urls = [f"https://pubmed.ncbi.nlm.nih.gov/{record['pmid']}/"]
         if isinstance(record.get("doi"), str) and record["doi"]:
             verification_urls.append(_DOI_RESOLVE_BASE + record["doi"])
         return {

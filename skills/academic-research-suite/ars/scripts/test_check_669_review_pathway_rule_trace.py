@@ -5,9 +5,7 @@ import shutil
 from pathlib import Path
 
 import pytest
-
 from scripts import check_669_review_pathway_rule_trace as check
-
 
 ROOT = Path(__file__).resolve().parents[1]
 CHECKED = (
@@ -58,11 +56,7 @@ def test_current_tree_passes() -> None:
 
 @pytest.mark.parametrize(
     ("rel", "snippet"),
-    [
-        (rel, snippet)
-        for rel, snippets in check.REQUIRED_SNIPPETS.items()
-        for snippet in snippets
-    ],
+    [(rel, snippet) for rel, snippets in check.REQUIRED_SNIPPETS.items() for snippet in snippets],
 )
 def test_required_wiring_removal_fails(tree: Path, rel: Path, snippet: str) -> None:
     _replace(tree, rel, snippet, "removed-669-contract")
@@ -136,9 +130,7 @@ def test_trace_schema_cannot_represent_determination_or_workflow_field(
 def test_request_two_axis_grammar_drift_fails(tree: Path) -> None:
     path = tree / check.REQUEST_SCHEMA
     value = json.loads(path.read_text(encoding="utf-8"))
-    value["$defs"]["profile_ref"]["properties"]["axis"]["enum"] = [
-        "review_ethics"
-    ]
+    value["$defs"]["profile_ref"]["properties"]["axis"]["enum"] = ["review_ethics"]
     path.write_text(json.dumps(value), encoding="utf-8")
     assert any("two-axis" in error for error in _errors(tree))
 
@@ -163,9 +155,9 @@ def test_any_object_schema_opening_fails(tree: Path) -> None:
 def test_alternative_row_schema_cap_drift_fails(tree: Path) -> None:
     path = tree / check.TRACE_SCHEMA
     value = json.loads(path.read_text(encoding="utf-8"))
-    value["$defs"]["candidate_trace"]["properties"][
-        "alternative_pathway_triggers"
-    ]["maxItems"] = 65536
+    value["$defs"]["candidate_trace"]["properties"]["alternative_pathway_triggers"][
+        "maxItems"
+    ] = 65536
     path.write_text(json.dumps(value), encoding="utf-8")
     assert any("alternative-row schema cap" in error for error in _errors(tree))
 
@@ -183,9 +175,7 @@ def test_lint_fixture_class_coverage_drift_fails(tree: Path) -> None:
     path = tree / check.LINT_FIXTURE
     value = json.loads(path.read_text(encoding="utf-8"))
     value["failing_surfaces"] = [
-        row
-        for row in value["failing_surfaces"]
-        if row["class"] != "hedged_determination"
+        row for row in value["failing_surfaces"] if row["class"] != "hedged_determination"
     ]
     path.write_text(json.dumps(value), encoding="utf-8")
     assert any("near-miss class coverage" in error for error in _errors(tree))
@@ -224,9 +214,7 @@ def test_runtime_or_lint_transport_scan_clock_model_drift_fails(
         (check.OUTPUT_LINT, "lint_trace_surface"),
     ],
 )
-def test_required_public_function_rename_fails(
-    tree: Path, rel: Path, name: str
-) -> None:
+def test_required_public_function_rename_fails(tree: Path, rel: Path, name: str) -> None:
     _replace(tree, rel, f"def {name}(", f"def removed_{name}(")
     assert any("missing required function" in error for error in _errors(tree))
 
@@ -242,11 +230,36 @@ def test_pathway_or_banned_vocabulary_drift_fails(tree: Path) -> None:
 @pytest.mark.parametrize(
     ("rel", "old", "new", "message"),
     [
-        (check.RUNTIME, "MAX_ALTERNATIVE_ROWS = 4096", "MAX_ALTERNATIVE_ROWS = 9999", "safety limit"),
-        (check.RUNTIME, "MAX_TRACE_BYTES = 8 * 1024 * 1024", "MAX_TRACE_BYTES = 16 * 1024 * 1024", "safety limit"),
-        (check.RUNTIME, "MAX_RENDERED_BYTES = 8 * 1024 * 1024", "MAX_RENDERED_BYTES = 16 * 1024 * 1024", "safety limit"),
-        (check.OUTPUT_LINT, "MAX_RENDERED_BYTES = 8 * 1024 * 1024", "MAX_RENDERED_BYTES = 16 * 1024 * 1024", "byte limit"),
-        (check.OUTPUT_LINT, "MAX_SURFACE_NODES = 200_000", "MAX_SURFACE_NODES = 300_000", "node limit"),
+        (
+            check.RUNTIME,
+            "MAX_ALTERNATIVE_ROWS = 4096",
+            "MAX_ALTERNATIVE_ROWS = 9999",
+            "safety limit",
+        ),
+        (
+            check.RUNTIME,
+            "MAX_TRACE_BYTES = 8 * 1024 * 1024",
+            "MAX_TRACE_BYTES = 16 * 1024 * 1024",
+            "safety limit",
+        ),
+        (
+            check.RUNTIME,
+            "MAX_RENDERED_BYTES = 8 * 1024 * 1024",
+            "MAX_RENDERED_BYTES = 16 * 1024 * 1024",
+            "safety limit",
+        ),
+        (
+            check.OUTPUT_LINT,
+            "MAX_RENDERED_BYTES = 8 * 1024 * 1024",
+            "MAX_RENDERED_BYTES = 16 * 1024 * 1024",
+            "byte limit",
+        ),
+        (
+            check.OUTPUT_LINT,
+            "MAX_SURFACE_NODES = 200_000",
+            "MAX_SURFACE_NODES = 300_000",
+            "node limit",
+        ),
     ],
 )
 def test_resource_limit_drift_fails(

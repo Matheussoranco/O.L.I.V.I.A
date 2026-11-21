@@ -22,9 +22,9 @@ import tempfile
 import textwrap
 import time
 import unittest
-from unittest import mock
 from datetime import datetime
 from pathlib import Path
+from unittest import mock
 
 from jsonschema import Draft202012Validator
 
@@ -55,9 +55,9 @@ def _build_pdf(objects):
     out += b"0000000000 65535 f \n"
     for off in offsets:
         out += b"%010d 00000 n \n" % off
-    out += (
-        b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n"
-        % (len(objects) + 1, xref_at)
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (
+        len(objects) + 1,
+        xref_at,
     )
     return bytes(out)
 
@@ -130,16 +130,24 @@ def _objstm_pdf():
     out = bytearray(b"%PDF-1.5\n%\xe2\xe3\xcf\xd3\n")
     objstm_at = len(out)
     out += (
-        b"4 0 obj\n<< /Type /ObjStm /N 3 /First %d /Length %d >>\nstream\n"
-        % (len(header), len(content))
-    ) + content + b"\nendstream\nendobj\n"
+        (
+            b"4 0 obj\n<< /Type /ObjStm /N 3 /First %d /Length %d >>\nstream\n"
+            % (len(header), len(content))
+        )
+        + content
+        + b"\nendstream\nendobj\n"
+    )
     xref_at = len(out)
     rows = [(0, 0, 0), (2, 4, 0), (2, 4, 1), (2, 4, 2), (1, objstm_at, 0), (1, xref_at, 0)]
     xdata = b"".join(struct.pack(">BHB", *r) for r in rows)
     out += (
-        b"5 0 obj\n<< /Type /XRef /Size 6 /Root 1 0 R /W [1 2 1] /Index [0 6] /Length %d >>\nstream\n"
-        % len(xdata)
-    ) + xdata + b"\nendstream\nendobj\n"
+        (
+            b"5 0 obj\n<< /Type /XRef /Size 6 /Root 1 0 R /W [1 2 1] /Index [0 6] /Length %d >>\nstream\n"
+            % len(xdata)
+        )
+        + xdata
+        + b"\nendstream\nendobj\n"
+    )
     out += b"startxref\n%d\n%%%%EOF\n" % xref_at
     return bytes(out)
 
@@ -402,7 +410,9 @@ class PreflightVerdictTest(unittest.TestCase):
         finally:
             preflight.pypdf = real
         self.assertEqual(r["verdict"], "UNAVAILABLE", r)
-        self.assertTrue(any(w == "pypdf: synthetic repair warning" for w in r["warnings"]), r["warnings"])
+        self.assertTrue(
+            any(w == "pypdf: synthetic repair warning" for w in r["warnings"]), r["warnings"]
+        )
         self.assertTrue(any(w.startswith("parse-error:") for w in r["warnings"]), r["warnings"])
 
 
@@ -1136,7 +1146,7 @@ class ContentClassificationSandboxTest(unittest.TestCase):
         self.assertFalse(path.exists())
 
     def test_operator_detail_byte_bound_survives_multibyte_cutoff(self):
-        raw = b"x" * (preflight.CLASSIFIER_OPERATOR_DETAIL_LIMIT - 1) + "界".encode("utf-8")
+        raw = b"x" * (preflight.CLASSIFIER_OPERATOR_DETAIL_LIMIT - 1) + "界".encode()
         detail = preflight._bounded_operator_detail(raw)
         self.assertLessEqual(
             len(detail.encode("utf-8")),
@@ -1158,7 +1168,7 @@ class ContentClassificationSandboxTest(unittest.TestCase):
             if isinstance(node, ast.ImportFrom) and node.module
         )
         self.assertNotIn("pdf_inspector", imported)
-        self.assertIn("importlib.import_module(\"pdf_inspector\")", WORKER_PATH.read_text())
+        self.assertIn('importlib.import_module("pdf_inspector")', WORKER_PATH.read_text())
 
     def test_all_pdf_contracts_are_valid_draft_2020_12(self):
         paths = sorted(PDF_CONTRACTS.glob("*.schema.json"))

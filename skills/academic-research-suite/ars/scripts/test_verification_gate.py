@@ -25,6 +25,7 @@ def _isolated_default_cache(tmp_path, monkeypatch):
     monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "gate-v.db"))
     monkeypatch.delenv("ARS_CACHE_REVALIDATE", raising=False)
 
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -59,6 +60,7 @@ _PAGE_ANCHOR = {"kind": "page", "value": "1"}
 def _clients(*, crossref=None, openalex=None, semantic_scholar=None, arxiv=None):
     """Build a clients dict of MagicMocks. Pass a configured mock per resolver,
     or None to get a default (all lookups miss)."""
+
     def default():
         m = MagicMock()
         m.doi_lookup_with_title_check.return_value = None
@@ -66,6 +68,7 @@ def _clients(*, crossref=None, openalex=None, semantic_scholar=None, arxiv=None)
         m.arxiv_id_lookup.return_value = None
         m.lookup.return_value = {"matched": False}
         return m
+
     return {
         "crossref": crossref or default(),
         "openalex": openalex or default(),
@@ -91,6 +94,7 @@ def test_matched_yields_true_and_id_queried():
 
 def test_id_keyed_unmatched_yields_false():
     from verification_gate import verify_citation
+
     # All resolvers miss; entry has a DOI → ID-keyed unmatched → false.
     outcome = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG)
     assert outcome["lookup_verified"] == "false"
@@ -99,6 +103,7 @@ def test_id_keyed_unmatched_yields_false():
 
 def test_title_only_unmatched_yields_unresolvable():
     from verification_gate import verify_citation
+
     # No DOI → title-only unmatched everywhere → unresolvable (C-V6(a)).
     outcome = verify_citation(_entry(doi=None), _clients(), ref_slug=_DEFAULT_REF_SLUG)
     assert outcome["lookup_verified"] == "unresolvable"
@@ -106,8 +111,8 @@ def test_title_only_unmatched_yields_unresolvable():
 
 
 def test_resolver_outage_is_unreachable():
-    from verification_gate import verify_citation
     from crossref_client import CrossrefUnavailable
+    from verification_gate import verify_citation
 
     cr = MagicMock()
     cr.doi_lookup_with_title_check.side_effect = CrossrefUnavailable("down")
@@ -119,16 +124,20 @@ def test_resolver_outage_is_unreachable():
 
 
 def test_all_unreachable_is_unresolvable():
-    from verification_gate import verify_citation
-    from crossref_client import CrossrefUnavailable
-    from openalex_client import OpenAlexUnavailable
     from arxiv_client import ArxivUnavailable
     from contamination_signals import SemanticScholarUnavailable
+    from crossref_client import CrossrefUnavailable
+    from openalex_client import OpenAlexUnavailable
+    from verification_gate import verify_citation
 
-    cr = MagicMock(); cr.doi_lookup_with_title_check.side_effect = CrossrefUnavailable("x")
-    oa = MagicMock(); oa.doi_lookup_with_title_check.side_effect = OpenAlexUnavailable("x")
-    s2 = MagicMock(); s2.lookup.side_effect = SemanticScholarUnavailable("x")
-    ax = MagicMock(); ax.arxiv_id_lookup.side_effect = ArxivUnavailable("x")
+    cr = MagicMock()
+    cr.doi_lookup_with_title_check.side_effect = CrossrefUnavailable("x")
+    oa = MagicMock()
+    oa.doi_lookup_with_title_check.side_effect = OpenAlexUnavailable("x")
+    s2 = MagicMock()
+    s2.lookup.side_effect = SemanticScholarUnavailable("x")
+    ax = MagicMock()
+    ax.arxiv_id_lookup.side_effect = ArxivUnavailable("x")
     outcome = verify_citation(
         _entry(arxiv_id="1706.03762"),
         _clients(crossref=cr, openalex=oa, semantic_scholar=s2, arxiv=ax),
@@ -141,6 +150,7 @@ def test_all_unreachable_is_unresolvable():
 
 def test_manual_entry_all_skipped_unresolvable():
     from verification_gate import verify_citation
+
     outcome = verify_citation(_entry(obtained_via="manual"), _clients(), ref_slug=_DEFAULT_REF_SLUG)
     assert outcome["lookup_verified"] == "unresolvable"
     for r in ("crossref", "openalex", "semantic_scholar", "arxiv"):
@@ -149,13 +159,18 @@ def test_manual_entry_all_skipped_unresolvable():
 
 def test_arxiv_skipped_on_non_arxiv_citation():
     from verification_gate import verify_citation
-    cr = MagicMock(); cr.doi_lookup_with_title_check.return_value = {"title": ["X"]}
-    outcome = verify_citation(_entry(), _clients(crossref=cr), ref_slug=_DEFAULT_REF_SLUG)  # no arxiv_id
+
+    cr = MagicMock()
+    cr.doi_lookup_with_title_check.return_value = {"title": ["X"]}
+    outcome = verify_citation(
+        _entry(), _clients(crossref=cr), ref_slug=_DEFAULT_REF_SLUG
+    )  # no arxiv_id
     assert outcome["resolver_outcomes"]["arxiv"]["status"] == "skipped"
 
 
 def test_anchor_present_true_for_page_kind():
     from verification_gate import verify_citation
+
     # anchor is an EXPLICIT param (prose-sourced, joined by ref_slug upstream).
     outcome = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG, anchor=_PAGE_ANCHOR)
     assert outcome["anchor_present"] is True
@@ -163,14 +178,16 @@ def test_anchor_present_true_for_page_kind():
 
 def test_anchor_present_false_for_none_kind():
     from verification_gate import verify_citation
+
     outcome = verify_citation(
-        _entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG,
-        anchor={"kind": "none", "value": None})
+        _entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG, anchor={"kind": "none", "value": None}
+    )
     assert outcome["anchor_present"] is False
 
 
 def test_anchor_present_false_when_anchor_omitted():
     from verification_gate import verify_citation
+
     # No anchor param (the prose join found no anchor for this ref_slug) → False.
     outcome = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG)
     assert outcome["anchor_present"] is False
@@ -183,6 +200,7 @@ def test_anchor_is_not_read_off_the_corpus_entry():
     resurrect the entry.get('anchor') path (the anchor lives in writer prose,
     not in literature_corpus)."""
     from verification_gate import verify_citation
+
     e = _entry(anchor={"kind": "page", "value": "99"})  # decoy on the entry
     outcome = verify_citation(e, _clients(), ref_slug=_DEFAULT_REF_SLUG)  # no anchor param
     assert outcome["anchor_present"] is False
@@ -190,6 +208,7 @@ def test_anchor_is_not_read_off_the_corpus_entry():
 
 def test_outcome_carries_keys_and_timestamp():
     from verification_gate import verify_citation
+
     outcome = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG)
     assert outcome["citation_key"] == "vaswani2017"
     assert outcome["ref_slug"] == "vaswani-2017-attention"
@@ -205,13 +224,19 @@ def test_outcome_validates_against_summary_schema():
     an illegal ref_slug into the entry; with a production-shaped entry it now
     actually exercises the contract (ref_slug must be a non-null string)."""
     import json
+
     from jsonschema import Draft202012Validator
     from verification_gate import verify_citation
 
-    schema = json.loads((
-        REPO_ROOT / "shared" / "contracts" / "passport"
-        / "citation_verification_summary.schema.json"
-    ).read_text(encoding="utf-8"))
+    schema = json.loads(
+        (
+            REPO_ROOT
+            / "shared"
+            / "contracts"
+            / "passport"
+            / "citation_verification_summary.schema.json"
+        ).read_text(encoding="utf-8")
+    )
     outcome = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG)
     errors = list(Draft202012Validator(schema).iter_errors(outcome))
     assert errors == [], f"outcome must validate: {errors}"
@@ -225,6 +250,7 @@ def test_ref_slug_is_not_read_off_the_corpus_entry():
     resurrect the entry.get('ref_slug') path that emitted ref_slug: None on every
     schema-valid passport."""
     from verification_gate import verify_citation
+
     e = _entry(ref_slug="decoy-off-the-entry")  # illegal decoy on the entry
     outcome = verify_citation(e, _clients(), ref_slug="from-prose")
     assert outcome["ref_slug"] == "from-prose"
@@ -236,11 +262,14 @@ def test_corpus_fixture_is_schema_valid():
     that carried a field the corpus schema forbids). If this fails, the schema
     tests above are testing a shape production never sees."""
     import json
+
     from jsonschema import Draft202012Validator
-    schema = json.loads((
-        REPO_ROOT / "shared" / "contracts" / "passport"
-        / "literature_corpus_entry.schema.json"
-    ).read_text(encoding="utf-8"))
+
+    schema = json.loads(
+        (
+            REPO_ROOT / "shared" / "contracts" / "passport" / "literature_corpus_entry.schema.json"
+        ).read_text(encoding="utf-8")
+    )
     errors = list(Draft202012Validator(schema).iter_errors(_entry()))
     assert errors == [], f"_entry fixture must be a valid corpus entry: {errors}"
 
@@ -251,7 +280,8 @@ def test_corpus_fixture_is_schema_valid():
 def test_verify_passport_runs_each_entry():
     from verification_gate import verify_passport
 
-    cr = MagicMock(); cr.doi_lookup_with_title_check.return_value = {"title": ["X"]}
+    cr = MagicMock()
+    cr.doi_lookup_with_title_check.return_value = {"title": ["X"]}
     passport = {
         "literature_corpus": [
             _entry(citation_key="a"),
@@ -259,8 +289,8 @@ def test_verify_passport_runs_each_entry():
         ]
     }
     outcomes = verify_passport(
-        passport, clients=_clients(crossref=cr),
-        ref_slug_by_key={"a": "slug-a", "b": "slug-b"})
+        passport, clients=_clients(crossref=cr), ref_slug_by_key={"a": "slug-a", "b": "slug-b"}
+    )
     assert len(outcomes) == 2
     assert {o["citation_key"] for o in outcomes} == {"a", "b"}
     assert {o["ref_slug"] for o in outcomes} == {"slug-a", "slug-b"}
@@ -271,6 +301,7 @@ def test_verify_passport_joins_anchors_by_ref_slug():
     is threaded so each entry's anchor_present reflects ITS ref_slug's anchor.
     Entry 'a' has a page anchor; entry 'b' has none → False."""
     from verification_gate import verify_passport
+
     passport = {
         "literature_corpus": [
             _entry(citation_key="a"),
@@ -280,8 +311,8 @@ def test_verify_passport_joins_anchors_by_ref_slug():
     ref_slug_by_key = {"a": "slug-a", "b": "slug-b"}
     anchors = {"slug-a": _PAGE_ANCHOR}  # slug-b absent → anchor_present False
     outcomes = verify_passport(
-        passport, clients=_clients(),
-        ref_slug_by_key=ref_slug_by_key, anchors=anchors)
+        passport, clients=_clients(), ref_slug_by_key=ref_slug_by_key, anchors=anchors
+    )
     by_key = {o["citation_key"]: o for o in outcomes}
     assert by_key["a"]["anchor_present"] is True
     assert by_key["b"]["anchor_present"] is False
@@ -289,8 +320,8 @@ def test_verify_passport_joins_anchors_by_ref_slug():
 
 def test_verify_passport_empty_corpus():
     from verification_gate import verify_passport
-    assert verify_passport(
-        {"literature_corpus": []}, clients=_clients(), ref_slug_by_key={}) == []
+
+    assert verify_passport({"literature_corpus": []}, clients=_clients(), ref_slug_by_key={}) == []
     assert verify_passport({}, clients=_clients(), ref_slug_by_key={}) == []
 
 
@@ -300,6 +331,7 @@ def test_verify_passport_raises_on_missing_join():
     raises rather than emitting a contract-invalid summary (#332). No silent
     default to citation_key or empty string."""
     from verification_gate import verify_passport
+
     passport = {"literature_corpus": [_entry(citation_key="orphan")]}
     with pytest.raises(ValueError, match="orphan"):
         verify_passport(passport, clients=_clients(), ref_slug_by_key={})
@@ -310,17 +342,23 @@ def test_verify_passport_outputs_are_schema_valid():
     that ALL validate against citation_verification_summary.schema (the #332 P1
     was that the normal passport path produced schema-invalid ref_slug: None)."""
     import json
+
     from jsonschema import Draft202012Validator
     from verification_gate import verify_passport
-    schema = json.loads((
-        REPO_ROOT / "shared" / "contracts" / "passport"
-        / "citation_verification_summary.schema.json"
-    ).read_text(encoding="utf-8"))
-    passport = {"literature_corpus": [
-        _entry(citation_key="a"), _entry(citation_key="b", doi=None)]}
+
+    schema = json.loads(
+        (
+            REPO_ROOT
+            / "shared"
+            / "contracts"
+            / "passport"
+            / "citation_verification_summary.schema.json"
+        ).read_text(encoding="utf-8")
+    )
+    passport = {"literature_corpus": [_entry(citation_key="a"), _entry(citation_key="b", doi=None)]}
     outcomes = verify_passport(
-        passport, clients=_clients(),
-        ref_slug_by_key={"a": "slug-a", "b": "slug-b"})
+        passport, clients=_clients(), ref_slug_by_key={"a": "slug-a", "b": "slug-b"}
+    )
     validator = Draft202012Validator(schema)
     for o in outcomes:
         errors = list(validator.iter_errors(o))
@@ -329,6 +367,7 @@ def test_verify_passport_outputs_are_schema_valid():
 
 def _tmp_cache(tmp_path, monkeypatch):
     from verification_cache import VerificationCache
+
     monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "v.db"))
     return VerificationCache()
 
@@ -344,13 +383,11 @@ def test_cache_through_miss_populates_then_hit_skips_network(tmp_path, monkeypat
     monkeypatch.delenv("ARS_CACHE_STALE_ADVISORY_DAYS", raising=False)
 
     first_clients = _clients()
-    s1 = verify_citation(_entry(), first_clients, ref_slug=_DEFAULT_REF_SLUG,
-                         cache=cache)
+    s1 = verify_citation(_entry(), first_clients, ref_slug=_DEFAULT_REF_SLUG, cache=cache)
     assert first_clients["crossref"].doi_lookup_with_title_check.called
 
     second_clients = _clients()
-    s2 = verify_citation(_entry(), second_clients, ref_slug=_DEFAULT_REF_SLUG,
-                         cache=cache)
+    s2 = verify_citation(_entry(), second_clients, ref_slug=_DEFAULT_REF_SLUG, cache=cache)
     second_clients["crossref"].doi_lookup_with_title_check.assert_not_called()
     second_clients["semantic_scholar"].lookup.assert_not_called()
     assert s2["lookup_verified"] == s1["lookup_verified"]
@@ -363,8 +400,7 @@ def test_explicit_cache_none_is_the_live_opt_out():
     omission means default cache-through per the sentinel semantics."""
     from verification_gate import verify_citation
 
-    s = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG,
-                        cache=None)
+    s = verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG, cache=None)
     assert "cache_age_days" not in s
     assert "cache_stale_advisory" not in s
 
@@ -375,8 +411,9 @@ def test_omitted_cache_defaults_on_and_env_drives_revalidation(tmp_path, monkeyp
     ARS_CACHE_REVALIDATE=1 alone (no explicit argument) bypasses a stale row."""
     import sqlite3
     from datetime import datetime, timedelta, timezone
-    from verification_gate import verify_citation
+
     from verification_cache import VerificationCache
+    from verification_gate import verify_citation
 
     monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "d.db"))
     verify_citation(_entry(), _clients(), ref_slug=_DEFAULT_REF_SLUG)
@@ -398,17 +435,20 @@ def test_malformed_typed_payload_is_a_miss_for_the_gate(tmp_path, monkeypatch):
     """#541 typed-hit validation: a current-version row with a string
     "matched" or an invalid queried_by never serves the gate (live recompute
     runs), so it cannot launder into lookup_verified."""
-    from verification_gate import verify_citation
-    from verification_cache import VerificationCache
     from contamination_signals import RESOLVER_DECISION_VERSION
+    from verification_cache import VerificationCache
+    from verification_gate import verify_citation
 
     monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "m.db"))
     cache = VerificationCache()
     qf = "doi:10.5555/abc|title:Attention Is All You Need"
     for resolver in ("crossref", "openalex", "semantic_scholar"):
-        cache.put("vaswani2017", resolver, qf, {
-            "matched": "false", "queried_by": None,
-            "decision_version": RESOLVER_DECISION_VERSION})
+        cache.put(
+            "vaswani2017",
+            resolver,
+            qf,
+            {"matched": "false", "queried_by": None, "decision_version": RESOLVER_DECISION_VERSION},
+        )
     clients = _clients()
     s = verify_citation(_entry(), clients, ref_slug=_DEFAULT_REF_SLUG, cache=cache)
     assert clients["crossref"].doi_lookup_with_title_check.called
@@ -421,6 +461,7 @@ def test_revalidate_stale_bypasses_old_rows(tmp_path, monkeypatch):
     served with the stale advisory set."""
     import sqlite3
     from datetime import datetime, timedelta, timezone
+
     from verification_gate import verify_citation
 
     cache = _tmp_cache(tmp_path, monkeypatch)
@@ -438,8 +479,9 @@ def test_revalidate_stale_bypasses_old_rows(tmp_path, monkeypatch):
     assert s["cache_age_days"] > 30
 
     revalidated = _clients()
-    s2 = verify_citation(_entry(), revalidated, ref_slug=_DEFAULT_REF_SLUG,
-                         cache=cache, revalidate_stale=True)
+    s2 = verify_citation(
+        _entry(), revalidated, ref_slug=_DEFAULT_REF_SLUG, cache=cache, revalidate_stale=True
+    )
     assert revalidated["crossref"].doi_lookup_with_title_check.called
     # rows were re-populated fresh -> no advisory (fields present only if any
     # outcome was cache-served; a full live recompute may omit them entirely)
@@ -457,5 +499,6 @@ def test_verify_citation_rejects_non_string_or_empty_ref_slug(bad):
     join-broken / contract-invalid summary. Guarding at the entry also closes the
     verify_passport `is None`-only gap (it now rejects "" and non-str too)."""
     from verification_gate import verify_citation
+
     with pytest.raises((ValueError, TypeError)):
         verify_citation(_entry(), _clients(), ref_slug=bad)

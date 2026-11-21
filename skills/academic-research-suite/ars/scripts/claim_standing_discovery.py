@@ -27,16 +27,16 @@ from __future__ import annotations
 
 import argparse
 import base64
-from datetime import datetime, timezone
 import json
-import os
-from pathlib import Path
 import sys
-from typing import Any, Callable
 import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ElementTree
+from collections.abc import Callable
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
 
 # Keep the sibling import working whether this file is executed directly or
 # imported as scripts.claim_standing_discovery, without creating a second
@@ -45,7 +45,7 @@ try:
     from scripts import build_claim_standing_candidate_ledger as substrate
 except ImportError:  # direct script execution
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import build_claim_standing_candidate_ledger as substrate  # noqa: E402
+    import build_claim_standing_candidate_ledger as substrate
 
 USER_AGENT = "ars-claim-standing-discovery/0.1"
 MAX_RESPONSE_BYTES = 8 * 1024 * 1024
@@ -75,9 +75,7 @@ class ServiceUnreachable(Exception):
 
 
 def _now() -> str:
-    return (
-        datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-    )
+    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _clean(value: Any) -> str | None:
@@ -128,9 +126,7 @@ def _name_author(name: Any) -> dict[str, str | None]:
     return {"family": _clean(name), "given": None}
 
 
-def _year_filter(
-    date_filter: dict[str, Any], from_key: str, to_key: str
-) -> str | None:
+def _year_filter(date_filter: dict[str, Any], from_key: str, to_key: str) -> str | None:
     filters = []
     if date_filter["from_year"] is not None:
         filters.append(f"{from_key}:{date_filter['from_year']}-01-01")
@@ -154,10 +150,7 @@ def _s2_request(query: str, date_filter: dict[str, Any], cap: int) -> str:
             f"{from_year if from_year is not None else ''}-"
             f"{through_year if through_year is not None else ''}"
         )
-    return (
-        "https://api.semanticscholar.org/graph/v1/paper/search?"
-        + urllib.parse.urlencode(params)
-    )
+    return "https://api.semanticscholar.org/graph/v1/paper/search?" + urllib.parse.urlencode(params)
 
 
 def _s2_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
@@ -172,15 +165,12 @@ def _s2_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
                 doi=_clean(external_ids.get("DOI")),
                 title=_clean(record.get("title")),
                 authors=[
-                    _name_author(author.get("name"))
-                    for author in record.get("authors") or []
+                    _name_author(author.get("name")) for author in record.get("authors") or []
                 ],
                 year=record.get("year"),
                 language=None,
                 document_type=_clean(types[0]) if types else None,
-                publication_status=_S2_STATUS.get(
-                    _clean(types[0]) if types else "", "unknown"
-                ),
+                publication_status=_S2_STATUS.get(_clean(types[0]) if types else "", "unknown"),
                 abstract_text=_exact_text(record.get("abstract")),
                 landing_url=_clean(record.get("url")),
                 raw_record=record,
@@ -194,9 +184,7 @@ def _s2_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
 
 def _openalex_request(query: str, date_filter: dict[str, Any], cap: int) -> str:
     params = {"search": query, "per-page": str(cap)}
-    year_filter = _year_filter(
-        date_filter, "from_publication_date", "to_publication_date"
-    )
+    year_filter = _year_filter(date_filter, "from_publication_date", "to_publication_date")
     if year_filter:
         params["filter"] = year_filter
     return "https://api.openalex.org/works?" + urllib.parse.urlencode(params)
@@ -328,6 +316,7 @@ def _arxiv_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
     )
     hits = []
     for entry in feed.findall(f"{_ATOM}entry"):
+
         def _text(tag: str) -> str | None:
             node = entry.find(tag)
             return _clean(node.text) if node is not None else None
@@ -341,10 +330,7 @@ def _arxiv_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
             "title": _text(f"{_ATOM}title"),
             "summary": summary,
             "published": published or None,
-            "authors": [
-                _clean(node.text)
-                for node in entry.findall(f"{_ATOM}author/{_ATOM}name")
-            ],
+            "authors": [_clean(node.text) for node in entry.findall(f"{_ATOM}author/{_ATOM}name")],
             "doi": _text(f"{_ARXIV_NS}doi"),
         }
         hits.append(
@@ -369,9 +355,7 @@ def _arxiv_parse(body: bytes) -> tuple[int | None, list[dict[str, Any]]]:
 
 _SHARED_PROVIDER_FIELDS = {
     "purpose": "scholarly_discovery",
-    "pagination_behavior": (
-        "single page up to the per-query cap; no follow-up page is requested"
-    ),
+    "pagination_behavior": ("single page up to the per-query cap; no follow-up page is requested"),
     "adapter_version": "ars-discovery-0.1",
     "retention_state": "unknown",
     "retention_reference": None,
@@ -436,9 +420,7 @@ ADAPTERS: dict[str, dict[str, Any]] = {
 
 
 def provider_roster_defaults() -> dict[str, dict[str, Any]]:
-    return {
-        index_id: dict(adapter["provider"]) for index_id, adapter in ADAPTERS.items()
-    }
+    return {index_id: dict(adapter["provider"]) for index_id, adapter in ADAPTERS.items()}
 
 
 # --- Transport --------------------------------------------------------------
@@ -447,7 +429,7 @@ def provider_roster_defaults() -> dict[str, dict[str, Any]]:
 class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
     """A redirect can send the consented query to an off-roster host; refuse."""
 
-    def redirect_request(self, req, fp, code, msg, headers, newurl):  # noqa: ANN001
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
 
 
@@ -507,9 +489,7 @@ def _status_outcome(status: int) -> str | None:
 
 
 def _raw_hit_validator():
-    schema = json.loads(
-        (substrate.SCHEMA_DIR / "retrieval_input.schema.json").read_bytes()
-    )
+    schema = json.loads((substrate.SCHEMA_DIR / "retrieval_input.schema.json").read_bytes())
     from jsonschema import Draft202012Validator
 
     return Draft202012Validator({"$defs": schema["$defs"], **schema["$defs"]["raw_hit"]})
@@ -521,23 +501,17 @@ _ROW_VALIDATOR = None
 def _row_text_conforms(row: dict[str, Any]) -> bool:
     checks = [
         row["provider_record_id"] is None
-        or substrate.has_visible_semantic_text(
-            row["provider_record_id"], allow_symbols=False
-        ),
+        or substrate.has_visible_semantic_text(row["provider_record_id"], allow_symbols=False),
         row["title"] is None
         or substrate.has_visible_semantic_text(row["title"], allow_symbols=True),
         row["abstract_text"] is None
-        or substrate.has_visible_semantic_text(
-            row["abstract_text"], allow_symbols=True
-        ),
+        or substrate.has_visible_semantic_text(row["abstract_text"], allow_symbols=True),
     ]
     for author in row["authors"]:
         for field in ("family", "given"):
             checks.append(
                 author[field] is None
-                or substrate.has_visible_semantic_text(
-                    author[field], allow_symbols=False
-                )
+                or substrate.has_visible_semantic_text(author[field], allow_symbols=False)
             )
     return all(checks)
 
@@ -546,9 +520,7 @@ def _rows_conform(rows: list[dict[str, Any]]) -> bool:
     global _ROW_VALIDATOR
     if _ROW_VALIDATOR is None:
         _ROW_VALIDATOR = _raw_hit_validator()
-    return all(
-        _ROW_VALIDATOR.is_valid(row) and _row_text_conforms(row) for row in rows
-    )
+    return all(_ROW_VALIDATOR.is_valid(row) and _row_text_conforms(row) for row in rows)
 
 
 def _run_attempt(
@@ -558,9 +530,7 @@ def _run_attempt(
     transport: Transport,
 ) -> tuple[str, int | None, list[dict[str, Any]]]:
     try:
-        url = adapter["request"](
-            query["accepted_query_text"], query["date_filter"], cap
-        )
+        url = adapter["request"](query["accepted_query_text"], query["date_filter"], cap)
     except UnsupportedQuery:
         return "unsupported_query", None, []
     try:
@@ -592,9 +562,7 @@ def _run_attempt(
 def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
     # retrieve() re-validates even when the CLI already did: it is a public
     # entry point that must not trust its caller.
-    substrate.validate_schema(
-        plan, substrate.plan_schema_filename(plan), "query plan"
-    )
+    substrate.validate_schema(plan, substrate.plan_schema_filename(plan), "query plan")
     substrate.validate_plan(plan)
     for provider in plan["provider_roster"]:
         index_id = provider["index_id"]
@@ -702,9 +670,7 @@ def retrieve(plan: dict[str, Any], *, transport: Transport) -> dict[str, Any]:
     retained_input["retrieval_input_sha256"] = substrate.bound_digest(
         retained_input, "retrieval_input_sha256"
     )
-    substrate.validate_schema(
-        retained_input, "retrieval_input.schema.json", "retrieval input"
-    )
+    substrate.validate_schema(retained_input, "retrieval_input.schema.json", "retrieval input")
     return retained_input
 
 
@@ -741,9 +707,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         plan = substrate.load_json(args.query_plan)
-        substrate.validate_schema(
-            plan, substrate.plan_schema_filename(plan), "query plan"
-        )
+        substrate.validate_schema(plan, substrate.plan_schema_filename(plan), "query plan")
         substrate.validate_plan(plan)
         if plan["consent"]["local_persistence"] != "explicit_local_export":
             _fail(

@@ -13,7 +13,6 @@ import datetime as dt
 import hashlib
 import json
 import os
-from pathlib import Path
 import re
 import secrets
 import shutil
@@ -21,15 +20,14 @@ import stat
 import subprocess
 import sys
 import tempfile
+from pathlib import Path
 from typing import Any, NoReturn
 
+from check_heldout_measurement_report import location_errors, validate_report
 from jsonschema import Draft202012Validator, FormatChecker
 from referencing import Registry, Resource
-
-from check_heldout_measurement_report import location_errors, validate_report
 from resolve_review_target_context import render_brief, resolve, validate_registry
 from score_review_criteria_constructive_value import score as score_paired_record
-
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SUITE = "review_criteria_constructive_value"
@@ -205,9 +203,7 @@ def _safe_explicit_file(path: Path, *, limit: int = MAX_ASSET_BYTES) -> bytes:
             directory_fd = next_fd
         fd = os.open(parts[-1], os.O_RDONLY | nofollow, dir_fd=directory_fd)
     except OSError as exc:
-        raise MeasurementError(
-            f"cannot open explicit path without symlinks {path}: {exc}"
-        ) from exc
+        raise MeasurementError(f"cannot open explicit path without symlinks {path}: {exc}") from exc
     finally:
         os.close(directory_fd)
     info = os.fstat(fd)
@@ -290,8 +286,7 @@ def _project_provider_response_schema(node: Any) -> Any:
             if not isinstance(value, dict):
                 _fail("provider response schema properties must be an object")
             projected[key] = {
-                name: _project_provider_response_schema(child)
-                for name, child in value.items()
+                name: _project_provider_response_schema(child) for name, child in value.items()
             }
         elif key == "items":
             projected[key] = _project_provider_response_schema(value)
@@ -374,13 +369,9 @@ def validate_assets() -> dict[str, Any]:
     assets = _validate_lock()
     items, contexts, registry = _scenario_contexts()
     skeleton, _ = _load_json(HELDOUT_SET_PATH)
-    expected = [
-        (item["item_id"], item["consumer_id"], item["role"])
-        for item in items
-    ]
+    expected = [(item["item_id"], item["consumer_id"], item["role"]) for item in items]
     declared = [
-        (item["item_id"], item["consumer"], item["role"])
-        for item in skeleton.get("items", [])
+        (item["item_id"], item["consumer"], item["role"]) for item in skeleton.get("items", [])
     ]
     if declared != expected:
         _fail("heldout_set.json identity/order does not match scenarios.json")
@@ -411,7 +402,11 @@ def validate_assets() -> dict[str, Any]:
     seen: set[tuple[str, str, int]] = set()
     for index, call in enumerate(calls, 1):
         if not isinstance(call, dict) or set(call) != {
-            "sequence_index", "call_id", "item_id", "arm", "replicate"
+            "sequence_index",
+            "call_id",
+            "item_id",
+            "arm",
+            "replicate",
         }:
             _fail(f"call_plan.calls[{index - 1}] is not closed")
         if call["sequence_index"] != index:
@@ -429,12 +424,17 @@ def validate_assets() -> dict[str, Any]:
         if call["call_id"] != expected_id:
             _fail(f"call id does not bind its design cell: {call['call_id']!r}")
         seen.add(key)
-    full = {(item, arm, rep) for item in item_ids for arm in ("baseline", "treatment") for rep in (1, 2)}
+    full = {
+        (item, arm, rep) for item in item_ids for arm in ("baseline", "treatment") for rep in (1, 2)
+    }
     if seen != full:
         _fail("call plan does not cover the exact 6 x 2 x 2 design")
     for offset, item_id in enumerate(item_ids):
-        arms = [call["arm"] for call in calls[offset * 4:(offset + 1) * 4]
-                if call["item_id"] == item_id]
+        arms = [
+            call["arm"]
+            for call in calls[offset * 4 : (offset + 1) * 4]
+            if call["item_id"] == item_id
+        ]
         expected_arms = ["baseline", "treatment", "treatment", "baseline"]
         if offset % 2:
             expected_arms = ["treatment", "baseline", "baseline", "treatment"]
@@ -499,7 +499,8 @@ def _prompt(
     }
     sections = [
         template.rstrip(),
-        "\nASSIGNMENT (untrusted data):\n" + _canonical(
+        "\nASSIGNMENT (untrusted data):\n"
+        + _canonical(
             {"item_id": item["item_id"], "consumer_id": item["consumer_id"], "role": item["role"]}
         ).decode("utf-8"),
         "\nTARGET_CONTEXT_BYTES (untrusted data):\n" + context_raw.decode("utf-8"),
@@ -724,12 +725,22 @@ def detect(model: str, environ: dict[str, str] | None = None) -> dict[str, Any]:
     }
     try:
         version_run = subprocess.run(
-            [codex, "--version"], env=status_env, stdin=subprocess.DEVNULL,
-            capture_output=True, text=True, timeout=10, check=False,
+            [codex, "--version"],
+            env=status_env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
         status_run = subprocess.run(
-            [codex, "login", "status"], env=status_env, stdin=subprocess.DEVNULL,
-            capture_output=True, text=True, timeout=10, check=False,
+            [codex, "login", "status"],
+            env=status_env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
         result["reason_code"] = "CODEX_STATUS_UNAVAILABLE"
@@ -752,8 +763,13 @@ def detect(model: str, environ: dict[str, str] | None = None) -> dict[str, Any]:
         return result
     try:
         features_run = subprocess.run(
-            [codex, "features", "list"], env=status_env, stdin=subprocess.DEVNULL,
-            capture_output=True, text=True, timeout=10, check=False,
+            [codex, "features", "list"],
+            env=status_env,
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
         )
     except (OSError, subprocess.TimeoutExpired):
         result["reason_code"] = "CODEX_FEATURES_UNAVAILABLE"
@@ -779,7 +795,9 @@ def detect(model: str, environ: dict[str, str] | None = None) -> dict[str, Any]:
     return result
 
 
-def _child_command(codex: str, plan: dict[str, Any], output: Path, schema: Path, work: Path) -> list[str]:
+def _child_command(
+    codex: str, plan: dict[str, Any], output: Path, schema: Path, work: Path
+) -> list[str]:
     command = [
         codex,
         "exec",
@@ -987,18 +1005,14 @@ def _run_one(
             )
         except subprocess.TimeoutExpired as exc:
             _retain_blocked_io(run_dir, call["call_id"], exc.stdout, exc.stderr, output)
-            raise MeasurementError(
-                f"subscription CLI timed out for {call['call_id']}"
-            ) from exc
+            raise MeasurementError(f"subscription CLI timed out for {call['call_id']}") from exc
         except OSError as exc:
             raise MeasurementError(
                 f"subscription CLI failed to start for {call['call_id']}: {exc}"
             ) from exc
         try:
             if completed.returncode != 0:
-                _fail(
-                    f"subscription CLI exited {completed.returncode} for {call['call_id']}"
-                )
+                _fail(f"subscription CLI exited {completed.returncode} for {call['call_id']}")
             _scan_events(completed.stdout)
             output_raw = _safe_explicit_file(
                 output,
@@ -1059,10 +1073,24 @@ def _run_one(
 def _load_receipt(plan: dict[str, Any], call: dict[str, Any], run_dir: Path) -> dict[str, Any]:
     receipt, _ = _load_json(run_dir / call["receipt_ref"])
     required = {
-        "schema_version", "call_id", "sequence_index", "item_id", "arm", "replicate",
-        "transport", "auth_mode", "model_id", "codex_version", "reasoning_effort",
-        "started_at", "completed_at", "prompt_sha256", "output_sha256",
-        "events_sha256", "api_spend_usd", "tools_observed",
+        "schema_version",
+        "call_id",
+        "sequence_index",
+        "item_id",
+        "arm",
+        "replicate",
+        "transport",
+        "auth_mode",
+        "model_id",
+        "codex_version",
+        "reasoning_effort",
+        "started_at",
+        "completed_at",
+        "prompt_sha256",
+        "output_sha256",
+        "events_sha256",
+        "api_spend_usd",
+        "tools_observed",
     }
     if set(receipt) != required or receipt["schema_version"] != RECEIPT_VERSION:
         _fail(f"receipt is open or malformed: {call['call_id']}")
@@ -1089,10 +1117,24 @@ def _load_receipt(plan: dict[str, Any], call: dict[str, Any], run_dir: Path) -> 
 
 def _validate_run_plan(plan: dict[str, Any]) -> None:
     required = {
-        "schema_version", "suite", "suite_commit", "content_class", "transport",
-        "auth_mode", "api_spend_ceiling_usd", "codex_version", "model_id",
-        "reasoning_effort", "sampling", "input_token_cap", "output_token_cap",
-        "tools", "isolation", "suite_lock_sha256", "call_plan_sha256", "calls",
+        "schema_version",
+        "suite",
+        "suite_commit",
+        "content_class",
+        "transport",
+        "auth_mode",
+        "api_spend_ceiling_usd",
+        "codex_version",
+        "model_id",
+        "reasoning_effort",
+        "sampling",
+        "input_token_cap",
+        "output_token_cap",
+        "tools",
+        "isolation",
+        "suite_lock_sha256",
+        "call_plan_sha256",
+        "calls",
     }
     if set(plan) != required:
         _fail("run plan is open or incomplete")
@@ -1117,17 +1159,34 @@ def _validate_run_plan(plan: dict[str, Any]) -> None:
     ):
         _fail("run plan identity/configuration is invalid")
     isolation = plan["isolation"]
-    if not isinstance(isolation, dict) or set(isolation) != {
-        "ephemeral_auth_home", "empty_working_root", "ignore_user_config",
-        "local_tools_disabled", "web_disabled", "forbidden_event_scan",
-    } or any(value is not True for value in isolation.values()):
+    if (
+        not isinstance(isolation, dict)
+        or set(isolation)
+        != {
+            "ephemeral_auth_home",
+            "empty_working_root",
+            "ignore_user_config",
+            "local_tools_disabled",
+            "web_disabled",
+            "forbidden_event_scan",
+        }
+        or any(value is not True for value in isolation.values())
+    ):
         _fail("run plan isolation attestations must be the exact all-true set")
     calls = plan["calls"]
     if not isinstance(calls, list) or len(calls) != 24:
         _fail("run plan must contain exactly 24 calls")
     expected_call_keys = {
-        "sequence_index", "call_id", "item_id", "arm", "replicate", "prompt_ref",
-        "prompt_sha256", "output_ref", "events_ref", "receipt_ref",
+        "sequence_index",
+        "call_id",
+        "item_id",
+        "arm",
+        "replicate",
+        "prompt_ref",
+        "prompt_sha256",
+        "output_ref",
+        "events_ref",
+        "receipt_ref",
     }
     frozen_plan, _ = _load_json(CALL_PLAN_PATH)
     for index, (call, frozen_call) in enumerate(zip(calls, frozen_plan["calls"]), 1):
@@ -1188,8 +1247,7 @@ def dispatch(args: argparse.Namespace, environ: dict[str, str] | None = None) ->
             receipts.append(_load_receipt(plan, call, run_dir))
             continue
         orphaned = [
-            ref for ref in (call["output_ref"], call["events_ref"])
-            if (run_dir / ref).exists()
+            ref for ref in (call["output_ref"], call["events_ref"]) if (run_dir / ref).exists()
         ]
         if orphaned:
             _fail(
@@ -1256,7 +1314,9 @@ def dispatch(args: argparse.Namespace, environ: dict[str, str] | None = None) ->
     }
 
 
-def _complete_outputs(run_dir: Path) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, dict[str, Any]]]:
+def _complete_outputs(
+    run_dir: Path
+) -> tuple[dict[str, Any], list[dict[str, Any]], dict[str, dict[str, Any]]]:
     plan, _ = _load_json(run_dir / "run-plan.json")
     _validate_plan_authority(plan)
     items, contexts, _registry = _scenario_contexts()
@@ -1358,8 +1418,12 @@ def _validate_arm_map(
     arm_map: dict[str, Any], packet_sha: str, plan: dict[str, Any], plan_raw: bytes
 ) -> dict[str, dict[str, Any]]:
     if set(arm_map) != {
-        "schema_version", "suite", "packet_sha256", "run_plan_sha256",
-        "model_id", "mapping",
+        "schema_version",
+        "suite",
+        "packet_sha256",
+        "run_plan_sha256",
+        "model_id",
+        "mapping",
     }:
         _fail("arm map is open or incomplete")
     if (
@@ -1481,7 +1545,9 @@ def finalize(args: argparse.Namespace) -> dict[str, Any]:
     decision_index = _indexed(decisions["decisions"], "blind_output_id", "decisions")
     if set(decision_index) != set(packet_index):
         _fail("adjudication decisions must cover the exact expert packet")
-    label_indices = [_indexed(value["labels"], "blind_output_id", "expert labels") for value in labels]
+    label_indices = [
+        _indexed(value["labels"], "blind_output_id", "expert labels") for value in labels
+    ]
     call_outputs = {row["call"]["call_id"]: row["output"] for row in outputs}
     by_item: dict[str, dict[str, Any]] = {}
     for blind_id, mapping in map_index.items():
@@ -1706,9 +1772,7 @@ def _measurement_report_value(
             "overrides": [],
             "raw_published": True,
             "resolution_direction": "bidirectional",
-            "resolution_rule_ref": (
-                f"{rubric_ref} and adjudication_decisions.schema.json"
-            ),
+            "resolution_rule_ref": (f"{rubric_ref} and adjudication_decisions.schema.json"),
         },
         "preregistration": {
             "plan_ref": plan_ref,

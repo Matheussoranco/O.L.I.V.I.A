@@ -14,7 +14,6 @@ import pytest
 import yaml
 from jsonschema import Draft202012Validator
 
-
 SCRIPTS = Path(__file__).resolve().parent
 REPO_ROOT = SCRIPTS.parent
 FIXTURES = SCRIPTS / "fixtures/tortured_phrase_screening"
@@ -22,15 +21,12 @@ sys.path.insert(0, str(SCRIPTS))
 
 import tortured_phrase_screening as screening  # noqa: E402
 
-
 CHECKED_AT = "2026-08-10T01:00:00Z"
 RECORDED_AT = "2026-08-10T01:00:01Z"
 
 
 def _bundle() -> screening.SnapshotBundle:
-    return screening.load_snapshot(
-        FIXTURES / "snapshot.json", FIXTURES / "snapshot_manifest.json"
-    )
+    return screening.load_snapshot(FIXTURES / "snapshot.json", FIXTURES / "snapshot_manifest.json")
 
 
 def _state() -> screening.SnapshotState:
@@ -99,8 +95,7 @@ def _expect_exact_keys(
         missing = required - keys
         unknown = keys - required - optional
         raise AssertionError(
-            f"{label} keys drifted; missing={sorted(missing)!r}, "
-            f"unknown={sorted(unknown)!r}"
+            f"{label} keys drifted; missing={sorted(missing)!r}, " f"unknown={sorted(unknown)!r}"
         )
     return value
 
@@ -181,9 +176,7 @@ def _normalization_case_holds(
         return False
     raw = match["matched_text"]
     actual_tokens = tuple(token.normalized for token in screening.tokenize(raw))
-    literal_tokens = tuple(
-        token.normalized for token in screening.tokenize(expression["value"])
-    )
+    literal_tokens = tuple(token.normalized for token in screening.tokenize(expression["value"]))
     if actual_tokens != literal_tokens:
         return False
     if case == "nfkc_casefold":
@@ -267,9 +260,7 @@ def _replay_draft_expectation(
         if type(expected) is not int or expected < 0:
             raise AssertionError(f"{path}.expected_counts.{key} must be nonnegative int")
         if report["counts"][key] != expected:
-            raise AssertionError(
-                f"{path}.{key}: expected {expected}, got {report['counts'][key]}"
-            )
+            raise AssertionError(f"{path}.{key}: expected {expected}, got {report['counts'][key]}")
 
     expected_match_counts: Counter[tuple[str, str]] = Counter()
     seen_match_keys: set[tuple[str, str]] = set()
@@ -335,9 +326,7 @@ def _replay_draft_expectation(
             raise AssertionError(f"{path}: non-any rule carries alternative index")
 
         overlap_group = expected.get("overlap_group")
-        if overlap_group is not None and (
-            not isinstance(overlap_group, str) or not overlap_group
-        ):
+        if overlap_group is not None and (not isinstance(overlap_group, str) or not overlap_group):
             raise AssertionError(f"{path}: overlap_group must be a nonempty string")
         for match in actual_matches:
             group_by_match_id[match["match_id"]] = overlap_group
@@ -361,9 +350,7 @@ def _replay_draft_expectation(
         (match["pattern_id"], match["context"]) for match in report["matches"]
     )
     if actual_match_counts != expected_match_counts:
-        raise AssertionError(
-            f"{path}: expected rule/context counts do not match runtime output"
-        )
+        raise AssertionError(f"{path}: expected rule/context counts do not match runtime output")
 
     for group, matches in match_groups.items():
         if len(matches) < 2 or screening._unique_instance_count(matches) != 1:
@@ -440,18 +427,13 @@ def _replay_corpus_expectation(
     )
     if expectation["path"] != "corpus_input.yaml":
         raise AssertionError("corpus expectation path drifted")
-    source_entries = {
-        entry["citation_key"]: entry for entry in _passport()["literature_corpus"]
-    }
-    output_entries = {
-        entry["citation_key"]: entry for entry in _enriched()["literature_corpus"]
-    }
+    source_entries = {entry["citation_key"]: entry for entry in _passport()["literature_corpus"]}
+    output_entries = {entry["citation_key"]: entry for entry in _enriched()["literature_corpus"]}
     records = expectation["records"]
     if not isinstance(records, list):
         raise AssertionError("corpus records must be an array")
     citation_keys = [
-        record.get("citation_key") if isinstance(record, dict) else None
-        for record in records
+        record.get("citation_key") if isinstance(record, dict) else None for record in records
     ]
     if (
         any(not isinstance(key, str) or not key for key in citation_keys)
@@ -484,9 +466,7 @@ def _replay_corpus_expectation(
             and signal.get("signal_type") == "tortured_phrase_match"
         ]
         if len(signals) != 2:
-            raise AssertionError(
-                f"{citation_key}: expected exactly the title and abstract signals"
-            )
+            raise AssertionError(f"{citation_key}: expected exactly the title and abstract signals")
         for surface, context in surface_contexts.items():
             expected = _expect_exact_keys(
                 surfaces[surface],
@@ -517,18 +497,16 @@ def _replay_corpus_expectation(
                 or len(expected_rule_ids) != len(set(expected_rule_ids))
                 or any(rule_id not in rules for rule_id in expected_rule_ids)
             ):
-                raise AssertionError(
-                    f"{citation_key}.{surface}: expected_rule_ids are invalid"
-                )
-            actual_rule_ids = {
-                match["pattern_id"] for match in signal_context["matches"]
-            }
+                raise AssertionError(f"{citation_key}.{surface}: expected_rule_ids are invalid")
+            actual_rule_ids = {match["pattern_id"] for match in signal_context["matches"]}
             if actual_rule_ids != set(expected_rule_ids):
                 raise AssertionError(f"{citation_key}.{surface}: rule ids drifted")
             expected_finding = (
                 "unresolved"
                 if expected["check_status"] != "checked"
-                else "detected" if expected_rule_ids else "not_detected"
+                else "detected"
+                if expected_rule_ids
+                else "not_detected"
             )
             if signal["finding"] != expected_finding:
                 raise AssertionError(f"{citation_key}.{surface}: finding drifted")
@@ -558,9 +536,7 @@ def _replay_corpus_expectation(
                     )
                 seen_non_match_rules.add(rule_id)
                 if rule_id in actual_rule_ids or text is None:
-                    raise AssertionError(
-                        f"{citation_key}.{surface}: non-match rule is not absent"
-                    )
+                    raise AssertionError(f"{citation_key}.{surface}: non-match rule is not absent")
                 one_segment = [screening.Segment("SEG-000001", context, 0, len(text))]
                 if not _non_match_reason_holds(
                     reason,
@@ -655,9 +631,7 @@ def _strict_dump(path: Path, value: dict) -> None:
 
 def _snapshot_pair(tmp_path: Path) -> tuple[Path, Path, dict, dict]:
     snapshot = json.loads((FIXTURES / "snapshot.json").read_text(encoding="utf-8"))
-    manifest = json.loads(
-        (FIXTURES / "snapshot_manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((FIXTURES / "snapshot_manifest.json").read_text(encoding="utf-8"))
     snapshot_path = tmp_path / "snapshot.json"
     manifest_path = tmp_path / "manifest.json"
     _strict_dump(snapshot_path, snapshot)
@@ -680,7 +654,9 @@ def _rewrite_pair(
 
 def test_snapshot_and_manifest_exact_hash_bind() -> None:
     bundle = _bundle()
-    assert bundle.snapshot_sha256 == "962879909bfdd338047dc4569ff42188c4200fcd56a0a459b0e0f9169f2446c4"
+    assert (
+        bundle.snapshot_sha256 == "962879909bfdd338047dc4569ff42188c4200fcd56a0a459b0e0f9169f2446c4"
+    )
     assert len(bundle.rules) == 17
     assert bundle.manifest["unsupported_rule_count"] == 0
     assert bundle.manifest["rights"]["basis"] == "synthetic_fixture"
@@ -696,9 +672,7 @@ def _expectation_input(expectations: dict, path: str) -> dict:
 
 def _corpus_surface(expectations: dict, citation_key: str, surface: str) -> dict:
     corpus = _expectation_input(expectations, "corpus_input.yaml")
-    record = next(
-        item for item in corpus["records"] if item["citation_key"] == citation_key
-    )
+    record = next(item for item in corpus["records"] if item["citation_key"] == citation_key)
     return record["surfaces"][surface]
 
 
@@ -712,15 +686,11 @@ def _mutate_seed_expectations(expectations: dict, mutation: str) -> None:
         markdown["expected_matches"][0]["context"] = "quote"
     elif mutation == "wrong_alternative":
         expected = next(
-            item
-            for item in markdown["expected_matches"]
-            if "matched_alternative_index" in item
+            item for item in markdown["expected_matches"] if "matched_alternative_index" in item
         )
         expected["matched_alternative_index"] += 1
     elif mutation == "wrong_overlap":
-        expected = next(
-            item for item in markdown["expected_matches"] if "overlap_group" in item
-        )
+        expected = next(item for item in markdown["expected_matches"] if "overlap_group" in item)
         expected["overlap_group"] += "-mutated"
     elif mutation == "wrong_normalization":
         expected = next(
@@ -742,17 +712,17 @@ def _mutate_seed_expectations(expectations: dict, mutation: str) -> None:
             "reason"
         ] = "ABSTRACT_EMPTY"
     elif mutation == "wrong_corpus_rule_id":
-        _corpus_surface(expectations, "fixture_complete_2026", "title")[
-            "expected_rule_ids"
-        ] = ["syn_corpus_abstract"]
+        _corpus_surface(expectations, "fixture_complete_2026", "title")["expected_rule_ids"] = [
+            "syn_corpus_abstract"
+        ]
     elif mutation == "wrong_corpus_nonmatch":
-        _corpus_surface(expectations, "fixture_negative_2026", "title")[
-            "non_match_reasons"
-        ][0]["rule_id"] = "syn_literal_author"
+        _corpus_surface(expectations, "fixture_negative_2026", "title")["non_match_reasons"][0][
+            "rule_id"
+        ] = "syn_literal_author"
     elif mutation == "wrong_corpus_nonmatch_reason":
-        _corpus_surface(expectations, "fixture_negative_2026", "title")[
-            "non_match_reasons"
-        ][0]["reason"] = "exclude_if_in_same_segment"
+        _corpus_surface(expectations, "fixture_negative_2026", "title")["non_match_reasons"][0][
+            "reason"
+        ] = "exclude_if_in_same_segment"
     elif mutation == "wrong_snapshot_identity":
         expectations["snapshot_sha256"] = "0" * 64
     elif mutation == "wrong_claim_flag":
@@ -812,9 +782,7 @@ def test_context_detection_is_never_suppressed() -> None:
     for match in report["matches"]:
         by_rule.setdefault(match["pattern_id"], []).append(match)
     assert by_rule["syn_context_quote"][0]["context"] == "quote"
-    assert {item["context"] for item in by_rule["syn_context_code"]} == {
-        "code_or_verbatim"
-    }
+    assert {item["context"] for item in by_rule["syn_context_code"]} == {"code_or_verbatim"}
     assert by_rule["syn_context_reference"][0]["context"] == "reference_entry"
     assert all(
         item["disposition"] == "preserve_verbatim_review_context"
@@ -824,9 +792,7 @@ def test_context_detection_is_never_suppressed() -> None:
 
 
 def test_exclude_if_is_segment_scoped() -> None:
-    matches = [
-        item for item in _report()["matches"] if item["pattern_id"] == "syn_exclude_segment"
-    ]
+    matches = [item for item in _report()["matches"] if item["pattern_id"] == "syn_exclude_segment"]
     assert len(matches) == 1
     assert matches[0]["context"] == "quote"
 
@@ -1031,9 +997,7 @@ def test_reference_heading_inside_fence_does_not_reclassify_following_prose() ->
 def test_reference_heading_inside_html_comment_does_not_reclassify_prose() -> None:
     text = "<!--\n# References\n-->\nordinary luminous turnip\n"
     segments = screening.segment_document(text, "markdown")
-    following = next(
-        item for item in segments if item.start <= text.index("ordinary") < item.end
-    )
+    following = next(item for item in segments if item.start <= text.index("ordinary") < item.end)
     assert following.kind == "author_prose"
     report = screening.build_own_draft_report(
         text,
@@ -1055,23 +1019,15 @@ def test_fence_opener_inside_html_comment_cannot_leak_unknown_context(
 ) -> None:
     text = f"<!--\n{marker}\n-->\nordinary luminous turnip\n"
     segments = screening.segment_document(text, "markdown")
-    following = next(
-        item for item in segments if item.start <= text.index("ordinary") < item.end
-    )
+    following = next(item for item in segments if item.start <= text.index("ordinary") < item.end)
     assert following.kind == "author_prose"
     assert all(item.kind != "unknown" for item in segments)
 
 
 def test_latex_environment_opener_inside_comment_cannot_leak_context() -> None:
-    text = (
-        "% \\begin{thebibliography}{9}\n"
-        "ordinary luminous turnip\n"
-        "\\end{thebibliography}\n"
-    )
+    text = "% \\begin{thebibliography}{9}\n" "ordinary luminous turnip\n" "\\end{thebibliography}\n"
     segments = screening.segment_document(text, "latex")
-    following = next(
-        item for item in segments if item.start <= text.index("ordinary") < item.end
-    )
+    following = next(item for item in segments if item.start <= text.index("ordinary") < item.end)
     assert following.kind == "author_prose"
     report = screening.build_own_draft_report(
         text,
@@ -1095,42 +1051,19 @@ def test_latex_environment_opener_inside_comment_cannot_leak_context() -> None:
         ("verbatim", "code_or_verbatim"),
     ],
 )
-def test_latex_environment_escape_parity(
-    environment: str, expected_kind: str
-) -> None:
-    even = (
-        "\\" * 2
-        + f"begin{{{environment}}}\nordinary\n"
-        + "\\" * 2
-        + f"end{{{environment}}}\n"
-    )
-    assert all(
-        item.kind == "author_prose"
-        for item in screening.segment_document(even, "latex")
-    )
-    odd = (
-        "\\" * 3
-        + f"begin{{{environment}}}\nordinary\n"
-        + "\\" * 3
-        + f"end{{{environment}}}\n"
-    )
-    assert any(
-        item.kind == expected_kind
-        for item in screening.segment_document(odd, "latex")
-    )
+def test_latex_environment_escape_parity(environment: str, expected_kind: str) -> None:
+    even = "\\" * 2 + f"begin{{{environment}}}\nordinary\n" + "\\" * 2 + f"end{{{environment}}}\n"
+    assert all(item.kind == "author_prose" for item in screening.segment_document(even, "latex"))
+    odd = "\\" * 3 + f"begin{{{environment}}}\nordinary\n" + "\\" * 3 + f"end{{{environment}}}\n"
+    assert any(item.kind == expected_kind for item in screening.segment_document(odd, "latex"))
 
 
 def test_latex_verb_escape_parity_and_opaque_opener_precedence() -> None:
     even = r"\\verb|ordinary luminous turnip|"
-    assert all(
-        item.kind == "author_prose"
-        for item in screening.segment_document(even, "latex")
-    )
+    assert all(item.kind == "author_prose" for item in screening.segment_document(even, "latex"))
     active = r"\verb|\begin{verbatim}| ordinary luminous turnip"
     segments = screening.segment_document(active, "latex")
-    following = next(
-        item for item in segments if item.start <= active.index("ordinary") < item.end
-    )
+    following = next(item for item in segments if item.start <= active.index("ordinary") < item.end)
     assert following.kind == "author_prose"
     assert all(item.kind != "unknown" for item in segments)
 
@@ -1143,12 +1076,14 @@ def test_source_order_opaque_lexer_does_not_let_inner_opener_consume_later_close
     segments = screening.segment_document(text, "latex")
     real_environment = text.index(r"\begin{verbatim}", len(r"\verb|"))
     later_prose = text.index("moonlit pickle")
-    assert next(
-        item for item in segments if item.start <= real_environment < item.end
-    ).kind == "code_or_verbatim"
-    assert next(
-        item for item in segments if item.start <= later_prose < item.end
-    ).kind == "author_prose"
+    assert (
+        next(item for item in segments if item.start <= real_environment < item.end).kind
+        == "code_or_verbatim"
+    )
+    assert (
+        next(item for item in segments if item.start <= later_prose < item.end).kind
+        == "author_prose"
+    )
     report = screening.build_own_draft_report(
         text,
         artifact_id="source-order.tex",
@@ -1158,8 +1093,7 @@ def test_source_order_opaque_lexer_does_not_let_inner_opener_consume_later_close
         recorded_at=RECORDED_AT,
     )
     assert any(
-        item["pattern_id"] == "syn_exclude_segment"
-        and item["matched_text"] == "moonlit pickle"
+        item["pattern_id"] == "syn_exclude_segment" and item["matched_text"] == "moonlit pickle"
         for item in report["matches"]
     )
 
@@ -1190,24 +1124,19 @@ def test_blockquote_marker_inside_comment_cannot_capture_later_prose() -> None:
         recorded_at=RECORDED_AT,
     )
     assert any(
-        item["pattern_id"] == "syn_exclude_segment"
-        and item["matched_text"] == "moonlit pickle"
+        item["pattern_id"] == "syn_exclude_segment" and item["matched_text"] == "moonlit pickle"
         for item in report["matches"]
     )
 
 
 def test_context_openers_inside_opaque_bytes_do_not_consume_later_context() -> None:
     text = '`"` "recipe glossary" moonlit pickle '
-    text += '`[` [Visible title](https://doi.org/10.1/example)'
+    text += "`[` [Visible title](https://doi.org/10.1/example)"
     segments = screening.segment_document(text, "markdown")
     glossary = text.index('"recipe glossary"')
     title = text.index("Visible title")
-    assert next(item for item in segments if item.start <= glossary < item.end).kind == (
-        "quote"
-    )
-    assert next(item for item in segments if item.start <= title < item.end).kind == (
-        "cited_title"
-    )
+    assert next(item for item in segments if item.start <= glossary < item.end).kind == ("quote")
+    assert next(item for item in segments if item.start <= title < item.end).kind == ("cited_title")
     report = screening.build_own_draft_report(
         text,
         artifact_id="opaque-context.md",
@@ -1217,8 +1146,7 @@ def test_context_openers_inside_opaque_bytes_do_not_consume_later_context() -> N
         recorded_at=RECORDED_AT,
     )
     assert any(
-        item["pattern_id"] == "syn_exclude_segment"
-        and item["matched_text"] == "moonlit pickle"
+        item["pattern_id"] == "syn_exclude_segment" and item["matched_text"] == "moonlit pickle"
         for item in report["matches"]
     )
 
@@ -1231,37 +1159,30 @@ def test_context_openers_inside_opaque_bytes_do_not_consume_later_context() -> N
     ],
 )
 def test_latex_verb_control_word_prefixes_remain_prose(text: str) -> None:
-    assert all(
-        item.kind == "author_prose"
-        for item in screening.segment_document(text, "latex")
-    )
+    assert all(item.kind == "author_prose" for item in screening.segment_document(text, "latex"))
 
 
 def test_latex_starred_verb_and_nested_quote_are_recognized() -> None:
     starred = r"\verb*|ordinary luminous turnip|"
     assert any(
-        item.kind == "code_or_verbatim"
-        and starred[item.start : item.end] == starred
+        item.kind == "code_or_verbatim" and starred[item.start : item.end] == starred
         for item in screening.segment_document(starred, "latex")
     )
-    nested = (
-        r"\begin{quote} outer \begin{quote} inner \end{quote} "
-        r"tail \end{quote}"
-    )
+    nested = r"\begin{quote} outer \begin{quote} inner \end{quote} " r"tail \end{quote}"
     tail = nested.index("tail")
-    assert next(
-        item
-        for item in screening.segment_document(nested, "latex")
-        if item.start <= tail < item.end
-    ).kind == "quote"
+    assert (
+        next(
+            item
+            for item in screening.segment_document(nested, "latex")
+            if item.start <= tail < item.end
+        ).kind
+        == "quote"
+    )
 
 
 @pytest.mark.parametrize("text", [r"\verb ", "\\verb\n", r"\verb* "])
 def test_malformed_bare_latex_verb_is_unknown(text: str) -> None:
-    assert any(
-        item.kind == "unknown"
-        for item in screening.segment_document(text, "latex")
-    )
+    assert any(item.kind == "unknown" for item in screening.segment_document(text, "latex"))
 
 
 def test_starred_latex_verb_cannot_backtrack_into_unstarred_delimiter() -> None:
@@ -1272,11 +1193,8 @@ def test_starred_latex_verb_cannot_backtrack_into_unstarred_delimiter() -> None:
 
 
 def test_latex_accent_macro_quotes_remain_author_prose() -> None:
-    text = r'\"o ordinary luminous turnip \"u'
-    assert all(
-        item.kind == "author_prose"
-        for item in screening.segment_document(text, "latex")
-    )
+    text = r"\"o ordinary luminous turnip \"u"
+    assert all(item.kind == "author_prose" for item in screening.segment_document(text, "latex"))
 
 
 @pytest.mark.parametrize(
@@ -1290,11 +1208,14 @@ def test_latex_accent_macro_quotes_remain_author_prose() -> None:
 def test_doi_title_prefix_is_ascii_case_insensitive(target: str) -> None:
     text = f"[Cited Turnip]({target})"
     title = text.index("Cited Turnip")
-    assert next(
-        item
-        for item in screening.segment_document(text, "markdown")
-        if item.start <= title < item.end
-    ).kind == "cited_title"
+    assert (
+        next(
+            item
+            for item in screening.segment_document(text, "markdown")
+            if item.start <= title < item.end
+        ).kind
+        == "cited_title"
+    )
 
 
 def test_opaque_opener_cap_precedes_unclosed_verb_pairing(
@@ -1337,9 +1258,7 @@ def test_escaped_latex_environment_closer_does_not_close_early() -> None:
 )
 def test_latex_environment_openers_inside_math_are_opaque(text: str) -> None:
     segments = screening.segment_document(text, "latex")
-    following = next(
-        item for item in segments if item.start <= text.index("ordinary") < item.end
-    )
+    following = next(item for item in segments if item.start <= text.index("ordinary") < item.end)
     assert following.kind == "author_prose"
     assert all(item.kind != "unknown" for item in segments)
 
@@ -1369,8 +1288,7 @@ def test_markdown_backtick_escape_parity_is_respected() -> None:
 def test_latex_percent_escape_parity_is_respected() -> None:
     escaped = r"Literal \% text."
     assert all(
-        segment.kind == "author_prose"
-        for segment in screening.segment_document(escaped, "latex")
+        segment.kind == "author_prose" for segment in screening.segment_document(escaped, "latex")
     )
     active = r"Literal \\% comment"
     assert any(
@@ -1532,18 +1450,14 @@ def test_delimiter_parser_enforces_interval_cap_before_return(
 ) -> None:
     monkeypatch.setattr(screening, "MAX_PARSE_INTERVALS", 2)
     with pytest.raises(screening.MatchLimitError, match="parse interval count exceeds 2"):
-        screening._paired_delimiter_intervals(
-            "$one$ $two$ $three$", "$", "$", "code_or_verbatim"
-        )
+        screening._paired_delimiter_intervals("$one$ $two$ $three$", "$", "$", "code_or_verbatim")
 
 
 def test_rule_by_segment_work_is_globally_bounded(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(screening, "MAX_RULE_SEGMENT_EVALUATIONS", 1)
-    with pytest.raises(
-        screening.MatchLimitError, match="rule-by-segment evaluations exceed 1"
-    ):
+    with pytest.raises(screening.MatchLimitError, match="rule-by-segment evaluations exceed 1"):
         screening.scan_segments(
             "luminous turnip",
             [screening.Segment("SEG-000001", "author_prose", 0, 16)],
@@ -1560,8 +1474,7 @@ def test_literal_and_composition_work_budget_is_shared_across_corpus(
     output = _enriched()
     first, second = output["literature_corpus"][:2]
     assert all(
-        signal["check_status"] == "checked"
-        for signal in first["bibliographic_integrity_signals"]
+        signal["check_status"] == "checked" for signal in first["bibliographic_integrity_signals"]
     )
     second_title = next(
         signal
@@ -1569,10 +1482,7 @@ def test_literal_and_composition_work_budget_is_shared_across_corpus(
         if signal["tortured_phrase_context"]["surface"] == "cited_title"
     )
     assert second_title["check_status"] == "degraded"
-    assert (
-        second_title["tortured_phrase_context"]["reason_code"]
-        == "MATCH_RESOURCE_LIMIT"
-    )
+    assert second_title["tortured_phrase_context"]["reason_code"] == "MATCH_RESOURCE_LIMIT"
     assert second_title["tortured_phrase_context"]["matches"] == []
 
 
@@ -1611,9 +1521,7 @@ def test_oversized_full_report_collapses_to_a_self_readable_degraded_artifact(
     assert report["matches"] == []
     assert len(screening._pretty_json_bytes(report)) <= screening.MAX_ADVISORY_BYTES
     path = tmp_path / "report.json"
-    screening._atomic_write_json(
-        path, report, maximum=screening.MAX_ADVISORY_BYTES
-    )
+    screening._atomic_write_json(path, report, maximum=screening.MAX_ADVISORY_BYTES)
     assert screening._load_report(path) == report
     screening.validate_own_draft_report(report, text, state=_state())
 
@@ -1704,9 +1612,7 @@ def test_strict_snapshot_loader_rejects_unsafe_bytes(
 ) -> None:
     snapshot_path = tmp_path / "bad.json"
     snapshot_path.write_bytes(raw)
-    manifest = json.loads(
-        (FIXTURES / "snapshot_manifest.json").read_text(encoding="utf-8")
-    )
+    manifest = json.loads((FIXTURES / "snapshot_manifest.json").read_text(encoding="utf-8"))
     manifest["snapshot_sha256"] = hashlib.sha256(raw).hexdigest()
     manifest_path = tmp_path / "manifest.json"
     _strict_dump(manifest_path, manifest)
@@ -1719,9 +1625,7 @@ def test_draft_reader_rejects_isolated_carriage_return(tmp_path: Path) -> None:
     draft = tmp_path / "draft.md"
     draft.write_bytes(b"alpha\rbeta")
     with pytest.raises(screening.ScreeningError, match="isolated carriage return"):
-        screening._read_strict_text(
-            draft, maximum=screening.MAX_DOCUMENT_BYTES, label="draft"
-        )
+        screening._read_strict_text(draft, maximum=screening.MAX_DOCUMENT_BYTES, label="draft")
 
 
 def test_direct_builder_allows_crlf_but_rejects_isolated_carriage_return() -> None:
@@ -1773,9 +1677,7 @@ def test_manifest_snapshot_identity_must_match_hash_bound_snapshot(
         "null_source_locator",
     ],
 )
-def test_manifest_rights_and_source_projection_fail_closed(
-    tmp_path: Path, mutation: str
-) -> None:
+def test_manifest_rights_and_source_projection_fail_closed(tmp_path: Path, mutation: str) -> None:
     snapshot_path, manifest_path, _snapshot, manifest = _snapshot_pair(tmp_path)
     if mutation == "synthetic_reference":
         manifest["rights"]["reference"] = "unexpected reference"
@@ -1844,7 +1746,10 @@ def test_explicit_but_unreadable_snapshot_is_degraded_not_absent(
 @pytest.mark.parametrize(
     ("mutation", "expected_reason"),
     [
-        (lambda snap, man: snap.update({"grammar_profile": "unknown/9"}), "SNAPSHOT_PROFILE_UNSUPPORTED"),
+        (
+            lambda snap, man: snap.update({"grammar_profile": "unknown/9"}),
+            "SNAPSHOT_PROFILE_UNSUPPORTED",
+        ),
         (lambda snap, man: snap.update({"rules": []}), "SNAPSHOT_MANIFEST_INVALID"),
         (
             lambda snap, man: snap["rules"][0].update(
@@ -1979,9 +1884,7 @@ def test_submicrosecond_timestamp_order_cannot_be_truncated() -> None:
 
 def test_renderer_is_one_page_bounded_and_has_claim_ceiling() -> None:
     report = _report()
-    rendered = screening.render_own_draft_report(
-        report, _draft("own_draft.md"), state=_state()
-    )
+    rendered = screening.render_own_draft_report(report, _draft("own_draft.md"), state=_state())
     assert screening.SUMMARY_LABEL in rendered
     assert "does not establish papermill, AI, or author origin" in rendered
     assert "not a clean-text certificate" in rendered
@@ -2094,15 +1997,15 @@ def test_whitespace_abstract_is_explicitly_empty_not_checked() -> None:
 def test_legitimate_negative_only_means_no_configured_match() -> None:
     output = _enriched()
     entry = next(
-        item for item in output["literature_corpus"] if item["citation_key"] == "fixture_negative_2026"
+        item
+        for item in output["literature_corpus"]
+        if item["citation_key"] == "fixture_negative_2026"
     )
     assert all(
-        signal["finding"] == "not_detected"
-        for signal in entry["bibliographic_integrity_signals"]
+        signal["finding"] == "not_detected" for signal in entry["bibliographic_integrity_signals"]
     )
     assert all(
-        signal["tortured_phrase_context"]["boundary"]["absence_is_clean_certificate"]
-        is False
+        signal["tortured_phrase_context"]["boundary"]["absence_is_clean_certificate"] is False
         for signal in entry["bibliographic_integrity_signals"]
     )
 
@@ -2132,7 +2035,9 @@ def test_enrichment_is_semantically_idempotent_and_supersedes_current_row() -> N
         recorded_at=RECORDED_AT,
     )
     signals = third["literature_corpus"][0]["bibliographic_integrity_signals"]
-    assert len([item for item in signals if item["schema_version"] == screening.SIGNAL_VERSION]) == 2
+    assert (
+        len([item for item in signals if item["schema_version"] == screening.SIGNAL_VERSION]) == 2
+    )
 
 
 def test_enrichment_rejects_foreign_current_row_before_supersession() -> None:
@@ -2185,20 +2090,23 @@ def test_multiple_current_rows_are_rejected() -> None:
     )
     for match in context["matches"]:
         span = match["source_span"]
-        match["match_id"] = "tpm-" + screening._sha256_text(
-            screening._canonical_json(
-                {
-                    "artifact_sha256": context["surface_binding"]["content_sha256"],
-                    "snapshot_sha256": context["snapshot"]["snapshot_sha256"],
-                    "surface": context["surface"],
-                    "segment_id": match["segment_id"],
-                    "context": match["context"],
-                    "rule_id": match["pattern_id"],
-                    "codepoint_start": span["codepoint_start"],
-                    "codepoint_end": span["codepoint_end"],
-                }
-            )
-        )[:24]
+        match["match_id"] = (
+            "tpm-"
+            + screening._sha256_text(
+                screening._canonical_json(
+                    {
+                        "artifact_sha256": context["surface_binding"]["content_sha256"],
+                        "snapshot_sha256": context["snapshot"]["snapshot_sha256"],
+                        "surface": context["surface"],
+                        "segment_id": match["segment_id"],
+                        "context": match["context"],
+                        "rule_id": match["pattern_id"],
+                        "codepoint_start": span["codepoint_start"],
+                        "codepoint_end": span["codepoint_end"],
+                    }
+                )
+            )[:24]
+        )
     entry["bibliographic_integrity_signals"].append(duplicate)
     with pytest.raises(screening.ScreeningError, match="multiple current"):
         screening.enrich_passport(
@@ -2212,9 +2120,7 @@ def test_multiple_current_rows_are_rejected() -> None:
 def test_internally_invalid_current_row_is_not_silently_superseded() -> None:
     document = _enriched()
     row = document["literature_corpus"][0]["bibliographic_integrity_signals"][0]
-    row["signal_id"] = row["signal_id"][:-1] + (
-        "0" if row["signal_id"][-1] != "0" else "1"
-    )
+    row["signal_id"] = row["signal_id"][:-1] + ("0" if row["signal_id"][-1] != "0" else "1")
     with pytest.raises(screening.ScreeningError, match="internally inconsistent"):
         screening.enrich_passport(
             document,
@@ -2346,9 +2252,9 @@ def test_cited_state_and_surface_laundering_mutations_fail(mutation: str) -> Non
                 "codepoint_start": match["source_span"]["codepoint_start"],
                 "codepoint_end": match["source_span"]["codepoint_end"],
             }
-            match["match_id"] = "tpm-" + screening._sha256_text(
-                screening._canonical_json(payload)
-            )[:24]
+            match["match_id"] = (
+                "tpm-" + screening._sha256_text(screening._canonical_json(payload))[:24]
+            )
             context["counts"]["matches_by_context"]["cited_title"] -= 1
             context["counts"]["matches_by_context"]["cited_abstract"] += 1
         elif mutation in {
@@ -2375,9 +2281,7 @@ def test_cited_state_and_surface_laundering_mutations_fail(mutation: str) -> Non
                     context["snapshot"]["snapshot_sha256"],
                     context["surface_binding"]["content_sha256"],
                 )
-                signal["provenance"]["source_name"] = (
-                    "tortured-phrase snapshot unavailable"
-                )
+                signal["provenance"]["source_name"] = "tortured-phrase snapshot unavailable"
                 signal["provenance"]["source_version"] = None
                 signal["provenance"]["source_sha256"] = "0" * 64
         else:
@@ -2388,12 +2292,8 @@ def test_cited_state_and_surface_laundering_mutations_fail(mutation: str) -> Non
             context["reason_code"] = "MATCH_RESOURCE_LIMIT"
             context["counts"] = screening._empty_counts()
             context["matches"] = []
-            context["snapshot"] = screening._snapshot_binding(
-                screening.snapshot_state(None, None)
-            )
-            signal["provenance"]["source_name"] = (
-                "tortured-phrase snapshot unavailable"
-            )
+            context["snapshot"] = screening._snapshot_binding(screening.snapshot_state(None, None))
+            signal["provenance"]["source_name"] = "tortured-phrase snapshot unavailable"
             signal["provenance"]["source_version"] = None
             signal["provenance"]["source_sha256"] = None
     with pytest.raises(screening.ScreeningError):
@@ -2443,9 +2343,7 @@ def test_cited_carrier_rejects_missing_loaded_source_locator() -> None:
 
 def test_tortured_phrase_cannot_be_deterministic_or_terminal() -> None:
     schema = screening._load_schema(screening.SIGNAL_SCHEMA_PATH)
-    validator = Draft202012Validator(
-        schema, format_checker=Draft202012Validator.FORMAT_CHECKER
-    )
+    validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
     signal = _enriched()["literature_corpus"][0]["bibliographic_integrity_signals"][0]
     assert not list(validator.iter_errors(signal))
     signal["epistemic_class"] = "deterministic_fact"
@@ -2497,9 +2395,7 @@ def test_cli_rejects_in_place_passport_output() -> None:
 
 
 @pytest.mark.parametrize("alias", ["snapshot", "manifest", "snapshot_hardlink"])
-def test_scan_output_cannot_alias_any_named_input(
-    tmp_path: Path, alias: str
-) -> None:
+def test_scan_output_cannot_alias_any_named_input(tmp_path: Path, alias: str) -> None:
     draft = tmp_path / "draft.md"
     snapshot = tmp_path / "snapshot.json"
     manifest = tmp_path / "manifest.json"
@@ -2596,11 +2492,7 @@ def test_deep_json_passport_fails_closed_without_traceback_or_output_mutation(
 ) -> None:
     passport = tmp_path / "deep-passport.json"
     passport.write_text(
-        '{"literature_corpus":[],"extension":'
-        + "[" * 1000
-        + "0"
-        + "]" * 1000
-        + "}\n",
+        '{"literature_corpus":[],"extension":' + "[" * 1000 + "0" + "]" * 1000 + "}\n",
         encoding="utf-8",
     )
     output = tmp_path / "output.json"
@@ -2664,7 +2556,9 @@ def test_deep_advisory_report_fails_closed_without_traceback(tmp_path: Path) -> 
 
 @pytest.mark.parametrize("cwd", [REPO_ROOT, SCRIPTS])
 def test_runtime_imports_in_package_and_direct_script_modes(cwd: Path) -> None:
-    module = "scripts.tortured_phrase_screening" if cwd == REPO_ROOT else "tortured_phrase_screening"
+    module = (
+        "scripts.tortured_phrase_screening" if cwd == REPO_ROOT else "tortured_phrase_screening"
+    )
     result = subprocess.run(
         [sys.executable, "-c", f"import {module}"],
         cwd=cwd,
@@ -2698,9 +2592,7 @@ def test_package_import_cannot_bind_shadow_bibliographic_module(
     assert result.returncode == 0, result.stderr
     lines = result.stdout.splitlines()
     assert lines[0] == "scripts.bibliographic_integrity_signals"
-    assert Path(lines[1]).resolve() == (
-        SCRIPTS / "bibliographic_integrity_signals.py"
-    ).resolve()
+    assert Path(lines[1]).resolve() == (SCRIPTS / "bibliographic_integrity_signals.py").resolve()
 
 
 def test_yaml_aliases_fail_closed_without_output(tmp_path: Path) -> None:
@@ -2923,9 +2815,7 @@ def test_explicit_not_checked_scan_remains_successful(tmp_path: Path) -> None:
         ]
     )
     assert result == 0
-    assert json.loads(output.read_text(encoding="utf-8"))["check_status"] == (
-        "not_checked"
-    )
+    assert json.loads(output.read_text(encoding="utf-8"))["check_status"] == ("not_checked")
 
 
 def test_failed_scan_does_not_overwrite_input_or_partial_output(tmp_path: Path) -> None:

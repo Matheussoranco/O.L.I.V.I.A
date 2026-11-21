@@ -1,23 +1,23 @@
 """Tests for the shared helpers used by every reference adapter."""
 from pathlib import Path
-import yaml
 
+import yaml
 from scripts.adapters._common import (
-    sanitize_citation_key,
-    make_citation_key,
+    ADAPTER_SPEC_VERSION,
+    dump_yaml_stable,
     ensure_unique_citekey,
+    make_citation_key,
+    now_iso,
     parse_csl_name,
     parse_semicolon_names,
-    dump_yaml_stable,
-    now_iso,
     path_to_file_uri,
+    sanitize_citation_key,
     write_passport,
     write_rejection_log,
-    ADAPTER_SPEC_VERSION,
 )
 
-
 # --- sanitize_citation_key ---
+
 
 def test_sanitize_strips_non_alnum():
     assert sanitize_citation_key("Chen, 2024!") == "Chen2024"
@@ -33,28 +33,23 @@ def test_sanitize_rejects_empty():
 
 # --- make_citation_key ---
 
+
 def test_make_citation_key_simple():
     existing: set[str] = set()
-    key = make_citation_key(
-        family="Chen", year=2024, title_hint="AI assessment", existing=existing
-    )
+    key = make_citation_key(family="Chen", year=2024, title_hint="AI assessment", existing=existing)
     assert key == "chen2024ai"
     assert "chen2024ai" in existing
 
 
 def test_make_citation_key_collision_suffix():
     existing: set[str] = {"chen2024ai"}
-    key = make_citation_key(
-        family="Chen", year=2024, title_hint="AI analysis", existing=existing
-    )
+    key = make_citation_key(family="Chen", year=2024, title_hint="AI analysis", existing=existing)
     assert key == "chen2024aia"
 
 
 def test_make_citation_key_multiple_collisions():
     existing: set[str] = {"chen2024", "chen2024a", "chen2024b"}
-    key = make_citation_key(
-        family="Chen", year=2024, title_hint=None, existing=existing
-    )
+    key = make_citation_key(family="Chen", year=2024, title_hint=None, existing=existing)
     assert key == "chen2024c"
 
 
@@ -79,9 +74,7 @@ def test_make_citation_key_digit_start_falls_back_to_ref():
     assert key == "ref"
     # Confirm the fallback respects collision tracking too.
     existing2: set[str] = {"ref"}
-    key2 = make_citation_key(
-        family="", year=2024, title_hint=None, existing=existing2
-    )
+    key2 = make_citation_key(family="", year=2024, title_hint=None, existing=existing2)
     assert key2 == "refa"
 
 
@@ -107,6 +100,7 @@ def test_make_citation_key_skips_stopwords_in_title():
 
 # --- parse_csl_name ---
 
+
 def test_parse_csl_name_family_given():
     assert parse_csl_name("Chen, Cindy") == {"family": "Chen", "given": "Cindy"}
 
@@ -116,9 +110,7 @@ def test_parse_csl_name_family_initial():
 
 
 def test_parse_csl_name_institution_with_braces():
-    assert parse_csl_name("{World Health Organization}") == {
-        "literal": "World Health Organization"
-    }
+    assert parse_csl_name("{World Health Organization}") == {"literal": "World Health Organization"}
 
 
 def test_parse_csl_name_bare_single_token_is_family():
@@ -130,6 +122,7 @@ def test_parse_csl_name_strips_whitespace():
 
 
 # --- parse_semicolon_names ---
+
 
 def test_parse_semicolon_names():
     names = parse_semicolon_names("Chen, C.; Wang, J.")
@@ -155,6 +148,7 @@ def test_parse_semicolon_names_skips_empty_segments():
 
 # --- dump_yaml_stable / now_iso ---
 
+
 def test_dump_yaml_stable_is_sorted():
     data = {"b": 2, "a": 1}
     out = dump_yaml_stable(data)
@@ -174,6 +168,7 @@ def test_now_iso_is_rfc3339_z():
     assert "T" in ts
     # round-trip through datetime
     import datetime
+
     parsed = datetime.datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ")
     assert parsed is not None
 
@@ -185,12 +180,23 @@ def test_adapter_spec_version_is_string():
 
 # --- write_passport ---
 
+
 def test_write_passport_sorts_by_citation_key(tmp_path: Path):
     entries = [
-        {"citation_key": "wang2024", "title": "W", "authors": [{"family": "Wang"}],
-         "year": 2024, "source_pointer": "file:///w.pdf"},
-        {"citation_key": "chen2024", "title": "C", "authors": [{"family": "Chen"}],
-         "year": 2024, "source_pointer": "file:///c.pdf"},
+        {
+            "citation_key": "wang2024",
+            "title": "W",
+            "authors": [{"family": "Wang"}],
+            "year": 2024,
+            "source_pointer": "file:///w.pdf",
+        },
+        {
+            "citation_key": "chen2024",
+            "title": "C",
+            "authors": [{"family": "Chen"}],
+            "year": 2024,
+            "source_pointer": "file:///c.pdf",
+        },
     ]
     p = tmp_path / "passport.yaml"
     write_passport(p, entries)
@@ -207,6 +213,7 @@ def test_write_passport_empty_list(tmp_path: Path):
 
 
 # --- write_rejection_log ---
+
 
 def test_write_rejection_log_minimal(tmp_path: Path):
     p = tmp_path / "rejection_log.yaml"
@@ -244,22 +251,26 @@ def test_write_rejection_log_passes_validation(tmp_path: Path):
     """Output must validate against rejection_log.schema.json — i.e. the
     helper produces a doc that is contract-compliant by construction."""
     import json
+
     from jsonschema import Draft202012Validator
+
     schema_path = (
-        Path(__file__).resolve().parents[3]
-        / "shared/contracts/passport/rejection_log.schema.json"
+        Path(__file__).resolve().parents[3] / "shared/contracts/passport/rejection_log.schema.json"
     )
     schema = json.loads(schema_path.read_text())
-    validator = Draft202012Validator(
-        schema, format_checker=Draft202012Validator.FORMAT_CHECKER
-    )
+    validator = Draft202012Validator(schema, format_checker=Draft202012Validator.FORMAT_CHECKER)
     p = tmp_path / "rejection_log.yaml"
     write_rejection_log(
         p,
         adapter_name="zotero.py",
         adapter_version="1.0.0",
-        rejected=[{"source": "ABCD1234", "reason": "missing_required_field",
-                   "missing_fields": ["authors"]}],
+        rejected=[
+            {
+                "source": "ABCD1234",
+                "reason": "missing_required_field",
+                "missing_fields": ["authors"],
+            }
+        ],
         input_source="/path/to/lib",
     )
     doc = yaml.safe_load(p.read_text())
@@ -305,6 +316,7 @@ def test_write_rejection_log_with_summary_totals(tmp_path: Path):
 
 # --- path_to_file_uri ---
 
+
 def test_path_to_file_uri_encodes_spaces(tmp_path: Path):
     p = tmp_path / "Lee 2024 paper.pdf"
     p.touch()
@@ -332,6 +344,7 @@ def test_path_to_file_uri_accepts_string():
 
 
 # --- ensure_unique_citekey ---
+
 
 def test_ensure_unique_citekey_passes_through_unique():
     existing: set[str] = set()

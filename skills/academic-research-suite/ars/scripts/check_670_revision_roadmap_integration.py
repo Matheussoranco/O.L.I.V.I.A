@@ -20,7 +20,6 @@ from typing import Any
 
 from jsonschema import Draft202012Validator
 
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 REVISION_SCHEMAS = (
@@ -35,9 +34,7 @@ REVISION_SCHEMAS = (
     Path("shared/contracts/revision/revision_evidence_bundle.schema.json"),
 )
 PATCH_SCHEMA = Path("shared/contracts/patch/revision_patch.schema.json")
-PATCH_LEGACY_SCHEMA = Path(
-    "shared/contracts/patch/legacy/v1_0/revision_patch.schema.json"
-)
+PATCH_LEGACY_SCHEMA = Path("shared/contracts/patch/legacy/v1_0/revision_patch.schema.json")
 RE_REVIEW_SCHEMAS = tuple(
     Path("shared/contracts/re_review") / name
     for name in (
@@ -48,8 +45,7 @@ RE_REVIEW_SCHEMAS = tuple(
     )
 )
 RE_REVIEW_LEGACY_SCHEMAS = tuple(
-    Path("shared/contracts/re_review/legacy/v1_0") / name.name
-    for name in RE_REVIEW_SCHEMAS
+    Path("shared/contracts/re_review/legacy/v1_0") / name.name for name in RE_REVIEW_SCHEMAS
 )
 
 ROADMAP_RUNTIME = Path("scripts/revision_roadmap.py")
@@ -70,18 +66,24 @@ RUNTIME_HASHES = {
 # those reviewed changes; exact hashes keep later drift auditable without a
 # live-model comparison.
 DETECTION_HASHES = {
-    Path("academic-paper-reviewer/agents/eic_agent.md"):
-        "c5ec3150c7e7cc4c89358853d13af0bde8f211e0a735bcd8c72330d1f931943d",
-    Path("academic-paper-reviewer/agents/methodology_reviewer_agent.md"):
-        "91e462ee104cc253a44d387570ea95a49a4efffcc2b4765617baf292431de6cb",
-    Path("academic-paper-reviewer/agents/domain_reviewer_agent.md"):
-        "eb6660aafadc851e3fc4545111b5113d467c9eb263ef069394db62c944ece1e5",
-    Path("academic-paper-reviewer/agents/perspective_reviewer_agent.md"):
-        "49bb946547593a918bd60faee88555d46a2a10b39f2857ef94163eef65920d81",
-    Path("academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"):
-        "b42eb5559bf91c8767f85e532dfa240e5e30feb92ae3fc0be96f20058acfcf6a",
-    Path("academic-paper-reviewer/templates/peer_review_report_template.md"):
-        "5da1f9d24d6e321cec5f38c13fa03fe23b9363b1842cb0d8111c5e39a810c7d1",
+    Path(
+        "academic-paper-reviewer/agents/eic_agent.md"
+    ): "c5ec3150c7e7cc4c89358853d13af0bde8f211e0a735bcd8c72330d1f931943d",
+    Path(
+        "academic-paper-reviewer/agents/methodology_reviewer_agent.md"
+    ): "91e462ee104cc253a44d387570ea95a49a4efffcc2b4765617baf292431de6cb",
+    Path(
+        "academic-paper-reviewer/agents/domain_reviewer_agent.md"
+    ): "eb6660aafadc851e3fc4545111b5113d467c9eb263ef069394db62c944ece1e5",
+    Path(
+        "academic-paper-reviewer/agents/perspective_reviewer_agent.md"
+    ): "49bb946547593a918bd60faee88555d46a2a10b39f2857ef94163eef65920d81",
+    Path(
+        "academic-paper-reviewer/agents/devils_advocate_reviewer_agent.md"
+    ): "b42eb5559bf91c8767f85e532dfa240e5e30feb92ae3fc0be96f20058acfcf6a",
+    Path(
+        "academic-paper-reviewer/templates/peer_review_report_template.md"
+    ): "5da1f9d24d6e321cec5f38c13fa03fe23b9363b1842cb0d8111c5e39a810c7d1",
 }
 
 AUTHOR_PRESENTATION_FILES = (
@@ -237,7 +239,13 @@ def _schema_checks(root: Path) -> list[str]:
             errors.append(f"{relative}: schema load/check failed: {exc}")
 
     if len(schemas) < len(
-        (*REVISION_SCHEMAS, PATCH_SCHEMA, PATCH_LEGACY_SCHEMA, *RE_REVIEW_SCHEMAS, *RE_REVIEW_LEGACY_SCHEMAS)
+        (
+            *REVISION_SCHEMAS,
+            PATCH_SCHEMA,
+            PATCH_LEGACY_SCHEMA,
+            *RE_REVIEW_SCHEMAS,
+            *RE_REVIEW_LEGACY_SCHEMAS,
+        )
     ):
         return errors
 
@@ -257,33 +265,61 @@ def _schema_checks(root: Path) -> list[str]:
         "proposed_targets",
     }.issubset(item.get("required", [])):
         errors.append("roadmap item lost independent/source/exact-scope requirements")
-    forbidden_current = {"priority", "type", "deadline_suggestion", "author_triage", "display_order"}
+    forbidden_current = {
+        "priority",
+        "type",
+        "deadline_suggestion",
+        "author_triage",
+        "display_order",
+    }
     if forbidden_current & (set(roadmap_props) | set(item_props)):
         errors.append("roadmap current schema reintroduced legacy/author-owned fields")
 
     author = schemas[REVISION_SCHEMAS[1]]
     author_defs = author.get("$defs", {})
-    if author.get("properties", {}).get("schema_version", {}).get("const") != "author-adjudication/1.0":
+    if (
+        author.get("properties", {}).get("schema_version", {}).get("const")
+        != "author-adjudication/1.0"
+    ):
         errors.append("author sidecar version drifted")
     event_props = author_defs.get("author_event", {}).get("properties", {})
     if event_props.get("source", {}).get("const") != "explicit_session_user_message":
         errors.append("author event no longer requires explicit session user input")
-    triage = author_defs.get("adjudication", {}).get("properties", {}).get("author_triage", {}).get("enum")
+    triage = (
+        author_defs.get("adjudication", {})
+        .get("properties", {})
+        .get("author_triage", {})
+        .get("enum")
+    )
     if triage != ["will_address", "wont_address", "not_on_point"]:
         errors.append("author triage vocabulary drifted")
     claim_required = set(author_defs.get("claim_authorization", {}).get("required", []))
     if not {
-        "surface_id", "scoped_manifest_id", "claim_id", "block_id",
-        "original_text_sha256", "replacement_text", "replacement_text_sha256",
-        "from_rung", "to_rung", "direction",
+        "surface_id",
+        "scoped_manifest_id",
+        "claim_id",
+        "block_id",
+        "original_text_sha256",
+        "replacement_text",
+        "replacement_text_sha256",
+        "from_rung",
+        "to_rung",
+        "direction",
     }.issubset(claim_required):
         errors.append("claim authorization lost exact surface/replacement/movement fields")
 
     claim_surface = schemas[REVISION_SCHEMAS[3]]
     surface_required = set(claim_surface.get("$defs", {}).get("surface", {}).get("required", []))
     if not {
-        "scoped_manifest_id", "claim_id", "block_id", "utf8_start", "utf8_end",
-        "original_text", "original_text_sha256", "intent_claim_text_sha256", "current_rung",
+        "scoped_manifest_id",
+        "claim_id",
+        "block_id",
+        "utf8_start",
+        "utf8_end",
+        "original_text",
+        "original_text_sha256",
+        "intent_claim_text_sha256",
+        "current_rung",
     }.issubset(surface_required):
         errors.append("claim surface lost exact Claim Intent/UTF-8 bindings")
 
@@ -306,7 +342,10 @@ def _schema_checks(root: Path) -> list[str]:
         {"$ref": "#/$defs/integrity_patch"},
     ]:
         errors.append("current patch is not the closed review/integrity union")
-    for name, context in (("review_patch", "review_roadmap"), ("integrity_patch", "integrity_correction")):
+    for name, context in (
+        ("review_patch", "review_roadmap"),
+        ("integrity_patch", "integrity_correction"),
+    ):
         props = patch_defs.get(name, {}).get("properties", {})
         if props.get("patch_format_version", {}).get("const") != "1.1":
             errors.append(f"{name} no longer pins current patch 1.1")
@@ -320,7 +359,12 @@ def _schema_checks(root: Path) -> list[str]:
         schema = schemas[relative]
         if schema.get("properties", {}).get("contract_version", {}).get("const") != "1.1":
             errors.append(f"{relative}: current contract_version must be 1.1")
-        old_names = {"priority", "residual_magnitude", "residual_magnitude_counts", "p2_addressed_rate"}
+        old_names = {
+            "priority",
+            "residual_magnitude",
+            "residual_magnitude_counts",
+            "p2_addressed_rate",
+        }
         if old_names & _property_names(schema):
             errors.append(f"{relative}: legacy field name reintroduced")
     for relative in RE_REVIEW_LEGACY_SCHEMAS:
@@ -331,10 +375,17 @@ def _schema_checks(root: Path) -> list[str]:
     manifest = schemas[RE_REVIEW_SCHEMAS[0]]
     required_artifacts = set(manifest["properties"]["artifacts"]["required"])
     if required_artifacts != {
-        "original_manuscript", "revised_manuscript", "revision_roadmap",
-        "author_adjudication", "revision_evidence_bundle", "editorial_decision_letter",
-        "response_to_reviewers", "revision_patches", "apply_reports",
-        "round1_findings", "round1_config_cards",
+        "original_manuscript",
+        "revised_manuscript",
+        "revision_roadmap",
+        "author_adjudication",
+        "revision_evidence_bundle",
+        "editorial_decision_letter",
+        "response_to_reviewers",
+        "revision_patches",
+        "apply_reports",
+        "round1_findings",
+        "round1_config_cards",
     }:
         errors.append("#576 current manifest does not carry exactly eleven artifact keys")
     artifact_properties = manifest["properties"]["artifacts"]["properties"]
@@ -345,14 +396,17 @@ def _schema_checks(root: Path) -> list[str]:
         "author_adjudication",
         "revision_evidence_bundle",
     ):
-        if artifact_properties.get(artifact, {}).get("$ref") != (
-            "#/$defs/required_artifact_entry"
-        ):
+        if artifact_properties.get(artifact, {}).get("$ref") != ("#/$defs/required_artifact_entry"):
             errors.append(
                 f"#576 current manifest {artifact} is not a hard-required present artifact"
             )
     trace_names = _property_names(schemas[RE_REVIEW_SCHEMAS[-1]])
-    if not {"author_triage", "author_reason", "authorized_targets", "claim_strength_authorizations"}.issubset(trace_names):
+    if not {
+        "author_triage",
+        "author_reason",
+        "authorized_targets",
+        "claim_strength_authorizations",
+    }.issubset(trace_names):
         errors.append("#576 traceability lost exact author-sidecar copy fields")
     return errors
 
@@ -403,14 +457,20 @@ def _runtime_checks(root: Path) -> list[str]:
             if isinstance(node, ast.Import):
                 for alias in node.names:
                     if alias.name.split(".")[0] in FORBIDDEN_IMPORT_ROOTS:
-                        errors.append(f"{relative}:{node.lineno}: forbidden model/network/clock/process import {alias.name}")
+                        errors.append(
+                            f"{relative}:{node.lineno}: forbidden model/network/clock/process import {alias.name}"
+                        )
             elif isinstance(node, ast.ImportFrom):
                 module = node.module or ""
                 if module.split(".")[0] in FORBIDDEN_IMPORT_ROOTS:
-                    errors.append(f"{relative}:{node.lineno}: forbidden model/network/clock/process import {module}")
+                    errors.append(
+                        f"{relative}:{node.lineno}: forbidden model/network/clock/process import {module}"
+                    )
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
                 if node.func.attr in FORBIDDEN_SCAN_CALLS:
-                    errors.append(f"{relative}:{node.lineno}: forbidden ambient scan {node.func.attr}()")
+                    errors.append(
+                        f"{relative}:{node.lineno}: forbidden ambient scan {node.func.attr}()"
+                    )
 
     apply_text = (root / APPLY_RUNTIME).read_text(encoding="utf-8")
     for token in (
@@ -473,7 +533,9 @@ def _documentation_checks(root: Path) -> list[str]:
         text = (root / relative).read_text(encoding="utf-8")
         match = AUTHOR_RANK_RE.search(text)
         if match:
-            errors.append(f"{relative}: author-facing work-rank/time presentation {match.group(0)!r}")
+            errors.append(
+                f"{relative}: author-facing work-rank/time presentation {match.group(0)!r}"
+            )
     return errors
 
 

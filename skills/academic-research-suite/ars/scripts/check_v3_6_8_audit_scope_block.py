@@ -149,7 +149,9 @@ BARE_VERDICT_BEFORE_SECTION_0_PATTERNS: list[re.Pattern[str]] = [
     # Existing first-aggregate-split line (kept from earlier rounds)
     re.compile(r"^\s*verified-against-source\s*:\s*(PASS|FAIL)\b", re.MULTILINE),
     # Bare `<key>: PASS|FAIL` line, no heading framing
-    re.compile(rf"^\s*{_VERDICT_KEY}\s*:\s*(PASS|FAIL|PASSED|FAILED)\b", re.IGNORECASE | re.MULTILINE),
+    re.compile(
+        rf"^\s*{_VERDICT_KEY}\s*:\s*(PASS|FAIL|PASSED|FAILED)\b", re.IGNORECASE | re.MULTILINE
+    ),
 ]
 
 
@@ -229,9 +231,8 @@ def _section_0_block(text_full: str, text_no_fences: str) -> str:
     text so contents are byte-equivalent to the source.
     """
     import re as _re
-    section_0_match = _re.search(
-        r"^## Section 0\b", text_no_fences, _re.MULTILINE
-    )
+
+    section_0_match = _re.search(r"^## Section 0\b", text_no_fences, _re.MULTILINE)
     if section_0_match is None:
         return ""
     start = section_0_match.start()
@@ -266,8 +267,7 @@ def check(target: Path) -> tuple[int, list[str]]:
 
     # ---- R1: Section 0 H2 anchor present, before Section 1 ----
     section_0_anchors = [
-        m.start()
-        for m in re.finditer(r"^## Section 0\b", text_no_fences, re.MULTILINE)
+        m.start() for m in re.finditer(r"^## Section 0\b", text_no_fences, re.MULTILINE)
     ]
     if not section_0_anchors:
         failed = True
@@ -388,9 +388,7 @@ def check(target: Path) -> tuple[int, list[str]]:
     # legacy FORBIDDEN_AGGREGATE_PATTERNS still run as supplementary
     # diagnostics on the pre-Section-0 surface (the upstream parts where
     # an audit summary heading would be a structural violation).
-    cap_rule_surface_start = (
-        section_0_anchors[0] if section_0_anchors else 0
-    )
+    cap_rule_surface_start = section_0_anchors[0] if section_0_anchors else 0
     cap_rule_surface = text_full[cap_rule_surface_start:]
     bare_passed_re = re.compile(r"\bPASSED\b")
     for match in bare_passed_re.finditer(cap_rule_surface):
@@ -417,7 +415,7 @@ def check(target: Path) -> tuple[int, list[str]]:
         report.append(
             f"  FAIL [R4]: unquoted PASSED token on post-Section-0 surface "
             f"(spec line 152 cap rule). Context: …{excerpt}… "
-            "Use quoted form (\"PASSED\", `PASSED`) for self-explanation only."
+            'Use quoted form ("PASSED", `PASSED`) for self-explanation only.'
         )
         break  # one diagnostic is enough; user fixes then re-runs
 

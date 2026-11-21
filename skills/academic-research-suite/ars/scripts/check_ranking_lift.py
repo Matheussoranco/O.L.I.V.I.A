@@ -52,17 +52,13 @@ _ISSUE_URL_RE = re.compile(
 # This repo (owner/name). An ack issue URL must point HERE, not at some other
 # repo's open issue — cross-repo issues must not satisfy the ack contract.
 CURRENT_REPO = "Imbad0202/academic-research-skills"
-_AFFECTED_METRIC_RE = re.compile(
-    r"Affected metric:\s*([\w.-]+)\.([\w.-]+)\.([\w.-]+)"
-)
+_AFFECTED_METRIC_RE = re.compile(r"Affected metric:\s*([\w.-]+)\.([\w.-]+)\.([\w.-]+)")
 
 
 # ---------------------------------------------------------------------------
 # Pure lift math
 # ---------------------------------------------------------------------------
-def compute_signed_lift(
-    baseline: float, compare: float, direction: str
-) -> float | str:
+def compute_signed_lift(baseline: float, compare: float, direction: str) -> float | str:
     """Polarity-corrected signed lift. Positive = improvement, negative = regression."""
     if direction not in ("higher_is_better", "lower_is_better"):
         raise ValueError(f"unknown direction: {direction!r}")
@@ -138,9 +134,7 @@ def _flatten_report(report: dict[str, Any]) -> dict[tuple[str, str, str], dict[s
     return flat
 
 
-def compute_lifts(
-    baseline: dict[str, Any], compare: dict[str, Any]
-) -> list[dict[str, Any]]:
+def compute_lifts(baseline: dict[str, Any], compare: dict[str, Any]) -> list[dict[str, Any]]:
     """Per-metric signed lift across baseline metrics.
 
     A metric present in BOTH reports gets a normal signed lift. A metric present
@@ -159,33 +153,37 @@ def compute_lifts(
         if key not in cmp_flat:
             # Dropped: baseline measured this metric, compare no longer reports
             # it. Treat as a blocking regression unless explicitly acknowledged.
-            results.append({
+            results.append(
+                {
+                    "task": task,
+                    "class": cls,
+                    "metric": metric,
+                    "direction": direction,
+                    "baseline": base_val,
+                    "compare": None,
+                    "signed_lift": "dropped",
+                    "is_regression": True,
+                    "is_zero_baseline_change": False,
+                    "is_dropped": True,
+                }
+            )
+            continue
+        cmp_val = cmp_flat[key]["value"]
+        signed = compute_signed_lift(base_val, cmp_val, direction)
+        results.append(
+            {
                 "task": task,
                 "class": cls,
                 "metric": metric,
                 "direction": direction,
                 "baseline": base_val,
-                "compare": None,
-                "signed_lift": "dropped",
-                "is_regression": True,
-                "is_zero_baseline_change": False,
-                "is_dropped": True,
-            })
-            continue
-        cmp_val = cmp_flat[key]["value"]
-        signed = compute_signed_lift(base_val, cmp_val, direction)
-        results.append({
-            "task": task,
-            "class": cls,
-            "metric": metric,
-            "direction": direction,
-            "baseline": base_val,
-            "compare": cmp_val,
-            "signed_lift": signed,
-            "is_regression": _is_regression(signed),
-            "is_zero_baseline_change": _is_zero_baseline_change(signed),
-            "is_dropped": False,
-        })
+                "compare": cmp_val,
+                "signed_lift": signed,
+                "is_regression": _is_regression(signed),
+                "is_zero_baseline_change": _is_zero_baseline_change(signed),
+                "is_dropped": False,
+            }
+        )
     return results
 
 
@@ -199,8 +197,7 @@ def parse_pr_body(pr_body: str) -> dict[str, Any]:
         "has_token": ACK_TOKEN in body,
         "issue_urls": [m.group(0) for m in _ISSUE_URL_RE.finditer(body)],
         "affected_metrics": {
-            (m.group(1), m.group(2), m.group(3))
-            for m in _AFFECTED_METRIC_RE.finditer(body)
+            (m.group(1), m.group(2), m.group(3)) for m in _AFFECTED_METRIC_RE.finditer(body)
         },
     }
 
@@ -226,7 +223,9 @@ def _issue_is_open(url: str) -> bool:
     try:
         out = subprocess.run(
             ["gh", "api", f"/repos/{owner}/{repo}/issues/{number}", "--jq", ".state"],
-            capture_output=True, text=True, check=True,
+            capture_output=True,
+            text=True,
+            check=True,
         )
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -243,10 +242,7 @@ def evaluate_gate(
 ) -> dict[str, Any]:
     """Run the full gate. Returns {blocked, reasons[], lifts[], regressions[]}."""
     lifts = compute_lifts(baseline, compare)
-    regressions = [
-        l for l in lifts
-        if l["is_regression"] or l["is_zero_baseline_change"]
-    ]
+    regressions = [l for l in lifts if l["is_regression"] or l["is_zero_baseline_change"]]
     parsed = parse_pr_body(pr_body)
     reasons: list[str] = []
 
@@ -255,9 +251,7 @@ def evaluate_gate(
 
     # There is at least one regression / zero-baseline change -> needs ack.
     if not parsed["has_token"]:
-        reasons.append(
-            f"{len(regressions)} regression(s) but PR body lacks {ACK_TOKEN}."
-        )
+        reasons.append(f"{len(regressions)} regression(s) but PR body lacks {ACK_TOKEN}.")
     if not parsed["issue_urls"]:
         reasons.append("regression acknowledged but no follow-up issue URL found in PR body.")
     else:
@@ -293,7 +287,9 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Ranking-method lift gate (#184 Delta 4).")
     parser.add_argument("--baseline", required=True, type=Path)
     parser.add_argument("--compare", required=True, type=Path)
-    parser.add_argument("--pr-body", default="", help="PR description text (or @path to read from file).")
+    parser.add_argument(
+        "--pr-body", default="", help="PR description text (or @path to read from file)."
+    )
     args = parser.parse_args(argv)
 
     baseline = json.loads(args.baseline.read_text(encoding="utf-8"))

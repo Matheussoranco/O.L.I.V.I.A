@@ -41,7 +41,9 @@ class NormalizeTitleTest(unittest.TestCase):
         self.assertEqual(ts._normalize_title("   \t\n  "), "")
 
     def test_already_normalized_unchanged(self) -> None:
-        self.assertEqual(ts._normalize_title("attention is all you need"), "attention is all you need")
+        self.assertEqual(
+            ts._normalize_title("attention is all you need"), "attention is all you need"
+        )
 
 
 class SimilarityTest(unittest.TestCase):
@@ -147,9 +149,7 @@ class CjkExactTitleTest(unittest.TestCase):
         """Deliberately NOT folded: the fold is lossy for proper nouns and a
         wrong fold would manufacture a false match. The variant pair is
         surfaced to the human instead."""
-        self.assertFalse(
-            ts.exact_normalized_title("宫颈癌筛查研究", "宮頸癌篩查研究")
-        )
+        self.assertFalse(ts.exact_normalized_title("宫颈癌筛查研究", "宮頸癌篩查研究"))
 
 
 def _pre_fix_exact_normalized_title(a: str, b: str) -> bool:
@@ -159,10 +159,9 @@ def _pre_fix_exact_normalized_title(a: str, b: str) -> bool:
     pair where BOTH sides carry a Han ideograph. Everywhere else it must agree
     with this function byte-for-byte. Written out in full (rather than captured
     from the module) so the oracle cannot drift with the code it checks."""
-    return (
-        ts._normalize_title(a) == ts._normalize_title(b)
-        or ts._normalize_title_acronym(a) == ts._normalize_title_acronym(b)
-    )
+    return ts._normalize_title(a) == ts._normalize_title(b) or ts._normalize_title_acronym(
+        a
+    ) == ts._normalize_title_acronym(b)
 
 
 def _pre_fix_similarity(a: str, b: str) -> float:
@@ -365,9 +364,7 @@ class NormalizeCnTitleTest(unittest.TestCase):
         """The trailing `depth == 0` check, pinned on its own: `《基于《研究」的分析》`
         has an interior `《` that nothing closes, so the outer `》` is closing the
         INNER opener and the outer pair is not one unit."""
-        self.assertEqual(
-            ts.normalize_cn_title("《基于《研究」的分析》"), "《基于《研究」的分析》"
-        )
+        self.assertEqual(ts.normalize_cn_title("《基于《研究」的分析》"), "《基于《研究」的分析》")
 
     def test_stray_interior_closer_blocks_the_strip_independently(self) -> None:
         """#804 review advisory: the depth-0 stray-closer branch had no
@@ -450,9 +447,7 @@ class NormalizeCnTitleTest(unittest.TestCase):
         """Unlike the base ASCII normalization, the CJK normalizer keeps `+`,
         `-`, `.` and `%` byte-significant: ER+ != ER-, 4.5% != 45%."""
         self.assertNotEqual(ts.normalize_cn_title("ER+"), ts.normalize_cn_title("ER-"))
-        self.assertNotEqual(
-            ts.normalize_cn_title("4.5%"), ts.normalize_cn_title("45%")
-        )
+        self.assertNotEqual(ts.normalize_cn_title("4.5%"), ts.normalize_cn_title("45%"))
 
     def test_handles_none(self) -> None:
         self.assertEqual(ts.normalize_cn_title(None), "")

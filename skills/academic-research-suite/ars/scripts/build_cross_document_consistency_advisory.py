@@ -25,7 +25,6 @@ from pathlib import Path
 from typing import Any, NoReturn
 from urllib.parse import unquote
 
-
 SIDECAR_SCHEMA_VERSION = "preregistration-artifact/1.0"
 MANIFEST_SCHEMA_VERSION = "cross-document-source-manifest/1.0"
 DRAFT_SCHEMA_VERSION = "cross-document-consistency-advisory-draft/1.0"
@@ -54,9 +53,7 @@ MAX_ENCODED_ANCHOR = 12000
 
 TEMPLATE_SHA256 = "40054e26c527ff3dd237a5eef3fee60b821cf8549e210d48a057005333c8e0d2"
 LOCATOR_PROVENANCE = "agent_supplied_not_independently_authenticated"
-SCOPE_COMPLETENESS = (
-    "caller_declared_complete_named_scope_not_independently_authenticated"
-)
+SCOPE_COMPLETENESS = "caller_declared_complete_named_scope_not_independently_authenticated"
 SEMANTIC_PROVENANCE = "caller_supplied_not_deterministically_verified"
 
 PAIR_ORDER = (
@@ -130,15 +127,9 @@ EVIDENCE_STATES = frozenset(
         "retrieval_failed",
     }
 )
-FAILURE_STATES = frozenset(
-    {"not_checked", "source_missing", "access_failed", "retrieval_failed"}
-)
-MANIFEST_STATES = frozenset(
-    {"present", "source_missing", "access_failed", "retrieval_failed"}
-)
-SIDECAR_STATES = frozenset(
-    {"provided", "not_provided", "access_failed", "retrieval_failed"}
-)
+FAILURE_STATES = frozenset({"not_checked", "source_missing", "access_failed", "retrieval_failed"})
+MANIFEST_STATES = frozenset({"present", "source_missing", "access_failed", "retrieval_failed"})
+SIDECAR_STATES = frozenset({"provided", "not_provided", "access_failed", "retrieval_failed"})
 NOT_CHECKED_REASONS = frozenset(
     {
         "PAIR_CHECK_NOT_PERFORMED",
@@ -148,9 +139,7 @@ NOT_CHECKED_REASONS = frozenset(
         "SOURCE_RETRIEVAL_FAILED",
     }
 )
-OUTCOMES = frozenset(
-    {"POTENTIAL_INCONSISTENCY_LOCATED", "NO_LISTED_INCONSISTENCY_LOCATED"}
-)
+OUTCOMES = frozenset({"POTENTIAL_INCONSISTENCY_LOCATED", "NO_LISTED_INCONSISTENCY_LOCATED"})
 DIAGNOSTIC_CODES = frozenset(
     {
         "NAMED_INPUT_UNREADABLE",
@@ -338,10 +327,7 @@ def _relative_path(value: Any, path: str, *, code: str) -> str:
     if (
         text.startswith("/")
         or "\\" in text
-        or any(
-            unicodedata.category(character) in {"Cc", "Cf", "Zl", "Zp"}
-            for character in text
-        )
+        or any(unicodedata.category(character) in {"Cc", "Cf", "Zl", "Zp"} for character in text)
     ):
         _fail(code, path, "must be a normalized relative POSIX path")
     components = text.split("/")
@@ -352,9 +338,7 @@ def _relative_path(value: Any, path: str, *, code: str) -> str:
 
 def _span(value: Any, path: str, *, code: str) -> dict[str, int]:
     block = _closed(value, path, {"start", "end"}, code=code)
-    start = _integer(
-        block["start"], f"{path}.start", code=code, maximum=MAX_TOTAL_SOURCE_BYTES
-    )
+    start = _integer(block["start"], f"{path}.start", code=code, maximum=MAX_TOTAL_SOURCE_BYTES)
     end = _integer(
         block["end"],
         f"{path}.end",
@@ -445,9 +429,7 @@ def _reject_unsafe_json_strings(value: Any, *, code: str, path: str) -> None:
         current_path, current = stack.pop()
         if isinstance(current, dict):
             for key, item in current.items():
-                _safe_text(
-                    key, f"{current_path} key", code=code, minimum=0, maximum=1024
-                )
+                _safe_text(key, f"{current_path} key", code=code, minimum=0, maximum=1024)
                 stack.append((f"{current_path}.{key}", item))
         elif isinstance(current, list):
             for index, item in enumerate(current):
@@ -595,9 +577,7 @@ def _strict_source(raw: bytes, *, label: str, maximum: int) -> str:
     try:
         text = raw.decode("utf-8", errors="strict")
         if text.encode("utf-8", errors="strict") != raw:
-            _fail(
-                "SOURCE_BINDING_INVALID", label, "does not round-trip as strict UTF-8"
-            )
+            _fail("SOURCE_BINDING_INVALID", label, "does not round-trip as strict UTF-8")
     except UnicodeError as exc:
         _fail("SOURCE_BINDING_INVALID", label, f"is not strict UTF-8: {exc}")
     return text
@@ -652,14 +632,8 @@ def _reject_output_alias(output: Path, inputs: Sequence[Path | None]) -> None:
         if output_absolute == os.path.abspath(candidate):
             _fail("NAMED_INPUT_UNREADABLE", "output", "must not alias a named input")
         try:
-            if (
-                output.exists()
-                and candidate.exists()
-                and os.path.samefile(output, candidate)
-            ):
-                _fail(
-                    "NAMED_INPUT_UNREADABLE", "output", "must not alias a named input"
-                )
+            if output.exists() and candidate.exists() and os.path.samefile(output, candidate):
+                _fail("NAMED_INPUT_UNREADABLE", "output", "must not alias a named input")
         except OSError:
             continue
 
@@ -680,9 +654,7 @@ def build_preregistration_artifact(
     timestamp = _timestamp(declared_at, "declared_at", code="SOURCE_BINDING_INVALID")
     if state == "provided":
         if companion_bytes is None:
-            _fail(
-                "SOURCE_BINDING_INVALID", "companion", "is required for provided status"
-            )
+            _fail("SOURCE_BINDING_INVALID", "companion", "is required for provided status")
         text = _strict_source(
             companion_bytes,
             label="preregistration companion",
@@ -740,9 +712,7 @@ def build_preregistration_artifact(
                 "unavailable status forbids companion/path",
             )
         if artifact_provenance is not None and artifact_provenance != "not_provided":
-            _fail(
-                "SOURCE_BINDING_INVALID", "artifact_provenance", "must be not_provided"
-            )
+            _fail("SOURCE_BINDING_INVALID", "artifact_provenance", "must be not_provided")
         record = {
             "schema_version": SIDECAR_SCHEMA_VERSION,
             "status": state,
@@ -782,12 +752,8 @@ def validate_preregistration_artifact(
     }
     record = _closed(value, "sidecar", fields, code="SOURCE_BINDING_INVALID")
     if record["schema_version"] != SIDECAR_SCHEMA_VERSION:
-        _fail(
-            "SOURCE_BINDING_INVALID", "sidecar.schema_version", "has the wrong version"
-        )
-    _sha(
-        record["record_digest"], "sidecar.record_digest", code="SOURCE_BINDING_INVALID"
-    )
+        _fail("SOURCE_BINDING_INVALID", "sidecar.schema_version", "has the wrong version")
+    _sha(record["record_digest"], "sidecar.record_digest", code="SOURCE_BINDING_INVALID")
     expected = build_preregistration_artifact(
         status=record["status"],
         artifact_id=record["artifact_id"],
@@ -797,9 +763,7 @@ def validate_preregistration_artifact(
         artifact_provenance=record["artifact_provenance"],
     )
     if _canonical_bytes(record) != _canonical_bytes(expected):
-        _fail(
-            "SOURCE_BINDING_INVALID", "sidecar", "does not match deterministic replay"
-        )
+        _fail("SOURCE_BINDING_INVALID", "sidecar", "does not match deterministic replay")
     return copy.deepcopy(record)
 
 
@@ -816,12 +780,8 @@ def _manifest_artifact(value: Any, path: str) -> dict[str, Any]:
         "source_content_utf8_bytes",
     }
     artifact = _closed(value, path, fields, code="SOURCE_MANIFEST_INVALID")
-    _identifier(
-        artifact["artifact_id"], f"{path}.artifact_id", code="SOURCE_MANIFEST_INVALID"
-    )
-    if not isinstance(artifact["document_kind"], str) or artifact[
-        "document_kind"
-    ] not in {
+    _identifier(artifact["artifact_id"], f"{path}.artifact_id", code="SOURCE_MANIFEST_INVALID")
+    if not isinstance(artifact["document_kind"], str) or artifact["document_kind"] not in {
         "manuscript",
         "preregistration",
     }:
@@ -868,9 +828,7 @@ def _manifest_artifact(value: Any, path: str) -> dict[str, Any]:
             maximum=maximum_size,
         )
         if raw_sha != content_sha or raw_size != content_size:
-            _fail(
-                "SOURCE_MANIFEST_INVALID", path, "UTF-8 V1 raw/content bindings differ"
-            )
+            _fail("SOURCE_MANIFEST_INVALID", path, "UTF-8 V1 raw/content bindings differ")
         allowed_provenance = (
             {"author_provided_manuscript", "synthetic_fixture"}
             if artifact["document_kind"] == "manuscript"
@@ -880,14 +838,10 @@ def _manifest_artifact(value: Any, path: str) -> dict[str, Any]:
             not isinstance(artifact["artifact_provenance"], str)
             or artifact["artifact_provenance"] not in allowed_provenance
         ):
-            _fail(
-                "SOURCE_MANIFEST_INVALID", f"{path}.artifact_provenance", "is invalid"
-            )
+            _fail("SOURCE_MANIFEST_INVALID", f"{path}.artifact_provenance", "is invalid")
     else:
         if artifact["document_kind"] != "preregistration":
-            _fail(
-                "SOURCE_MANIFEST_INVALID", path, "accepted manuscript must be present"
-            )
+            _fail("SOURCE_MANIFEST_INVALID", path, "accepted manuscript must be present")
         if artifact["relative_path"] is not None:
             _fail("SOURCE_MANIFEST_INVALID", f"{path}.relative_path", "must be null")
         for field in (
@@ -948,9 +902,7 @@ def validate_source_manifest(
             "manifest.schema_version",
             "has the wrong version",
         )
-    _identifier(
-        manifest["manifest_id"], "manifest.manifest_id", code="SOURCE_MANIFEST_INVALID"
-    )
+    _identifier(manifest["manifest_id"], "manifest.manifest_id", code="SOURCE_MANIFEST_INVALID")
     accepted_id = _identifier(
         manifest["accepted_draft_artifact_id"],
         "manifest.accepted_draft_artifact_id",
@@ -992,10 +944,7 @@ def validate_source_manifest(
             "does not resolve",
         )
     accepted = by_id[accepted_id]
-    if (
-        accepted["document_kind"] != "manuscript"
-        or accepted["artifact_state"] != "present"
-    ):
+    if accepted["document_kind"] != "manuscript" or accepted["artifact_state"] != "present":
         _fail(
             "SOURCE_MANIFEST_INVALID",
             "manifest",
@@ -1129,9 +1078,7 @@ def _draft_slot(
             f"{path}.logical_role",
             f"must equal {expected_role}",
         )
-    expected_id = (
-        preregistration_id if expected_role == "preregistration" else accepted_id
-    )
+    expected_id = preregistration_id if expected_role == "preregistration" else accepted_id
     artifact_id = _identifier(
         slot["artifact_id"], f"{path}.artifact_id", code="DRAFT_CONTRACT_INVALID"
     )
@@ -1162,9 +1109,7 @@ def _draft_slot(
         _span(span, f"{path}.quote_source_span_utf8", code="DRAFT_CONTRACT_INVALID")
         _timestamp(captured, f"{path}.captured_at", code="DRAFT_CONTRACT_INVALID")
         if scope is not None:
-            _fail(
-                "DRAFT_CONTRACT_INVALID", f"{path}.checked_scope_input", "must be null"
-            )
+            _fail("DRAFT_CONTRACT_INVALID", f"{path}.checked_scope_input", "must be null")
     elif state == "checked_no_match":
         if encoded is not None or span is not None or captured is not None:
             _fail(
@@ -1195,12 +1140,7 @@ def _draft_slot(
                 "is invalid",
             )
     else:
-        if (
-            encoded is not None
-            or span is not None
-            or scope is not None
-            or captured is not None
-        ):
+        if encoded is not None or span is not None or scope is not None or captured is not None:
             _fail(
                 "DRAFT_CONTRACT_INVALID",
                 path,
@@ -1336,9 +1276,7 @@ def _preflight_draft_role_matrix(
                 accepted_id=accepted_id,
                 preregistration_id=sidecar["artifact_id"],
             )
-            for slot_index, (slot, role) in enumerate(
-                zip(raw_slots, roles, strict=True)
-            )
+            for slot_index, (slot, role) in enumerate(zip(raw_slots, roles, strict=True))
         ]
         for slot_index, slot in enumerate(slots):
             artifact = artifacts[slot["artifact_id"]]
@@ -1449,9 +1387,7 @@ def validate_draft(
                 accepted_id=accepted_id,
                 preregistration_id=sidecar["artifact_id"],
             )
-            for slot_index, (slot, role) in enumerate(
-                zip(raw_slots, roles, strict=True)
-            )
+            for slot_index, (slot, role) in enumerate(zip(raw_slots, roles, strict=True))
         ]
         for slot_index, slot in enumerate(slots):
             artifact = artifacts[slot["artifact_id"]]
@@ -1512,18 +1448,12 @@ def validate_draft(
                     )
                 negative = observation["negative_basis"]
                 allowed = (
-                    (
-                        negative == "legitimate_compression"
-                        and pair == "abstract_results"
-                    )
+                    (negative == "legitimate_compression" and pair == "abstract_results")
                     or (
                         negative == "same_rung_rewording"
                         and pair in {"abstract_results", "discussion_results"}
                     )
-                    or (
-                        negative == "disclosed_deviation"
-                        and pair == "manuscript_preregistration"
-                    )
+                    or (negative == "disclosed_deviation" and pair == "manuscript_preregistration")
                     or (
                         negative == "other_no_listed_observation"
                         and pair != "manuscript_preregistration"
@@ -1583,10 +1513,7 @@ def validate_draft(
                 DEVIATION_DOMAINS,
                 code="DRAFT_CONTRACT_INVALID",
             )
-        elif (
-            observation["deviation_id"] is not None
-            or observation["deviation_domain"] is not None
-        ):
+        elif observation["deviation_id"] is not None or observation["deviation_domain"] is not None:
             _fail("DRAFT_CONTRACT_INVALID", path, "deviation fields must be null")
         normalized = copy.deepcopy(observation)
         normalized["evidence_slots"] = slots
@@ -1644,9 +1571,7 @@ def _derive_slot(
             f"{path}.quote_source_span_utf8",
             code="EVIDENCE_REPLAY_INVALID",
         )
-        payload, replayed = _slice_utf8(
-            source_bytes, span, f"{path}.quote_source_span_utf8"
-        )
+        payload, replayed = _slice_utf8(source_bytes, span, f"{path}.quote_source_span_utf8")
         decoded = strict_percent_decode(slot["anchor_value_encoded"])
         _safe_text(
             decoded,
@@ -1705,9 +1630,7 @@ def _derive_slot(
                 f"{path}.checked_scope_input.source_span_utf8",
             )
             if not scope_text.strip():
-                _fail(
-                    "EVIDENCE_REPLAY_INVALID", path, "checked scope must not be blank"
-                )
+                _fail("EVIDENCE_REPLAY_INVALID", path, "checked scope must not be blank")
             checked_scope = {
                 "source_span_utf8": span,
                 "scope_sha256": _sha256(payload),
@@ -1866,14 +1789,12 @@ def finalize_advisory(
         code="SOURCE_BINDING_INVALID",
         path="preregistration record",
     )
-    observations, normalized_manifest, normalized_sidecar, artifacts, sources = (
-        _prepare_inputs(
-            draft,
-            manifest,
-            sidecar,
-            accepted_draft_bytes=accepted_draft_bytes,
-            preregistration_bytes=preregistration_bytes,
-        )
+    observations, normalized_manifest, normalized_sidecar, artifacts, sources = _prepare_inputs(
+        draft,
+        manifest,
+        sidecar,
+        accepted_draft_bytes=accepted_draft_bytes,
+        preregistration_bytes=preregistration_bytes,
     )
     draft_sha = _sha256(draft_bytes)
     manifest_sha = _sha256(manifest_bytes)
@@ -1937,15 +1858,11 @@ def finalize_advisory(
             "preregistration_record_schema_version": SIDECAR_SCHEMA_VERSION,
             "preregistration_record_sha256": sidecar_sha,
             "preregistration_record_digest": normalized_sidecar["record_digest"],
-            "accepted_draft_artifact_id": normalized_manifest[
-                "accepted_draft_artifact_id"
-            ],
+            "accepted_draft_artifact_id": normalized_manifest["accepted_draft_artifact_id"],
             "accepted_draft_sha256": normalized_manifest["accepted_draft_sha256"],
             "source_bundle_sha256": source_bundle_sha,
         },
-        "pair_results": [
-            {"pair_kind": pair, "observations": grouped[pair]} for pair in PAIR_ORDER
-        ],
+        "pair_results": [{"pair_kind": pair, "observations": grouped[pair]} for pair in PAIR_ORDER],
         "boundary": copy.deepcopy(BOUNDARY),
         "report_digest": "",
     }
@@ -2016,9 +1933,7 @@ def _markdown_inert(value: Any) -> str:
     return "".join(result)
 
 
-def paginate(
-    items: Sequence[Any], *, page: int, page_size: int
-) -> tuple[list[Any], int]:
+def paginate(items: Sequence[Any], *, page: int, page_size: int) -> tuple[list[Any], int]:
     if isinstance(page, bool) or not isinstance(page, int) or page < 1:
         _fail("FINAL_ARTIFACT_INVALID", "page", "must be a positive integer")
     if (
@@ -2035,9 +1950,7 @@ def paginate(
     return list(items[start : start + page_size]), total_pages
 
 
-def render_advisory(
-    advisory: Mapping[str, Any], *, page: int = 1, page_size: int = 25
-) -> str:
+def render_advisory(advisory: Mapping[str, Any], *, page: int = 1, page_size: int = 25) -> str:
     observations = [
         observation
         for pair_result in advisory["pair_results"]
@@ -2097,9 +2010,7 @@ def render_advisory(
             result,
             evidence_ref,
         )
-        lines.append(
-            "| " + " | ".join(_markdown_inert(value) for value in values) + " |"
-        )
+        lines.append("| " + " | ".join(_markdown_inert(value) for value in values) + " |")
     lines.append("")
     if page > 1:
         lines.append(f"Previous: `--page {page - 1} --page-size {page_size}`")

@@ -18,14 +18,15 @@ from typing import Any
 
 import pytest
 from jsonschema import Draft202012Validator
-
 from scripts.check_v3_6_8_frontmatter_trust_schema import (
     check_entry,
     check_payload,
 )
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-ENTRY_SCHEMA_PATH = REPO_ROOT / "shared" / "contracts" / "passport" / "literature_corpus_entry.schema.json"
+ENTRY_SCHEMA_PATH = (
+    REPO_ROOT / "shared" / "contracts" / "passport" / "literature_corpus_entry.schema.json"
+)
 
 
 @pytest.fixture(scope="module")
@@ -72,9 +73,9 @@ def test_schema_includes_seven_v3_7_1_trust_fields(schema: dict[str, Any]) -> No
         "description_source",
         "description_last_audit",
     }
-    assert expected.issubset(schema["properties"].keys()), (
-        f"Missing trust fields: {expected - schema['properties'].keys()}"
-    )
+    assert expected.issubset(
+        schema["properties"].keys()
+    ), f"Missing trust fields: {expected - schema['properties'].keys()}"
     # Must NOT add human_read_source / human_read_at to entry schema
     # (per spec §3.1 firm rule #3 + §3.6 firm rule #1).
     assert "human_read_source" not in schema["properties"]
@@ -225,8 +226,7 @@ def test_description_source_accepts_arbitrary_bibliography_revision(validator) -
     for v in ["bibliography_v0", "bibliography_v4", "bibliography_v17", "bibliography_v999"]:
         entry = _minimal_entry(description_source=v)
         assert list(validator.iter_errors(entry)) == [], (
-            f"description_source={v!r} should validate against the "
-            f"`bibliography_v<n>` template"
+            f"description_source={v!r} should validate against the " f"`bibliography_v<n>` template"
         )
 
 
@@ -234,18 +234,18 @@ def test_description_source_still_accepts_canonical_values(validator) -> None:
     """Sanity: the original_pdf / secondary_summary canonical values keep working."""
     for v in ["original_pdf", "secondary_summary", "bibliography_v1"]:
         entry = _minimal_entry(description_source=v)
-        assert list(validator.iter_errors(entry)) == [], (
-            f"description_source={v!r} (canonical) must validate"
-        )
+        assert (
+            list(validator.iter_errors(entry)) == []
+        ), f"description_source={v!r} (canonical) must validate"
 
 
 def test_description_source_rejects_unrelated_strings(validator) -> None:
     """The pattern is anchored — typos and unrelated strings still fail."""
     for v in ["bib_v1", "bibliography_vX", "bibliography", "other"]:
         entry = _minimal_entry(description_source=v)
-        assert list(validator.iter_errors(entry)), (
-            f"description_source={v!r} should be rejected by the pattern"
-        )
+        assert list(
+            validator.iter_errors(entry)
+        ), f"description_source={v!r} should be rejected by the pattern"
 
 
 def test_rule2_acquired_true_with_real_audit_round_passes(validator) -> None:
@@ -276,8 +276,7 @@ def test_rule3_literal_human_read_source_rejected_by_lint() -> None:
     entry = _minimal_entry(human_read_source=True)
     errors = check_entry(entry, "smith2024")
     assert any(
-        "Rule #3" in e and "human_read_source" in e and "§3.6 peer file" in e
-        for e in errors
+        "Rule #3" in e and "human_read_source" in e and "§3.6 peer file" in e for e in errors
     )
 
 
@@ -330,9 +329,9 @@ def test_check_payload_clean_passport_returns_empty() -> None:
 
 def test_v3_10_schema_includes_three_venue_fields(schema: dict[str, Any]) -> None:
     expected = {"venue_type", "venue_type_provenance", "venue_type_source"}
-    assert expected.issubset(schema["properties"].keys()), (
-        f"Missing v3.10 venue fields: {expected - schema['properties'].keys()}"
-    )
+    assert expected.issubset(
+        schema["properties"].keys()
+    ), f"Missing v3.10 venue fields: {expected - schema['properties'].keys()}"
 
 
 def test_v3_10_venue_type_enum_includes_unknown_member(schema: dict[str, Any]) -> None:
@@ -341,8 +340,16 @@ def test_v3_10_venue_type_enum_includes_unknown_member(schema: dict[str, Any]) -
     assert "unknown" in enum
     # Full enum per spec §3 PR-B item 2.
     assert set(enum) == {
-        "journal-article", "conference-paper", "book", "chapter",
-        "dissertation", "preprint", "report", "dataset", "other", "unknown",
+        "journal-article",
+        "conference-paper",
+        "book",
+        "chapter",
+        "dissertation",
+        "preprint",
+        "report",
+        "dataset",
+        "other",
+        "unknown",
     }
 
 
@@ -352,30 +359,27 @@ def test_v3_10_provenance_rejects_inferred_values(schema: dict[str, Any]) -> Non
     assert "openalex_inferred" not in enum
     assert "crossref_inferred" not in enum
     assert set(enum) == {
-        "adapter_declared", "user_declared", "trusted_source_declared", "unknown",
+        "adapter_declared",
+        "user_declared",
+        "trusted_source_declared",
+        "unknown",
     }
 
 
 def test_v3_10_venue_known_type_with_declared_provenance_passes(validator) -> None:
-    entry = _minimal_entry(
-        venue_type="journal-article", venue_type_provenance="adapter_declared"
-    )
+    entry = _minimal_entry(venue_type="journal-article", venue_type_provenance="adapter_declared")
     assert list(validator.iter_errors(entry)) == []
 
 
 def test_v3_10_venue_provenance_inferred_value_fails(validator) -> None:
     """An _inferred provenance value is not in the closed enum → FAILs."""
-    entry = _minimal_entry(
-        venue_type="journal-article", venue_type_provenance="openalex_inferred"
-    )
+    entry = _minimal_entry(venue_type="journal-article", venue_type_provenance="openalex_inferred")
     assert any(validator.iter_errors(entry))
 
 
 def test_v3_10_venue_unknown_type_with_declared_provenance_fails(validator) -> None:
     """One-way rule: venue_type == unknown ⟹ provenance == unknown."""
-    entry = _minimal_entry(
-        venue_type="unknown", venue_type_provenance="adapter_declared"
-    )
+    entry = _minimal_entry(venue_type="unknown", venue_type_provenance="adapter_declared")
     assert any(validator.iter_errors(entry))
 
 
@@ -386,9 +390,7 @@ def test_v3_10_venue_unknown_type_with_unknown_provenance_passes(validator) -> N
 
 def test_v3_10_venue_known_type_with_unknown_provenance_passes(validator) -> None:
     """R2-P0 data-loss fix: a KNOWN type MAY carry `unknown` provenance."""
-    entry = _minimal_entry(
-        venue_type="journal-article", venue_type_provenance="unknown"
-    )
+    entry = _minimal_entry(venue_type="journal-article", venue_type_provenance="unknown")
     assert list(validator.iter_errors(entry)) == []
 
 
@@ -443,11 +445,15 @@ def test_v3_10_venue_mutation_one_way_rule_is_load_bearing(schema: dict[str, Any
     (venue_type=unknown + provenance=adapter_declared) must then PASS, proving the
     branch is load-bearing rather than redundant (feedback_schema_mutation_test_for_constraints)."""
     import copy
+
     mutated = copy.deepcopy(schema)
     target = "venue_type == unknown ⟹ venue_type_provenance == unknown"
     found = False
     for branch in mutated["allOf"]:
-        if isinstance(branch.get("description"), str) and "venue_type == unknown" in branch["description"]:
+        if (
+            isinstance(branch.get("description"), str)
+            and "venue_type == unknown" in branch["description"]
+        ):
             branch["then"] = {}
             found = True
             break
@@ -462,14 +468,20 @@ def test_v3_10_venue_mutation_one_way_rule_is_load_bearing(schema: dict[str, Any
     assert any(Draft202012Validator(schema).iter_errors(bad))
 
 
-def test_v3_10_venue_mutation_trusted_source_required_is_load_bearing(schema: dict[str, Any]) -> None:
+def test_v3_10_venue_mutation_trusted_source_required_is_load_bearing(
+    schema: dict[str, Any]
+) -> None:
     """Mutation test: neuter the trusted_source_declared-⟹-venue_type_source-required
     branch; the source-absent entry must then PASS, proving the branch enforces it."""
     import copy
+
     mutated = copy.deepcopy(schema)
     found = False
     for branch in mutated["allOf"]:
-        if isinstance(branch.get("description"), str) and "trusted_source_declared" in branch["description"]:
+        if (
+            isinstance(branch.get("description"), str)
+            and "trusted_source_declared" in branch["description"]
+        ):
             branch["then"] = {}
             found = True
             break
@@ -487,36 +499,27 @@ def test_v3_10_venue_mutation_trusted_source_required_is_load_bearing(schema: di
 
 def test_v3_11_contamination_signals_accepts_arxiv_unmatched(validator) -> None:
     """arxiv_unmatched is an optional boolean alongside the v3.9.0 triplet."""
-    entry = _minimal_entry(
-        contamination_signals={"arxiv_unmatched": True}
-    )
-    assert list(validator.iter_errors(entry)) == [], (
-        "a non-manual entry carrying arxiv_unmatched must validate"
-    )
+    entry = _minimal_entry(contamination_signals={"arxiv_unmatched": True})
+    assert (
+        list(validator.iter_errors(entry)) == []
+    ), "a non-manual entry carrying arxiv_unmatched must validate"
 
 
 def test_v3_11_contamination_signals_arxiv_unmatched_rejects_non_bool(
     validator,
 ) -> None:
     """arxiv_unmatched is typed boolean; a string must fail."""
-    entry = _minimal_entry(
-        contamination_signals={"arxiv_unmatched": "yes"}
-    )
-    assert any(validator.iter_errors(entry)), (
-        "arxiv_unmatched must reject a non-boolean value"
-    )
+    entry = _minimal_entry(contamination_signals={"arxiv_unmatched": "yes"})
+    assert any(validator.iter_errors(entry)), "arxiv_unmatched must reject a non-boolean value"
 
 
 def test_v3_11_contamination_signals_keeps_additional_properties_false(
     validator,
 ) -> None:
     """The contamination_signals object stays closed (no unknown signals)."""
-    entry = _minimal_entry(
-        contamination_signals={"made_up_signal": True}
-    )
+    entry = _minimal_entry(contamination_signals={"made_up_signal": True})
     assert any(validator.iter_errors(entry)), (
-        "contamination_signals must reject unknown fields "
-        "(additionalProperties: false)"
+        "contamination_signals must reject unknown fields " "(additionalProperties: false)"
     )
 
 
@@ -527,9 +530,9 @@ def test_v3_11_manual_entry_with_arxiv_unmatched_fails(validator) -> None:
         obtained_via="manual",
         contamination_signals={"arxiv_unmatched": True},
     )
-    assert any(validator.iter_errors(entry)), (
-        "a manual entry carrying arxiv_unmatched must FAIL the not-rule"
-    )
+    assert any(
+        validator.iter_errors(entry)
+    ), "a manual entry carrying arxiv_unmatched must FAIL the not-rule"
 
 
 def test_v3_11_manual_entry_not_rule_covers_v3_9_0_triplet(validator) -> None:
@@ -544,9 +547,9 @@ def test_v3_11_manual_entry_not_rule_covers_v3_9_0_triplet(validator) -> None:
             obtained_via="manual",
             contamination_signals={field: True},
         )
-        assert any(validator.iter_errors(entry)), (
-            f"a manual entry carrying {field} must FAIL the not-rule"
-        )
+        assert any(
+            validator.iter_errors(entry)
+        ), f"a manual entry carrying {field} must FAIL the not-rule"
 
 
 def test_v3_11_manual_entry_keeps_preprint_signal_allowed(validator) -> None:
@@ -556,9 +559,9 @@ def test_v3_11_manual_entry_keeps_preprint_signal_allowed(validator) -> None:
         obtained_via="manual",
         contamination_signals={"preprint_post_llm_inflection": True},
     )
-    assert list(validator.iter_errors(entry)) == [], (
-        "a manual entry carrying only the preprint heuristic must validate"
-    )
+    assert (
+        list(validator.iter_errors(entry)) == []
+    ), "a manual entry carrying only the preprint heuristic must validate"
 
 
 # ---------- Existing fixtures stay green ----------
@@ -568,6 +571,7 @@ def test_existing_v3_6_4_fixtures_still_pass() -> None:
     """v3.7.1 schema must be backward-compatible with v3.6.4 adapter fixtures
     (they don't carry trust fields; absence is allowed)."""
     import yaml
+
     examples_root = REPO_ROOT / "scripts" / "adapters" / "examples"
     fixtures = list(examples_root.rglob("expected_passport.yaml"))
     assert fixtures, "fixture set unexpectedly empty"

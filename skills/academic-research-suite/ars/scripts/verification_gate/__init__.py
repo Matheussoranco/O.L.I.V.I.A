@@ -23,10 +23,12 @@ Spec: docs/design/2026-05-21-v3.10-182-promote-citation-gate-spec.md §2 Delta 5
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime, timezone
-from typing import Any, Mapping
+from typing import Any
 
 try:
+    from arxiv_client import ArxivUnavailable
     from citation_verification_summary import (
         STATUS_MATCHED,
         STATUS_SKIPPED,
@@ -34,9 +36,6 @@ try:
         STATUS_UNREACHABLE,
         reduce_lookup_verified,
     )
-    from crossref_client import CrossrefUnavailable
-    from openalex_client import OpenAlexUnavailable
-    from arxiv_client import ArxivUnavailable
     from contamination_signals import (
         SemanticScholarUnavailable,
         _resolve_arxiv_id_then_title,
@@ -46,8 +45,11 @@ try:
         resolve_doi_then_title_detailed,
         resolve_s2_detailed,
     )
+    from crossref_client import CrossrefUnavailable
+    from openalex_client import OpenAlexUnavailable
     from verification_cache import stale_advisory_days
 except ImportError:  # pragma: no cover - dual-path import
+    from scripts.arxiv_client import ArxivUnavailable
     from scripts.citation_verification_summary import (
         STATUS_MATCHED,
         STATUS_SKIPPED,
@@ -55,9 +57,6 @@ except ImportError:  # pragma: no cover - dual-path import
         STATUS_UNREACHABLE,
         reduce_lookup_verified,
     )
-    from scripts.crossref_client import CrossrefUnavailable
-    from scripts.openalex_client import OpenAlexUnavailable
-    from scripts.arxiv_client import ArxivUnavailable
     from scripts.contamination_signals import (
         SemanticScholarUnavailable,
         _resolve_arxiv_id_then_title,
@@ -67,6 +66,8 @@ except ImportError:  # pragma: no cover - dual-path import
         resolve_doi_then_title_detailed,
         resolve_s2_detailed,
     )
+    from scripts.crossref_client import CrossrefUnavailable
+    from scripts.openalex_client import OpenAlexUnavailable
     from scripts.verification_cache import stale_advisory_days
 
 _ANCHOR_PRESENT_KINDS = frozenset({"quote", "page", "section", "paragraph"})
@@ -87,6 +88,7 @@ def _default_cache():
 
 def _resolve_cache_args(cache, revalidate_stale):
     import os
+
     if cache is _UNSET:
         cache = _default_cache()
     if revalidate_stale is _UNSET:
@@ -103,10 +105,10 @@ def _is_valid_ref_slug(ref_slug: Any) -> bool:
     return isinstance(ref_slug, str) and bool(ref_slug)
 
 
-def _outcome(status: str, queried_by: str | None,
-             response_summary: str | None = None) -> dict[str, Any]:
-    return {"status": status, "queried_by": queried_by,
-            "response_summary": response_summary}
+def _outcome(
+    status: str, queried_by: str | None, response_summary: str | None = None
+) -> dict[str, Any]:
+    return {"status": status, "queried_by": queried_by, "response_summary": response_summary}
 
 
 def _ran_outcome(unmatched: bool, queried_by: str | None) -> dict[str, Any]:
@@ -115,7 +117,12 @@ def _ran_outcome(unmatched: bool, queried_by: str | None) -> dict[str, Any]:
 
 
 def _run_doi_then_title(
-    entry, client, unavailable_exc, *, resolver_name=None, cache=None,
+    entry,
+    client,
+    unavailable_exc,
+    *,
+    resolver_name=None,
+    cache=None,
     bypass_stale=False,
 ) -> tuple[dict[str, Any], bool]:
     """Run a doi-then-title resolver, mapping execution to a status outcome.
@@ -126,10 +133,9 @@ def _run_doi_then_title(
     rows); cache=None is byte-equivalent to the historical live path."""
     try:
         if cache is not None:
-            unmatched, _mb, queried_by, from_cache = (
-                resolve_doi_then_title_detailed(
-                    entry, client, resolver_name=resolver_name, cache=cache,
-                    bypass_stale=bypass_stale))
+            unmatched, _mb, queried_by, from_cache = resolve_doi_then_title_detailed(
+                entry, client, resolver_name=resolver_name, cache=cache, bypass_stale=bypass_stale
+            )
         else:
             unmatched, _mb, queried_by = _resolve_doi_then_title(entry, client)
             from_cache = False
@@ -139,7 +145,11 @@ def _run_doi_then_title(
 
 
 def _run_semantic_scholar(
-    entry, client, *, cache=None, bypass_stale=False,
+    entry,
+    client,
+    *,
+    cache=None,
+    bypass_stale=False,
 ) -> tuple[dict[str, Any], bool]:
     """S2's lookup(entry) is a single entry-keyed call (DOI-first then title
     internally). queried_by follows the has-an-id rule (C-V6(a)). The manual
@@ -148,7 +158,8 @@ def _run_semantic_scholar(
     try:
         if cache is not None:
             unmatched, _mb, queried_by, from_cache = resolve_s2_detailed(
-                entry, client, cache=cache, bypass_stale=bypass_stale)
+                entry, client, cache=cache, bypass_stale=bypass_stale
+            )
             return _ran_outcome(unmatched, queried_by), from_cache
         matched = bool(client.lookup(entry).get("matched", False))
     except SemanticScholarUnavailable:
@@ -157,7 +168,11 @@ def _run_semantic_scholar(
 
 
 def _run_arxiv(
-    entry, client, *, cache=None, bypass_stale=False,
+    entry,
+    client,
+    *,
+    cache=None,
+    bypass_stale=False,
 ) -> tuple[dict[str, Any], bool]:
     """arXiv resolver is applicable only when the citation has an arXiv ID;
     otherwise it is skipped (not unmatched) per Delta 1 / spec line 119. The
@@ -168,10 +183,10 @@ def _run_arxiv(
     try:
         if cache is not None:
             unmatched, _mb, queried_by, from_cache = resolve_arxiv_detailed(
-                entry, client, cache=cache, bypass_stale=bypass_stale)
+                entry, client, cache=cache, bypass_stale=bypass_stale
+            )
         else:
-            unmatched, _mb, queried_by = _resolve_arxiv_id_then_title(
-                entry, client)
+            unmatched, _mb, queried_by = _resolve_arxiv_id_then_title(entry, client)
             from_cache = False
     except ArxivUnavailable:
         return _outcome(STATUS_UNREACHABLE, None), False
@@ -256,19 +271,27 @@ def verify_citation(
     else:
         ran = {
             "crossref": _run_doi_then_title(
-                entry, clients["crossref"], CrossrefUnavailable,
-                resolver_name="crossref", cache=cache,
-                bypass_stale=revalidate_stale),
+                entry,
+                clients["crossref"],
+                CrossrefUnavailable,
+                resolver_name="crossref",
+                cache=cache,
+                bypass_stale=revalidate_stale,
+            ),
             "openalex": _run_doi_then_title(
-                entry, clients["openalex"], OpenAlexUnavailable,
-                resolver_name="openalex", cache=cache,
-                bypass_stale=revalidate_stale),
+                entry,
+                clients["openalex"],
+                OpenAlexUnavailable,
+                resolver_name="openalex",
+                cache=cache,
+                bypass_stale=revalidate_stale,
+            ),
             "semantic_scholar": _run_semantic_scholar(
-                entry, clients["semantic_scholar"], cache=cache,
-                bypass_stale=revalidate_stale),
+                entry, clients["semantic_scholar"], cache=cache, bypass_stale=revalidate_stale
+            ),
             "arxiv": _run_arxiv(
-                entry, clients["arxiv"], cache=cache,
-                bypass_stale=revalidate_stale),
+                entry, clients["arxiv"], cache=cache, bypass_stale=revalidate_stale
+            ),
         }
         resolver_outcomes = {name: oc for name, (oc, _fc) in ran.items()}
         any_from_cache = any(fc for _oc, fc in ran.values())
@@ -286,8 +309,7 @@ def verify_citation(
             rounded = round(age, 1)
             threshold = stale_advisory_days()
             summary["cache_age_days"] = rounded
-            summary["cache_stale_advisory"] = bool(
-                threshold and rounded > threshold)
+            summary["cache_stale_advisory"] = bool(threshold and rounded > threshold)
     return summary
 
 
@@ -338,8 +360,14 @@ def verify_passport(
                 "cover every corpus entry with a non-empty string "
                 "(corpus entries do not carry ref_slug; #332)"
             )
-        outcomes.append(verify_citation(
-            entry, clients, ref_slug=ref_slug,
-            anchor=anchors.get(ref_slug), cache=cache,
-            revalidate_stale=revalidate_stale))
+        outcomes.append(
+            verify_citation(
+                entry,
+                clients,
+                ref_slug=ref_slug,
+                anchor=anchors.get(ref_slug),
+                cache=cache,
+                revalidate_stale=revalidate_stale,
+            )
+        )
     return outcomes

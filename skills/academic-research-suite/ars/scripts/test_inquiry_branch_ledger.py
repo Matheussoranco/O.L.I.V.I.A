@@ -13,7 +13,6 @@ from pathlib import Path
 
 import pytest
 from jsonschema import Draft202012Validator, FormatChecker
-
 from scripts.inquiry_branch_ledger import (
     ENV_FLAG,
     ContractError,
@@ -48,15 +47,9 @@ except ImportError:  # pragma: no cover - POSIX-only alpha coverage
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 LEDGER_SCHEMA = (
-    REPO_ROOT
-    / "shared"
-    / "contracts"
-    / "research_workflow"
-    / "inquiry_branch_ledger.schema.json"
+    REPO_ROOT / "shared" / "contracts" / "research_workflow" / "inquiry_branch_ledger.schema.json"
 )
-POINTER_SCHEMA = (
-    REPO_ROOT / "shared" / "contracts" / "passport" / "inquiry_ledger_ref.schema.json"
-)
+POINTER_SCHEMA = REPO_ROOT / "shared" / "contracts" / "passport" / "inquiry_ledger_ref.schema.json"
 RUNTIME = REPO_ROOT / "scripts" / "inquiry_branch_ledger.py"
 
 
@@ -192,9 +185,7 @@ def _append_raw_event(ledger: dict, event_input: dict) -> dict:
             "event_id": len(events) + 1,
             **event_input,
             "prev_event_sha256": (
-                "0" * 64
-                if not events
-                else hashlib.sha256(canonical_bytes(events[-1])).hexdigest()
+                "0" * 64 if not events else hashlib.sha256(canonical_bytes(events[-1])).hexdigest()
             ),
         }
     )
@@ -205,9 +196,7 @@ def _leave_update_journal(tmp_path: Path) -> tuple[Path, Path, Path, dict, dict]
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     ledger_path = tmp_path / "passport.inquiry-branch-ledger.json"
-    commit_ledger_transaction(
-        passport, ledger_path, tmp_path, ledger, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, ledger_path, tmp_path, ledger, [profile], "project-alpha")
     updated = _adopt_facet(ledger, [profile])
 
     def crash(phase: str) -> None:
@@ -240,9 +229,7 @@ def test_schemas_compile_and_accept_runtime_artifacts() -> None:
     pointer_schema = json.loads(POINTER_SCHEMA.read_text(encoding="utf-8"))
     Draft202012Validator.check_schema(ledger_schema)
     Draft202012Validator.check_schema(pointer_schema)
-    ledger_validator = Draft202012Validator(
-        ledger_schema, format_checker=FormatChecker()
-    )
+    ledger_validator = Draft202012Validator(ledger_schema, format_checker=FormatChecker())
     pointer_validator = Draft202012Validator(pointer_schema)
     assert list(ledger_validator.iter_errors(ledger)) == []
     pointer = {
@@ -382,11 +369,9 @@ def test_schema_and_runtime_share_frozen_free_text_and_optional_reopen_shape() -
         [profile],
     )
     schema = json.loads(LEDGER_SCHEMA.read_text(encoding="utf-8"))
-    assert list(
-        Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(
-            ledger
-        )
-    ) == []
+    assert (
+        list(Draft202012Validator(schema, format_checker=FormatChecker()).iter_errors(ledger)) == []
+    )
     replay_ledger(ledger, [profile], require_materialized=True)
 
 
@@ -593,9 +578,7 @@ def test_full_lawful_transition_history_replays_deterministically() -> None:
         "table-v1",
     ]
     assert all(row["stale"] for row in first["artifacts"])
-    assert first["reopen_condition_signals"][0]["condition_statement"].startswith(
-        "Reopen if"
-    )
+    assert first["reopen_condition_signals"][0]["condition_statement"].startswith("Reopen if")
 
 
 def test_ai_facet_requires_origin_bound_substantive_adoption() -> None:
@@ -946,9 +929,7 @@ def test_two_stale_causes_clear_independently() -> None:
         )
         ledger = append_event(
             ledger,
-            _event(
-                "branch_reopened", branch_id, {"reason": "evidence"}, minute=minute + 1
-            ),
+            _event("branch_reopened", branch_id, {"reason": "evidence"}, minute=minute + 1),
             [profile],
         )
     projection = replay_ledger(ledger, [profile])
@@ -1127,15 +1108,11 @@ def test_default_flag_and_simple_path_are_silent() -> None:
         [profile],
     )
     projection = replay_ledger(one, [profile])
-    assert checkpoint_summary(
-        projection, moment="design_freeze", env={ENV_FLAG: "1"}
-    ) is None
+    assert checkpoint_summary(projection, moment="design_freeze", env={ENV_FLAG: "1"}) is None
     two, profile = _two_branch_ledger(profile)
     projection = replay_ledger(two, [profile])
     assert checkpoint_summary(projection, moment="stage_2_5", env={}) is None
-    rendered = checkpoint_summary(
-        projection, moment="stage_4_5", env={ENV_FLAG: "1"}
-    )
+    rendered = checkpoint_summary(projection, moment="stage_4_5", env={ENV_FLAG: "1"})
     assert rendered is not None
     assert "main [active; author_originated]" in rendered
     assert "parked=1" in rendered
@@ -1173,9 +1150,7 @@ def test_signal_summary_names_parked_branch_for_author_judgment() -> None:
         signal_event_id=signal_id,
         env={ENV_FLAG: "1"},
     )
-    assert (
-        "main [parked; author_originated] — AUTHOR JUDGMENT REQUIRED" in rendered
-    )
+    assert "main [parked; author_originated] — AUTHOR JUDGMENT REQUIRED" in rendered
     assert "result-row-7" in rendered
     with pytest.raises(ContractError, match="required"):
         checkpoint_summary(
@@ -1207,9 +1182,7 @@ def test_signal_summary_rejects_retired_condition_or_nonreopenable_branch() -> N
         ),
         [profile],
     )
-    signal_id = replay_ledger(signaled, [profile])["reopen_condition_signals"][0][
-        "event_id"
-    ]
+    signal_id = replay_ledger(signaled, [profile])["reopen_condition_signals"][0]["event_id"]
 
     retired = append_event(
         signaled,
@@ -1276,9 +1249,7 @@ def test_signal_summary_rejects_active_or_unadopted_ai_branch() -> None:
             "facet",
             {
                 "field": "reopen_conditions",
-                "value": [
-                    {"condition_id": "facet-signal", "statement": "Facet condition"}
-                ],
+                "value": [{"condition_id": "facet-signal", "statement": "Facet condition"}],
             },
             minute=2,
         ),
@@ -1312,17 +1283,13 @@ def test_signal_summary_rejects_active_or_unadopted_ai_branch() -> None:
 def test_absent_and_orphan_pointer_states(tmp_path: Path) -> None:
     profile = _profile()
     passport = _passport(tmp_path / "passport.yaml")
-    absent = load_bound_ledger(
-        passport, tmp_path, [profile], expected_project_ref="project-alpha"
-    )
+    absent = load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
     assert absent["state"] == "absent"
     assert (tmp_path / ".passport.yaml.lock").is_file()
     assert not (tmp_path / ".passport.yaml.inquiry-ledger.lock").exists()
     default_relative = default_ledger_relative_path(passport, tmp_path)
     (tmp_path / default_relative).write_text("not even json", encoding="utf-8")
-    orphan = load_bound_ledger(
-        passport, tmp_path, [profile], expected_project_ref="project-alpha"
-    )
+    orphan = load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
     assert orphan["state"] == "orphan_ignored"
     assert "passport is authoritative" in orphan["notice"]
 
@@ -1350,9 +1317,7 @@ def test_shared_passport_sidecar_excludes_another_current_writer(
 
 
 @pytest.mark.parametrize("lock_timeout", [float("nan"), float("inf"), float("-inf")])
-def test_authoritative_lock_timeout_must_be_finite(
-    tmp_path: Path, lock_timeout: float
-) -> None:
+def test_authoritative_lock_timeout_must_be_finite(tmp_path: Path, lock_timeout: float) -> None:
     profile = _profile()
     passport = _passport(tmp_path / "passport.yaml")
     with pytest.raises(ContractError, match="finite number between 0 and 60"):
@@ -1387,9 +1352,7 @@ def test_authoritative_calls_require_project_identity_and_reject_null_pointer(
         encoding="utf-8",
     )
     with pytest.raises(LedgerBindingError, match="present but null"):
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
     with pytest.raises(LedgerBindingError, match="present but null"):
         commit_ledger_transaction(
             passport,
@@ -1516,9 +1479,7 @@ def test_commit_and_bound_load_preserve_passport_comment_and_mode(tmp_path: Path
     assert pointer["content_sha256"] == hashlib.sha256(canonical_bytes(ledger)).hexdigest()
     assert "# keep this comment" in passport.read_text(encoding="utf-8")
     assert stat.S_IMODE(passport.stat().st_mode) == 0o640
-    loaded = load_bound_ledger(
-        passport, tmp_path, [profile], expected_project_ref="project-alpha"
-    )
+    loaded = load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
     assert loaded["state"] == "bound"
     assert loaded["ledger"] == ledger
     assert loaded["projection"]["introduced_branch_count"] == 2
@@ -1530,61 +1491,43 @@ def test_binding_breaks_on_missing_mismatch_noncanonical_and_project_drift(
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     ledger_path = tmp_path / "passport.inquiry-branch-ledger.json"
-    commit_ledger_transaction(
-        passport, ledger_path, tmp_path, ledger, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, ledger_path, tmp_path, ledger, [profile], "project-alpha")
     raw = ledger_path.read_bytes()
     ledger_path.unlink()
     with pytest.raises(LedgerBindingError, match="LEDGER-BINDING-BROKEN"):
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
     ledger_path.write_bytes(raw + b"\n")
     with pytest.raises(LedgerBindingError, match="exact canonical"):
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
     ledger_path.write_bytes(raw)
     with pytest.raises(LedgerBindingError, match="expected project_ref"):
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="another-project"
-        )
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="another-project")
     ledger_path.write_bytes(raw[:-1] + (b"0" if raw[-1:] != b"0" else b"1"))
     with pytest.raises(LedgerBindingError):
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
 
 
 def test_passport_digest_detects_valid_prefix_truncation(tmp_path: Path) -> None:
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     relative = "passport.inquiry-branch-ledger.json"
-    commit_ledger_transaction(
-        passport, relative, tmp_path, ledger, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, relative, tmp_path, ledger, [profile], "project-alpha")
     truncated = copy.deepcopy(ledger)
     truncated["events"] = truncated["events"][:1]
     (tmp_path / relative).write_bytes(canonical_bytes(truncated))
     with pytest.raises(LedgerBindingError, match="pointer digest"):
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
 
 
 @pytest.mark.parametrize(
     "crash_phase",
     ["journal_durable", "ledger_published", "passport_published"],
 )
-def test_transaction_recovers_every_post_journal_crash(
-    tmp_path: Path, crash_phase: str
-) -> None:
+def test_transaction_recovers_every_post_journal_crash(tmp_path: Path, crash_phase: str) -> None:
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     relative = "passport.inquiry-branch-ledger.json"
-    commit_ledger_transaction(
-        passport, relative, tmp_path, ledger, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, relative, tmp_path, ledger, [profile], "project-alpha")
     updated = _adopt_facet(ledger, [profile])
 
     def crash(phase: str) -> None:
@@ -1602,9 +1545,7 @@ def test_transaction_recovers_every_post_journal_crash(
             crash_hook=crash,
         )
     assert recover_ledger_transaction(passport, tmp_path) is True
-    loaded = load_bound_ledger(
-        passport, tmp_path, [profile], expected_project_ref="project-alpha"
-    )
+    loaded = load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
     assert loaded["ledger"] == updated
     assert loaded["projection"]["event_count"] == 3
     assert recover_ledger_transaction(passport, tmp_path) is False
@@ -1613,30 +1554,20 @@ def test_transaction_recovers_every_post_journal_crash(
 def test_journal_binds_complete_old_and_new_passport_generations(
     tmp_path: Path,
 ) -> None:
-    passport, ledger_path, journal_path, updated, profile = _leave_update_journal(
-        tmp_path
-    )
+    passport, ledger_path, journal_path, updated, profile = _leave_update_journal(tmp_path)
     journal = json.loads(journal_path.read_text(encoding="utf-8"))
     passport_temp = tmp_path / journal["passport_temp_path"]
     ledger_temp = tmp_path / journal["ledger_temp_path"]
 
-    assert journal["old_passport_sha256"] == hashlib.sha256(
-        passport.read_bytes()
-    ).hexdigest()
-    assert journal["new_passport_sha256"] == hashlib.sha256(
-        passport_temp.read_bytes()
-    ).hexdigest()
+    assert journal["old_passport_sha256"] == hashlib.sha256(passport.read_bytes()).hexdigest()
+    assert journal["new_passport_sha256"] == hashlib.sha256(passport_temp.read_bytes()).hexdigest()
     assert journal["old_ledger_sha256"] == journal["old_pointer"]["content_sha256"]
     assert journal["new_ledger_sha256"] == journal["new_pointer"]["content_sha256"]
     assert journal["new_pointer"]["ledger_path"] == journal["ledger_path"]
-    assert hashlib.sha256(ledger_temp.read_bytes()).hexdigest() == journal[
-        "new_ledger_sha256"
-    ]
+    assert hashlib.sha256(ledger_temp.read_bytes()).hexdigest() == journal["new_ledger_sha256"]
 
     assert recover_ledger_transaction(passport, tmp_path) is True
-    loaded = load_bound_ledger(
-        passport, tmp_path, [profile], expected_project_ref="project-alpha"
-    )
+    loaded = load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
     assert Path(loaded["ledger_path"]) == ledger_path
     assert loaded["ledger"] == updated
 
@@ -1677,24 +1608,12 @@ def test_recovery_rejects_mutated_journal_relations_before_publication(
     else:
         reserved = {
             "reserved_lock_target": ".passport.yaml.lock",
-            "reserved_journal_target": (
-                ".passport.yaml.inquiry-ledger.transaction.json"
-            ),
-            "reserved_journal_temp_target": (
-                ".passport.yaml.inquiry-ledger.transaction.tmp"
-            ),
-            "reserved_passport_temp_target": (
-                ".passport.yaml.inquiry-ledger.passport.tmp"
-            ),
-            "reserved_ledger_temp_target": (
-                ".passport.yaml.inquiry-ledger.ledger.tmp"
-            ),
-            "reserved_register_temp_target": (
-                ".passport.yaml.inquiry-ledger.register.tmp"
-            ),
-            "casefold_reserved_ledger_temp_target": (
-                ".PASSPORT.YAML.INQUIRY-LEDGER.LEDGER.TMP"
-            ),
+            "reserved_journal_target": (".passport.yaml.inquiry-ledger.transaction.json"),
+            "reserved_journal_temp_target": (".passport.yaml.inquiry-ledger.transaction.tmp"),
+            "reserved_passport_temp_target": (".passport.yaml.inquiry-ledger.passport.tmp"),
+            "reserved_ledger_temp_target": (".passport.yaml.inquiry-ledger.ledger.tmp"),
+            "reserved_register_temp_target": (".passport.yaml.inquiry-ledger.register.tmp"),
+            "casefold_reserved_ledger_temp_target": (".PASSPORT.YAML.INQUIRY-LEDGER.LEDGER.TMP"),
             "casefold_reserved_register_temp_target": (
                 ".PASSPORT.YAML.INQUIRY-LEDGER.REGISTER.TMP"
             ),
@@ -1751,9 +1670,7 @@ def test_live_passport_full_byte_cas_preserves_concurrent_edit(tmp_path: Path) -
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     ledger_path = tmp_path / "passport.inquiry-branch-ledger.json"
-    commit_ledger_transaction(
-        passport, ledger_path, tmp_path, ledger, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, ledger_path, tmp_path, ledger, [profile], "project-alpha")
     old_ledger = ledger_path.read_bytes()
     updated = _adopt_facet(ledger, [profile])
 
@@ -1784,9 +1701,7 @@ def test_live_ledger_full_byte_cas_preserves_concurrent_edit(tmp_path: Path) -> 
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     ledger_path = tmp_path / "passport.inquiry-branch-ledger.json"
-    commit_ledger_transaction(
-        passport, ledger_path, tmp_path, ledger, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, ledger_path, tmp_path, ledger, [profile], "project-alpha")
     old_passport = passport.read_bytes()
     updated = _adopt_facet(ledger, [profile])
 
@@ -1814,9 +1729,7 @@ def test_prejournal_crash_keeps_old_pair_and_retry_cleans_temps(tmp_path: Path) 
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     relative = "passport.inquiry-branch-ledger.json"
-    commit_ledger_transaction(
-        passport, relative, tmp_path, ledger, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, relative, tmp_path, ledger, [profile], "project-alpha")
     updated = _adopt_facet(ledger, [profile])
 
     def crash(phase: str) -> None:
@@ -1835,18 +1748,16 @@ def test_prejournal_crash_keeps_old_pair_and_retry_cleans_temps(tmp_path: Path) 
         )
     assert recover_ledger_transaction(passport, tmp_path) is False
     assert (
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )["ledger"]
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")[
+            "ledger"
+        ]
         == ledger
     )
-    commit_ledger_transaction(
-        passport, relative, tmp_path, updated, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, relative, tmp_path, updated, [profile], "project-alpha")
     assert (
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )["ledger"]
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")[
+            "ledger"
+        ]
         == updated
     )
 
@@ -1872,9 +1783,9 @@ def test_crash_after_journal_clear_is_already_committed(tmp_path: Path) -> None:
         )
     assert recover_ledger_transaction(passport, tmp_path) is False
     assert (
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )["ledger"]
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")[
+            "ledger"
+        ]
         == ledger
     )
 
@@ -1885,9 +1796,7 @@ def test_corrupt_recovery_journal_fails_visible(tmp_path: Path) -> None:
     journal = tmp_path / ".passport.yaml.inquiry-ledger.transaction.json"
     journal.write_text("{broken", encoding="utf-8")
     with pytest.raises(TransactionRecoveryError, match="RECOVERY-REQUIRED"):
-        load_bound_ledger(
-            passport, tmp_path, [profile], expected_project_ref="project-alpha"
-        )
+        load_bound_ledger(passport, tmp_path, [profile], expected_project_ref="project-alpha")
 
 
 def test_transaction_refuses_rewrite_noop_path_switch_and_orphan_adoption(
@@ -1896,13 +1805,9 @@ def test_transaction_refuses_rewrite_noop_path_switch_and_orphan_adoption(
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     relative = "passport.inquiry-branch-ledger.json"
-    commit_ledger_transaction(
-        passport, relative, tmp_path, ledger, [profile], "project-alpha"
-    )
+    commit_ledger_transaction(passport, relative, tmp_path, ledger, [profile], "project-alpha")
     with pytest.raises(ContractError, match="append at least one"):
-        commit_ledger_transaction(
-            passport, relative, tmp_path, ledger, [profile], "project-alpha"
-        )
+        commit_ledger_transaction(passport, relative, tmp_path, ledger, [profile], "project-alpha")
     rewritten = _adopt_facet(ledger, [profile])
     rewritten["events"][0]["payload"]["statement"] = "history rewrite"
     # Repair the chain to prove append-only prefix comparison, not hash checking,
@@ -2075,9 +1980,7 @@ def test_cli_validate_replay_append_and_default_off_summary(tmp_path: Path) -> N
 
 
 @pytest.mark.parametrize("command", ["append", "summary", "load-bound", "commit"])
-def test_authoritative_cli_commands_require_project_ref(
-    tmp_path: Path, command: str
-) -> None:
+def test_authoritative_cli_commands_require_project_ref(tmp_path: Path, command: str) -> None:
     ledger, profile = _two_branch_ledger()
     passport = _passport(tmp_path / "passport.yaml")
     ledger_path = _write_canonical(tmp_path / "ledger-input.json", ledger)
@@ -2242,10 +2145,7 @@ def test_render_summary_bounds_and_escapes_untrusted_display_text() -> None:
     assert rendered.count("Controls: skip | off | reset-to-simple-path") == 1
     assert "\n- forged" not in rendered
     assert "\\[active; author\\_originated\\]" in rendered
-    assert (
-        "signal-branch [parked; author_adopted] — AUTHOR JUDGMENT REQUIRED"
-        in rendered
-    )
+    assert "signal-branch [parked; author_adopted] — AUTHOR JUDGMENT REQUIRED" in rendered
     assert "\\u202e" in rendered
     assert "…" in rendered
     assert "Stale artifacts (6)" in rendered
@@ -2257,26 +2157,15 @@ def test_render_summary_bounds_and_escapes_untrusted_display_text() -> None:
 
 
 def test_pipeline_prompt_integration_pins_all_three_summary_owners() -> None:
-    skill = (REPO_ROOT / "academic-pipeline" / "WORKFLOW.md").read_text(
+    skill = (REPO_ROOT / "academic-pipeline" / "WORKFLOW.md").read_text(encoding="utf-8")
+    orchestrator = (
+        REPO_ROOT / "academic-pipeline" / "agents" / "pipeline_orchestrator_agent.md"
+    ).read_text(encoding="utf-8")
+    architect = (REPO_ROOT / "deep-research" / "agents" / "research_architect_agent.md").read_text(
         encoding="utf-8"
     )
-    orchestrator = (
-        REPO_ROOT
-        / "academic-pipeline"
-        / "agents"
-        / "pipeline_orchestrator_agent.md"
-    ).read_text(encoding="utf-8")
-    architect = (
-        REPO_ROOT
-        / "deep-research"
-        / "agents"
-        / "research_architect_agent.md"
-    ).read_text(encoding="utf-8")
     reset_protocol = (
-        REPO_ROOT
-        / "academic-pipeline"
-        / "references"
-        / "passport_as_reset_boundary.md"
+        REPO_ROOT / "academic-pipeline" / "references" / "passport_as_reset_boundary.md"
     ).read_text(encoding="utf-8")
 
     for surface in (skill, orchestrator):
@@ -2287,9 +2176,8 @@ def test_pipeline_prompt_integration_pins_all_three_summary_owners() -> None:
         assert "reset-to-simple-path" in surface
     assert "scripts/inquiry_branch_ledger.py::checkpoint_summary" in architect
     assert "moment=design_freeze" in architect
-    assert (
-        "omit the entire heading and ask no additional branch question"
-        in " ".join(architect.split())
+    assert "omit the entire heading and ask no additional branch question" in " ".join(
+        architect.split()
     )
     for surface in (orchestrator, reset_protocol):
         assert ".<passport-basename>.lock" in surface

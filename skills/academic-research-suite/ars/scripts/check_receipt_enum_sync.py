@@ -32,9 +32,7 @@ _ANGLE_ENUM_RES = {
     "status": re.compile(r"`status: <([^>]+)>`"),
     "tail_convention": re.compile(r"`tail_convention: <([^>]+)>`"),
 }
-_FRAGMENT_REASONS_RE = re.compile(
-    r"closed v1 enum: (?P<names>.*?)\. Every other status"
-)
+_FRAGMENT_REASONS_RE = re.compile(r"closed v1 enum: (?P<names>.*?)\. Every other status")
 CHECKER_ENUMS = {
     "procedure_id": frozenset(phase._RECEIPT_PROCEDURES),
     "status": frozenset(phase._RECEIPT_STATUSES),
@@ -48,8 +46,7 @@ def _read(root: Path, rel: str) -> str:
     try:
         return path.read_text(encoding="utf-8")
     except OSError as exc:
-        print(f"ERROR: required file unreadable: {rel}: {exc}",
-              file=sys.stderr)
+        print(f"ERROR: required file unreadable: {rel}: {exc}", file=sys.stderr)
         raise SystemExit(2)
 
 
@@ -71,49 +68,34 @@ def _fragment_enums(fragment: str, errors: list[str]) -> dict[str, set[str]]:
             "('closed v1 enum: ... . Every other status') was not found"
         )
     else:
-        enums["not_computable_reason"] = set(
-            _BACKTICK_NAME_RE.findall(reasons.group("names"))
-        )
+        enums["not_computable_reason"] = set(_BACKTICK_NAME_RE.findall(reasons.group("names")))
     return enums
 
 
-def _spec_section4_lines(
-    spec_lines: list[str], errors: list[str]
-) -> list[str]:
+def _spec_section4_lines(spec_lines: list[str], errors: list[str]) -> list[str]:
     """The lines of spec §4 only, so a worked example or historical block
     elsewhere in the document can never satisfy — or mask drift in — the
     normative enum definitions (#610 round-2)."""
-    starts = [
-        index for index, line in enumerate(spec_lines)
-        if line.startswith("## 4. ")
-    ]
+    starts = [index for index, line in enumerate(spec_lines) if line.startswith("## 4. ")]
     if len(starts) != 1:
-        errors.append(
-            f"spec: expected exactly one '## 4. ' heading, found "
-            f"{len(starts)}"
-        )
+        errors.append(f"spec: expected exactly one '## 4. ' heading, found " f"{len(starts)}")
         return []
     end = next(
         (
-            index for index in range(starts[0] + 1, len(spec_lines))
+            index
+            for index in range(starts[0] + 1, len(spec_lines))
             if spec_lines[index].startswith("## ")
         ),
         len(spec_lines),
     )
-    return spec_lines[starts[0]:end]
+    return spec_lines[starts[0] : end]
 
 
-def _spec_table_cell_enum(
-    spec_lines: list[str], field: str, errors: list[str]
-) -> set[str] | None:
-    rows = [
-        line for line in spec_lines
-        if line.startswith(f"| `{field}` |")
-    ]
+def _spec_table_cell_enum(spec_lines: list[str], field: str, errors: list[str]) -> set[str] | None:
+    rows = [line for line in spec_lines if line.startswith(f"| `{field}` |")]
     if len(rows) != 1:
         errors.append(
-            f"spec §4: expected exactly one `| `{field}` |` table row, "
-            f"found {len(rows)}"
+            f"spec §4: expected exactly one `| `{field}` |` table row, " f"found {len(rows)}"
         )
         return None
     cells = rows[0].split("|")
@@ -121,18 +103,14 @@ def _spec_table_cell_enum(
 
 
 def _spec_reason_enum(spec_lines: list[str], errors: list[str]) -> set[str]:
-    starts = [
-        index for index, line in enumerate(spec_lines)
-        if "closed v1 enum" in line
-    ]
+    starts = [index for index, line in enumerate(spec_lines) if "closed v1 enum" in line]
     if len(starts) != 1:
         errors.append(
-            "spec §4: expected exactly one 'closed v1 enum' sentence in "
-            f"§4, found {len(starts)}"
+            "spec §4: expected exactly one 'closed v1 enum' sentence in " f"§4, found {len(starts)}"
         )
         return set()
     names: set[str] = set()
-    for line in spec_lines[starts[0] + 1:]:
+    for line in spec_lines[starts[0] + 1 :]:
         if match := re.fullmatch(r"- `([a-z0-9_]+)`", line.strip()):
             names.add(match.group(1))
         elif line.strip() and names:
@@ -149,18 +127,15 @@ def check(root: Path) -> list[str]:
     }
     fragment = fragments.get("methodology-receipt")
     if fragment is None:
-        print("ERROR: methodology-receipt fragment missing from "
-              f"{CANONICAL_REL}", file=sys.stderr)
+        print(
+            "ERROR: methodology-receipt fragment missing from " f"{CANONICAL_REL}", file=sys.stderr
+        )
         raise SystemExit(2)
-    spec_lines = _spec_section4_lines(
-        _read(root, SPEC_REL).splitlines(), errors
-    )
+    spec_lines = _spec_section4_lines(_read(root, SPEC_REL).splitlines(), errors)
 
     fragment_enums = _fragment_enums(fragment, errors)
     spec_enums = {
-        "procedure_id": _spec_table_cell_enum(
-            spec_lines, "procedure_id", errors
-        ),
+        "procedure_id": _spec_table_cell_enum(spec_lines, "procedure_id", errors),
         "status": _spec_table_cell_enum(spec_lines, "status", errors),
         "not_computable_reason": _spec_reason_enum(spec_lines, errors),
     }
@@ -186,7 +161,8 @@ def check(root: Path) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--root", type=Path,
+        "--root",
+        type=Path,
         default=Path(__file__).resolve().parents[1],
     )
     args = parser.parse_args(argv)

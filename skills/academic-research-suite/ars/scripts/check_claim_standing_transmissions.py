@@ -35,7 +35,7 @@ try:
     from scripts import build_claim_standing_candidate_ledger as substrate
 except ImportError:  # direct script execution
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import build_claim_standing_candidate_ledger as substrate  # noqa: E402
+    import build_claim_standing_candidate_ledger as substrate
 
 LEDGER_VERSION = "claim-standing-transmission-ledger/1.0"
 SCHEMA_FILENAME = "transmission_ledger.schema.json"
@@ -64,9 +64,7 @@ def _fail(message: str) -> None:
     raise TransmissionError(message)
 
 
-def _require_allowlisted(
-    event_label: str, content_classes: Any, allowed: set[str]
-) -> None:
+def _require_allowlisted(event_label: str, content_classes: Any, allowed: set[str]) -> None:
     if (
         not isinstance(content_classes, list)
         or not content_classes
@@ -75,23 +73,14 @@ def _require_allowlisted(
         _fail(f"{event_label}: content classes must be a non-empty string list")
     outside = [item for item in content_classes if item not in allowed]
     if outside:
-        _fail(
-            f"{event_label}: content class {outside[0]!r} is outside the "
-            "consented allowlist"
-        )
+        _fail(f"{event_label}: content class {outside[0]!r} is outside the " "consented allowlist")
 
 
-def _validated_inputs(
-    plan: dict[str, Any], retrieval_input: dict[str, Any]
-) -> None:
+def _validated_inputs(plan: dict[str, Any], retrieval_input: dict[str, Any]) -> None:
     try:
-        substrate.validate_schema(
-            plan, substrate.plan_schema_filename(plan), "query plan"
-        )
+        substrate.validate_schema(plan, substrate.plan_schema_filename(plan), "query plan")
         substrate.validate_plan(plan)
-        substrate.validate_schema(
-            retrieval_input, "retrieval_input.schema.json", "retrieval input"
-        )
+        substrate.validate_schema(retrieval_input, "retrieval_input.schema.json", "retrieval input")
     except substrate.LedgerError as exc:
         raise TransmissionError(f"input is invalid: {exc}") from exc
     if retrieval_input["retrieval_input_sha256"] != substrate.bound_digest(
@@ -139,13 +128,9 @@ def _retrieval_events(
                 "recipient_index_id": attempt["index_id"],
                 "recipient_product_identity": provider["product_identity"],
                 "purpose": "scholarly_discovery",
-                "content_classes": list(
-                    substrate.RETRIEVAL_ONLY_CONTENT_CLASSES
-                ),
+                "content_classes": list(substrate.RETRIEVAL_ONLY_CONTENT_CLASSES),
                 "query_sha256": query["query_sha256"],
-                "query_utf8_bytes": len(
-                    query["accepted_query_text"].encode("utf-8")
-                ),
+                "query_utf8_bytes": len(query["accepted_query_text"].encode("utf-8")),
                 "consent_receipt_id": receipt_id,
                 "retention_state": provider["retention_state"],
                 "retention_reference": provider["retention_reference"],
@@ -177,14 +162,10 @@ def _stance_events(
         _require_allowlisted(label, source["content_classes"], allowed)
         if source["recipient_provider_identity"] != stance_plan["provider_identity"]:
             _fail(
-                f"{label}: recipient provider identity does not match the "
-                "consented stance_plan"
+                f"{label}: recipient provider identity does not match the " "consented stance_plan"
             )
         if source["recipient_model_identity"] != stance_plan["model_identity"]:
-            _fail(
-                f"{label}: recipient model identity does not match the "
-                "consented stance_plan"
-            )
+            _fail(f"{label}: recipient model identity does not match the " "consented stance_plan")
         if source["consent_receipt_id"] != receipt_id:
             _fail(f"{label}: consent receipt does not match the plan receipt")
         if (
@@ -196,10 +177,7 @@ def _stance_events(
                 "stance_plan verbatim"
             )
         if not isinstance(source["result_state"], str):
-            _fail(
-                f"{label}: result_state must be recorded before the event can "
-                "be accounted"
-            )
+            _fail(f"{label}: result_state must be recorded before the event can " "be accounted")
         event = {"event_kind": "stance_classification"}
         for field in STANCE_EVENT_FIELDS:
             event[field] = source[field]
@@ -224,9 +202,7 @@ def _cross_check_stance_record(
     stance_events: list[dict[str, Any]],
 ) -> None:
     try:
-        substrate.validate_schema(
-            stance_record, "stance_record.schema.json", "stance record"
-        )
+        substrate.validate_schema(stance_record, "stance_record.schema.json", "stance record")
     except substrate.LedgerError as exc:
         raise TransmissionError(str(exc)) from exc
     if stance_record["stance_record_sha256"] != substrate.bound_digest(
@@ -245,15 +221,11 @@ def _cross_check_stance_record(
     # abstract-missing row, which never builds a prompt) must have its
     # event, and the event's prompt hash and result state must agree with
     # the row's retained evidence.
-    events_by_family = {
-        event["work_family_id"]: event for event in stance_events
-    }
+    events_by_family = {event["work_family_id"]: event for event in stance_events}
     if len(events_by_family) != len(stance_events):
         _fail("stance events must be unique per work family")
     expected_rows = [
-        row
-        for row in stance_record["rows"]
-        if row.get("failure_state") != "abstract_missing"
+        row for row in stance_record["rows"] if row.get("failure_state") != "abstract_missing"
     ]
     expected_ids = sorted(row["work_family_id"] for row in expected_rows)
     accounted_ids = sorted(events_by_family)
@@ -267,8 +239,7 @@ def _cross_check_stance_record(
         label = f"stance event for {row['work_family_id']!r}"
         if row.get("prompt_sha256") is None:
             _fail(
-                f"{label}: the record row retains no prompt hash for a "
-                "transport-reaching call"
+                f"{label}: the record row retains no prompt hash for a " "transport-reaching call"
             )
         if event["prompt_sha256"] != row["prompt_sha256"]:
             _fail(f"{label}: prompt hash does not match the record row")
@@ -307,9 +278,7 @@ def build_transmission_ledger(
         substrate.validate_input(plan, retrieval_input)
     except substrate.LedgerError as exc:
         raise TransmissionError(f"input is invalid: {exc}") from exc
-    stance_authorized = (
-        plan["consent"].get("decision") == "retrieval_plus_stance"
-    )
+    stance_authorized = plan["consent"].get("decision") == "retrieval_plus_stance"
     if stance_transmissions is None:
         if stance_authorized:
             _fail(
@@ -325,9 +294,7 @@ def build_transmission_ledger(
             )
         events.extend(_stance_events(plan, stance_transmissions, allowed))
     if stance_record is not None:
-        _cross_check_stance_record(
-            stance_record, plan, stance_transmissions or []
-        )
+        _cross_check_stance_record(stance_record, plan, stance_transmissions or [])
     ledger = {
         "schema_version": LEDGER_VERSION,
         "probe_id": plan["probe_id"],
@@ -369,9 +336,7 @@ def validate_transmission_ledger(
 def authorized_transmission_ledger_path(plan: dict[str, Any]) -> Path:
     """The only writable output path: derived from the hash-bound consent."""
     try:
-        return substrate.authorized_export_path(
-            plan, TRANSMISSION_LEDGER_SUFFIX
-        )
+        return substrate.authorized_export_path(plan, TRANSMISSION_LEDGER_SUFFIX)
     except substrate.LedgerError as exc:
         raise TransmissionError(str(exc)) from exc
 
@@ -402,9 +367,7 @@ def main(argv: list[str] | None = None) -> int:
             if not isinstance(stance_transmissions, list):
                 _fail("stance transmissions file must contain a JSON array")
         stance_record = (
-            substrate.load_json(args.stance_record)
-            if args.stance_record is not None
-            else None
+            substrate.load_json(args.stance_record) if args.stance_record is not None else None
         )
         if args.command == "build":
             ledger = build_transmission_ledger(

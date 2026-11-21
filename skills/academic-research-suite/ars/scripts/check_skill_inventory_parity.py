@@ -41,7 +41,6 @@ from pathlib import Path
 
 from _skill_lint import (
     SKILLS_TABLE_ROW_FULL,
-    SKILLS_TABLE_ROW_PREFIX,
     heading_section,
     iter_skill_files,
 )
@@ -65,7 +64,9 @@ CANONICAL_NAME_RE = re.compile(r"[a-z0-9-]+")
 # Markdown table separator row: `|---|:---:|`, `|:-|` etc. (GFM: one or more dashes).
 TABLE_SEPARATOR_RE = re.compile(r"^\|\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")
 # Marketplace skill paths are relative, `./<name>`, one segment.
-MANIFEST_SKILL_RE = re.compile(r"\./([a-z0-9-]+)")  # used with fullmatch: `$` would admit a trailing newline
+MANIFEST_SKILL_RE = re.compile(
+    r"\./([a-z0-9-]+)"
+)  # used with fullmatch: `$` would admit a trailing newline
 # A count claim such as "4 skills" / "4 Skills" (word-bounded so "40 skillsets"
 # is not one; case-insensitive because these are prose surfaces).
 COUNT_CLAIM_RE = re.compile(r"\b(\d+) skills\b", re.IGNORECASE)
@@ -96,9 +97,7 @@ def _skills_dir_entries(root: Path, violations: list[str]) -> set[str]:
             violations.append(f"{entry}: dangling symlink")
             continue
         if target != expected.resolve():
-            violations.append(
-                f"{entry}: symlink resolves to {target}, expected {expected}"
-            )
+            violations.append(f"{entry}: symlink resolves to {target}, expected {expected}")
     return names
 
 
@@ -140,9 +139,7 @@ def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
     # the section.
     section = heading_section(text, SKILLS_OVERVIEW_HEADING)
     if section is None:
-        violations.append(
-            f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' H2 is missing"
-        )
+        violations.append(f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' H2 is missing")
         return set()
     rows: set[str] = set()
     table = _overview_table_lines(section)
@@ -194,8 +191,7 @@ def _claude_table_rows(root: Path, violations: list[str]) -> set[str]:
             )
     if not rows:
         violations.append(
-            f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' table has no "
-            f"backticked skill rows"
+            f"{claude_md}: '{SKILLS_OVERVIEW_HEADING}' table has no " f"backticked skill rows"
         )
     return rows
 
@@ -215,9 +211,7 @@ def _load_json(path: Path, violations: list[str]) -> dict | None:
     return data
 
 
-def _marketplace_skills(
-    root: Path, violations: list[str]
-) -> tuple[set[str], list[str]]:
+def _marketplace_skills(root: Path, violations: list[str]) -> tuple[set[str], list[str]]:
     """Return (skill names across all plugins, plugin descriptions)."""
     path = root / MARKETPLACE_JSON
     data = _load_json(path, violations)
@@ -257,9 +251,7 @@ def _marketplace_skills(
     return names, descriptions
 
 
-def _check_count_claim(
-    label: str, text: str, expected: int, violations: list[str]
-) -> None:
+def _check_count_claim(label: str, text: str, expected: int, violations: list[str]) -> None:
     for claimed in COUNT_CLAIM_RE.findall(text):
         if int(claimed) != expected:
             violations.append(
@@ -278,8 +270,7 @@ def _report_set_diff(
         )
     for name in sorted(other - on_disk):
         violations.append(
-            f"{surface} lists skill '{name}' but no top-level {name}/SKILL.md "
-            f"exists"
+            f"{surface} lists skill '{name}' but no top-level {name}/SKILL.md " f"exists"
         )
 
 
@@ -287,35 +278,25 @@ def run_all_checks(root: Path) -> list[str]:
     violations: list[str] = []
     on_disk = _skills_on_disk(root)
     if not on_disk:
-        violations.append(
-            f"{root}: no top-level <name>/SKILL.md found (wrong --path?)"
-        )
+        violations.append(f"{root}: no top-level <name>/SKILL.md found (wrong --path?)")
         return violations
 
     symlinked = _skills_dir_entries(root, violations)
     _report_set_diff(on_disk, symlinked, f"{SKILLS_DIR}/ symlinks", violations)
 
     table = _claude_table_rows(root, violations)
-    _report_set_diff(
-        on_disk, table, f"{CLAUDE_MD} Skills Overview table", violations
-    )
+    _report_set_diff(on_disk, table, f"{CLAUDE_MD} Skills Overview table", violations)
 
     manifest, market_descriptions = _marketplace_skills(root, violations)
-    _report_set_diff(
-        on_disk, manifest, f"{MARKETPLACE_JSON} plugins[].skills", violations
-    )
+    _report_set_diff(on_disk, manifest, f"{MARKETPLACE_JSON} plugins[].skills", violations)
     for description in market_descriptions:
-        _check_count_claim(
-            f"{MARKETPLACE_JSON} description", description, len(on_disk), violations
-        )
+        _check_count_claim(f"{MARKETPLACE_JSON} description", description, len(on_disk), violations)
 
     plugin = _load_json(root / PLUGIN_JSON, violations)
     if plugin is not None:
         description = plugin.get("description")
         if isinstance(description, str):
-            _check_count_claim(
-                f"{PLUGIN_JSON} description", description, len(on_disk), violations
-            )
+            _check_count_claim(f"{PLUGIN_JSON} description", description, len(on_disk), violations)
 
     registry = root / MODE_REGISTRY_MD
     if registry.is_file():

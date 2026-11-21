@@ -22,8 +22,8 @@ References:
 """
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
 
 CANONICAL_ANCHORS = ("prisma-trAIce", "icmje", "nature", "ieee")
 SLR_MODES = ("systematic-review", "slr")
@@ -227,9 +227,7 @@ def _check_policy_anchor_enum(ri: RendererInput) -> None:
 
 
 def _check_category_states(ri: RendererInput) -> None:
-    invalid = {
-        k: v for k, v in ri.categories.items() if v not in VALID_CATEGORY_STATES
-    }
+    invalid = {k: v for k, v in ri.categories.items() if v not in VALID_CATEGORY_STATES}
     if invalid:
         raise InvalidCategoryState(
             f"category states must be in {sorted(VALID_CATEGORY_STATES)}; "
@@ -291,9 +289,7 @@ def render_facet_as_used(category_state: str) -> str:
 # ---------------------------------------------------------------------------
 # G5 invariant — three-gate prompt disclosure predicate
 # ---------------------------------------------------------------------------
-def prompt_disclosure_required(
-    track: str, tool_type: str, methodological_in_slr: bool
-) -> bool:
+def prompt_disclosure_required(track: str, tool_type: str, methodological_in_slr: bool) -> bool:
     """True iff all three G5 gates hold."""
     if track != "prisma-trAIce":
         return False
@@ -340,7 +336,10 @@ def nature_image_outputs(images: Iterable[dict]) -> dict[str, list[dict]]:
         if not img.get("ai_generated"):
             continue
         annotation_block.append(
-            {"image_id": img["id"], "label": "AI-generated (Nature default-deny carve-out evaluation required)"}
+            {
+                "image_id": img["id"],
+                "label": "AI-generated (Nature default-deny carve-out evaluation required)",
+            }
         )
         suggested_patch.append(
             {

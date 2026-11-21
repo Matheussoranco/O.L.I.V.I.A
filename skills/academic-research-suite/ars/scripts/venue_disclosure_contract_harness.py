@@ -7,11 +7,11 @@ submission-policy engine.
 """
 from __future__ import annotations
 
+import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Mapping
-import re
-
+from typing import Any
 
 ALL_OUTCOMES = frozenset({"REQUIRED", "ACTION_ONLY", "NOT_REQUIRED", "UNKNOWN"})
 ALL_CATEGORIES = frozenset(
@@ -223,9 +223,15 @@ class _Evaluator:
     def require_global(self, name: str, required_value: object | None = None) -> Fact:
         fact = self.global_facts.get(name, unknown())
         if fact.state != "KNOWN":
-            self.halt(self.outcome or "UNKNOWN", "UNRESOLVED_INPUT", f"global fact {name} is UNKNOWN")
+            self.halt(
+                self.outcome or "UNKNOWN", "UNRESOLVED_INPUT", f"global fact {name} is UNKNOWN"
+            )
         if required_value is not None and fact.value != required_value:
-            self.halt(self.outcome or "UNKNOWN", "INCOMPATIBLE_FACT", f"global fact {name} is incompatible")
+            self.halt(
+                self.outcome or "UNKNOWN",
+                "INCOMPATIBLE_FACT",
+                f"global fact {name} is incompatible",
+            )
         return fact
 
     def require_record(
@@ -244,7 +250,11 @@ class _Evaluator:
                 f"cross-record fact borrowing: {name} for {record.record_id} belongs to {fact.owner}",
             )
         if fact.state != "KNOWN":
-            self.halt(self.outcome or "UNKNOWN", "UNRESOLVED_INPUT", f"{record.record_id}.{name} is UNKNOWN")
+            self.halt(
+                self.outcome or "UNKNOWN",
+                "UNRESOLVED_INPUT",
+                f"{record.record_id}.{name} is UNKNOWN",
+            )
         if required_value is not None and fact.value != required_value:
             self.halt(
                 self.outcome or "UNKNOWN",
@@ -256,9 +266,17 @@ class _Evaluator:
     def prohibit_true(self, record: UseRecord, name: str) -> Fact:
         fact = self.require_record(record, name)
         if fact.value is True:
-            self.halt(self.outcome or "REQUIRED", "PROHIBITED_USE", f"prohibited predicate true: {record.record_id}.{name}")
+            self.halt(
+                self.outcome or "REQUIRED",
+                "PROHIBITED_USE",
+                f"prohibited predicate true: {record.record_id}.{name}",
+            )
         if fact.value is not False:
-            self.halt(self.outcome or "REQUIRED", "INCOMPATIBLE_FACT", f"{record.record_id}.{name} is not boolean")
+            self.halt(
+                self.outcome or "REQUIRED",
+                "INCOMPATIBLE_FACT",
+                f"{record.record_id}.{name} is not boolean",
+            )
         return fact
 
     def conditional(
@@ -277,7 +295,9 @@ class _Evaluator:
                         "INCOMPATIBLE_FACT",
                         f"{child} cannot be KNOWN when {parent} is false",
                     )
-                self.ledger.setdefault(record.record_id, {})[child] = not_applicable(record.record_id)
+                self.ledger.setdefault(record.record_id, {})[child] = not_applicable(
+                    record.record_id
+                )
             return False
         if fact.value is not True:
             self.halt(self.outcome or "REQUIRED", "INCOMPATIBLE_FACT", f"{parent} is not boolean")
@@ -314,14 +334,19 @@ class _Evaluator:
         if raw_anchor is not None:
             anchor = str(raw_anchor).casefold()
             venue_text = str(raw_venue).strip() if raw_venue is not None else None
-            nature_pair = anchor == "nature" and venue_text is not None and (
-                venue_text.casefold() in {
-                    "nature",
-                    "nature portfolio",
-                    "nature (nature publishing group)",
-                    "nature publishing group",
-                }
-                or venue_text.startswith("Nature ")
+            nature_pair = (
+                anchor == "nature"
+                and venue_text is not None
+                and (
+                    venue_text.casefold()
+                    in {
+                        "nature",
+                        "nature portfolio",
+                        "nature (nature publishing group)",
+                        "nature publishing group",
+                    }
+                    or venue_text.startswith("Nature ")
+                )
             )
             if raw_venue is not None and not nature_pair:
                 self.halt("UNKNOWN", "INCOMPATIBLE_FACT", "selector conflict")
@@ -349,7 +374,9 @@ class _Evaluator:
         categories = self.case.get("categories")
         if not isinstance(categories, Mapping) or set(categories) != ALL_CATEGORIES:
             self.halt("UNKNOWN", "UNRESOLVED_INPUT", "complete category inventory required")
-        invalid = {value for value in categories.values() if value not in {"USED", "NOT_USED", "UNCERTAIN"}}
+        invalid = {
+            value for value in categories.values() if value not in {"USED", "NOT_USED", "UNCERTAIN"}
+        }
         if invalid or "UNCERTAIN" in categories.values():
             self.halt("UNKNOWN", "UNRESOLVED_INPUT", "category inventory unresolved")
         used_categories = {name for name, state in categories.items() if state == "USED"}
@@ -357,11 +384,17 @@ class _Evaluator:
             self.halt("UNKNOWN", "UNRESOLVED_INPUT", "USED category has no use record")
         for record in self.records:
             if record.category not in ALL_CATEGORIES or record.category not in used_categories:
-                self.halt("UNKNOWN", "INCOMPATIBLE_FACT", f"record/category mismatch: {record.record_id}")
+                self.halt(
+                    "UNKNOWN", "INCOMPATIBLE_FACT", f"record/category mismatch: {record.record_id}"
+                )
             if not record.record_id or not record.tool or not record.task or not record.artifact:
-                self.halt("UNKNOWN", "UNRESOLVED_INPUT", "tool x task/run/artifact identity incomplete")
+                self.halt(
+                    "UNKNOWN", "UNRESOLVED_INPUT", "tool x task/run/artifact identity incomplete"
+                )
             if not record.operations or not set(record.operations) <= ALL_OPERATIONS:
-                self.halt("UNKNOWN", "UNRESOLVED_INPUT", f"operation unresolved: {record.record_id}")
+                self.halt(
+                    "UNKNOWN", "UNRESOLVED_INPUT", f"operation unresolved: {record.record_id}"
+                )
             if not record.targets or not set(record.targets) <= ALL_TARGETS:
                 self.halt("UNKNOWN", "UNRESOLVED_INPUT", f"target unresolved: {record.record_id}")
         other = [record for record in self.records if record.category == "OTHER_UNCLASSIFIED"]
@@ -379,14 +412,24 @@ class _Evaluator:
         if self.venue in AUTHORSHIP_TARGETS:
             author_fact = self.require_global("ai_listed_or_proposed_as_author")
             if author_fact.value is True:
-                self.halt("REQUIRED" if self.records else "NOT_REQUIRED", "INCOMPATIBLE_FACT", "AI cannot be listed as author")
+                self.halt(
+                    "REQUIRED" if self.records else "NOT_REQUIRED",
+                    "INCOMPATIBLE_FACT",
+                    "AI cannot be listed as author",
+                )
             if author_fact.value is not False:
                 self.halt("UNKNOWN", "INCOMPATIBLE_FACT", "authorship fact is not boolean")
 
         if self.venue in SCOPE_TARGETS and self.records:
-            scopes = [self.require_record(record, "policy_tool_scope").value for record in self.records]
+            scopes = [
+                self.require_record(record, "policy_tool_scope").value for record in self.records
+            ]
             if any(scope == "OTHER_AI" for scope in scopes):
-                self.halt("UNKNOWN", "POLICY_SCOPE_GAP", "OTHER_AI inventory requires current non-generative policy")
+                self.halt(
+                    "UNKNOWN",
+                    "POLICY_SCOPE_GAP",
+                    "OTHER_AI inventory requires current non-generative policy",
+                )
             if any(scope != "GENAI_OR_AIGC" for scope in scopes):
                 self.halt("UNKNOWN", "INCOMPATIBLE_FACT", "invalid policy_tool_scope")
 
@@ -449,7 +492,9 @@ class _Evaluator:
         for record in self.records:
             scope = self.require_record(record, "use_scope").value
             if scope not in allowed_scopes:
-                self.halt("UNKNOWN", "INCOMPATIBLE_FACT", "invalid International Eye Science use_scope")
+                self.halt(
+                    "UNKNOWN", "INCOMPATIBLE_FACT", "invalid International Eye Science use_scope"
+                )
             if scope == "CORE_RESEARCH_STEP":
                 self.halt("REQUIRED", "PROHIBITED_USE", "CORE_RESEARCH_STEP is prohibited")
             if scope == "OTHER_CONFIRMED_NON_CORE_RESEARCH_STEP":
@@ -463,7 +508,9 @@ class _Evaluator:
                 self.prohibit_true(record, name)
             data = self.require_record(record, "use_involves_data")
             if scope in {"DATA_ORGANIZATION", "CHART_ANNOTATION"} and data.value is not True:
-                self.halt("REQUIRED", "INCOMPATIBLE_FACT", "data scope requires use_involves_data=true")
+                self.halt(
+                    "REQUIRED", "INCOMPATIBLE_FACT", "data scope requires use_involves_data=true"
+                )
 
     def _phase2a_jama(self) -> None:
         for record in self.records:
@@ -471,7 +518,11 @@ class _Evaluator:
                 set(record.operations) & {"GENERATED", "SUBSTANTIVELY_DRAFTED"}
                 and set(record.targets) & TEXT_TARGETS
             )
-            if generated_text or "OTHER_CONFIRMED" in record.operations or "OTHER_CONFIRMED" in record.targets:
+            if (
+                generated_text
+                or "OTHER_CONFIRMED" in record.operations
+                or "OTHER_CONFIRMED" in record.targets
+            ):
                 submission_type = self.require_record(record, "jama_submission_type")
                 prohibited = self.require_record(record, "jama_submission_type_is_prohibited")
                 known_prohibited = submission_type.value in {
@@ -482,15 +533,29 @@ class _Evaluator:
                     "POETRY",
                 }
                 if prohibited.value is not known_prohibited:
-                    self.halt("REQUIRED", "INCOMPATIBLE_FACT", "JAMA submission-type predicate contradicts exact type")
+                    self.halt(
+                        "REQUIRED",
+                        "INCOMPATIBLE_FACT",
+                        "JAMA submission-type predicate contradicts exact type",
+                    )
                 if known_prohibited:
-                    self.halt("REQUIRED", "PROHIBITED_USE", f"JAMA prohibits AI drafting for {submission_type.value}")
+                    self.halt(
+                        "REQUIRED",
+                        "PROHIBITED_USE",
+                        f"JAMA prohibits AI drafting for {submission_type.value}",
+                    )
             if "RESEARCH_FIGURE_OR_MEDIA" in record.targets:
-                created = self.require_record(record, "clinical_image_or_illustration_created_or_manipulated")
+                created = self.require_record(
+                    record, "clinical_image_or_illustration_created_or_manipulated"
+                )
                 if created.value is True:
-                    self.require_record(record, "part_of_formal_research_design_or_methods", required_value=True)
+                    self.require_record(
+                        record, "part_of_formal_research_design_or_methods", required_value=True
+                    )
                 elif created.value is not False:
-                    self.halt("UNKNOWN", "INCOMPATIBLE_FACT", "clinical image predicate is not boolean")
+                    self.halt(
+                        "UNKNOWN", "INCOMPATIBLE_FACT", "clinical image predicate is not boolean"
+                    )
 
     def _phase2a_nature(self) -> None:
         if any("RESEARCH_FIGURE_OR_MEDIA" in record.targets for record in self.records):
@@ -517,31 +582,59 @@ class _Evaluator:
             artifact_class = self.require_record(record, "artifact_class").value
             if artifact_class == "PRIMARY_RESEARCH_IMAGE":
                 formal = self.require_record(record, "ai_is_formal_research_design_or_method")
-                direct = self.require_record(record, "image_output_directly_obtained_in_research_through_that_method")
+                direct = self.require_record(
+                    record, "image_output_directly_obtained_in_research_through_that_method"
+                )
                 if formal.value is not True or direct.value is not True:
-                    self.halt("REQUIRED", "PROHIBITED_USE", "AI-created primary research image is prohibited")
+                    self.halt(
+                        "REQUIRED",
+                        "PROHIBITED_USE",
+                        "AI-created primary research image is prohibited",
+                    )
             elif artifact_class == "RESEARCH_METHOD_IMAGE":
-                self.require_record(record, "ai_is_formal_research_design_or_method", required_value=True)
-                self.require_record(record, "image_output_directly_obtained_in_research_through_that_method", required_value=True)
+                self.require_record(
+                    record, "ai_is_formal_research_design_or_method", required_value=True
+                )
+                self.require_record(
+                    record,
+                    "image_output_directly_obtained_in_research_through_that_method",
+                    required_value=True,
+                )
                 self.require_record(record, "reproducible_method_details")
             elif artifact_class == "GRAPHICAL_ABSTRACT":
-                self.require_record(record, "graphical_abstract_used_ai_or_ai_assisted_illustration", required_value=True)
+                self.require_record(
+                    record,
+                    "graphical_abstract_used_ai_or_ai_assisted_illustration",
+                    required_value=True,
+                )
                 tool_class = self.require_record(record, "graphical_abstract_tool_class").value
                 if tool_class == "GENERAL_PURPOSE_GENERATIVE_AI_IMAGE_TOOL":
-                    self.halt("REQUIRED", "PROHIBITED_USE", "general-purpose GenAI graphical abstracts are prohibited")
+                    self.halt(
+                        "REQUIRED",
+                        "PROHIBITED_USE",
+                        "general-purpose GenAI graphical abstracts are prohibited",
+                    )
                 if tool_class != "DEDICATED_SCIENTIFIC_OR_PROFESSIONAL_ILLUSTRATION_TOOL":
-                    self.halt("UNKNOWN", "INCOMPATIBLE_FACT", "unknown graphical-abstract tool class")
+                    self.halt(
+                        "UNKNOWN", "INCOMPATIBLE_FACT", "unknown graphical-abstract tool class"
+                    )
             elif artifact_class == "COVER_ART":
                 cover_count += 1
                 self.require_record(record, "editor_permission", required_value=True)
                 self.require_record(record, "publisher_permission", required_value=True)
-                has_third_party = self.require_record(record, "cover_art_contains_third_party_material")
+                has_third_party = self.require_record(
+                    record, "cover_art_contains_third_party_material"
+                )
                 if has_third_party.value is True:
                     self.require_record(record, "third_party_material_permission")
                 elif has_third_party.value is False:
-                    self.ledger[record.record_id]["third_party_material_permission"] = not_applicable(record.record_id)
+                    self.ledger[record.record_id][
+                        "third_party_material_permission"
+                    ] = not_applicable(record.record_id)
                 else:
-                    self.halt("UNKNOWN", "INCOMPATIBLE_FACT", "third-party predicate is not boolean")
+                    self.halt(
+                        "UNKNOWN", "INCOMPATIBLE_FACT", "third-party predicate is not boolean"
+                    )
                 self.require_record(record, "content_attribution")
             elif artifact_class not in {"EXPLANATORY_IMAGE", "DATA_VISUALIZATION"}:
                 self.halt("UNKNOWN", "CONTRACT_GAP", "unmodelled visual/media class")
@@ -553,12 +646,20 @@ class _Evaluator:
                 self.require_record(record, "rights_holder_permission")
                 self.require_record(record, "existing_artwork_attribution")
             elif based.value is False:
-                self.ledger[record.record_id]["rights_holder_permission"] = not_applicable(record.record_id)
-                self.ledger[record.record_id]["existing_artwork_attribution"] = not_applicable(record.record_id)
+                self.ledger[record.record_id]["rights_holder_permission"] = not_applicable(
+                    record.record_id
+                )
+                self.ledger[record.record_id]["existing_artwork_attribution"] = not_applicable(
+                    record.record_id
+                )
             else:
-                self.halt("UNKNOWN", "INCOMPATIBLE_FACT", "existing-artwork predicate is not boolean")
+                self.halt(
+                    "UNKNOWN", "INCOMPATIBLE_FACT", "existing-artwork predicate is not boolean"
+                )
             if artifact_class == "DATA_VISUALIZATION":
-                self.require_record(record, "directly_derived_from_data_by_reproducible_method", required_value=True)
+                self.require_record(
+                    record, "directly_derived_from_data_by_reproducible_method", required_value=True
+                )
 
         if cover_count == len(self.records):
             self.outcome = "ACTION_ONLY"
@@ -569,17 +670,36 @@ class _Evaluator:
         for record in self.records:
             if self.venue == "ICLR":
                 self.require_record(record, "specific_assisted_tasks")
-                self.require_record(record, "author_accepts_full_responsibility", required_value=True)
+                self.require_record(
+                    record, "author_accepts_full_responsibility", required_value=True
+                )
                 self.require_record(record, "affected_content")
             elif self.venue == "BMJ":
                 for name in ("technology_description", "why_used", "how_used"):
                     self.require_record(record, name)
             elif self.venue == "Chinese Nursing Journals Publishing House":
-                for name in ("purpose", "affected_content", "human_review_editing_performed", "author_accepts_full_responsibility"):
-                    required = True if name in {"human_review_editing_performed", "author_accepts_full_responsibility"} else None
+                for name in (
+                    "purpose",
+                    "affected_content",
+                    "human_review_editing_performed",
+                    "author_accepts_full_responsibility",
+                ):
+                    required = (
+                        True
+                        if name
+                        in {"human_review_editing_performed", "author_accepts_full_responsibility"}
+                        else None
+                    )
                     self.require_record(record, name, required_value=required)
             elif self.venue == "Frontiers":
-                for name in ("version", "model", "source_provider", "content_operation", "affected_content_kind", "affected_content"):
+                for name in (
+                    "version",
+                    "model",
+                    "source_provider",
+                    "content_operation",
+                    "affected_content_kind",
+                    "affected_content",
+                ):
                     self.require_record(record, name)
             elif self.venue == "ICMJE":
                 for name in ("technology_description", "how_used"):
@@ -593,8 +713,17 @@ class _Evaluator:
                     required = True if name == "author_accepts_accountability" else None
                     self.require_record(record, name, required_value=required)
             elif self.venue == "NEJM":
-                for name in ("technology_description", "produced_content", "human_review_editing_performed", "no_plagiarism_confirmed"):
-                    required = True if name in {"human_review_editing_performed", "no_plagiarism_confirmed"} else None
+                for name in (
+                    "technology_description",
+                    "produced_content",
+                    "human_review_editing_performed",
+                    "no_plagiarism_confirmed",
+                ):
+                    required = (
+                        True
+                        if name in {"human_review_editing_performed", "no_plagiarism_confirmed"}
+                        else None
+                    )
                     self.require_record(record, name, required_value=required)
             elif self.venue == "PLOS":
                 for name in ("how_used", "outputs_validated", "affected_content"):
@@ -606,11 +735,17 @@ class _Evaluator:
         for name in ("version", "purpose", "use_scope", "generated_proportion"):
             self.require_record(record, name)
         data = self.require_record(record, "use_involves_data")
-        data_children = ("data_types", "data_verification_status", "data_involves_clinical_or_case_data")
+        data_children = (
+            "data_types",
+            "data_verification_status",
+            "data_involves_clinical_or_case_data",
+        )
         if data.value is False:
             for child in data_children:
                 self.ledger[record.record_id][child] = not_applicable(record.record_id)
-            self.ledger[record.record_id]["de_identification_measures"] = not_applicable(record.record_id)
+            self.ledger[record.record_id]["de_identification_measures"] = not_applicable(
+                record.record_id
+            )
             return
         if data.value is not True:
             self.halt("REQUIRED", "INCOMPATIBLE_FACT", "use_involves_data is not boolean")
@@ -620,14 +755,24 @@ class _Evaluator:
         if clinical.value is True:
             self.require_record(record, "de_identification_measures")
         elif clinical.value is False:
-            self.ledger[record.record_id]["de_identification_measures"] = not_applicable(record.record_id)
+            self.ledger[record.record_id]["de_identification_measures"] = not_applicable(
+                record.record_id
+            )
         else:
             self.halt("REQUIRED", "INCOMPATIBLE_FACT", "clinical-data predicate is not boolean")
 
     def _phase2b_jama(self, record: UseRecord) -> None:
         self.require_record(record, "author_review_accuracy", required_value=True)
-        self.require_record(record, "author_accepts_content_integrity_responsibility", required_value=True)
-        for name in ("model_or_tool_version", "manufacturer", "dates_of_use", "use_description", "affected_portions"):
+        self.require_record(
+            record, "author_accepts_content_integrity_responsibility", required_value=True
+        )
+        for name in (
+            "model_or_tool_version",
+            "manufacturer",
+            "dates_of_use",
+            "use_description",
+            "affected_portions",
+        ):
             self.require_record(record, name)
         self.conditional(record, "extension_numbers_applicable", ("extension_numbers",))
         self.ledger[record.record_id]["ai_used_in_scientific_study"] = known(
@@ -677,7 +822,11 @@ class _Evaluator:
             "author_reviewed_and_edited",
             "author_accepts_full_responsibility",
         ):
-            required = True if name in {"author_reviewed_and_edited", "author_accepts_full_responsibility"} else None
+            required = (
+                True
+                if name in {"author_reviewed_and_edited", "author_accepts_full_responsibility"}
+                else None
+            )
             self.require_record(record, name, required_value=required)
 
     def _render(self) -> None:
@@ -686,38 +835,99 @@ class _Evaluator:
         if self.venue == "NEJM":
             self.blocks.extend(
                 (
-                    Block("COVER_LETTER", "submission disclosure", "Tell the editor which technology was used and what it produced."),
-                    Block("SUBMITTED_WORK", "reader-facing disclosure", "Describe the reviewed AI-produced material and originality confirmation in the submitted work."),
+                    Block(
+                        "COVER_LETTER",
+                        "submission disclosure",
+                        "Tell the editor which technology was used and what it produced.",
+                    ),
+                    Block(
+                        "SUBMITTED_WORK",
+                        "reader-facing disclosure",
+                        "Describe the reviewed AI-produced material and originality confirmation in the submitted work.",
+                    ),
                 )
             )
         elif self.venue == "ICMJE":
             self.blocks.extend(
                 (
-                    Block("COVER_LETTER", "editor disclosure", "Describe the AI-assisted technology and use for the editor."),
-                    Block("SUBMITTED_WORK", "article disclosure", "Describe the AI-assisted technology and use in the appropriate article section."),
+                    Block(
+                        "COVER_LETTER",
+                        "editor disclosure",
+                        "Describe the AI-assisted technology and use for the editor.",
+                    ),
+                    Block(
+                        "SUBMITTED_WORK",
+                        "article disclosure",
+                        "Describe the AI-assisted technology and use in the appropriate article section.",
+                    ),
                 )
             )
         elif self.venue == "JAMA":
             if any(record.research_use for record in self.records):
-                self.blocks.append(Block("METHODS", "AI-use disclosure portion", "Describe the specific research AI use and confirmed conditional rights facts."))
+                self.blocks.append(
+                    Block(
+                        "METHODS",
+                        "AI-use disclosure portion",
+                        "Describe the specific research AI use and confirmed conditional rights facts.",
+                    )
+                )
             if any(not record.research_use for record in self.records):
-                self.blocks.append(Block("ACKNOWLEDGEMENTS", "manuscript-preparation disclosure", "Identify the tool, dates, affected portions, review, and responsibility."))
+                self.blocks.append(
+                    Block(
+                        "ACKNOWLEDGEMENTS",
+                        "manuscript-preparation disclosure",
+                        "Identify the tool, dates, affected portions, review, and responsibility.",
+                    )
+                )
             if any(
-                self.ledger.get(record.record_id, {}).get("ai_generated_content_included_in_submission", unknown()).value is True
+                self.ledger.get(record.record_id, {})
+                .get("ai_generated_content_included_in_submission", unknown())
+                .value
+                is True
                 for record in self.records
             ):
-                self.blocks.append(Block("RELEVANT_LEGEND", "item-specific publication-rights disclosure", "State the confirmed publication-rights basis for the affected item."))
+                self.blocks.append(
+                    Block(
+                        "RELEVANT_LEGEND",
+                        "item-specific publication-rights disclosure",
+                        "State the confirmed publication-rights basis for the affected item.",
+                    )
+                )
         elif self.venue == "The Lancet":
             for record in self.records:
                 artifact = self.ledger.get(record.record_id, {}).get("artifact_class")
                 if artifact is None:
-                    self.blocks.append(Block("DECLARATION_BEFORE_REFERENCES", f"manuscript-preparation declaration for {record.record_id}", f"Declare {record.tool}'s purpose, oversight, review, and author responsibility."))
+                    self.blocks.append(
+                        Block(
+                            "DECLARATION_BEFORE_REFERENCES",
+                            f"manuscript-preparation declaration for {record.record_id}",
+                            f"Declare {record.tool}'s purpose, oversight, review, and author responsibility.",
+                        )
+                    )
                 elif artifact.value == "GRAPHICAL_ABSTRACT":
-                    self.blocks.append(Block("GRAPHICAL_ABSTRACT_CAPTION", "illustration-tool disclosure", f"Name {record.tool} and its publication-rights basis in this caption."))
+                    self.blocks.append(
+                        Block(
+                            "GRAPHICAL_ABSTRACT_CAPTION",
+                            "illustration-tool disclosure",
+                            f"Name {record.tool} and its publication-rights basis in this caption.",
+                        )
+                    )
                 elif artifact.value in {"RESEARCH_METHOD_IMAGE", "DATA_VISUALIZATION"}:
-                    self.blocks.append(Block("METHODS", f"research visual method for {record.record_id}", f"Describe reproducible use of {record.tool} for {record.artifact}."))
+                    self.blocks.append(
+                        Block(
+                            "METHODS",
+                            f"research visual method for {record.record_id}",
+                            f"Describe reproducible use of {record.tool} for {record.artifact}.",
+                        )
+                    )
                 elif artifact.value == "EXPLANATORY_IMAGE":
-                    self.blocks.append(Block("IMAGE_CAPTION", f"explanatory-image disclosure for {record.record_id}", f"Identify {record.tool} for {record.artifact}."))
+                    self.blocks.append(
+                        Block(
+                            "IMAGE_CAPTION",
+                            f"explanatory-image disclosure for {record.record_id}",
+                            f"Identify {record.tool} for {record.artifact}.",
+                        )
+                    )
         else:
             placements = {
                 "ACL": "ACKNOWLEDGEMENTS",
@@ -732,7 +942,13 @@ class _Evaluator:
                 "Science": "ACKNOWLEDGEMENTS_OR_METHODS",
             }
             placement = placements.get(self.venue, "POLICY_SPECIFIED_LOCATION")
-            self.blocks.append(Block(placement, "venue AI-use disclosure", f"Render confirmed per-record facts for {self.venue}."))
+            self.blocks.append(
+                Block(
+                    placement,
+                    "venue AI-use disclosure",
+                    f"Render confirmed per-record facts for {self.venue}.",
+                )
+            )
 
     def _phase5_actions(self) -> None:
         if self.venue == "Frontiers":
@@ -743,7 +959,9 @@ class _Evaluator:
                     self.actions.append(f"{record.record_id}: factual accuracy")
                 self.actions.append(f"{record.record_id}: plagiarism-free")
                 if kind == "VISUAL":
-                    represents = record.facts.get("figure_represents_data", unknown(record.record_id))
+                    represents = record.facts.get(
+                        "figure_represents_data", unknown(record.record_id)
+                    )
                     if represents.state != "KNOWN":
                         self.actions.append("resolve figure_represents_data")
                     elif represents.value is True:
@@ -834,4 +1052,3 @@ def surface_sync_errors(root: Path) -> list[str]:
             if not any(token in text for token in tokens):
                 errors.append(f"{rel}: selector drift for {venue}")
     return errors
-

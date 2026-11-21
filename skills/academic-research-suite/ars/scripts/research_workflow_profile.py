@@ -15,10 +15,10 @@ import hashlib
 import json
 import re
 import sys
+from collections.abc import Mapping, Sequence
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any, Mapping, NoReturn, Sequence
-
+from typing import Any, NoReturn
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_FIELD_GENERAL_PROFILE = (
@@ -191,11 +191,7 @@ def _reject_duplicate_pairs(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 def _reject_non_jcs_numbers(value: Any, path: str = "document") -> None:
     if isinstance(value, float):
         _fail(path, "floating-point values are outside this contract's JCS domain")
-    if (
-        isinstance(value, int)
-        and not isinstance(value, bool)
-        and abs(value) > JCS_SAFE_INTEGER_MAX
-    ):
+    if isinstance(value, int) and not isinstance(value, bool) and abs(value) > JCS_SAFE_INTEGER_MAX:
         _fail(path, "integer is outside the interoperable JCS safe range")
     if isinstance(value, dict):
         for key, item in value.items():
@@ -371,9 +367,7 @@ def validate_profile(profile: Mapping[str, Any], *, verify_digest: bool = True) 
         _fail("profile.schema_version", f"must equal {PROFILE_SCHEMA_VERSION}")
     _slug(value["profile_id"], "profile.profile_id")
     _semver(value["profile_version"], "profile.profile_version")
-    family = _enum(
-        value["research_family"], "profile.research_family", RESEARCH_FAMILIES
-    )
+    family = _enum(value["research_family"], "profile.research_family", RESEARCH_FAMILIES)
 
     display = _object(value["display_name"], "profile.display_name", {"en", "zh_TW"})
     _text(display["en"], "profile.display_name.en")
@@ -442,9 +436,7 @@ def validate_profile(profile: Mapping[str, Any], *, verify_digest: bool = True) 
 
     _positive_int(value["branch_budget"], "profile.branch_budget")
     if value["overflow_behavior"] != "ask_merge_park_archive":
-        _fail(
-            "profile.overflow_behavior", "must equal ask_merge_park_archive"
-        )
+        _fail("profile.overflow_behavior", "must equal ask_merge_park_archive")
 
     if "evidence_overlays" in value:
         overlays = value["evidence_overlays"]
@@ -467,9 +459,7 @@ def validate_profile(profile: Mapping[str, Any], *, verify_digest: bool = True) 
         _fail("profile.authority_points", "must be an array")
     authority_identities: set[bytes] = set()
     for index, raw_point in enumerate(authority_points):
-        point = _validate_authority_point(
-            raw_point, f"profile.authority_points[{index}]"
-        )
+        point = _validate_authority_point(raw_point, f"profile.authority_points[{index}]")
         identity = canonical_bytes(point)
         if identity in authority_identities:
             _fail("profile.authority_points", "must not contain duplicate entries")
@@ -493,9 +483,7 @@ def validate_profile(profile: Mapping[str, Any], *, verify_digest: bool = True) 
         "profile.provenance",
         {"source", "source_pointer", "last_reviewed_at", "freshness_state"},
     )
-    source = _enum(
-        provenance["source"], "profile.provenance.source", PROFILE_SOURCES
-    )
+    source = _enum(provenance["source"], "profile.provenance.source", PROFILE_SOURCES)
     _text(provenance["source_pointer"], "profile.provenance.source_pointer")
     _iso_date(provenance["last_reviewed_at"], "profile.provenance.last_reviewed_at")
     _enum(
@@ -547,9 +535,7 @@ def effective_stage_map(profile: Mapping[str, Any]) -> dict[str, dict[str, str]]
     validate_profile(profile)
     declared = profile["stage_map"]
     return {
-        task_family: copy.deepcopy(
-            declared.get(task_family, {"state": "unresolved_fit"})
-        )
+        task_family: copy.deepcopy(declared.get(task_family, {"state": "unresolved_fit"}))
         for task_family in TASK_FAMILIES
     }
 
@@ -629,9 +615,7 @@ def _validate_selection(value: Any, path: str) -> tuple[dict[str, Any], datetime
     selection = _object(value, path, _SELECTION_FIELDS)
     _positive_int(selection["sequence"], f"{path}.sequence")
     binding = _validate_binding(selection["profile_binding"], f"{path}.profile_binding")
-    selected_by = _enum(
-        selection["selected_by"], f"{path}.selected_by", SELECTION_SOURCES
-    )
+    selected_by = _enum(selection["selected_by"], f"{path}.selected_by", SELECTION_SOURCES)
     if selected_by == "fallback_automatic" and binding["profile_id"] != "field_general":
         _fail(
             f"{path}.selected_by",
@@ -785,9 +769,7 @@ def create_selection_receipt(
     return receipt
 
 
-def create_fallback_receipt(
-    *, ars_suite_version: str, selected_at: str
-) -> dict[str, Any]:
+def create_fallback_receipt(*, ars_suite_version: str, selected_at: str) -> dict[str, Any]:
     """Make the no-selection state an explicit, visible field-general receipt."""
 
     profile = load_profile(DEFAULT_FIELD_GENERAL_PROFILE)
@@ -803,9 +785,7 @@ def create_fallback_receipt(
 def _introduced_authority_points(
     previous_profile: Mapping[str, Any], replacement_profile: Mapping[str, Any]
 ) -> list[dict[str, str]]:
-    previous = {
-        canonical_bytes(point) for point in previous_profile["authority_points"]
-    }
+    previous = {canonical_bytes(point) for point in previous_profile["authority_points"]}
     return [
         copy.deepcopy(point)
         for point in replacement_profile["authority_points"]
@@ -822,9 +802,7 @@ def _validate_stage_outputs(value: Any) -> list[dict[str, str]]:
         path = f"stage_outputs[{index}]"
         output = _object(raw_output, path, {"artifact_ref", "task_family"})
         artifact_ref = _text(output["artifact_ref"], f"{path}.artifact_ref")
-        task_family = _enum(
-            output["task_family"], f"{path}.task_family", TASK_FAMILIES
-        )
+        task_family = _enum(output["task_family"], f"{path}.task_family", TASK_FAMILIES)
         if artifact_ref in seen_refs:
             _fail(path, f"duplicate artifact_ref: {artifact_ref}")
         seen_refs.add(artifact_ref)
@@ -901,9 +879,7 @@ def correct_selection(
                 # downstream consumer gates only authority-sensitive reuse;
                 # absence never means an authority is unnecessary in general.
                 "authority_requirements_introduced": copy.deepcopy(introduced),
-                "authority_sensitive_reuse_gate": (
-                    "unmet" if introduced else "not_introduced"
-                ),
+                "authority_sensitive_reuse_gate": ("unmet" if introduced else "not_introduced"),
             }
         )
     validate_selection_receipt(updated)
@@ -1064,9 +1040,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "show-selection":
             _emit_json(
-                active_selection_summary(
-                    load_json(args.receipt), load_profile(args.profile)
-                )
+                active_selection_summary(load_json(args.receipt), load_profile(args.profile))
             )
             return 0
     except ContractError as exc:

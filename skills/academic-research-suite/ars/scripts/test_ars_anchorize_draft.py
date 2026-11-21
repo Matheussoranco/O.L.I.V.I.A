@@ -18,7 +18,6 @@ import unittest
 from pathlib import Path
 
 import jsonschema
-
 from scripts._block_parser import MARKER_RE, base_draft_hash, parse_document
 from scripts.ars_anchorize_draft import anchorize_file, anchorize_text, main
 
@@ -49,11 +48,7 @@ Final paragraph.
 
 
 def _strip_marker_lines(text: str) -> str:
-    kept = [
-        line
-        for line in text.split("\n")
-        if not MARKER_RE.match(line.rstrip("\r"))
-    ]
+    kept = [line for line in text.split("\n") if not MARKER_RE.match(line.rstrip("\r"))]
     return "\n".join(kept)
 
 

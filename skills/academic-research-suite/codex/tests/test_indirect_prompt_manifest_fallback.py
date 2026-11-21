@@ -7,7 +7,6 @@ from pathlib import Path
 
 import pytest
 
-
 SUITE_ROOT = Path(__file__).resolve().parents[2]
 RUNNER_PATH = SUITE_ROOT / "ars" / "scripts" / "run_indirect_prompt_injection_no_call.py"
 VALID_COMMIT = "94436237913091d4739870159d241660527e8338"
@@ -30,9 +29,7 @@ def _load_runner():
 
 def _write_manifest(vendor_root: Path, payload: object) -> None:
     vendor_root.mkdir()
-    (vendor_root.parent / "manifest.json").write_text(
-        json.dumps(payload), encoding="utf-8"
-    )
+    (vendor_root.parent / "manifest.json").write_text(json.dumps(payload), encoding="utf-8")
 
 
 def test_valid_commit_matches_package_manifest_source_lock() -> None:
@@ -72,11 +69,7 @@ def test_no_git_vendor_resolves_exact_manifest_source_lock(
         {},
         {"source_repositories": {}},
         {"source_repositories": []},
-        {
-            "source_repositories": [
-                {"name": "academic-research-skills", "commit": "not-a-commit"}
-            ]
-        },
+        {"source_repositories": [{"name": "academic-research-skills", "commit": "not-a-commit"}]},
         {
             "source_repositories": [
                 {"name": "academic-research-skills", "commit": VALID_COMMIT},

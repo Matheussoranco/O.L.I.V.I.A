@@ -15,13 +15,13 @@ import hashlib
 import json
 import re
 import sys
+from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 import yaml
 from jsonschema import Draft202012Validator
 from yaml.constructor import ConstructorError
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 REGISTRY_SCHEMA_PATH = REPO_ROOT / "shared/contracts/evidence/claim_registry.schema.json"
@@ -105,9 +105,7 @@ def _load_schema(path: Path) -> dict[str, Any]:
 
 def _schema_errors(value: Any, path: Path) -> list[str]:
     validator = Draft202012Validator(_load_schema(path))
-    errors = sorted(
-        validator.iter_errors(value), key=lambda error: list(error.absolute_path)
-    )
+    errors = sorted(validator.iter_errors(value), key=lambda error: list(error.absolute_path))
     return [f"{_json_path(error.absolute_path)}: {error.message}" for error in errors]
 
 
@@ -146,10 +144,7 @@ def _candidate_kinds(sentence: str) -> list[str]:
         )
     ):
         kinds.append("citation_bearing_sentence")
-    if any(
-        pattern.search(sentence)
-        for pattern in (_QUANTITATIVE, _SAMPLE_SIZE, _EFFECT_SIZE)
-    ):
+    if any(pattern.search(sentence) for pattern in (_QUANTITATIVE, _SAMPLE_SIZE, _EFFECT_SIZE)):
         kinds.append("quantitative_sentence")
     return kinds
 
@@ -185,9 +180,7 @@ def _candidate_triggers(sentence: str) -> list[dict[str, Any]]:
                     "end_char": match.end(),
                     "text": match.group(0),
                 }
-    return [
-        found[key] for key in sorted(found, key=lambda row: (row[1], row[2], row[0]))
-    ]
+    return [found[key] for key in sorted(found, key=lambda row: (row[1], row[2], row[0]))]
 
 
 def _char_to_byte_offsets(text: str) -> list[int]:
@@ -199,9 +192,7 @@ def _char_to_byte_offsets(text: str) -> list[int]:
     return offsets
 
 
-def _trimmed_segment(
-    body: str, start: int, end: int
-) -> tuple[int, int, str] | None:
+def _trimmed_segment(body: str, start: int, end: int) -> tuple[int, int, str] | None:
     segment = body[start:end]
     left = len(segment) - len(segment.lstrip())
     right = len(segment.rstrip())
@@ -255,14 +246,10 @@ def _sentences(draft: str) -> list[dict[str, Any]]:
     return output
 
 
-def _validated_claims(
-    draft_raw: bytes, registry: Mapping[str, Any]
-) -> list[dict[str, Any]]:
+def _validated_claims(draft_raw: bytes, registry: Mapping[str, Any]) -> list[dict[str, Any]]:
     expected_hash = _sha256(draft_raw)
     if registry["draft_raw_sha256"] != expected_hash:
-        raise CoverageError(
-            "registry draft_raw_sha256 does not match the exact draft bytes"
-        )
+        raise CoverageError("registry draft_raw_sha256 does not match the exact draft bytes")
 
     claims: list[dict[str, Any]] = []
     seen_ids: set[str] = set()
@@ -277,17 +264,13 @@ def _validated_claims(
         if start >= end:
             raise CoverageError(f"claim {claim_id} draft span is empty or reversed")
         if (start, end) in seen_spans:
-            raise CoverageError(
-                f"claim {claim_id} duplicates another claim's exact draft span"
-            )
+            raise CoverageError(f"claim {claim_id} duplicates another claim's exact draft span")
         seen_spans.add((start, end))
         if end > len(draft_raw):
             raise CoverageError(f"claim {claim_id} draft span exceeds draft bytes")
         fragment = _decode_utf8(draft_raw[start:end], f"claim {claim_id} draft span")
         if fragment != claim["claim_text"]:
-            raise CoverageError(
-                f"claim {claim_id} claim_text does not equal its exact draft span"
-            )
+            raise CoverageError(f"claim {claim_id} claim_text does not equal its exact draft span")
         claims.append(dict(claim))
     return claims
 
@@ -332,23 +315,20 @@ def build_report(draft_raw: bytes, registry_raw: bytes) -> dict[str, Any]:
                 and claim["draft_span"]["end_byte"] <= end_byte
             )
             trigger_raw = draft_raw[trigger_start_byte:trigger_end_byte]
-            trigger_digest = _sha256(
-                trigger["kind"].encode("utf-8") + bytes([0]) + trigger_raw
-            )[:12]
+            trigger_digest = _sha256(trigger["kind"].encode("utf-8") + bytes([0]) + trigger_raw)[
+                :12
+            ]
             trigger_rows.append(
                 {
                     "trigger_id": (
-                        f"TRIG-B{trigger_start_byte}-{trigger_end_byte}-"
-                        f"{trigger_digest}"
+                        f"TRIG-B{trigger_start_byte}-{trigger_end_byte}-" f"{trigger_digest}"
                     ),
                     "kind": trigger["kind"],
                     "start_byte": trigger_start_byte,
                     "end_byte": trigger_end_byte,
                     "text": trigger["text"],
                     "coverage_state": (
-                        "registry_span_matched"
-                        if trigger_matches
-                        else "trigger_unregistered"
+                        "registry_span_matched" if trigger_matches else "trigger_unregistered"
                     ),
                     "matched_claim_ids": trigger_matches,
                 }
@@ -369,9 +349,7 @@ def build_report(draft_raw: bytes, registry_raw: bytes) -> dict[str, Any]:
             coverage_state = "registry_span_matched"
         candidates.append(
             {
-                "candidate_id": (
-                    f"CAND-B{start_byte}-{end_byte}-{_sha256(sentence_raw)[:12]}"
-                ),
+                "candidate_id": (f"CAND-B{start_byte}-{end_byte}-{_sha256(sentence_raw)[:12]}"),
                 "line": sentence["line"],
                 "sentence_index": sentence["sentence_index"],
                 "start_byte": start_byte,
@@ -430,9 +408,7 @@ def _load_report(raw: bytes) -> dict[str, Any]:
     return value
 
 
-def validate_report(
-    report: Mapping[str, Any], draft_raw: bytes, registry_raw: bytes
-) -> list[str]:
+def validate_report(report: Mapping[str, Any], draft_raw: bytes, registry_raw: bytes) -> list[str]:
     """Validate shape and replay the complete report from exact inputs."""
 
     errors = _schema_errors(report, REPORT_SCHEMA_PATH)

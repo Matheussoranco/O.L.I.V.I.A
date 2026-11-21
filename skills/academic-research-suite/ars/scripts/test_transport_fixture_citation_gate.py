@@ -41,6 +41,7 @@ def _isolated_default_cache(tmp_path, monkeypatch):
     monkeypatch.setenv("ARS_VERIFICATION_CACHE_PATH", str(tmp_path / "gate-v.db"))
     monkeypatch.delenv("ARS_CACHE_REVALIDATE", raising=False)
 
+
 REPO_ROOT = Path(__file__).resolve().parent.parent
 if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
@@ -137,9 +138,9 @@ class FakeTransport:
         # being silently dropped by parse_qs and matching the exact dict.
         # An absent query string parses to {} (strict_parsing rejects "").
         query = (
-            urllib.parse.parse_qs(
-                parsed.query, keep_blank_values=True, strict_parsing=True)
-            if parsed.query else {}
+            urllib.parse.parse_qs(parsed.query, keep_blank_values=True, strict_parsing=True)
+            if parsed.query
+            else {}
         )
         for predicate, action in self.routes:
             if predicate(parsed, query):
@@ -157,13 +158,9 @@ def _serve(fixture_relpath: str):
 def _http_error(code: int, reason: str, fixture_relpath: str | None = None):
     def action(url):
         body = (
-            (FIXTURES / fixture_relpath).read_bytes()
-            if fixture_relpath
-            else b"Resource not found."
+            (FIXTURES / fixture_relpath).read_bytes() if fixture_relpath else b"Resource not found."
         )
-        raise urllib.error.HTTPError(
-            url, code, reason, email.message.Message(), io.BytesIO(body)
-        )
+        raise urllib.error.HTTPError(url, code, reason, email.message.Message(), io.BytesIO(body))
 
     return action
 
@@ -254,23 +251,29 @@ def test_hit_bodies_reduce_to_true_through_real_clients(hermetic_env, monkeypatc
     title fallback fired)."""
     from verification_gate import verify_citation
 
-    transport = FakeTransport([
-        (_crossref_doi, _serve("crossref/doi_hit.json")),
-        (_openalex_doi, _serve("openalex/doi_hit.json")),
-        (_s2_doi, _serve("semantic_scholar/doi_hit.json")),
-        (_arxiv_id, _serve("arxiv/id_hit.xml")),
-    ])
+    transport = FakeTransport(
+        [
+            (_crossref_doi, _serve("crossref/doi_hit.json")),
+            (_openalex_doi, _serve("openalex/doi_hit.json")),
+            (_s2_doi, _serve("semantic_scholar/doi_hit.json")),
+            (_arxiv_id, _serve("arxiv/id_hit.xml")),
+        ]
+    )
     monkeypatch.setattr("urllib.request.urlopen", transport)
 
     outcome = verify_citation(
-        _entry(), _real_clients(), ref_slug=REF_SLUG,
+        _entry(),
+        _real_clients(),
+        ref_slug=REF_SLUG,
         anchor={"kind": "page", "value": "3"},
     )
 
     assert outcome["lookup_verified"] == "true"
     for resolver in _RESOLVERS:
         assert outcome["resolver_outcomes"][resolver] == {
-            "status": "matched", "queried_by": "id", "response_summary": None,
+            "status": "matched",
+            "queried_by": "id",
+            "response_summary": None,
         }, resolver
     assert outcome["citation_key"] == "fixture2026"
     assert outcome["ref_slug"] == REF_SLUG
@@ -285,16 +288,18 @@ def test_fabricated_ids_reduce_to_false_through_real_clients(hermetic_env, monke
     resolver pin that the title fallback actually ran."""
     from verification_gate import verify_citation
 
-    transport = FakeTransport([
-        (_crossref_doi, _http_error(404, "Not Found")),
-        (_crossref_title_search, _serve("crossref/title_search_miss.json")),
-        (_openalex_doi, _http_error(404, "Not Found")),
-        (_openalex_title_search, _serve("openalex/title_search_miss.json")),
-        (_s2_doi, _http_error(404, "Not Found")),
-        (_s2_title_search, _serve("semantic_scholar/title_search_miss.json")),
-        (_arxiv_id, _serve("arxiv/empty_feed.xml")),
-        (_arxiv_title_search, _serve("arxiv/empty_feed.xml")),
-    ])
+    transport = FakeTransport(
+        [
+            (_crossref_doi, _http_error(404, "Not Found")),
+            (_crossref_title_search, _serve("crossref/title_search_miss.json")),
+            (_openalex_doi, _http_error(404, "Not Found")),
+            (_openalex_title_search, _serve("openalex/title_search_miss.json")),
+            (_s2_doi, _http_error(404, "Not Found")),
+            (_s2_title_search, _serve("semantic_scholar/title_search_miss.json")),
+            (_arxiv_id, _serve("arxiv/empty_feed.xml")),
+            (_arxiv_title_search, _serve("arxiv/empty_feed.xml")),
+        ]
+    )
     monkeypatch.setattr("urllib.request.urlopen", transport)
 
     outcome = verify_citation(_entry(), _real_clients(), ref_slug=REF_SLUG)
@@ -302,14 +307,17 @@ def test_fabricated_ids_reduce_to_false_through_real_clients(hermetic_env, monke
     assert outcome["lookup_verified"] == "false"
     for resolver in _RESOLVERS:
         assert outcome["resolver_outcomes"][resolver] == {
-            "status": "unmatched", "queried_by": "id", "response_summary": None,
+            "status": "unmatched",
+            "queried_by": "id",
+            "response_summary": None,
         }, resolver
     assert outcome["anchor_present"] is False
     assert len(transport.requests) == 8
 
 
 def test_total_outage_reduces_to_unresolvable_through_real_clients(
-    hermetic_env, monkeypatch,
+    hermetic_env,
+    monkeypatch,
 ):
     """5xx from every API: each real client raises its *Unavailable → every
     resolver 'unreachable' → 'unresolvable', never 'verified' (the degradation
@@ -317,15 +325,17 @@ def test_total_outage_reduces_to_unresolvable_through_real_clients(
     5xx fails fast (no retry loop — only 429 retries)."""
     from verification_gate import verify_citation
 
-    transport = FakeTransport([
-        (_crossref_doi, _http_error(502, "Bad Gateway", "crossref/error_5xx.html")),
-        (_openalex_doi, _http_error(
-            500, "Internal Server Error", "openalex/error_5xx.json")),
-        (_s2_doi, _http_error(
-            500, "Internal Server Error", "semantic_scholar/error_5xx.json")),
-        (_arxiv_id, _http_error(
-            503, "Service Temporarily Unavailable", "arxiv/error_5xx.html")),
-    ])
+    transport = FakeTransport(
+        [
+            (_crossref_doi, _http_error(502, "Bad Gateway", "crossref/error_5xx.html")),
+            (_openalex_doi, _http_error(500, "Internal Server Error", "openalex/error_5xx.json")),
+            (_s2_doi, _http_error(500, "Internal Server Error", "semantic_scholar/error_5xx.json")),
+            (
+                _arxiv_id,
+                _http_error(503, "Service Temporarily Unavailable", "arxiv/error_5xx.html"),
+            ),
+        ]
+    )
     monkeypatch.setattr("urllib.request.urlopen", transport)
 
     outcome = verify_citation(_entry(), _real_clients(), ref_slug=REF_SLUG)
@@ -333,6 +343,8 @@ def test_total_outage_reduces_to_unresolvable_through_real_clients(
     assert outcome["lookup_verified"] == "unresolvable"
     for resolver in _RESOLVERS:
         assert outcome["resolver_outcomes"][resolver] == {
-            "status": "unreachable", "queried_by": None, "response_summary": None,
+            "status": "unreachable",
+            "queried_by": None,
+            "response_summary": None,
         }, resolver
     assert len(transport.requests) == 4

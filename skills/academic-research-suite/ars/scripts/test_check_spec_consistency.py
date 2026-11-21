@@ -129,9 +129,7 @@ JA_README_TEMPLATE = """\
 
 
 def _write_ja_readme(root: Path, version: str) -> None:
-    (root / "README.ja-JP.md").write_text(
-        JA_README_TEMPLATE.format(ver=version), encoding="utf-8"
-    )
+    (root / "README.ja-JP.md").write_text(JA_README_TEMPLATE.format(ver=version), encoding="utf-8")
 
 
 # Minimal ko-KR README capturing the version-bearing surfaces check_readme_ko_sections
@@ -201,9 +199,7 @@ KO_README_TEMPLATE = """\
 
 
 def _write_ko_readme(root: Path, version: str) -> None:
-    (root / "README.ko-KR.md").write_text(
-        KO_README_TEMPLATE.format(ver=version), encoding="utf-8"
-    )
+    (root / "README.ko-KR.md").write_text(KO_README_TEMPLATE.format(ver=version), encoding="utf-8")
 
 
 # Minimal zh-CN README capturing the version-bearing surfaces the lint needs
@@ -364,7 +360,8 @@ class TestReadmeJaSections(unittest.TestCase):
             csc.check_readme_ja_sections()
 
             self.assertEqual(
-                csc.ERRORS, [],
+                csc.ERRORS,
+                [],
                 msg=f"unexpected errors on aligned fixture: {csc.ERRORS!r}",
             )
 
@@ -379,10 +376,10 @@ class TestReadmeJaSections(unittest.TestCase):
             # Write the "current" v3.9.4.2 release block but downgrade only
             # the badge and tag link to v3.9.4.0. This is the realistic shape
             # of drift when one place gets forgotten during a release.
-            stale = JA_README_TEMPLATE.format(ver="3.21.1").replace(
-                "version-v3.21.1-blue", "version-v3.9.4.0-blue"
-            ).replace(
-                "releases/tag/v3.21.1", "releases/tag/v3.9.4.0"
+            stale = (
+                JA_README_TEMPLATE.format(ver="3.21.1")
+                .replace("version-v3.21.1-blue", "version-v3.9.4.0-blue")
+                .replace("releases/tag/v3.21.1", "releases/tag/v3.9.4.0")
             )
             (root / "README.ja-JP.md").write_text(stale, encoding="utf-8")
 
@@ -418,7 +415,8 @@ class TestReadmeKoSections(unittest.TestCase):
             csc.check_readme_ko_sections()
 
             self.assertEqual(
-                csc.ERRORS, [],
+                csc.ERRORS,
+                [],
                 msg=f"unexpected errors on aligned ko fixture: {csc.ERRORS!r}",
             )
 
@@ -428,10 +426,10 @@ class TestReadmeKoSections(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            stale = KO_README_TEMPLATE.format(ver="3.21.1").replace(
-                "version-v3.21.1-blue", "version-v3.9.4.0-blue"
-            ).replace(
-                "releases/tag/v3.21.1", "releases/tag/v3.9.4.0"
+            stale = (
+                KO_README_TEMPLATE.format(ver="3.21.1")
+                .replace("version-v3.21.1-blue", "version-v3.9.4.0-blue")
+                .replace("releases/tag/v3.21.1", "releases/tag/v3.9.4.0")
             )
             (root / "README.ko-KR.md").write_text(stale, encoding="utf-8")
 
@@ -475,11 +473,7 @@ class TestReadmeKoSections(unittest.TestCase):
             csc.check_readme_ko_sections()
 
             self.assertTrue(
-                any(
-                    "README.ko-KR.md" in e
-                    and "### v3.18.0 (2026-07-18)" in e
-                    for e in csc.ERRORS
-                ),
+                any("README.ko-KR.md" in e and "### v3.18.0 (2026-07-18)" in e for e in csc.ERRORS),
                 msg=f"expected Korean parenthesis-style error in: {csc.ERRORS!r}",
             )
 
@@ -511,7 +505,8 @@ class TestReadmeZhSections(unittest.TestCase):
             csc.check_readme_zh_sections()
 
             self.assertEqual(
-                csc.ERRORS, [],
+                csc.ERRORS,
+                [],
                 msg=f"unexpected errors on aligned zh fixtures: {csc.ERRORS!r}",
             )
 
@@ -523,10 +518,10 @@ class TestReadmeZhSections(unittest.TestCase):
             root = Path(tmp)
             csc.ROOT = root
             _write_zh_tw_readme(root, version="3.21.1")
-            stale = ZH_CN_README_TEMPLATE.format(ver="3.21.1").replace(
-                "version-v3.21.1-blue", "version-v3.9.4.0-blue"
-            ).replace(
-                "releases/tag/v3.21.1", "releases/tag/v3.9.4.0"
+            stale = (
+                ZH_CN_README_TEMPLATE.format(ver="3.21.1")
+                .replace("version-v3.21.1-blue", "version-v3.9.4.0-blue")
+                .replace("releases/tag/v3.21.1", "releases/tag/v3.9.4.0")
             )
             (root / "README.zh-CN.md").write_text(stale, encoding="utf-8")
 
@@ -645,7 +640,8 @@ class TestArchitectureComponentVersion(unittest.TestCase):
             csc.check_architecture_component_version()
 
             self.assertEqual(
-                csc.ERRORS, [],
+                csc.ERRORS,
+                [],
                 msg=f"timeline marker must not be policed, but got: {csc.ERRORS!r}",
             )
 
@@ -683,7 +679,8 @@ class TestArchitectureComponentVersion(unittest.TestCase):
             csc.check_architecture_component_version()
 
             self.assertEqual(
-                csc.ERRORS, [],
+                csc.ERRORS,
+                [],
                 msg=f"unexpected errors on aligned 4-component fixture: {csc.ERRORS!r}",
             )
 
@@ -721,7 +718,8 @@ class TestArchitectureComponentVersion(unittest.TestCase):
             csc.check_architecture_component_version()
 
             self.assertEqual(
-                csc.ERRORS, [],
+                csc.ERRORS,
+                [],
                 msg=f"prose provenance mention must not be policed, but got: {csc.ERRORS!r}",
             )
 
@@ -774,9 +772,7 @@ def _write_skill_fixtures(root: Path, overrides: dict | None = None) -> None:
         )
 
 
-def _write_codex_source_manifest(
-    root: Path, source_repositories: list[dict[str, object]]
-) -> None:
+def _write_codex_source_manifest(root: Path, source_repositories: list[dict[str, object]]) -> None:
     """Create the adjacent manifest that authorizes the WORKFLOW.md overlay."""
     root.parent.mkdir(parents=True, exist_ok=True)
     (root.parent / "manifest.json").write_text(
@@ -829,12 +825,8 @@ class TestSkillVersionTableConsistency(unittest.TestCase):
 
         self.assertIn("academic-pipeline/WORKFLOW.md", paths)
         self.assertNotIn("experiment-agent/WORKFLOW.md", paths)
-        self.assertTrue(
-            all(path.endswith("/WORKFLOW.md") for path in paths), paths
-        )
-        self.assertTrue(
-            all((csc.ROOT / path).is_file() for path in paths), paths
-        )
+        self.assertTrue(all(path.endswith("/WORKFLOW.md") for path in paths), paths)
+        self.assertTrue(all((csc.ROOT / path).is_file() for path in paths), paths)
 
     def test_codex_external_source_excludes_only_its_owned_workflow(self) -> None:
         """A disjoint experiment-agent source stays outside suite version checks."""
@@ -933,9 +925,7 @@ class TestSkillVersionTableConsistency(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_skill_fixtures(
-                root, overrides={"academic-pipeline": {"tbl_date": "2026-06-01"}}
-            )
+            _write_skill_fixtures(root, overrides={"academic-pipeline": {"tbl_date": "2026-06-01"}})
 
             csc.check_skill_version_blocks()
 
@@ -953,9 +943,7 @@ class TestSkillVersionTableConsistency(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
             csc.ROOT = root
-            _write_skill_fixtures(
-                root, overrides={"deep-research": {"tbl_ver": "2.9.3"}}
-            )
+            _write_skill_fixtures(root, overrides={"deep-research": {"tbl_ver": "2.9.3"}})
 
             csc.check_skill_version_blocks()
 
@@ -1015,9 +1003,7 @@ def _write_date_sanity_fixtures(
     )
     _write_skill_fixtures(
         root,
-        overrides={
-            "academic-pipeline": {"fm_date": pipeline_date, "tbl_date": pipeline_date}
-        },
+        overrides={"academic-pipeline": {"fm_date": pipeline_date, "tbl_date": pipeline_date}},
     )
 
 
@@ -1080,9 +1066,7 @@ class TestSuiteSkillDateSanity(unittest.TestCase):
 
             self.assertTrue(
                 any(
-                    "academic-pipeline/SKILL.md" in e
-                    and "2026-06-01" in e
-                    and "2026-06-08" in e
+                    "academic-pipeline/SKILL.md" in e and "2026-06-01" in e and "2026-06-08" in e
                     for e in csc.ERRORS
                 ),
                 msg=f"expected stale-suite-date error in: {csc.ERRORS!r}",
@@ -1112,7 +1096,8 @@ class TestSuiteSkillDateSanity(unittest.TestCase):
                 # Real constant → only pipeline policed; academic-paper's early date is ignored.
                 csc.check_suite_skill_date_sanity()
                 self.assertEqual(
-                    csc.ERRORS, [],
+                    csc.ERRORS,
+                    [],
                     msg=f"independent-skill early date must not be policed, got: {csc.ERRORS!r}",
                 )
 
@@ -1155,7 +1140,8 @@ class TestSuiteSkillDateSanity(unittest.TestCase):
 
             pipeline_errors = [e for e in csc.ERRORS if "academic-pipeline/SKILL.md" in e]
             self.assertEqual(
-                len(pipeline_errors), 1,
+                len(pipeline_errors),
+                1,
                 msg=f"expected exactly one pipeline error, got {len(pipeline_errors)}: {pipeline_errors!r}",
             )
 
@@ -1178,7 +1164,9 @@ class RebuttalAuditGuardTest(unittest.TestCase):
         orig_read = csc.read
         csc.ERRORS.clear()
         try:
-            csc.read = lambda rel: skill_text if rel == "academic-paper/WORKFLOW.md" else orig_read(rel)
+            csc.read = (
+                lambda rel: skill_text if rel == "academic-paper/WORKFLOW.md" else orig_read(rel)
+            )
             csc.check_rebuttal_audit_guard()
             return list(csc.ERRORS)
         finally:

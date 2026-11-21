@@ -20,16 +20,16 @@ if str(REPO_ROOT / "scripts") not in sys.path:
     sys.path.insert(0, str(REPO_ROOT / "scripts"))
 
 import migrate_literature_corpus_to_v3_9_0 as mig  # noqa: E402
-
 from openalex_client import OpenAlexUnavailable  # noqa: E402
-from crossref_client import CrossrefUnavailable  # noqa: E402
-
 
 # ---------------------------------------------------------------------------
 # Mock client helpers
 # ---------------------------------------------------------------------------
 
-def _make_oa_client(matched_dois: frozenset[str] | None = None, matched_titles: frozenset[str] | None = None):
+
+def _make_oa_client(
+    matched_dois: frozenset[str] | None = None, matched_titles: frozenset[str] | None = None
+):
     """Mock OpenAlexClient.
 
     `matched_dois`: set of DOI strings that return a hit on doi_lookup_with_title_check.
@@ -55,7 +55,9 @@ def _make_oa_client(matched_dois: frozenset[str] | None = None, matched_titles: 
     return client
 
 
-def _make_cr_client(matched_dois: frozenset[str] | None = None, matched_titles: frozenset[str] | None = None):
+def _make_cr_client(
+    matched_dois: frozenset[str] | None = None, matched_titles: frozenset[str] | None = None
+):
     """Mirror of _make_oa_client for CrossrefClient."""
     matched_dois = matched_dois or frozenset()
     matched_titles = matched_titles or frozenset()
@@ -79,6 +81,7 @@ def _make_cr_client(matched_dois: frozenset[str] | None = None, matched_titles: 
 def _make_passport(tmp_path, entries):
     """Write a minimal passport YAML and return its Path."""
     from ruamel.yaml import YAML
+
     p = tmp_path / "passport.yaml"
     y = YAML()
     y.preserve_quotes = True
@@ -95,19 +98,24 @@ class DryRunTest(unittest.TestCase):
     def test_dry_run_does_not_modify_file(self) -> None:
         """--dry-run prints diff but leaves file untouched."""
         with tempfile.TemporaryDirectory() as td:
-            p = _make_passport(Path(td), [{
-                "citation_key": "smith2024",
-                "title": "Some Paper",
-                "authors": [{"family": "Smith"}],
-                "year": 2024,
-                "source_pointer": "doi:10.5555/abc",
-                "doi": "10.5555/abc",
-                "obtained_via": "folder-scan",
-                "contamination_signals": {
-                    "preprint_post_llm_inflection": False,
-                    "semantic_scholar_unmatched": True,
-                },
-            }])
+            p = _make_passport(
+                Path(td),
+                [
+                    {
+                        "citation_key": "smith2024",
+                        "title": "Some Paper",
+                        "authors": [{"family": "Smith"}],
+                        "year": 2024,
+                        "source_pointer": "doi:10.5555/abc",
+                        "doi": "10.5555/abc",
+                        "obtained_via": "folder-scan",
+                        "contamination_signals": {
+                            "preprint_post_llm_inflection": False,
+                            "semantic_scholar_unmatched": True,
+                        },
+                    }
+                ],
+            )
             before = p.read_bytes()
             # OpenAlex/Crossref return no match — would set True on real run.
             report = mig.migrate_passport(
@@ -129,27 +137,30 @@ class BackfillTest(unittest.TestCase):
     def test_backfill_populates_two_new_fields(self) -> None:
         """openalex_unmatched + crossref_unmatched are added to eligible entry."""
         with tempfile.TemporaryDirectory() as td:
-            p = _make_passport(Path(td), [{
-                "citation_key": "smith2024",
-                "title": "Real Paper",
-                "authors": [{"family": "Smith"}],
-                "year": 2024,
-                "source_pointer": "doi:10.5555/abc",
-                "doi": "10.5555/abc",
-                "obtained_via": "folder-scan",
-                "contamination_signals": {
-                    "preprint_post_llm_inflection": False,
-                    "semantic_scholar_unmatched": False,
-                },
-            }])
+            p = _make_passport(
+                Path(td),
+                [
+                    {
+                        "citation_key": "smith2024",
+                        "title": "Real Paper",
+                        "authors": [{"family": "Smith"}],
+                        "year": 2024,
+                        "source_pointer": "doi:10.5555/abc",
+                        "doi": "10.5555/abc",
+                        "obtained_via": "folder-scan",
+                        "contamination_signals": {
+                            "preprint_post_llm_inflection": False,
+                            "semantic_scholar_unmatched": False,
+                        },
+                    }
+                ],
+            )
             # OpenAlex: DOI matches → openalex_unmatched=False
             # Crossref: DOI miss, title miss → crossref_unmatched=True
             oa = _make_oa_client(matched_dois=frozenset(["10.5555/abc"]))
             cr = _make_cr_client()
 
-            report = mig.migrate_passport(
-                p, oa_client=oa, cr_client=cr, dry_run=False
-            )
+            report = mig.migrate_passport(p, oa_client=oa, cr_client=cr, dry_run=False)
             self.assertEqual(report["patched"], 1)
             doc = mig.load_passport(p)
             sig = doc["literature_corpus"][0]["contamination_signals"]
@@ -164,17 +175,22 @@ class ManualSkipTest(unittest.TestCase):
     def test_manual_entry_skipped_entirely(self) -> None:
         """obtained_via='manual' entries are not modified."""
         with tempfile.TemporaryDirectory() as td:
-            p = _make_passport(Path(td), [{
-                "citation_key": "manual1",
-                "title": "User curated",
-                "authors": [{"family": "User"}],
-                "year": 2024,
-                "source_pointer": "manual:1",
-                "obtained_via": "manual",
-                "contamination_signals": {
-                    "preprint_post_llm_inflection": True,
-                },
-            }])
+            p = _make_passport(
+                Path(td),
+                [
+                    {
+                        "citation_key": "manual1",
+                        "title": "User curated",
+                        "authors": [{"family": "User"}],
+                        "year": 2024,
+                        "source_pointer": "manual:1",
+                        "obtained_via": "manual",
+                        "contamination_signals": {
+                            "preprint_post_llm_inflection": True,
+                        },
+                    }
+                ],
+            )
             before = p.read_bytes()
             report = mig.migrate_passport(
                 p,
@@ -195,15 +211,20 @@ class PreV373SkipTest(unittest.TestCase):
     def test_pre_v3_7_3_entry_skipped(self) -> None:
         """Entry without semantic_scholar_unmatched is out of v3.9.0 scope."""
         with tempfile.TemporaryDirectory() as td:
-            p = _make_passport(Path(td), [{
-                "citation_key": "legacy1",
-                "title": "Old entry",
-                "authors": [{"family": "Old"}],
-                "year": 2020,
-                "source_pointer": "doi:10.5555/old",
-                "obtained_via": "folder-scan",
-                # No contamination_signals at all.
-            }])
+            p = _make_passport(
+                Path(td),
+                [
+                    {
+                        "citation_key": "legacy1",
+                        "title": "Old entry",
+                        "authors": [{"family": "Old"}],
+                        "year": 2020,
+                        "source_pointer": "doi:10.5555/old",
+                        "obtained_via": "folder-scan",
+                        # No contamination_signals at all.
+                    }
+                ],
+            )
             before = p.read_bytes()
             report = mig.migrate_passport(
                 p,
@@ -224,21 +245,26 @@ class IdempotencyTest(unittest.TestCase):
     def test_idempotent_stable_fields(self) -> None:
         """Re-running on a fully-populated entry produces no change."""
         with tempfile.TemporaryDirectory() as td:
-            p = _make_passport(Path(td), [{
-                "citation_key": "complete",
-                "title": "Fully indexed",
-                "authors": [{"family": "Yes"}],
-                "year": 2024,
-                "source_pointer": "doi:10.5555/yes",
-                "doi": "10.5555/yes",
-                "obtained_via": "folder-scan",
-                "contamination_signals": {
-                    "preprint_post_llm_inflection": False,
-                    "semantic_scholar_unmatched": False,
-                    "openalex_unmatched": False,
-                    "crossref_unmatched": False,
-                },
-            }])
+            p = _make_passport(
+                Path(td),
+                [
+                    {
+                        "citation_key": "complete",
+                        "title": "Fully indexed",
+                        "authors": [{"family": "Yes"}],
+                        "year": 2024,
+                        "source_pointer": "doi:10.5555/yes",
+                        "doi": "10.5555/yes",
+                        "obtained_via": "folder-scan",
+                        "contamination_signals": {
+                            "preprint_post_llm_inflection": False,
+                            "semantic_scholar_unmatched": False,
+                            "openalex_unmatched": False,
+                            "crossref_unmatched": False,
+                        },
+                    }
+                ],
+            )
             before = p.read_bytes()
             report = mig.migrate_passport(
                 p,
@@ -263,34 +289,37 @@ class PartialDegradationTest(unittest.TestCase):
         Tests both stable-fields idempotency AND partial-fill eligibility.
         """
         with tempfile.TemporaryDirectory() as td:
-            p = _make_passport(Path(td), [{
-                "citation_key": "partial",
-                "title": "Partial backfill",
-                "authors": [{"family": "X"}],
-                "year": 2024,
-                "source_pointer": "doi:10.5555/p",
-                "doi": "10.5555/p",
-                "obtained_via": "folder-scan",
-                "contamination_signals": {
-                    "preprint_post_llm_inflection": False,
-                    "semantic_scholar_unmatched": False,
-                    "crossref_unmatched": False,  # populated from a prior run
-                    # openalex_unmatched absent — to be filled
-                },
-            }])
+            p = _make_passport(
+                Path(td),
+                [
+                    {
+                        "citation_key": "partial",
+                        "title": "Partial backfill",
+                        "authors": [{"family": "X"}],
+                        "year": 2024,
+                        "source_pointer": "doi:10.5555/p",
+                        "doi": "10.5555/p",
+                        "obtained_via": "folder-scan",
+                        "contamination_signals": {
+                            "preprint_post_llm_inflection": False,
+                            "semantic_scholar_unmatched": False,
+                            "crossref_unmatched": False,  # populated from a prior run
+                            # openalex_unmatched absent — to be filled
+                        },
+                    }
+                ],
+            )
             # OpenAlex: DOI match → False
             oa = _make_oa_client(matched_dois=frozenset(["10.5555/p"]))
             cr = _make_cr_client()  # not called (crossref already set)
 
-            report = mig.migrate_passport(
-                p, oa_client=oa, cr_client=cr, dry_run=False
-            )
+            report = mig.migrate_passport(p, oa_client=oa, cr_client=cr, dry_run=False)
             self.assertEqual(report["patched"], 1)
 
             doc = mig.load_passport(p)
             sig = doc["literature_corpus"][0]["contamination_signals"]
-            self.assertIs(sig["openalex_unmatched"], False)   # added
-            self.assertIs(sig["crossref_unmatched"], False)   # preserved (not overwritten)
+            self.assertIs(sig["openalex_unmatched"], False)  # added
+            self.assertIs(sig["crossref_unmatched"], False)  # preserved (not overwritten)
 
             # Crossref client must NOT have been consulted (field was already set)
             cr.doi_lookup_with_title_check.assert_not_called()
@@ -336,25 +365,28 @@ class ParallelDispatchTest(unittest.TestCase):
         cr.title_search.side_effect = lambda title, year=None: None
 
         with tempfile.TemporaryDirectory() as td:
-            p = _make_passport(Path(td), [{
-                "citation_key": "parallel",
-                "title": "Parallel dispatch",
-                "authors": [{"family": "P"}],
-                "year": 2024,
-                "source_pointer": "doi:10.5555/par",
-                "doi": "10.5555/par",
-                "obtained_via": "folder-scan",
-                "contamination_signals": {
-                    "preprint_post_llm_inflection": False,
-                    "semantic_scholar_unmatched": True,
-                    # both openalex_unmatched + crossref_unmatched absent
-                },
-            }])
+            p = _make_passport(
+                Path(td),
+                [
+                    {
+                        "citation_key": "parallel",
+                        "title": "Parallel dispatch",
+                        "authors": [{"family": "P"}],
+                        "year": 2024,
+                        "source_pointer": "doi:10.5555/par",
+                        "doi": "10.5555/par",
+                        "obtained_via": "folder-scan",
+                        "contamination_signals": {
+                            "preprint_post_llm_inflection": False,
+                            "semantic_scholar_unmatched": True,
+                            # both openalex_unmatched + crossref_unmatched absent
+                        },
+                    }
+                ],
+            )
 
             # Sequential impl → barrier never gets its 2nd party → BrokenBarrierError.
-            report = mig.migrate_passport(
-                p, oa_client=oa, cr_client=cr, dry_run=False
-            )
+            report = mig.migrate_passport(p, oa_client=oa, cr_client=cr, dry_run=False)
 
             self.assertEqual(report["patched"], 1)
             doc = mig.load_passport(p)
@@ -376,31 +408,32 @@ class ApiDownDegradationTest(unittest.TestCase):
 
     def test_openalex_down_omits_field_and_fills_crossref(self) -> None:
         oa = MagicMock()
-        oa.doi_lookup_with_title_check.side_effect = OpenAlexUnavailable(
-            "openalex 503"
-        )
+        oa.doi_lookup_with_title_check.side_effect = OpenAlexUnavailable("openalex 503")
         oa.title_search.side_effect = OpenAlexUnavailable("openalex 503")
         # Crossref healthy, no match → crossref_unmatched True.
         cr = _make_cr_client()
 
         with tempfile.TemporaryDirectory() as td:
-            p = _make_passport(Path(td), [{
-                "citation_key": "oa_down",
-                "title": "OpenAlex down",
-                "authors": [{"family": "D"}],
-                "year": 2024,
-                "source_pointer": "doi:10.5555/down",
-                "doi": "10.5555/down",
-                "obtained_via": "folder-scan",
-                "contamination_signals": {
-                    "preprint_post_llm_inflection": False,
-                    "semantic_scholar_unmatched": True,
-                },
-            }])
-
-            report = mig.migrate_passport(
-                p, oa_client=oa, cr_client=cr, dry_run=False
+            p = _make_passport(
+                Path(td),
+                [
+                    {
+                        "citation_key": "oa_down",
+                        "title": "OpenAlex down",
+                        "authors": [{"family": "D"}],
+                        "year": 2024,
+                        "source_pointer": "doi:10.5555/down",
+                        "doi": "10.5555/down",
+                        "obtained_via": "folder-scan",
+                        "contamination_signals": {
+                            "preprint_post_llm_inflection": False,
+                            "semantic_scholar_unmatched": True,
+                        },
+                    }
+                ],
             )
+
+            report = mig.migrate_passport(p, oa_client=oa, cr_client=cr, dry_run=False)
 
             # Crossref filled, so the entry counts as patched.
             self.assertEqual(report["patched"], 1)
@@ -412,8 +445,6 @@ class ApiDownDegradationTest(unittest.TestCase):
             # Failed API field omitted entirely, not written as a guessed value.
             self.assertNotIn("openalex_unmatched", sig)
             self.assertIs(sig["crossref_unmatched"], True)
-
-
 
 
 class OmissionProvenanceTest(unittest.TestCase):
@@ -445,13 +476,13 @@ class OmissionProvenanceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             p = _make_passport(Path(td), [self._entry()])
             report = mig.migrate_passport(
-                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
-                dry_run=False)
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(), dry_run=False
+            )
             self.assertEqual(report["degraded_openalex"], 1)
             entry = mig.load_passport(p)["literature_corpus"][0]
             self.assertEqual(
-                entry["contamination_signal_omissions"],
-                {"openalex_unmatched": "api_degraded"})
+                entry["contamination_signal_omissions"], {"openalex_unmatched": "api_degraded"}
+            )
             # Crossref ran fine — signal present, no omission for it.
             self.assertIn("crossref_unmatched", entry["contamination_signals"])
 
@@ -459,12 +490,12 @@ class OmissionProvenanceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             p = _make_passport(Path(td), [self._entry()])
             mig.migrate_passport(
-                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
-                dry_run=False)
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(), dry_run=False
+            )
             before = p.read_text()
             report2 = mig.migrate_passport(
-                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
-                dry_run=False)
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(), dry_run=False
+            )
             self.assertEqual(report2["patched"], 0)
             self.assertEqual(before, p.read_text())
 
@@ -472,12 +503,12 @@ class OmissionProvenanceTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             p = _make_passport(Path(td), [self._entry()])
             mig.migrate_passport(
-                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
-                dry_run=False)
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(), dry_run=False
+            )
             # API back up: signal computes, stale omission cleared.
             mig.migrate_passport(
-                p, oa_client=_make_oa_client(), cr_client=_make_cr_client(),
-                dry_run=False)
+                p, oa_client=_make_oa_client(), cr_client=_make_cr_client(), dry_run=False
+            )
             entry = mig.load_passport(p)["literature_corpus"][0]
             self.assertIn("openalex_unmatched", entry["contamination_signals"])
             self.assertNotIn("contamination_signal_omissions", entry)
@@ -487,8 +518,8 @@ class OmissionProvenanceTest(unittest.TestCase):
             p = _make_passport(Path(td), [self._entry()])
             before = p.read_text()
             report = mig.migrate_passport(
-                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(),
-                dry_run=True)
+                p, oa_client=self._degraded_oa(), cr_client=_make_cr_client(), dry_run=True
+            )
             self.assertEqual(report["degraded_openalex"], 1)
             self.assertEqual(before, p.read_text())
 
