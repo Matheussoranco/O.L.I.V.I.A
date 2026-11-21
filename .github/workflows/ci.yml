@@ -35,6 +35,9 @@ jobs:
       - name: Ruff format check
         run: ruff format --check src/ tests/
 
+      - name: Mypy type check
+        run: mypy src/olivia
+
   test:
     name: Test Suite (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
