@@ -70,6 +70,10 @@ class ToolRegistry:
     def get_names(self) -> list[str]:
         return sorted(self._tools)
 
+    def names(self) -> list[str]:
+        """Backward compatibility alias for get_names()."""
+        return self.get_names()
+
     def execute(
         self,
         name: str,
