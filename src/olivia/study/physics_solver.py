@@ -351,6 +351,58 @@ def _solve_free_fall(
     return None
 
 
+_DECEL_RE = re.compile(
+    r"\b(?:decelerat\w*|brak\w*|slow(?:s|ed|ing)?\s+down|retard\w*)\b",
+    re.IGNORECASE,
+)
+_GIVEN_VEL_PHRASE_RE = re.compile(
+    r"\b(?:initial|starting|begin(?:ning)?)\s+(?:velocity|speed)\b",
+    re.IGNORECASE,
+)
+
+
+def _question_clause(problem: str) -> str:
+    """Return the clause asking for the unknown quantity, not the supplied givens."""
+    clauses = [c.strip() for c in re.split(r"[.!?\n;]+", problem) if c.strip()]
+    for clause in reversed(clauses):
+        if re.search(
+            r"\b(?:what|find|calculate|compute|determine|how\s+far|how\s+fast|"
+            r"final\s+(?:velocity|speed)|displacement|distance)\b",
+            clause,
+            re.IGNORECASE,
+        ):
+            return clause
+    # Single-sentence comma-separated fallback: e.g. "... for 4 s, find its displacement"
+    parts = [p.strip() for p in problem.split(",") if p.strip()]
+    for part in reversed(parts):
+        if re.search(
+            r"\b(?:what|find|calculate|compute|determine|how\s+far|how\s+fast|"
+            r"final\s+(?:velocity|speed)|displacement|distance)\b",
+            part,
+            re.IGNORECASE,
+        ):
+            return part
+    return problem
+
+
+def _asked_kinematic_quantity(problem: str) -> str | None:
+    """Identify whether a kinematics problem asks for velocity or displacement."""
+    clause = _GIVEN_VEL_PHRASE_RE.sub("", _question_clause(problem)).lower()
+    asks_disp = bool(
+        re.search(r"\b(?:how\s+far|distance|displacement|travel(?:s|ed|led)?)\b", clause)
+    )
+    asks_vel = bool(
+        re.search(r"\b(?:final\s+velocity|final\s+speed|how\s+fast|velocity|speed)\b", clause)
+    )
+    if asks_disp and asks_vel:
+        return None
+    if asks_disp:
+        return "displacement"
+    if asks_vel:
+        return "velocity"
+    return None
+
+
 def _solve_kinematics(
     problem: str, qty: dict[tuple[int, ...], list[tuple[float, float, str]]]
 ) -> WorkedSolution | None:
@@ -359,6 +411,8 @@ def _solve_kinematics(
         return None
     a_ms2, a_raw, a_unit = qty[_DIM_ACCEL][0]
     t_s, t_raw, t_unit = qty[_DIM_TIME][0]
+    if t_s < 0:
+        return None
     if "from rest" in low:
         v0 = 0.0
     elif _DIM_VELOCITY in qty:
@@ -366,14 +420,36 @@ def _solve_kinematics(
     else:
         return None
 
-    if any(kw in low for kw in ("final velocity", "final speed", "velocity", "speed")):
-        v_ms = v0 + a_ms2 * t_s
+    decelerating = bool(_DECEL_RE.search(problem))
+    effective_a = -abs(a_ms2) if (decelerating and a_ms2 > 0) else a_ms2
+
+    asked = _asked_kinematic_quantity(problem)
+    if asked is None:
+        return None
+
+    # Braking/decelerating body cannot reverse past rest; abstain if t > stop time.
+    if decelerating and v0 > 0 and effective_a < 0:
+        v_end = v0 + effective_a * t_s
+        if v_end < -1e-12:
+            return None
+
+    if asked == "velocity":
+        v_ms = v0 + effective_a * t_s
+        if decelerating and abs(v_ms) <= 1e-12:
+            v_ms = 0.0
         target = _requested_unit(problem, _DIM_VELOCITY, "m/s")
         out = convert(v_ms, "m/s", target)
         if out is None:
             return None
         steps: list[SolutionStep] = []
-        _step(steps, f"Given v₀ = {v0:g} m/s, a = {a_raw:g} {a_unit}, t = {t_raw:g} {t_unit}", "")
+        sign_note = (
+            f" (decelerating: a = {effective_a:g} m/s^2)" if decelerating and a_ms2 > 0 else ""
+        )
+        _step(
+            steps,
+            f"Given v₀ = {v0:g} m/s, a = {a_raw:g} {a_unit}{sign_note}, t = {t_raw:g} {t_unit}",
+            "",
+        )
         _step(steps, "Apply v = v₀ + a·t", f"{_fmt(out)} {target}")
         return WorkedSolution(
             problem=problem,
@@ -383,14 +459,21 @@ def _solve_kinematics(
             method="physics",
             confidence=0.95,
         )
-    if any(kw in low for kw in ("how far", "distance", "displacement")):
-        d_m = v0 * t_s + 0.5 * a_ms2 * t_s * t_s
+    if asked == "displacement":
+        d_m = v0 * t_s + 0.5 * effective_a * t_s * t_s
         target = _requested_unit(problem, _DIM_LENGTH, "m")
         out = convert(d_m, "m", target)
         if out is None:
             return None
         steps = []
-        _step(steps, f"Given v₀ = {v0:g} m/s, a = {a_raw:g} {a_unit}, t = {t_raw:g} {t_unit}", "")
+        sign_note = (
+            f" (decelerating: a = {effective_a:g} m/s^2)" if decelerating and a_ms2 > 0 else ""
+        )
+        _step(
+            steps,
+            f"Given v₀ = {v0:g} m/s, a = {a_raw:g} {a_unit}{sign_note}, t = {t_raw:g} {t_unit}",
+            "",
+        )
         _step(steps, "Apply d = v₀·t + ½·a·t²", f"{_fmt(out)} {target}")
         return WorkedSolution(
             problem=problem,

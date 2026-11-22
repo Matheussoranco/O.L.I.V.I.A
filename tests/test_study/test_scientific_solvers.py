@@ -152,6 +152,44 @@ def test_physics_kinematics_and_free_fall():
     assert math.isclose(float(sol_fall_v.final_answer.split()[0]), 29.42, rel_tol=0.01)
 
 
+def test_physics_kinematics_same_givens_distinguishes_displacement_vs_velocity():
+    # Lead review regression: initial velocity in givens must not hijack displacement queries.
+    disp = _solve(
+        "An object with initial velocity 3 m/s accelerates at 2 m/s^2 for 4 s. "
+        "What is its displacement?"
+    )
+    assert disp.method == "physics"
+    assert disp.final_answer == "28 m"
+
+    vel = _solve(
+        "An object with initial velocity 3 m/s accelerates at 2 m/s^2 for 4 s. "
+        "What is its final velocity?"
+    )
+    assert vel.method == "physics"
+    assert vel.final_answer == "11 m/s"
+
+
+@pytest.mark.parametrize(
+    ("problem", "expected"),
+    [
+        ("A car decelerates from 20 m/s at 4 m/s^2 for 3 s. Final velocity?", "8 m/s"),
+        ("A car brakes from 20 m/s at 4 m/s^2 for 3 s. What is its final speed?", "8 m/s"),
+        ("A car slows down from 20 m/s at 4 m/s^2 for 3 s. What is its final velocity?", "8 m/s"),
+        ("A car decelerates from 20 m/s at 4 m/s^2 for 5 s. Final velocity?", "0 m/s"),
+        ("A car accelerates from 20 m/s at -4 m/s^2 for 3 s. Final velocity?", "8 m/s"),
+    ],
+)
+def test_physics_kinematics_deceleration_and_negative_acceleration(problem: str, expected: str):
+    sol = _solve(problem)
+    assert sol.method == "physics"
+    assert sol.final_answer == expected
+
+
+def test_physics_kinematics_deceleration_past_stop_abstains():
+    sol = _solve("A car decelerates from 20 m/s at 4 m/s^2 for 6 s. Final velocity?")
+    assert sol.method == "none"
+
+
 def test_physics_energy_force_photon_pendulum():
     sol_ke = _solve("What is the kinetic energy of a 1000 g object moving at 10 m/s?")
     assert sol_ke.method == "physics"

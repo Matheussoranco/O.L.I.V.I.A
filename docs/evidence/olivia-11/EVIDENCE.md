@@ -56,3 +56,12 @@ Expanded O.L.I.V.I.A.'s deterministic symbolic solvers across **units**, **chemi
 | 3 | `uv run --no-sync mypy src/olivia` | `0` | `Success: no issues found in 67 source files` |
 | 4 | `uv run --no-sync pytest tests/ --tb=short -q` | `0` | `392 passed, 2 skipped` (15 new disjoint scientific solver tests) |
 | 5 | `uv run --no-sync olivia eval --check` | `0` | `All gates hold.` (`symbolic.accuracy = 100.0%` [64/64], `wrong_rate = 0.0%`, all 4 core & all 4 reach domains `100.0%`) |
+
+---
+
+## 4. Generalisation & Review Follow-Up (Round 2)
+
+- **Held-out vs. fresh generalisation:** The `100.0%` (64/64) score above is measured on the repository's existing held-out `symbolic_solving.json` suite (unmodified). Independently during review of `d9a70f7`, Claude Code evaluated 30 freshly authored problems with hand-computed answers and observed **29/30 correct, 1 honest abstention, 0 wrong** (vs. `1/30` on `origin/main`), providing independent generalisation evidence.
+- **Review defects resolved:**
+  1. **Lead blocker (`physics_solver.py`):** Separated question-clause parsing (`_asked_kinematic_quantity`) from supplied givens so initial velocity phrasing does not hijack displacement queries (`3 m/s`, `2 m/s^2`, `4 s` → `28 m` displacement, `11 m/s` final velocity).
+  2. **Claude blocker (`physics_solver.py`):** Added deceleration/braking/slowing-down sign handling (`_DECEL_RE`) and physical stop-time guarding (`20 m/s` decelerating at `4 m/s^2` → `8 m/s` at `3 s`, `0 m/s` at `5 s`, honest abstention beyond `5 s`).
