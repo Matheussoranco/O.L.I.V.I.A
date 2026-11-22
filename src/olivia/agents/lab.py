@@ -25,12 +25,13 @@ class ResearchLab:
 
     def investigate(self, question: str, rounds: int = 1) -> dict[str, Any]:
         """Run the seminar; returns draft/critique/synthesis plus a transcript."""
+        transcript: list[dict[str, str]] = []
         result: dict[str, Any] = {
             "question": question,
             "draft": "",
             "critique": "",
             "synthesis": "",
-            "transcript": [],
+            "transcript": transcript,
             "error": "",
         }
         if not self.client.available:
@@ -58,7 +59,7 @@ class ResearchLab:
                 return result
             draft = drafted.answer
             result["draft"] = draft
-            result["transcript"].append({"role": "researcher", "content": draft})
+            transcript.append({"role": "researcher", "content": draft})
 
             criticised = critic.run(
                 f"Question: {question}\n\nDraft under review:\n{draft}\n\n"
@@ -67,7 +68,7 @@ class ResearchLab:
             if criticised.error and not criticised.answer:
                 result["error"] = criticised.error
                 return result
-            result["transcript"].append({"role": "critic", "content": criticised.answer})
+            transcript.append({"role": "critic", "content": criticised.answer})
             result["critique"] = criticised.answer
             logger.info("ResearchLab round %d complete", round_number)
 
@@ -80,5 +81,5 @@ class ResearchLab:
             result["error"] = written.error
             return result
         result["synthesis"] = written.answer
-        result["transcript"].append({"role": "writer", "content": written.answer})
+        transcript.append({"role": "writer", "content": written.answer})
         return result

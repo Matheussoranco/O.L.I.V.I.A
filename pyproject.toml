@@ -50,6 +50,7 @@ docs = [
     "beautifulsoup4>=4.12,<5.0",
 ]
 dev = [
+    "mypy>=1.11,<2.0",
     "pytest>=8.0,<9.0",
     "ruff==0.15.2",   # pinned exactly: see .github/workflows/ci.yml
 ]
@@ -99,3 +100,30 @@ ignore = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.10"
+mypy_path = "src"
+files = ["src/olivia"]
+warn_unused_ignores = true
+
+[[tool.mypy.overrides]]
+module = [
+    "anthropic",
+    "anthropic.*",
+    "bs4",
+    "bs4.*",
+    "fitz",
+    "fitz.*",
+    "langchain_core",
+    "langchain_core.*",
+    "langgraph",
+    "langgraph.*",
+    "networkx",
+    "networkx.*",
+    "scipy",
+    "scipy.*",
+    "sympy",
+    "sympy.*",
+]
+ignore_missing_imports = true

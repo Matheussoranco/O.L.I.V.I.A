@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import time
-from typing import Any
+from typing import Any, cast
 
 from olivia.core.state import Mode, OliviaState, make_initial_state
 from olivia.llm.client import LLMClient, get_client
@@ -150,6 +150,7 @@ def node_study(state: OliviaState, client: LLMClient | None = None) -> dict[str,
 
 def _merge(state: OliviaState, delta: dict[str, Any]) -> None:
     """Apply a node delta using the state's append/replace semantics."""
+    state_map = cast(dict[str, Any], state)
     for key, value in delta.items():
         if key in (
             "messages",
@@ -161,9 +162,9 @@ def _merge(state: OliviaState, delta: dict[str, Any]) -> None:
             "flashcards",
             "quiz",
         ):
-            state.setdefault(key, []).extend(value)  # type: ignore[typeddict-item]
+            state_map.setdefault(key, []).extend(value)
         else:
-            state[key] = value  # type: ignore[literal-required]
+            state_map[key] = value
 
 
 def run_cycle(
