@@ -115,11 +115,15 @@ def test_olivia_study_plan_tool():
     assert "# Study plan: calculus" in _text(response)
 
 
-def test_notebook_add_then_search():
+def test_notebook_add_entries_and_search():
     added = _call(
         "notebook_add", {"kind": "note", "content": "gravitational lensing", "tags": ["gr"]}
     )
     assert json.loads(_text(added))["kind"] == "note"
+
+    listed = json.loads(_text(_call("notebook_entries", {"kind": "note", "limit": 10})))
+    assert len(listed) == 1
+    assert listed[0]["content"] == "gravitational lensing"
 
     found = json.loads(_text(_call("notebook_search", {"query": "lensing"})))
     assert len(found) == 1
@@ -197,3 +201,109 @@ def test_serve_stdio_roundtrip(monkeypatch, capsys):
     assert out_lines[0]["id"] == 1 and "result" in out_lines[0]
     assert out_lines[1]["error"]["code"] == -32700  # parse error
     assert out_lines[2]["id"] == 2 and "tools" in out_lines[2]["result"]
+
+
+def test_mcp_json_registration_and_required_tools_catalog():
+    from pathlib import Path
+
+    mcp_json = Path(__file__).resolve().parents[2] / ".mcp.json"
+    cfg = json.loads(mcp_json.read_text(encoding="utf-8"))
+    olivia_srv = cfg["mcpServers"]["olivia"]
+    assert olivia_srv["command"] == "olivia"
+    assert olivia_srv["args"] == ["mcp-serve"]
+
+    # Every tool listed in T7 (#15) must be registered and discoverable via tools/list.
+    required = {
+        "olivia_ask",
+        "olivia_solve",
+        "olivia_research",
+        "olivia_worksheet",
+        "molar_mass",
+        "balance_equation",
+        "convert_units",
+        "physical_constant",
+        "olivia_study_plan",
+        "olivia_flashcards",
+        "olivia_quiz",
+        "olivia_lab",
+        "literature_search",
+        "python_exec",
+        "notebook_add",
+        "notebook_search",
+        "notebook_entries",
+        "meta_stats",
+    }
+    assert required.issubset(set(TOOLS))
+
+
+def test_subprocess_mcp_serve_roundtrip(tmp_path):
+    """End-to-end stdio JSON-RPC round-trip spawning `python -m olivia mcp-serve`."""
+    import os
+    import subprocess
+
+    env = dict(os.environ)
+    env["OLIVIA_HOME_DIR"] = str(tmp_path)
+    env["OLIVIA_LLM__PROVIDER"] = "none"
+
+    requests = [
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "ping"},
+        {"jsonrpc": "2.0", "id": 3, "method": "tools/list"},
+        {
+            "jsonrpc": "2.0",
+            "id": 4,
+            "method": "tools/call",
+            "params": {"name": "molar_mass", "arguments": {"formula": "H2O"}},
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 5,
+            "method": "tools/call",
+            "params": {
+                "name": "convert_units",
+                "arguments": {"value": 100, "from_unit": "celsius", "to_unit": "fahrenheit"},
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 6,
+            "method": "tools/call",
+            "params": {
+                "name": "notebook_add",
+                "arguments": {"kind": "finding", "content": "MCP stdio roundtrip ok"},
+            },
+        },
+        {
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "tools/call",
+            "params": {"name": "notebook_entries", "arguments": {"kind": "finding"}},
+        },
+    ]
+    stdin_payload = "\n".join(json.dumps(req) for req in requests) + "\n"
+    proc = subprocess.run(
+        [sys.executable, "-m", "olivia", "mcp-serve"],
+        input=stdin_payload,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        env=env,
+        timeout=30,
+        check=True,
+    )
+    responses = {
+        obj["id"]: obj for obj in (json.loads(line) for line in proc.stdout.splitlines() if line)
+    }
+    assert set(responses) == {1, 2, 3, 4, 5, 6, 7}
+    assert responses[1]["result"]["serverInfo"]["name"] == "olivia"
+    assert responses[2]["result"] == {}
+    tool_names = {t["name"] for t in responses[3]["result"]["tools"]}
+    assert "notebook_entries" in tool_names and len(tool_names) >= 18
+
+    h2o = json.loads(responses[4]["result"]["content"][0]["text"])
+    assert h2o["ok"] and round(h2o["molar_mass"], 2) == 18.02
+    temp = json.loads(responses[5]["result"]["content"][0]["text"])
+    assert temp["ok"] and temp["value"] == 212.0
+    entries = json.loads(responses[7]["result"]["content"][0]["text"])
+    assert len(entries) == 1 and entries[0]["content"] == "MCP stdio roundtrip ok"

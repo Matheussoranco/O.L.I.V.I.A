@@ -148,6 +148,13 @@ def _notebook_search(query: str = "", kind: str | None = None, limit: int = 10) 
     return Notebook().search(query, kind=kind, limit=limit)
 
 
+def _notebook_entries(kind: str | None = None, limit: int = 50) -> Any:
+    from olivia.memory import Notebook
+
+    entries = Notebook().entries(kind=kind)
+    return entries[-limit:] if limit > 0 else []
+
+
 def _meta_stats() -> Any:
     from olivia.meta import get_meta_learner
 
@@ -337,6 +344,17 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
             [],
         ),
         _notebook_search,
+    ),
+    "notebook_entries": (
+        "List recent entries from O.L.I.V.I.A.'s lab notebook, optionally filtered by kind.",
+        _schema(
+            {
+                "kind": {"type": "string"},
+                "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+            },
+            [],
+        ),
+        _notebook_entries,
     ),
     "meta_stats": (
         "O.L.I.V.I.A.'s meta-learning statistics: strategy win-rates per task kind.",
