@@ -80,7 +80,7 @@ def _offline_worksheet(
     if generator is None:
         logger.warning("worksheet: no offline generator for topic %r", topic)
         return []
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - seeded RNG is intended for reproducibility in worksheets
     solutions: list[WorkedSolution] = []
     for _ in range(n):
         try:
