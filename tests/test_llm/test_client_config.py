@@ -7,6 +7,7 @@ import importlib.util
 import pytest
 
 from olivia.config import settings
+from olivia.config.settings import Settings
 from olivia.llm.client import (
     AnthropicClient,
     NullClient,
@@ -40,6 +41,20 @@ def test_refresh_clients_rebuilds(monkeypatch):
     assert isinstance(get_client(), NullClient)
     refresh_clients()
     assert isinstance(get_client(), NullClient)
+
+
+def test_anthropic_key_loads_from_standard_dotenv(tmp_path, monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("OLIVIA_ANTHROPIC_API_KEY", raising=False)
+    dotenv = tmp_path / ".env"
+    dotenv.write_text("ANTHROPIC_API_KEY=file-placeholder\n", encoding="utf-8")
+
+    assert Settings(_env_file=dotenv).resolved_anthropic_key() == "file-placeholder"
+
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "environment-placeholder")
+    assert Settings(_env_file=dotenv).resolved_anthropic_key() == "environment-placeholder"
+    explicit = Settings(_env_file=dotenv, anthropic_api_key="explicit-placeholder")
+    assert explicit.resolved_anthropic_key() == "explicit-placeholder"
 
 
 def test_anthropic_available_requires_key(monkeypatch):
