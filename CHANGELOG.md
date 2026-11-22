@@ -6,7 +6,34 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- Equation parser for `olivia solve` (T4, #12): systems of any size separated
+  by `,` `;` `and` or new lines, with or without `solve`/`the system`/`solve for
+  x and y:`; caret and Unicode notation (`x²`, `−`, `×`, `÷`, `√`, `π`, `==`);
+  indexed unknowns (`x1` → `x_1`); a trailing `for t` chooses the unknown.
+  Square linear systems show Gaussian elimination with back-substitution,
+  quadratics their discriminant, and every answer is checked by substitution.
+
 ### Fixed
+
+- `olivia solve` no longer answers prose as algebra: `the value 2x = 4` was
+  "solved" as `x = 2*exp(-2)/(a*h*l*t*u*v)` (implicit multiplication of the
+  letters, with `e` read as Euler's number) at confidence 0.9; it now abstains.
+- `solve v = u + a*t for t` answered for the wrong unknown
+  (`a = (-u + v)/t`); a trailing `for <unknown>` is now honoured.
+- `x + 1 = x + 1` reported "no solution"; identities and contradictions are now
+  told apart.
+- `solve 3j = 6` reported "no solution" (Python lexed `3j` as the complex
+  number 3i) and `solve 0x + y = 1 and x + 0y = 2` failed (`0x` lexed as a hex
+  prefix); a digit glued to a name is now always a product.
+- Equations that denote enormous numbers stalled the solver (`x^1000000 = 1`
+  and `2^999999999 = x` took 40 s to over 60 s in measured runs). They are now
+  refused before sympy evaluates anything. The bound is computed on the
+  expression's structure, so parentheses (`2^(((999999999)))`) and power
+  towers (`2^3^20`, `2^2^2^2^2`) cannot get round it. Limits: a power of an
+  unknown up to 64, numbers up to 1000 digits, and `factorial`/`fibonacci`/…
+  arguments up to 1000.
 
 - `MetaLearner` closes every SQLite connection, and expert routing only blends
   historical win-rates for strategies that have observed outcomes.

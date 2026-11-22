@@ -1,0 +1,4 @@
+# HEAD 37c184b84688160cc8156153e73f6bef8b6c8e09
+$ mypy (1.13.0, project venv) src/olivia/study/equations.py src/olivia/study/solver.py
+Success: no issues found in 2 source files
+exit=0

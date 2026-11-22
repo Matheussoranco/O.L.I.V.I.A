@@ -1,0 +1,4 @@
+# HEAD f3a329cbf3a02b2d12bc3c873ce4909990f2decc
+$ mypy 1.13.0 (project venv) study/equations.py study/solver.py
+Success: no issues found in 2 source files
+exit=0

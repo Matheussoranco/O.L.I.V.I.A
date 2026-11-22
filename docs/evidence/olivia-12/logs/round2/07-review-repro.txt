@@ -1,0 +1,6 @@
+# HEAD f3a329cbf3a02b2d12bc3c873ce4909990f2decc  -- review findings, one subprocess per case, 15 s hard timeout
+B1 nested parens                 1.1s  solve_equations raised SolverParseError cannot parse equations: '2^(((999999999)))': a number of about 10^3.01e+08 exceeds 1000 di | solve_problem   -> none ''
+B2 tower 2^3^20                  1.3s  solve_equations raised SolverParseError cannot parse equations: '2^3^20': a number of about 10^1.05e+09 exceeds 1000 digits | solve_problem   -> none ''
+B2 tower 2^2^2^2^2               1.1s  solve_equations raised SolverParseError cannot parse equations: '2^2^2^2^2': a number of about 10^1.97e+04 exceeds 1000 digits | solve_problem   -> none ''
+NB1 one eq, two unknowns         1.4s  solve_equations -> 'x = 5 - y' | solve_problem   -> symbolic 'x = 5 - y'
+NB2 identity, absent unknown     1.2s  solve_equations raised SolverParseError cannot parse equations: unknown y does not appear in the equations | solve_problem   -> none ''
