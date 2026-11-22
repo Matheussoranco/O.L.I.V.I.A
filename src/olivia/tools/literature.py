@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
 import defusedxml.ElementTree as ET
+from defusedxml.common import DefusedXmlException
 
 from olivia.core.records import Paper
 
@@ -103,7 +104,7 @@ def search_arxiv(
         return []
     try:
         root = ET.fromstring(response.text)
-    except ET.ParseError as exc:
+    except (ET.ParseError, DefusedXmlException) as exc:
         logger.warning("arXiv XML parse failed: %s", exc)
         return []
 

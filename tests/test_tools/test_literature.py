@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from defusedxml.common import DefusedXmlException
+
 from olivia.core.records import Paper
 from olivia.tools import literature
 
@@ -44,6 +46,18 @@ def test_search_offline_returns_empty(monkeypatch):
     assert literature.search_arxiv("x") == []
     assert literature.search_crossref("x") == []
     assert literature.search_semanticscholar("x") == []
+
+
+def test_rejected_arxiv_response_preserves_other_sources(monkeypatch):
+    def reject_xml(_text):
+        raise DefusedXmlException("rejected fixture")
+
+    monkeypatch.setattr(literature, "_get", lambda url, params=None: _FakeResponse(_ARXIV_XML))
+    monkeypatch.setattr(literature.ET, "fromstring", reject_xml)
+    other = Paper(title="Other source result", source="crossref")
+    monkeypatch.setitem(literature._SOURCES, "crossref", lambda query, limit: [other])
+
+    assert literature.literature_search("q", sources=["arxiv", "crossref"]) == [other]
 
 
 def test_literature_search_dedupes_and_ranks(monkeypatch):
