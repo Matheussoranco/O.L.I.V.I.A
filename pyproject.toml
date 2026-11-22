@@ -29,6 +29,7 @@ dependencies = [
     "pydantic-settings>=2.0,<3.0",
     "typer>=0.12,<1.0",
     "rich>=13.0,<14.0",
+    "defusedxml>=0.7,<1.0",
 ]
 
 [project.optional-dependencies]

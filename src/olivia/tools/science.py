@@ -383,7 +383,7 @@ def safe_sympify(expression: str, implicit_multiplication: bool = False):
         tree = _check_expression(code, globals_dict)
     except (SyntaxError, TokenError) as exc:
         raise ValueError("invalid mathematical expression") from exc
-    return eval(compile(tree, "<olivia-expression>", "eval"), globals_dict)
+    return eval(compile(tree, "<olivia-expression>", "eval"), globals_dict)  # nosec B307 - expression is validated by _check_expression and _CodePolicy
 
 
 def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
