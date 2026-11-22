@@ -97,7 +97,11 @@ _EXPLOSIVE_NON_EQUATION_PROBLEMS = [
     "calculate 2**999999999",
     "calculate " + " * ".join(["(10^500)"] * 9),  # > 4300-digit int->str defence in depth
     "simplify 9^9^9",
+    "simplify Pow(2, 999999999)",
+    "simplify factorial(100000)",
+    "simplify 1 << 1000000",
     "differentiate 9^9^9 * x",
+    "expand (x + 1)^100000",
     "find the roots of x^1000000 - 1",
 ]
 
@@ -153,3 +157,49 @@ def test_explosive_arithmetic_logs_warning_and_abstains(caplog):
     assert sol.method == "none"
     assert sol.confidence == 0.0
     assert any("parse error" in rec.message for rec in caplog.records)
+
+
+@pytest.mark.parametrize(
+    ("problem", "expected_substring"),
+    [
+        ("differentiate x^100", "100*x**99"),
+        ("derivative of x^1000", "1000*x**999"),
+        ("integrate x^100", "x**101/101 + C"),
+        ("expand (x+1)^100", "x**100"),
+        ("factor x^100 - 1", "(x - 1)"),
+        ("simplify x^100/x^98", "x**2"),
+    ],
+)
+def test_large_symbolic_exponents_preserved_on_non_solve_paths(
+    problem: str, expected_substring: str
+):
+    """Review regression (B1): unknown-degree solve cap must not break diff/integrate/etc."""
+    pytest.importorskip("sympy")
+    sol = solve_problem(problem, client=NullClient())
+    assert sol.method == "symbolic"
+    assert expected_substring in sol.final_answer
+
+
+def test_symbolic_math_tool_refuses_explosive_expressions_fast():
+    """Shared safe_sympify guard also protects tools.science.symbolic_math (MCP/experts)."""
+    pytest.importorskip("sympy")
+    probe = (
+        "import time\n"
+        "from olivia.tools.science import symbolic_math\n"
+        "for expr in ('9^9^9 * 2', '2^999999999 + 1', 'Pow(2, 999999999)', 'factorial(100000)'):\n"
+        "    t0 = time.perf_counter()\n"
+        "    out = symbolic_math(expr, 'simplify')\n"
+        "    dt = time.perf_counter() - t0\n"
+        "    assert out.startswith('error:'), (expr, out)\n"
+        "    assert dt < 2.0, (expr, dt)\n"
+    )
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
+    proc = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        timeout=20,
+        env=env,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr + proc.stdout

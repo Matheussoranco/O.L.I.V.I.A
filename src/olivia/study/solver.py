@@ -19,7 +19,7 @@ from olivia.core.records import SolutionStep, WorkedSolution
 from olivia.llm.client import LLMClient, get_client
 from olivia.llm.prompts import SOLVER_SYSTEM
 from olivia.llm.structured import ask_json
-from olivia.study.equations import check_expression_growth, solve_equations
+from olivia.study.equations import solve_equations
 
 logger = logging.getLogger(__name__)
 
@@ -144,15 +144,33 @@ def _pick_symbol(expr):
     return symbols[0] if symbols else sympy.Symbol("x")
 
 
-def _sympify(text: str):
+def _sympify(
+    text: str,
+    *,
+    bound_symbolic_degree: bool = False,
+    max_symbolic_degree: int | None = None,
+):
     from olivia.tools.science import safe_sympify
 
-    # Guard against explosive power towers, oversized degrees, and eager
-    # combinatorial calls before sympy evaluates Integer ** Integer.
-    check_expression_growth(text)
-    # Allow implicit multiplication ('5x', '3x^2', 'sin(x)cos(x)') while
-    # keeping the parser's Python builtins and imports disabled.
-    return safe_sympify(text, implicit_multiplication=True)
+    # Numeric magnitude, combinatorial, and eager-operation bounds run directly
+    # on safe_sympify's validated AST before compile/eval. Symbolic degree
+    # limits apply only where explicitly requested (solve/roots/expand/factor).
+    return safe_sympify(
+        text,
+        implicit_multiplication=True,
+        bound_symbolic_degree=bound_symbolic_degree,
+        max_symbolic_degree=max_symbolic_degree,
+    )
+
+
+def _safe_str(obj: object, expression: str) -> str:
+    """Stringify a symbolic value inside the typed failure path (guards int->str limit)."""
+    try:
+        return str(obj)
+    except ValueError as exc:
+        raise SolverParseError(
+            f"result too large to display: {expression}", expression=expression
+        ) from exc
 
 
 def _solve_math(problem: str) -> WorkedSolution | None:
@@ -177,28 +195,31 @@ def _solve_math(problem: str) -> WorkedSolution | None:
     ):
         match = pattern.search(text)
         if match:
+            raw_expr = match.group(1).strip()
             try:
-                expr = _sympify(match.group(1).strip())
+                expr = _sympify(raw_expr)
                 var = _pick_symbol(expr)
                 respect = _WITH_RESPECT_RE.search(text)
                 if respect and sympy.Symbol(respect.group(1)) in expr.free_symbols:
                     var = sympy.Symbol(respect.group(1))
                 result = sympy.diff(expr, var) if op == "diff" else sympy.integrate(expr, var)
+                expr_str = _safe_str(expr, raw_expr)
+                result_str = _safe_str(result, raw_expr)
             except _parse_errors() as exc:
-                logger.exception("%s: cannot parse expression %r", verb, match.group(1).strip())
+                logger.exception("%s: cannot parse expression %r", verb, raw_expr)
                 raise SolverParseError(
-                    f"cannot parse expression for {verb.lower()}: {match.group(1).strip()}",
-                    expression=match.group(1).strip(),
+                    f"cannot parse expression for {verb.lower()}: {raw_expr}",
+                    expression=raw_expr,
                 ) from exc
             steps: list[SolutionStep] = []
             symbol = "+ C" if op == "integrate" else ""
-            _new_step(steps, f"{verb} with respect to {var}", f"{expr}")
-            _new_step(steps, "Apply the rules", f"{result} {symbol}".strip())
+            _new_step(steps, f"{verb} with respect to {var}", expr_str)
+            _new_step(steps, "Apply the rules", f"{result_str} {symbol}".strip())
             return WorkedSolution(
                 problem=problem,
                 subject="math",
                 steps=steps,
-                final_answer=f"{result} {symbol}".strip(),
+                final_answer=f"{result_str} {symbol}".strip(),
                 method="symbolic",
                 confidence=0.9,
             )
@@ -206,12 +227,12 @@ def _solve_math(problem: str) -> WorkedSolution | None:
     # Function notation: "If f(x) = 3x^2 + 2x, what is f'(x)?"
     match = _FUNCT_DERIV_RE.search(text)
     if match:
+        var_name, expr_text, respect_var = (
+            match.group(1),
+            match.group(2).strip(),
+            match.group(3),
+        )
         try:
-            var_name, expr_text, respect_var = (
-                match.group(1),
-                match.group(2).strip(),
-                match.group(3),
-            )
             expr = _sympify(expr_text)
             var = (
                 sympy.Symbol(respect_var)
@@ -219,6 +240,8 @@ def _solve_math(problem: str) -> WorkedSolution | None:
                 else _pick_symbol(expr)
             )
             result = sympy.diff(expr, var)
+            expr_str = _safe_str(expr, expr_text)
+            result_str = _safe_str(result, expr_text)
         except _parse_errors() as exc:
             logger.exception("derivative: cannot parse function %r", expr_text)
             raise SolverParseError(
@@ -226,13 +249,13 @@ def _solve_math(problem: str) -> WorkedSolution | None:
                 expression=expr_text,
             ) from exc
         steps = []
-        _new_step(steps, f"Given f({var_name}) = {expr_text}", f"f({var_name}) = {expr}")
-        _new_step(steps, f"Differentiate with respect to {var}", f"f'({var_name}) = {result}")
+        _new_step(steps, f"Given f({var_name}) = {expr_text}", f"f({var_name}) = {expr_str}")
+        _new_step(steps, f"Differentiate with respect to {var}", f"f'({var_name}) = {result_str}")
         return WorkedSolution(
             problem=problem,
             subject="math",
             steps=steps,
-            final_answer=f"{result}",
+            final_answer=result_str,
             method="symbolic",
             confidence=0.9,
         )
@@ -240,22 +263,28 @@ def _solve_math(problem: str) -> WorkedSolution | None:
     # "Find the roots of x^2 - 7x + 12"
     match = _FIND_ROOTS_RE.search(text)
     if match:
+        raw_expr = match.group(1).strip()
         try:
-            expr = _sympify(match.group(1).strip())
+            expr = _sympify(raw_expr, bound_symbolic_degree=True)
             var = _pick_symbol(expr)
             roots = sympy.solve(expr, var)
+            expr_str = _safe_str(expr, raw_expr)
+            factored = sympy.factor(expr)
+            factored_str = _safe_str(factored, raw_expr) if factored != sympy.expand(expr) else None
+            answer = (
+                ", ".join(f"{var} = {_safe_str(sympy.nsimplify(r), raw_expr)}" for r in roots)
+                or "no solution"
+            )
         except _parse_errors() as exc:
-            logger.exception("find roots: cannot parse expression %r", match.group(1).strip())
+            logger.exception("find roots: cannot parse expression %r", raw_expr)
             raise SolverParseError(
-                f"cannot parse expression for roots: {match.group(1).strip()}",
-                expression=match.group(1).strip(),
+                f"cannot parse expression for roots: {raw_expr}",
+                expression=raw_expr,
             ) from exc
         steps = []
-        _new_step(steps, "Set expression equal to zero", f"{expr} = 0")
-        factored = sympy.factor(expr)
-        if factored != sympy.expand(expr):
-            _new_step(steps, "Factor", f"{factored} = 0")
-        answer = ", ".join(f"{var} = {sympy.nsimplify(r)}" for r in roots) or "no solution"
+        _new_step(steps, "Set expression equal to zero", f"{expr_str} = 0")
+        if factored_str is not None:
+            _new_step(steps, "Factor", f"{factored_str} = 0")
         _new_step(steps, f"Solve for {var}", answer)
         return WorkedSolution(
             problem=problem,
@@ -304,14 +333,16 @@ def _solve_math(problem: str) -> WorkedSolution | None:
     # Limit: "Evaluate the limit of sin(x)/x as x approaches 0"
     match = _LIMIT_RE.search(text)
     if match:
+        expr_text = match.group(1).strip()
+        var_name = match.group(2)
+        limit_val = match.group(3)
         try:
-            expr_text = match.group(1).strip()
-            var_name = match.group(2)
-            limit_val = match.group(3)
             expr = _sympify(expr_text)
             var = sympy.Symbol(var_name)
             limit_point = sympy.sympify(limit_val)
             result = sympy.limit(expr, var, limit_point)
+            expr_str = _safe_str(expr, expr_text)
+            result_str = _safe_str(result, expr_text)
         except _parse_errors() as exc:
             logger.exception("limit: cannot parse expression %r", expr_text)
             raise SolverParseError(
@@ -322,14 +353,14 @@ def _solve_math(problem: str) -> WorkedSolution | None:
         _new_step(
             steps,
             f"Limit of {expr_text} as {var_name} → {limit_val}",
-            f"lim_{{x→{limit_val}}} {expr}",
+            f"lim_{{x→{limit_val}}} {expr_str}",
         )
-        _new_step(steps, "Evaluate", str(result))
+        _new_step(steps, "Evaluate", result_str)
         return WorkedSolution(
             problem=problem,
             subject="math",
             steps=steps,
-            final_answer=str(result),
+            final_answer=result_str,
             method="symbolic",
             confidence=0.9,
         )
@@ -383,23 +414,27 @@ def _solve_math(problem: str) -> WorkedSolution | None:
     ):
         match = pattern.search(text)
         if match:
+            raw_expr = match.group(1).strip()
             try:
-                expr = _sympify(match.group(1).strip())
+                max_deg = 256 if fn_name in ("expand", "factor") else None
+                expr = _sympify(raw_expr, max_symbolic_degree=max_deg)
                 result = getattr(sympy, fn_name)(expr)
+                expr_str = _safe_str(expr, raw_expr)
+                result_str = _safe_str(result, raw_expr)
             except _parse_errors() as exc:
-                logger.exception("%s: cannot parse expression %r", verb, match.group(1).strip())
+                logger.exception("%s: cannot parse expression %r", verb, raw_expr)
                 raise SolverParseError(
-                    f"cannot parse expression for {verb.lower()}: {match.group(1).strip()}",
-                    expression=match.group(1).strip(),
+                    f"cannot parse expression for {verb.lower()}: {raw_expr}",
+                    expression=raw_expr,
                 ) from exc
             steps = []
-            _new_step(steps, "Start from", f"{expr}")
-            _new_step(steps, verb, f"{result}")
+            _new_step(steps, "Start from", expr_str)
+            _new_step(steps, verb, result_str)
             return WorkedSolution(
                 problem=problem,
                 subject="math",
                 steps=steps,
-                final_answer=f"{result}",
+                final_answer=result_str,
                 method="symbolic",
                 confidence=0.9,
             )
