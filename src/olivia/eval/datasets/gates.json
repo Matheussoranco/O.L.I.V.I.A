@@ -7,17 +7,20 @@
   "ceilings_note": "Lower is better. A wrong-answer rate gated from below would reward getting worse.",
   "ungated": {
     "study.generation.quiz_answer_not_in_prompt": "Measured 0.000 — every offline quiz question contains its own answer. A floor at zero is not a gate; this is an exit criterion for 0.4 in docs/ROADMAP-1.0.md instead.",
-    "symbolic.symbolic.reach.*": "The reach tier scores 0.040 overall and is the point of the tier, not a regression surface. Gated only once 0.4 sets a target.",
     "*.measured": "Bookkeeping flags for whether an LLM path ran, not quality metrics."
   },
   "floors": {
-    "symbolic.symbolic.accuracy": 0.625,
+    "symbolic.symbolic.accuracy": 0.85,
     "symbolic.symbolic.precision": 0.9756,
-    "symbolic.symbolic.coverage": 0.6406,
+    "symbolic.symbolic.coverage": 0.85,
     "symbolic.symbolic.core.math.accuracy": 1.0,
     "symbolic.symbolic.core.chemistry.accuracy": 1.0,
     "symbolic.symbolic.core.physics.accuracy": 1.0,
     "symbolic.symbolic.core.units.accuracy": 1.0,
+    "symbolic.symbolic.reach.chemistry.accuracy": 0.7,
+    "symbolic.symbolic.reach.math.accuracy": 0.7,
+    "symbolic.symbolic.reach.physics.accuracy": 0.7,
+    "symbolic.symbolic.reach.units.accuracy": 0.7,
     "research.symbolic.catch_rate": 0.2631,
     "research.symbolic.balanced_accuracy": 0.6315,
     "research.symbolic.youden_j": 0.2631,

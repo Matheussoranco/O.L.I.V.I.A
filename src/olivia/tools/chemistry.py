@@ -333,6 +333,247 @@ def _format_term(coefficient: int, species: str) -> str:
     return species if coefficient == 1 else f"{coefficient} {species}"
 
 
+# Common compound names → molecular formula (for natural-language chemistry queries).
+COMMON_COMPOUNDS: dict[str, str] = {
+    "water": "H2O",
+    "methane": "CH4",
+    "ethane": "C2H6",
+    "propane": "C3H8",
+    "butane": "C4H10",
+    "ethanol": "C2H5OH",
+    "methanol": "CH3OH",
+    "glucose": "C6H12O6",
+    "sucrose": "C12H22O11",
+    "benzene": "C6H6",
+    "ammonia": "NH3",
+    "carbon dioxide": "CO2",
+    "carbon monoxide": "CO",
+    "sodium chloride": "NaCl",
+    "table salt": "NaCl",
+    "sulfuric acid": "H2SO4",
+    "sulphuric acid": "H2SO4",
+    "hydrochloric acid": "HCl",
+    "nitric acid": "HNO3",
+    "phosphoric acid": "H3PO4",
+    "acetic acid": "CH3COOH",
+    "sodium hydroxide": "NaOH",
+    "potassium hydroxide": "KOH",
+    "calcium carbonate": "CaCO3",
+    "calcium hydroxide": "Ca(OH)2",
+    "sodium bicarbonate": "NaHCO3",
+    "baking soda": "NaHCO3",
+    "hydrogen peroxide": "H2O2",
+    "oxygen gas": "O2",
+    "hydrogen gas": "H2",
+    "nitrogen gas": "N2",
+    "chlorine gas": "Cl2",
+    "ozone": "O3",
+    "rust": "Fe2O3",
+    "iron oxide": "Fe2O3",
+}
+
+ELEMENT_NAMES: dict[str, str] = {
+    "hydrogen": "H",
+    "helium": "He",
+    "lithium": "Li",
+    "beryllium": "Be",
+    "boron": "B",
+    "carbon": "C",
+    "nitrogen": "N",
+    "oxygen": "O",
+    "fluorine": "F",
+    "neon": "Ne",
+    "sodium": "Na",
+    "magnesium": "Mg",
+    "aluminum": "Al",
+    "aluminium": "Al",
+    "silicon": "Si",
+    "phosphorus": "P",
+    "sulfur": "S",
+    "sulphur": "S",
+    "chlorine": "Cl",
+    "argon": "Ar",
+    "potassium": "K",
+    "calcium": "Ca",
+    "titanium": "Ti",
+    "chromium": "Cr",
+    "manganese": "Mn",
+    "iron": "Fe",
+    "cobalt": "Co",
+    "nickel": "Ni",
+    "copper": "Cu",
+    "zinc": "Zn",
+    "bromine": "Br",
+    "silver": "Ag",
+    "tin": "Sn",
+    "iodine": "I",
+    "barium": "Ba",
+    "platinum": "Pt",
+    "gold": "Au",
+    "mercury": "Hg",
+    "lead": "Pb",
+    "uranium": "U",
+}
+
+_ALKALI_METALS = {"Li", "Na", "K", "Rb", "Cs", "Fr"}
+_ALKALINE_EARTH = {"Be", "Mg", "Ca", "Sr", "Ba", "Ra"}
+_HALOGENS = {"Cl", "Br", "I"}
+
+
+def resolve_formula(text: str) -> str | None:
+    """Resolve a chemical formula or common compound name to a valid formula."""
+    cleaned = text.strip().rstrip(".,?!;:")
+    if not cleaned:
+        return None
+    low = cleaned.lower()
+    if low in COMMON_COMPOUNDS:
+        return COMMON_COMPOUNDS[low]
+    if re.search(r"[A-Z]", cleaned) and parse_formula(cleaned):
+        return cleaned
+    return None
+
+
+def resolve_element(text: str) -> str | None:
+    """Resolve an element symbol or English name to its IUPAC symbol."""
+    cleaned = text.strip().rstrip(".,?!;:")
+    if cleaned in ELEMENTS:
+        return cleaned
+    return ELEMENT_NAMES.get(cleaned.lower())
+
+
+def percent_composition(formula: str, element: str) -> dict[str, Any]:
+    """Compute mass percentage of ``element`` in ``formula``."""
+    resolved_formula = resolve_formula(formula)
+    resolved_el = resolve_element(element)
+    if resolved_formula is None:
+        return {"ok": False, "error": f"could not parse formula '{formula}'"}
+    if resolved_el is None:
+        return {"ok": False, "error": f"unknown element '{element}'"}
+    mm = molar_mass(resolved_formula)
+    if not mm["ok"]:
+        return mm
+    counts = parse_formula(resolved_formula)
+    assert counts is not None
+    if resolved_el not in counts:
+        return {
+            "ok": False,
+            "error": f"element '{resolved_el}' is not present in '{resolved_formula}'",
+        }
+    count = counts[resolved_el]
+    atomic_mass = ELEMENTS[resolved_el][1]
+    element_mass = count * atomic_mass
+    total_mass = sum(ELEMENTS[el][1] * n for el, n in counts.items())
+    pct = 100.0 * element_mass / total_mass
+    return {
+        "ok": True,
+        "formula": resolved_formula,
+        "element": resolved_el,
+        "count": count,
+        "element_mass": round(element_mass, 4),
+        "molar_mass": round(total_mass, 4),
+        "percent": round(pct, 2),
+    }
+
+
+def _known_oxidation_rules(counts: dict[str, int], target: str, charge: int) -> dict[str, int]:
+    """Assign standard IUPAC oxidation numbers to every non-target element possible."""
+    assigned: dict[str, int] = {}
+    elements = set(counts)
+    for el in elements:
+        if el == target:
+            continue
+        if el == "F":
+            assigned[el] = -1
+        elif el in _ALKALI_METALS:
+            assigned[el] = +1
+        elif el in _ALKALINE_EARTH:
+            assigned[el] = +2
+        elif el == "Al":
+            assigned[el] = +3
+        elif el == "H":
+            # Binary metal hydrides (e.g. NaH, CaH2) assign H = -1.
+            others = elements - {"H"}
+            if others and all(o in (_ALKALI_METALS | _ALKALINE_EARTH | {"Al"}) for o in others):
+                assigned[el] = -1
+            else:
+                assigned[el] = +1
+        elif el == "O":
+            # Peroxide exceptions (H2O2, Na2O2, K2O2, BaO2) and OF2.
+            if elements == {"O", "F"} and counts.get("F") == 2 and counts.get("O") == 1:
+                assigned[el] = +2
+            elif (
+                charge == 0
+                and len(elements) == 2
+                and counts.get("O") == 2
+                and any(
+                    (o in _ALKALI_METALS | {"H"} and counts[o] == 2)
+                    or (o in _ALKALINE_EARTH and counts[o] == 1)
+                    for o in elements - {"O"}
+                )
+            ):
+                assigned[el] = -1
+            else:
+                assigned[el] = -2
+        elif el in _HALOGENS and "O" not in elements and "F" not in elements:
+            assigned[el] = -1
+    return assigned
+
+
+def oxidation_state(formula: str, element: str, charge: int = 0) -> dict[str, Any]:
+    """Determine the oxidation state of ``element`` in ``formula`` via IUPAC rules."""
+    resolved_formula = resolve_formula(formula)
+    resolved_el = resolve_element(element)
+    if resolved_formula is None:
+        return {"ok": False, "error": f"could not parse formula '{formula}'"}
+    if resolved_el is None:
+        return {"ok": False, "error": f"unknown element '{element}'"}
+    counts = parse_formula(resolved_formula)
+    if not counts or resolved_el not in counts:
+        return {
+            "ok": False,
+            "error": f"element '{resolved_el}' is not present in '{resolved_formula}'",
+        }
+    if len(counts) == 1:
+        val = Fraction(charge, counts[resolved_el])
+        formatted = _format_ox(val)
+        return {
+            "ok": True,
+            "formula": resolved_formula,
+            "element": resolved_el,
+            "oxidation_state": float(val),
+            "formatted": formatted,
+            "known": {},
+            "charge": charge,
+        }
+    known = _known_oxidation_rules(counts, resolved_el, charge)
+    unknowns = [el for el in counts if el != resolved_el and el not in known]
+    if unknowns:
+        return {
+            "ok": False,
+            "error": f"ambiguous oxidation state (multiple unknowns: {', '.join(unknowns)})",
+        }
+    known_sum = sum(counts[el] * ox for el, ox in known.items())
+    val = Fraction(charge - known_sum, counts[resolved_el])
+    return {
+        "ok": True,
+        "formula": resolved_formula,
+        "element": resolved_el,
+        "oxidation_state": float(val),
+        "formatted": _format_ox(val),
+        "known": known,
+        "charge": charge,
+    }
+
+
+def _format_ox(val: Fraction) -> str:
+    if val == 0:
+        return "0"
+    sign = "+" if val > 0 else ""
+    if val.denominator == 1:
+        return f"{sign}{val.numerator}"
+    return f"{sign}{val.numerator}/{val.denominator}"
+
+
 def register_tools(registry) -> None:
     from olivia.tools.registry import Tool
 
