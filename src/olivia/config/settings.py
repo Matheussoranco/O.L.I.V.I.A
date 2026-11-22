@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -48,6 +48,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="OLIVIA_",
         env_nested_delimiter="__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        populate_by_name=True,
         extra="ignore",
     )
 
@@ -56,7 +59,10 @@ class Settings(BaseSettings):
     network_enabled: bool = False
     """Allow outbound literature/page requests; disabled by default."""
     home_dir: Path = Field(default_factory=lambda: Path.home() / ".olivia")
-    anthropic_api_key: str = ""
+    anthropic_api_key: str = Field(
+        default="",
+        validation_alias=AliasChoices("OLIVIA_ANTHROPIC_API_KEY", "ANTHROPIC_API_KEY"),
+    )
     """Optional explicit key; falls back to ANTHROPIC_API_KEY / ant profiles."""
 
     def data_dir(self) -> Path:
