@@ -19,7 +19,7 @@ from olivia.core.records import SolutionStep, WorkedSolution
 from olivia.llm.client import LLMClient, get_client
 from olivia.llm.prompts import SOLVER_SYSTEM
 from olivia.llm.structured import ask_json
-from olivia.study.equations import solve_equations
+from olivia.study.equations import check_expression_growth, solve_equations
 
 logger = logging.getLogger(__name__)
 
@@ -147,6 +147,9 @@ def _pick_symbol(expr):
 def _sympify(text: str):
     from olivia.tools.science import safe_sympify
 
+    # Guard against explosive power towers, oversized degrees, and eager
+    # combinatorial calls before sympy evaluates Integer ** Integer.
+    check_expression_growth(text)
     # Allow implicit multiplication ('5x', '3x^2', 'sin(x)cos(x)') while
     # keeping the parser's Python builtins and imports disabled.
     return safe_sympify(text, implicit_multiplication=True)
@@ -421,14 +424,23 @@ def _evaluate_arithmetic(problem: str, text: str) -> WorkedSolution | None:
         ) from exc
     if expr.free_symbols:
         return None
-    value = expr if expr.is_Rational else sympy.N(expr)
+    try:
+        value = expr if expr.is_Rational else sympy.N(expr)
+        expr_str = f"{expr}"
+        value_str = f"{value}"
+    except ValueError as exc:
+        if "integer string conversion" not in str(exc):
+            raise
+        raise SolverParseError(
+            f"result too large to display: {normalised}", expression=normalised
+        ) from exc
     steps: list[SolutionStep] = []
-    _new_step(steps, "Evaluate the expression", f"{expr} = {value}")
+    _new_step(steps, "Evaluate the expression", f"{expr_str} = {value_str}")
     return WorkedSolution(
         problem=problem,
         subject="math",
         steps=steps,
-        final_answer=f"{value}",
+        final_answer=value_str,
         method="symbolic",
         confidence=0.85,
     )
