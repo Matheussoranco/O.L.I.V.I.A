@@ -94,26 +94,47 @@ def generate_quiz(
     # Offline: cloze questions built from the learner's own material. The
     # answer is deliberately removed from the prompt, so the item tests
     # retrieval rather than merely quoting the source sentence.
-    questions = []
+    sentence_candidates: list[tuple[str, list[str]]] = []
     for match in _SENTENCE_RE.finditer(content):
         sentence = " ".join(match.group().split())
         if not 30 <= len(sentence) <= 300:
             continue
         words = [word for word in _WORD_RE.findall(sentence) if word.casefold() not in _STOPWORDS]
-        candidates = [
-            word
-            for word in words
-            if len(re.findall(rf"\b{re.escape(word)}\b", sentence, re.IGNORECASE)) == 1
-        ]
-        if not candidates:
-            continue
-        target = max(candidates, key=len)
-        masked = re.sub(rf"\b{re.escape(target)}\b", "____", sentence, count=1)
-        questions.append(
-            QuizQuestion(prompt=f"Complete the missing term: “{masked}”", answer_text=target)
+        candidates = sorted(
+            (
+                word
+                for word in words
+                if len(re.findall(rf"\b{re.escape(word)}\b", sentence, re.IGNORECASE)) == 1
+            ),
+            key=len,
+            reverse=True,
         )
-        if len(questions) >= n:
+        if candidates:
+            sentence_candidates.append((sentence, candidates))
+
+    questions = []
+    seen_prompts: set[str] = set()
+    pass_idx = 0
+    while len(questions) < n:
+        progressed = False
+        for sentence, candidates in sentence_candidates:
+            if pass_idx >= len(candidates):
+                continue
+            target = candidates[pass_idx]
+            masked = re.sub(rf"\b{re.escape(target)}\b", "____", sentence, count=1)
+            prompt = f"Complete the missing term: “{masked}”"
+            key = prompt.casefold()
+            if key in seen_prompts:
+                continue
+            seen_prompts.add(key)
+            questions.append(QuizQuestion(prompt=prompt, answer_text=target))
+            progressed = True
+            if len(questions) >= n:
+                break
+        if not progressed:
             break
+        pass_idx += 1
+
     if not questions:
         logger.warning("generate_quiz: no LLM and no content — nothing to build from")
     return questions

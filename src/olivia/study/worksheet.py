@@ -92,10 +92,55 @@ def _offline_worksheet(
     return [solution for solution in solutions if solution.method != "none"]
 
 
-def _llm_worksheet(topic: str, n: int, difficulty: str, client: LLMClient) -> list[WorkedSolution]:
+_CONTENT_PROBLEM_RE = re.compile(
+    r"^(?:(?:problem|exercise|question)\s*\d*\s*[:.)-]\s*)?"
+    r"(?P<problem>(?:solve|differentiate|integrate|factor|simplify|expand|convert|"
+    r"molar\s+mass|balance|what\s+is)\b.+)$",
+    re.IGNORECASE,
+)
+_EQUATION_LINE_RE = re.compile(r"^[0-9a-zA-Z\s+\-*/^().]+=\s*[0-9a-zA-Z\s+\-*/^().]+$")
+
+
+def _extract_content_problems(content: str, limit: int) -> list[WorkedSolution]:
+    """Extract explicitly solvable STEM problems from supplied source text."""
+    if not content.strip() or limit <= 0:
+        return []
+    solutions: list[WorkedSolution] = []
+    seen: set[str] = set()
+    for raw_segment in re.split(r"[\n;]+|(?<=[.!?])\s+", content):
+        line = " ".join(raw_segment.split()).strip(" .")
+        if not 4 <= len(line) <= 180:
+            continue
+        match = _CONTENT_PROBLEM_RE.match(line)
+        if match:
+            candidate = match.group("problem").strip()
+        elif _EQUATION_LINE_RE.match(line) and re.search(r"[a-zA-Z]", line):
+            candidate = f"solve {line}"
+        else:
+            continue
+        key = candidate.casefold()
+        if key in seen:
+            continue
+        sol = solve_problem(candidate, client=NullClient())
+        if sol.method != "none" and sol.final_answer:
+            seen.add(key)
+            solutions.append(sol)
+            if len(solutions) >= limit:
+                break
+    return solutions
+
+
+def _llm_worksheet(
+    topic: str,
+    n: int,
+    difficulty: str,
+    client: LLMClient,
+    content: str = "",
+) -> list[WorkedSolution]:
     prompt = (
-        f"Create a {difficulty} practice worksheet of {n} problems on: {topic}\n\n"
-        'Respond as JSON: {"problems": [str]}. Each problem must be self-contained '
+        f"Create a {difficulty} practice worksheet of {n} problems on: {topic}\n"
+        + (f"\nGround them in this material:\n{content[:6000]}\n" if content else "")
+        + '\nRespond as JSON: {"problems": [str]}. Each problem must be self-contained '
         "and solvable without the original source material."
     )
     payload = ask_json(client, prompt, system=SOLVER_SYSTEM, max_tokens=1500)
@@ -112,15 +157,36 @@ def generate_worksheet(
     difficulty: str = "medium",
     client: LLMClient | None = None,
     seed: int | None = None,
+    content: str = "",
 ) -> list[WorkedSolution]:
     """Produce up to ``n`` practice problems on ``topic``, each fully solved."""
     n = min(max(int(n), 1), 100)
     client = client or get_client()
     if client.available:
-        solutions = _llm_worksheet(topic, n, difficulty, client)
+        solutions = _llm_worksheet(topic, n, difficulty, client, content=content)
         if solutions:
             return solutions
-    return _offline_worksheet(topic, n, difficulty, seed)
+    extracted = _extract_content_problems(content, n) if content else []
+    if len(extracted) >= n:
+        return extracted[:n]
+    remaining = n - len(extracted)
+    # Request a modest buffer when blending with extracted problems so deduping still reaches n.
+    generated = _offline_worksheet(
+        topic,
+        remaining if not extracted else remaining + len(extracted),
+        difficulty,
+        seed,
+    )
+    seen = {s.problem.casefold() for s in extracted}
+    combined = list(extracted)
+    for sol in generated:
+        key = sol.problem.casefold()
+        if key not in seen:
+            seen.add(key)
+            combined.append(sol)
+            if len(combined) >= n:
+                break
+    return combined[:n]
 
 
 def worksheet_to_markdown(
