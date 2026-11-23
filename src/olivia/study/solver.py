@@ -117,6 +117,20 @@ _CONVERT_RE = re.compile(
     r"([A-Za-zµμΩ°/^*\d.·]+)",
     re.IGNORECASE,
 )
+# Natural-language unit queries:
+# "How many metres are there in 3 miles?"
+_HOW_MANY_IN_RE = re.compile(
+    r"\bhow\s+many\s+([A-Za-zµμΩ°/^*\d.·]+)\s+(?:are\s+)?(?:there\s+)?in\s+"
+    r"([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*([A-Za-zµμΩ°/^*\d.·]+)",
+    re.IGNORECASE,
+)
+# Contextual unit queries:
+# "A recipe needs 350 g of flour. How many ounces is that?"
+_CONTEXT_HOW_MANY_RE = re.compile(
+    r"([-+]?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?)\s*([A-Za-zµμΩ°/^*\d.·]+)\b"
+    r".*?\bhow\s+many\s+([A-Za-zµμΩ°/^*\d.·]+)\s+(?:is|are)\s+(?:that|it|this)\b",
+    re.IGNORECASE | re.DOTALL,
+)
 
 
 def _new_step(
@@ -557,7 +571,10 @@ def _solve_chemistry(problem: str) -> WorkedSolution | None:
                     method="chemistry",
                     confidence=0.9,
                 )
-    return None
+
+    from olivia.study.chemistry_solver import solve_chemistry_problem
+
+    return solve_chemistry_problem(problem)
 
 
 # ---------------------------------------------------------------------------
@@ -573,35 +590,49 @@ def _fmt_value(value: float) -> str:
 
 
 def _solve_physics(problem: str) -> WorkedSolution | None:
+    from olivia.study.physics_solver import solve_physics_problem
     from olivia.tools.physics import physical_constant
 
     result = physical_constant(problem)
-    if not result.get("ok"):
-        return None
-    unit = f" {result['unit']}" if result["unit"] else ""
-    value = f"{_fmt_value(result['value'])}{unit}"
-    steps: list[SolutionStep] = []
-    _new_step(steps, f"Look up the {result['name']}", f"{result['symbol']} = {value}")
-    return WorkedSolution(
-        problem=problem,
-        subject="physics",
-        steps=steps,
-        final_answer=value,
-        method="physics",
-        confidence=0.9,
-    )
+    if result.get("ok"):
+        unit = f" {result['unit']}" if result["unit"] else ""
+        value = f"{_fmt_value(result['value'])}{unit}"
+        steps: list[SolutionStep] = []
+        _new_step(steps, f"Look up the {result['name']}", f"{result['symbol']} = {value}")
+        return WorkedSolution(
+            problem=problem,
+            subject="physics",
+            steps=steps,
+            final_answer=value,
+            method="physics",
+            confidence=0.9,
+        )
+    return solve_physics_problem(problem)
+
+
+def _extract_unit_conversion(problem: str) -> tuple[float, str, str] | None:
+    """Extract (value, from_unit, to_unit) from direct or natural-language unit queries."""
+    match = _CONVERT_RE.search(problem)
+    if match:
+        return float(match.group(1)), match.group(2).strip(" .?"), match.group(3).strip(" .?")
+    match = _HOW_MANY_IN_RE.search(problem)
+    if match:
+        return float(match.group(2)), match.group(3).strip(" .?"), match.group(1).strip(" .?")
+    match = _CONTEXT_HOW_MANY_RE.search(problem)
+    if match:
+        return float(match.group(1)), match.group(2).strip(" .?"), match.group(3).strip(" .?")
+    return None
 
 
 def _solve_units(problem: str) -> WorkedSolution | None:
     from olivia.tools.units import convert_units
 
-    match = _CONVERT_RE.search(problem)
-    if not match:
+    extracted = _extract_unit_conversion(problem)
+    if extracted is None:
         return None
-    value = float(match.group(1))
+    value, from_unit, to_unit = extracted
     if not math.isfinite(value):
         return None
-    from_unit, to_unit = match.group(2).strip(" ."), match.group(3).strip(" .")
     result = convert_units(value, from_unit, to_unit)
     if not result["ok"]:
         return None
