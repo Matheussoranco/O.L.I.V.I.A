@@ -5,12 +5,14 @@ from olivia.study.planner import make_study_plan, plan_to_markdown
 from olivia.study.quiz import generate_quiz, grade_quiz
 from olivia.study.solver import solution_to_markdown, solve_problem
 from olivia.study.srs import Deck, review_card, slugify
-from olivia.study.tutor import TutorSession
+from olivia.study.tutor import TutorSession, TutorState, TutorSummary, summary_to_markdown
 from olivia.study.worksheet import generate_worksheet, worksheet_to_markdown
 
 __all__ = [
     "Deck",
     "TutorSession",
+    "TutorState",
+    "TutorSummary",
     "generate_flashcards",
     "generate_quiz",
     "generate_worksheet",
@@ -21,5 +23,6 @@ __all__ = [
     "slugify",
     "solution_to_markdown",
     "solve_problem",
+    "summary_to_markdown",
     "worksheet_to_markdown",
 ]
