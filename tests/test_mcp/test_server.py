@@ -49,6 +49,8 @@ def test_tools_list_matches_registry():
 def test_ping_and_notifications():
     res = _handle({"jsonrpc": "2.0", "id": 3, "method": "ping"})
     assert res is not None and res["result"] == {}
+    tool_res = json.loads(_text(_call("ping")))
+    assert tool_res["ok"] is True and tool_res["server"] == "olivia"
     assert _handle({"jsonrpc": "2.0", "method": "notifications/initialized"}) is None
 
 
@@ -232,6 +234,7 @@ def test_mcp_json_registration_and_required_tools_catalog():
         "notebook_search",
         "notebook_entries",
         "meta_stats",
+        "ping",
     }
     assert required.issubset(set(TOOLS))
 
@@ -280,6 +283,12 @@ def test_subprocess_mcp_serve_roundtrip(tmp_path):
             "method": "tools/call",
             "params": {"name": "notebook_entries", "arguments": {"kind": "finding"}},
         },
+        {
+            "jsonrpc": "2.0",
+            "id": 8,
+            "method": "tools/call",
+            "params": {"name": "ping", "arguments": {}},
+        },
     ]
     stdin_payload = "\n".join(json.dumps(req) for req in requests) + "\n"
     proc = subprocess.run(
@@ -295,11 +304,11 @@ def test_subprocess_mcp_serve_roundtrip(tmp_path):
     responses = {
         obj["id"]: obj for obj in (json.loads(line) for line in proc.stdout.splitlines() if line)
     }
-    assert set(responses) == {1, 2, 3, 4, 5, 6, 7}
+    assert set(responses) == {1, 2, 3, 4, 5, 6, 7, 8}
     assert responses[1]["result"]["serverInfo"]["name"] == "olivia"
     assert responses[2]["result"] == {}
     tool_names = {t["name"] for t in responses[3]["result"]["tools"]}
-    assert "notebook_entries" in tool_names and len(tool_names) >= 18
+    assert {"notebook_entries", "ping"}.issubset(tool_names) and len(tool_names) >= 19
 
     h2o = json.loads(responses[4]["result"]["content"][0]["text"])
     assert h2o["ok"] and round(h2o["molar_mass"], 2) == 18.02
@@ -307,3 +316,5 @@ def test_subprocess_mcp_serve_roundtrip(tmp_path):
     assert temp["ok"] and temp["value"] == 212.0
     entries = json.loads(responses[7]["result"]["content"][0]["text"])
     assert len(entries) == 1 and entries[0]["content"] == "MCP stdio roundtrip ok"
+    ping_tool = json.loads(responses[8]["result"]["content"][0]["text"])
+    assert ping_tool["ok"] is True and ping_tool["server"] == "olivia"

@@ -161,6 +161,10 @@ def _meta_stats() -> Any:
     return get_meta_learner().stats()
 
 
+def _ping() -> dict[str, Any]:
+    return {"ok": True, "server": SERVER_INFO["name"], "version": SERVER_INFO["version"]}
+
+
 def _lab_investigate(question: str, rounds: int = 1) -> Any:
     from olivia.agents import ResearchLab
 
@@ -360,6 +364,11 @@ TOOLS: dict[str, tuple[str, dict[str, Any], Callable[..., Any]]] = {
         "O.L.I.V.I.A.'s meta-learning statistics: strategy win-rates per task kind.",
         _schema({}, []),
         _meta_stats,
+    ),
+    "ping": (
+        "Health-check ping confirming the O.L.I.V.I.A. MCP server is responsive.",
+        _schema({}, []),
+        _ping,
     ),
 }
 
