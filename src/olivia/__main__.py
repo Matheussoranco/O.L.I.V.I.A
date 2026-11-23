@@ -242,11 +242,18 @@ def study_worksheet(
         raise typer.Exit(2) from exc
     solutions = generate_worksheet(topic, n=n, difficulty=difficulty, seed=seed, content=content)
     if not solutions:
-        console.print(
-            "[yellow]No worksheet generated (need an LLM backend, solvable problems in "
-            "--content-file/--arxiv, or a maths topic like 'linear equations', "
-            "'quadratics', 'derivatives').[/yellow]"
-        )
+        if content.strip():
+            console.print(
+                "[yellow]Insufficient solvable problems in supplied source "
+                "(configure an LLM backend to generate exercises from prose sources, "
+                "or omit --content-file/--arxiv to use offline maths templates).[/yellow]"
+            )
+        else:
+            console.print(
+                "[yellow]No worksheet generated (need an LLM backend, solvable problems in "
+                "--content-file/--arxiv, or a maths topic like 'linear equations', "
+                "'quadratics', 'derivatives').[/yellow]"
+            )
         raise typer.Exit(1)
     markdown = worksheet_to_markdown(solutions, topic=topic)
     console.print(Markdown(markdown))

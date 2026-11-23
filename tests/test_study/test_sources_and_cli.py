@@ -308,6 +308,12 @@ def test_cli_study_worksheet_from_pdf_generates_8_solved_problems_and_answer_key
                     "Quadratic Equations Practice Sheet",
                     "solve x**2 - 5*x + 6 = 0 for x",
                     "solve x**2 - 9 = 0 for x",
+                    "solve x**2 - 7*x + 12 = 0 for x",
+                    "solve x**2 - 16 = 0 for x",
+                    "solve x**2 + 5*x + 6 = 0 for x",
+                    "solve x**2 - 4*x + 3 = 0 for x",
+                    "solve x**2 - 25 = 0 for x",
+                    "solve x**2 - 3*x + 2 = 0 for x",
                     "Every monic quadratic factors over its roots.",
                 ]
             ],
@@ -336,6 +342,59 @@ def test_cli_study_worksheet_from_pdf_generates_8_solved_problems_and_answer_key
     assert "## Answer key" in rendered
     assert rendered.count("**Answer:**") == 8
     assert "x**2 - 5*x + 6 = 0" in rendered
+    assert "x**2 - 3*x + 2 = 0" in rendered
+
+
+@_needs_sympy
+def test_worksheet_source_grounded_never_falls_back_to_generic_topic_templates(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+):
+    """Lead review: a source-grounded request must never silently emit unrelated topic templates."""
+    stellar_text = (
+        "Stellar spectra exhibit Balmer absorption lines across O, B, A, F, G, K, and M classes. "
+        "Effective surface temperature controls ionization equilibria in stellar photospheres."
+    )
+    with caplog.at_level("WARNING", logger="olivia.study.worksheet"):
+        sheet = generate_worksheet(
+            "quadratic equations",
+            n=5,
+            client=NullClient(),
+            content=stellar_text,
+        )
+    assert sheet == []
+    assert any("insufficient solvable content" in rec.message for rec in caplog.records)
+
+    # CLI must also report insufficient source and exit non-zero rather than writing quadratics.
+    stellar_pdf = tmp_path / "stellar.pdf"
+    stellar_pdf.write_bytes(_make_minimal_pdf([[stellar_text]], compress=True))
+    out_md = tmp_path / "should_not_exist.md"
+    res = runner.invoke(
+        app,
+        [
+            "study",
+            "worksheet",
+            "quadratic equations",
+            "--content-file",
+            str(stellar_pdf),
+            "-n",
+            "5",
+            "--output",
+            str(out_md),
+        ],
+    )
+    assert res.exit_code == 1
+    assert "Insufficient solvable problems in supplied source" in res.output
+    assert not out_md.exists()
+
+    # Partial source grounding returns only the grounded problems, never padded with templates.
+    partial_sheet = generate_worksheet(
+        "quadratic equations",
+        n=6,
+        client=NullClient(),
+        content="Problem 1: solve 2*x + 4 = 10 for x\nProblem 2: solve 3*x - 9 = 0 for x\n",
+    )
+    assert len(partial_sheet) == 2
+    assert all("2*x + 4 = 10" in s.problem or "3*x - 9 = 0" in s.problem for s in partial_sheet)
 
 
 def test_cli_study_quiz_from_pdf_interactive_grading(tmp_path: Path):

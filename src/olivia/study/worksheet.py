@@ -166,27 +166,16 @@ def generate_worksheet(
         solutions = _llm_worksheet(topic, n, difficulty, client, content=content)
         if solutions:
             return solutions
-    extracted = _extract_content_problems(content, n) if content else []
-    if len(extracted) >= n:
+    if content.strip():
+        extracted = _extract_content_problems(content, n)
+        if not extracted:
+            logger.warning(
+                "worksheet: insufficient solvable content in supplied source for topic %r",
+                topic,
+            )
+            return []
         return extracted[:n]
-    remaining = n - len(extracted)
-    # Request a modest buffer when blending with extracted problems so deduping still reaches n.
-    generated = _offline_worksheet(
-        topic,
-        remaining if not extracted else remaining + len(extracted),
-        difficulty,
-        seed,
-    )
-    seen = {s.problem.casefold() for s in extracted}
-    combined = list(extracted)
-    for sol in generated:
-        key = sol.problem.casefold()
-        if key not in seen:
-            seen.add(key)
-            combined.append(sol)
-            if len(combined) >= n:
-                break
-    return combined[:n]
+    return _offline_worksheet(topic, n, difficulty, seed)
 
 
 def worksheet_to_markdown(

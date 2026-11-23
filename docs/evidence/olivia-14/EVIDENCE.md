@@ -13,23 +13,22 @@
 | Criterion (`#14`) | Implementation | Verified By | Status |
 |---|---|---|---|
 | `olivia study cards "Krebs cycle" --content-file paper.pdf -n 15` → 15 cards, saved to SM-2 deck | `src/olivia/study/sources.py` (`extract_pdf_text`, `load_study_content`), multi-pass non-stopword `_cloze_cards` in `src/olivia/study/flashcards.py`, CLI wiring in `src/olivia/__main__.py` | `test_cli_study_cards_from_pdf_generates_15_grounded_cards_in_sm2_deck` (compressed FlateDecode 2-page PDF → 15 unique cards saved to `Deck("Krebs cycle")`, `answer_in_source == 100%`) | **PASS** |
-| `olivia study worksheet "quadratic equations" --content-file paper.pdf -n 8` → 8 problems + answer key | Added `--content-file`, `--arxiv`, `--network` to `study worksheet`, `content: str = ""` to `generate_worksheet()`, `_extract_content_problems()` + deduped fallback in `src/olivia/study/worksheet.py` | `test_cli_study_worksheet_from_pdf_generates_8_solved_problems_and_answer_key` (8 solved problems + worked answer key incl. extracted PDF equations) | **PASS** |
+| `olivia study worksheet "quadratic equations" --content-file paper.pdf -n 8` → 8 problems + answer key | Added `--content-file`, `--arxiv`, `--network` to `study worksheet`, `content: str = ""` to `generate_worksheet()`, and strict source-grounded `_extract_content_problems()` (never falls back to generic topic templates when `content` is supplied; returns `[]` + explicit insufficient-source warning/CLI message instead) | `test_cli_study_worksheet_from_pdf_generates_8_solved_problems_and_answer_key` (8 problems extracted 100% from PDF + worked answer key) & `test_worksheet_source_grounded_never_falls_back_to_generic_topic_templates` (stellar-spectra source with `topic="quadratic equations"` returns `[]` + CLI exit 1; partial source never padded) | **PASS** |
 | `olivia study quiz "Bayesian statistics" --content-file paper.pdf` → interactive quiz, grades answers | Updated `study quiz` CLI to load PDF/HTML/text/arXiv via `load_study_content`, multi-pass cloze fallback in `src/olivia/study/quiz.py` | `test_cli_study_quiz_from_pdf_interactive_grading` (interactive `CliRunner` prompts + `grade_quiz` output `Score: 2/2 graded (100.0%) — 3 questions total`) | **PASS** |
 | arXiv support (`--arxiv <id_or_url>`) respecting offline-first security policy | `normalize_arxiv_id()` allowlist + `fetch_arxiv_content()` gated by `literature._network_enabled` & `_get` (`_safe_url`) | `test_normalize_arxiv_id_valid`, `test_normalize_arxiv_id_rejects_invalid_and_non_arxiv_urls`, `test_fetch_arxiv_content_blocks_when_network_disabled`, `test_fetch_arxiv_content_parses_atom_xml` | **PASS** |
 | Content grounded in source (`generation.answer_in_source >= 95%`) | Stopword-filtered verbatim cloze extraction with `clean_extracted_text()` | `olivia eval --check`: `generation.answer_in_source = 100.0% (36/36)`, `generation.quiz_answer_not_in_prompt = 100.0% (36/36)`, `generation.front_grounded = 100.0% (36/36)` | **PASS** |
 
 ---
 
-## 2. Commands Actually Executed & Observed Results
+## 2. Commands Actually Executed & Observed Results (Round 2)
 
 | Command | Result |
 |---|---|
-| `ruff check --no-cache src/ tests/` | `All checks passed!` |
-| `ruff format --no-cache --check src/ tests/` | `92 files already formatted` |
-| `mypy src/olivia` | `Success: no issues found in 66 source files` |
-| `pytest tests/ --tb=short -q` | `398 passed, 2 skipped in 8.61s` (21 new tests in `tests/test_study/test_sources_and_cli.py`) |
-| `python -m olivia eval --check` | `All gates hold.` (`study` suite: `100.0%` across all SM-2, grading, flashcard fidelity, and `quiz_answer_not_in_prompt` metrics) |
-| `bandit -r src/olivia/study/sources.py src/olivia/study/worksheet.py src/olivia/study/flashcards.py src/olivia/study/quiz.py -ll` | `0 High, 0 Medium` (867 LOC scanned) |
+| `uv run --python 3.12 --extra dev --extra science ruff check src tests` | `All checks passed!` |
+| `uv run --python 3.12 --extra dev --extra science ruff format --check src tests` | `92 files already formatted` |
+| `uv run --python 3.12 --extra dev --extra science mypy src/olivia` | `Success: no issues found in 66 source files` |
+| `uv run --python 3.12 --extra dev --extra science pytest tests/ -q` | `399 passed, 2 skipped in 17.56s` (22 tests in `tests/test_study/test_sources_and_cli.py`, including source-grounding non-fallback regression) |
+| `uv run --python 3.12 --extra dev --extra science olivia eval --check` | `All gates hold.` (`study` suite: `100.0%` across all SM-2, grading, flashcard fidelity, and `quiz_answer_not_in_prompt` metrics) |
 
 ---
 
