@@ -158,7 +158,7 @@ change; the offline-first contract will not.
 
 ## License
 
-[**CC BY-NC-SA 4.0**](https://creativecommons.org/licenses/by-nc-sa/4.0/) — see [LICENSE](LICENSE).
+[**Apache 2.0**]() — see [LICENSE](LICENSE).
 
 Copyright © 2026 Matheus Soranço <matheussoranco@gmail.com>
 `SPDX-License-Identifier: CC-BY-NC-SA-4.0`
