@@ -189,7 +189,6 @@ class TutorSession:
 
     def summarize(self) -> TutorSummary:
         """Produce a structured summary of progress, misconceptions, and next steps."""
-        mode = "llm" if self.client.available else "offline"
         if self.client.available and self.messages:
             transcript = "\n".join(
                 f"{m['role'].upper()}: {m['content']}" for m in self.messages[-self.max_history :]
@@ -213,7 +212,7 @@ class TutorSession:
                         topic=self.topic,
                         turns=self.state.turns,
                         hints_used=self.state.hints_used,
-                        mode=mode,
+                        mode="llm",
                         opening_question=self.state.opening_question,
                         covered=covered or [self.topic],
                         misconceptions_addressed=misconceptions,
@@ -222,6 +221,7 @@ class TutorSession:
                     )
 
         # Deterministic honest fallback (offline, zero-turn exit, or malformed LLM JSON).
+        fallback_mode = "offline" if not self.client.available else "deterministic_fallback"
         user_turns = [
             m["content"].strip()
             for m in self.messages
@@ -259,7 +259,7 @@ class TutorSession:
             topic=self.topic,
             turns=self.state.turns,
             hints_used=self.state.hints_used,
-            mode=mode,
+            mode=fallback_mode,
             opening_question=self.state.opening_question,
             covered=covered,
             misconceptions_addressed=[],

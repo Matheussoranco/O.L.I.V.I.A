@@ -150,7 +150,10 @@ def test_tutor_malformed_llm_summary_falls_back_cleanly(fake_client: Any) -> Non
     summary = session.summarize()
     assert summary.topic == "special relativity"
     assert summary.turns == 1
+    assert summary.mode == "deterministic_fallback"
     assert summary.covered
+    md = summary_to_markdown(summary)
+    assert "deterministic_fallback" in md
 
 
 def test_cli_tutor_interactive_session_with_exit_and_saved_summary(
