@@ -458,7 +458,28 @@ def test_worksheet_llm_rejects_off_topic_ungrounded_exercises(
     assert sheet == []
     assert any("dropped 2 ungrounded LLM problem" in rec.message for rec in caplog.records)
 
-    # 2. Provider returns one grounded problem and one off-topic problem -> keep only grounded.
+    # 2. Bare numeric coincidence ("2 BC" vs "2*x + 4 = 10") must NOT count as grounded.
+    roman_client = fake_client(json.dumps({"problems": ["solve 2*x + 4 = 10 for x"]}))
+    roman_sheet = generate_worksheet(
+        "Roman Republic",
+        n=1,
+        client=roman_client,
+        content="In 2 BC the Roman Republic had consuls.",
+    )
+    assert roman_sheet == []
+
+    bare_num_client = fake_client(json.dumps({"problems": ["what is 656 + 1"]}))
+    assert (
+        generate_worksheet(
+            "stellar spectra",
+            n=1,
+            client=bare_num_client,
+            content=stellar_source,
+        )
+        == []
+    )
+
+    # 3. Provider returns one unit-qualified grounded problem + one off-topic -> keep grounded.
     mixed_client = fake_client(
         json.dumps({"problems": ["convert 656 nm to m", "solve x**2 - 9 = 0 for x"]})
     )

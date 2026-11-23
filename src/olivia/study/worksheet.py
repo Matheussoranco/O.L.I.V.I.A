@@ -80,7 +80,7 @@ def _offline_worksheet(
     if generator is None:
         logger.warning("worksheet: no offline generator for topic %r", topic)
         return []
-    rng = random.Random(seed)
+    rng = random.Random(seed)  # nosec B311 - seeded RNG is intended for reproducibility in worksheets
     solutions: list[WorkedSolution] = []
     for _ in range(n):
         try:
@@ -216,6 +216,15 @@ _MATH_DOMAIN_RULES: tuple[tuple[tuple[str, ...], re.Pattern[str]], ...] = (
 )
 
 
+_MEASUREMENT_RE = re.compile(
+    r"\b(\d+(?:\.\d+)?)\s*"
+    r"(nm|um|mm|cm|km|mg|kg|m/s(?:\^2)?|km/h|ev|kev|mev|hz|khz|mhz|ghz|"
+    r"pa|kpa|mpa|atm|mol|mmol|ml|kj|mj|mw|kw|deg|°c|°f)\b",
+    re.IGNORECASE,
+)
+_CHEM_FORMULA_RE = re.compile(r"\b[A-Z][a-z]?(?:\d+[A-Z]?[a-z]?\d*)+\b")
+
+
 def _content_tokens(text: str) -> tuple[set[str], set[str]]:
     words = {
         w.casefold()
@@ -223,11 +232,11 @@ def _content_tokens(text: str) -> tuple[set[str], set[str]]:
         if w.casefold() not in _GROUNDING_STOPWORDS
     }
     stems = {w[:5] if len(w) >= 6 else w for w in words}
-    literals = {
-        tok.casefold()
-        for tok in re.findall(r"\b\d+(?:\.\d+)?\b|\b[A-Z][a-z]?(?:\d+[A-Z]?[a-z]?\d*)+\b", text)
-    }
-    return stems, literals
+    # Require contextual qualifiers (unit-qualified measurements or chemical formulas);
+    # never ground on bare isolated numbers (e.g. "2 BC" must not match "2*x + 4 = 10").
+    measurements = {f"{val} {unit.casefold()}" for val, unit in _MEASUREMENT_RE.findall(text)}
+    formulas = {tok.casefold() for tok in _CHEM_FORMULA_RE.findall(text)}
+    return stems, measurements | formulas
 
 
 def _is_grounded_in_content(problem: str, content: str) -> bool:

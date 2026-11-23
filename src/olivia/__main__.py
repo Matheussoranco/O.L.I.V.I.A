@@ -284,19 +284,51 @@ def study_review(topic: str) -> None:
 
 
 @app.command()
-def tutor(topic: str) -> None:
-    """Interactive Socratic tutoring session (Ctrl-C to end)."""
-    from olivia.study import TutorSession
+def tutor(
+    topic: str,
+    output: str = typer.Option(
+        "", "--output", "-o", help="Write the session summary markdown here on exit."
+    ),
+    max_turns: int = typer.Option(
+        0, "--max-turns", min=0, help="End automatically after N learner turns (0 = unlimited)."
+    ),
+) -> None:
+    """Interactive Socratic tutoring session (/hint, /summary, /exit or Ctrl-C)."""
+    from pathlib import Path
+
+    from olivia.study import TutorSession, summary_to_markdown
 
     session = TutorSession(topic)
-    console.print(f"[bold]Tutor session: {topic}[/bold] (Ctrl-C to end)")
+    console.print(
+        f"[bold]Tutor session: {topic}[/bold] "
+        "[dim](commands: /hint, /summary, /help, /exit or Ctrl-C)[/dim]"
+    )
     console.print(Markdown(session.suggest_question()))
+
+    summary_md = ""
     try:
         while True:
-            message = typer.prompt("you")
-            console.print(Markdown(session.respond(message)))
-    except (KeyboardInterrupt, typer.Abort):
-        console.print("\n[dim]session ended[/dim]")
+            if max_turns and session.state.turns >= max_turns:
+                session.state.ended = True
+                summary_md = summary_to_markdown(session.summarize())
+                console.print(Markdown(summary_md))
+                break
+            message = typer.prompt("you", default="", show_default=False)
+            reply, should_exit = session.handle_input(message)
+            if reply:
+                console.print(Markdown(reply))
+            if should_exit:
+                summary_md = reply
+                break
+    except (KeyboardInterrupt, EOFError, typer.Abort):
+        session.state.ended = True
+        summary_md = summary_to_markdown(session.summarize())
+        console.print("")
+        console.print(Markdown(summary_md))
+
+    if output and summary_md:
+        Path(output).write_text(summary_md, encoding="utf-8")
+        console.print(f"[dim]summary written to {output}[/dim]")
 
 
 @app.command()

@@ -13,13 +13,15 @@ from olivia.study.sources import (
     normalize_arxiv_id,
 )
 from olivia.study.srs import Deck, review_card, slugify
-from olivia.study.tutor import TutorSession
+from olivia.study.tutor import TutorSession, TutorState, TutorSummary, summary_to_markdown
 from olivia.study.worksheet import generate_worksheet, worksheet_to_markdown
 
 __all__ = [
     "Deck",
     "StudySourceError",
     "TutorSession",
+    "TutorState",
+    "TutorSummary",
     "clean_extracted_text",
     "extract_pdf_text",
     "fetch_arxiv_content",
@@ -35,5 +37,6 @@ __all__ = [
     "slugify",
     "solution_to_markdown",
     "solve_problem",
+    "summary_to_markdown",
     "worksheet_to_markdown",
 ]
