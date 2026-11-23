@@ -335,6 +335,686 @@ def _safe_sympy_globals() -> dict[str, Any]:
     return globals_dict
 
 
+_MAX_RESULT_DIGITS = 1000
+_MAX_EXPONENT = 64
+_MAX_COMBINATORIAL_ARGUMENT = 1000
+_MAX_MATRIX_DIM = 64
+_MAX_CONTAINER_ELEMENTS = 64
+_MAX_DIFF_ORDER = 16
+_MAX_SERIES_ORDER = 32
+_MAX_SYSTEM_ITEMS = 16
+
+_NUMERIC_CONSTANTS: dict[str, float] = {
+    "pi": math.pi,
+    "E": math.e,
+    "e": math.e,
+    "I": 1.0,
+}
+_NUMBER_CONSTRUCTORS = frozenset({"Integer", "Float", "Rational"})
+_SYMBOLIC_CONSTRUCTORS = frozenset({"Symbol", "Function", "symbols", "var"})
+_CONTAINER_CONSTRUCTORS = frozenset(
+    {"Tuple", "FiniteSet", "Interval", "Matrix", "ImmutableMatrix", "Piecewise"}
+)
+_COMBINATORIAL_CALLS = frozenset(
+    {
+        "factorial",
+        "factorial2",
+        "subfactorial",
+        "gamma",
+        "loggamma",
+        "polygamma",
+        "digamma",
+        "trigamma",
+        "beta",
+        "uppergamma",
+        "lowergamma",
+        "fibonacci",
+        "lucas",
+        "tribonacci",
+        "bell",
+        "bernoulli",
+        "catalan",
+        "euler",
+        "harmonic",
+        "binomial",
+        "ff",
+        "rf",
+        "fallingfactorial",
+        "risingfactorial",
+        "multinomial",
+        "stirling",
+        "partition",
+        "factorint",
+        "prime",
+        "primerange",
+        "totient",
+        "divisors",
+    }
+)
+_MATRIX_CONSTRUCTORS = frozenset(
+    {"Matrix", "ImmutableMatrix", "MatrixSymbol", "eye", "zeros", "ones", "diag"}
+)
+_ITERATION_CALLS = frozenset({"summation", "product", "Sum", "Product"})
+_DIFF_CALLS = frozenset({"diff", "Derivative"})
+_INTEGRATE_CALLS = frozenset({"integrate", "Integral"})
+_LIMIT_CALLS = frozenset({"limit", "Limit"})
+_SYSTEM_SOLVER_CALLS = frozenset({"solve", "linsolve", "nonlinsolve"})
+_SCALAR_EAGER_CALLS = frozenset(
+    {
+        "solveset",
+        "dsolve",
+        "nsolve",
+        "expand",
+        "expand_trig",
+        "factor",
+        "simplify",
+        "trigsimp",
+        "apart",
+        "cancel",
+        "together",
+    }
+)
+_EAGER_SYMBOLIC_CALLS = (
+    _ITERATION_CALLS
+    | _DIFF_CALLS
+    | _INTEGRATE_CALLS
+    | _LIMIT_CALLS
+    | _SYSTEM_SOLVER_CALLS
+    | _SCALAR_EAGER_CALLS
+    | frozenset({"series", "N"})
+)
+_ALLOWED_EXPR_NODES = (
+    ast.Expression,
+    ast.BinOp,
+    ast.UnaryOp,
+    ast.Call,
+    ast.Name,
+    ast.Constant,
+    ast.Tuple,
+    ast.List,
+    ast.keyword,
+    ast.Add,
+    ast.Sub,
+    ast.Mult,
+    ast.Div,
+    ast.FloorDiv,
+    ast.Mod,
+    ast.Pow,
+    ast.LShift,
+    ast.RShift,
+    ast.UAdd,
+    ast.USub,
+    ast.Load,
+)
+
+
+class ExpressionLimitError(ValueError):
+    """Raised when an expression exceeds offline evaluation safety bounds."""
+
+
+def _is_numeric_literal(node: ast.AST) -> bool:
+    return isinstance(node, ast.Constant) or (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in _NUMBER_CONSTRUCTORS
+    )
+
+
+def _sequence_elements(node: ast.AST) -> list[ast.AST] | None:
+    if isinstance(node, ast.Tuple | ast.List):
+        return list(node.elts)
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "Tuple"
+        and not node.keywords
+    ):
+        return list(node.args)
+    return None
+
+
+def _is_container_expr(node: ast.AST) -> bool:
+    return _sequence_elements(node) is not None or (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id in _CONTAINER_CONSTRUCTORS
+    )
+
+
+def _is_symbol_node(node: ast.AST) -> bool:
+    if (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "Symbol"
+        and not node.keywords
+        and len(node.args) == 1
+        and isinstance(node.args[0], ast.Constant)
+        and isinstance(node.args[0].value, str)
+    ):
+        return True
+    return (
+        isinstance(node, ast.Name)
+        and node.id not in _NUMERIC_CONSTANTS
+        and node.id not in _SAFE_SYMPY_NAMES
+    )
+
+
+def _require_no_keywords(node: ast.Call, name: str) -> None:
+    if node.keywords:
+        raise ExpressionLimitError(f"keyword arguments are not allowed for {name}()")
+
+
+def _require_scalar_arg(
+    arg: ast.AST,
+    *,
+    name: str,
+    symbolic_degree_limit: int | None,
+) -> float | None:
+    if _is_container_expr(arg):
+        raise ExpressionLimitError(f"structured container argument is not allowed for {name}()")
+    return _ast_magnitude(arg, symbolic_degree_limit=symbolic_degree_limit)
+
+
+def _require_bounded_numeric(
+    arg: ast.AST,
+    *,
+    name: str,
+    label: str,
+    limit: int,
+    symbolic_degree_limit: int | None,
+) -> float:
+    mag = _require_scalar_arg(arg, name=name, symbolic_degree_limit=symbolic_degree_limit)
+    if mag is None or not math.isfinite(mag):
+        raise ExpressionLimitError(
+            f"{name}() {label} must have a bounded finite numeric value (<= {limit})"
+        )
+    if mag > limit:
+        raise ExpressionLimitError(f"{name}() {label} {mag:g} exceeds limit of {limit}")
+    return mag
+
+
+def _check_power_bounds(
+    left: float | None,
+    right: float | None,
+    *,
+    symbolic_degree_limit: int | None,
+) -> float | None:
+    if right is None:
+        return None
+    if math.isinf(right):
+        raise ExpressionLimitError("exponent exceeds offline evaluation limits")
+    if left is None:
+        if symbolic_degree_limit is not None and right > symbolic_degree_limit:
+            raise ExpressionLimitError(
+                f"a power of {right:g} exceeds the limit of {symbolic_degree_limit}"
+            )
+        return None
+    if left in (0.0, 1.0):
+        return left
+    if math.isinf(left):
+        raise ExpressionLimitError("base exceeds offline evaluation limits")
+    scale = max(left, 1.0 / left)
+    digits = right * math.log10(scale)
+    if digits > _MAX_RESULT_DIGITS:
+        raise ExpressionLimitError(
+            f"a number of about 10^{digits:.3g} exceeds {_MAX_RESULT_DIGITS} digits"
+        )
+    return math.inf if digits > 300 else scale**right
+
+
+def _ast_magnitude(node: ast.AST, *, symbolic_degree_limit: int | None) -> float | None:
+    """Bound numeric growth and eager operations directly on the compiled AST."""
+    if isinstance(node, ast.Expression):
+        return _ast_magnitude(node.body, symbolic_degree_limit=symbolic_degree_limit)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, bool) or not isinstance(node.value, int | float | str):
+            return None
+        try:
+            val = abs(float(node.value))
+        except ValueError:
+            return None
+        if val > 0 and math.log10(val) > _MAX_RESULT_DIGITS:
+            raise ExpressionLimitError(f"literal exceeds {_MAX_RESULT_DIGITS} digits")
+        return val
+    if isinstance(node, ast.Name):
+        return _NUMERIC_CONSTANTS.get(node.id)
+    if isinstance(node, ast.UnaryOp):
+        if _is_container_expr(node.operand):
+            raise ExpressionLimitError("container operands are not allowed in unary operations")
+        return _ast_magnitude(node.operand, symbolic_degree_limit=symbolic_degree_limit)
+    if isinstance(node, ast.BinOp):
+        if isinstance(node.op, ast.LShift | ast.RShift):
+            raise ExpressionLimitError(
+                "bit-shift operators are not allowed in symbolic expressions"
+            )
+        if _is_container_expr(node.left) or _is_container_expr(node.right):
+            raise ExpressionLimitError(
+                "container operands are not allowed in arithmetic expressions"
+            )
+        if (isinstance(node.left, ast.Constant) and isinstance(node.left.value, str)) or (
+            isinstance(node.right, ast.Constant) and isinstance(node.right.value, str)
+        ):
+            raise ExpressionLimitError("string operands are not allowed in arithmetic expressions")
+        left = _ast_magnitude(node.left, symbolic_degree_limit=symbolic_degree_limit)
+        right = _ast_magnitude(node.right, symbolic_degree_limit=symbolic_degree_limit)
+        if isinstance(node.op, ast.Pow):
+            return _check_power_bounds(left, right, symbolic_degree_limit=symbolic_degree_limit)
+        if left is None or right is None:
+            return None
+        if isinstance(node.op, ast.Add | ast.Sub):
+            out = left + right
+        elif isinstance(node.op, ast.Mult):
+            out = left * right
+        elif isinstance(node.op, ast.Div) and _is_numeric_literal(node.right) and right >= 1:
+            out = left / right
+        else:
+            return math.inf
+        if math.isfinite(out) and out > 0 and math.log10(out) > _MAX_RESULT_DIGITS:
+            raise ExpressionLimitError(f"numeric result exceeds {_MAX_RESULT_DIGITS} digits")
+        return out
+    if isinstance(node, ast.Call):
+        return _call_ast_magnitude(node, symbolic_degree_limit=symbolic_degree_limit)
+    if isinstance(node, ast.Tuple | ast.List):
+        if len(node.elts) > _MAX_CONTAINER_ELEMENTS:
+            raise ExpressionLimitError(
+                f"container length {len(node.elts)} exceeds limit of {_MAX_CONTAINER_ELEMENTS}"
+            )
+        for el in node.elts:
+            _ast_magnitude(el, symbolic_degree_limit=symbolic_degree_limit)
+        return None
+    raise ExpressionLimitError(f"unsupported expression construct: {type(node).__name__}")
+
+
+def _validate_iteration_call(node: ast.Call, name: str, *, child_limit: int | None) -> None:
+    _require_no_keywords(node, name)
+    if len(node.args) < 2:
+        raise ExpressionLimitError(f"{name}() requires an expression and bounded limit tuple")
+    _require_scalar_arg(node.args[0], name=name, symbolic_degree_limit=child_limit)
+    total_steps = 1.0
+    for spec in node.args[1:]:
+        elts = _sequence_elements(spec)
+        if elts is None or len(elts) != 3 or not _is_symbol_node(elts[0]):
+            raise ExpressionLimitError(
+                f"{name}() limit specification must be a 3-tuple (symbol, lower, upper)"
+            )
+        lower = _require_bounded_numeric(
+            elts[1],
+            name=name,
+            label="lower bound",
+            limit=_MAX_COMBINATORIAL_ARGUMENT,
+            symbolic_degree_limit=child_limit,
+        )
+        upper = _require_bounded_numeric(
+            elts[2],
+            name=name,
+            label="upper bound",
+            limit=_MAX_COMBINATORIAL_ARGUMENT,
+            symbolic_degree_limit=child_limit,
+        )
+        span = lower + upper + 1.0
+        total_steps *= span
+        if span > _MAX_COMBINATORIAL_ARGUMENT + 1 or total_steps > _MAX_COMBINATORIAL_ARGUMENT:
+            raise ExpressionLimitError(
+                f"{name}() iteration span exceeds limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+            )
+
+
+def _validate_diff_call(node: ast.Call, name: str, *, child_limit: int | None) -> None:
+    _require_no_keywords(node, name)
+    if not node.args:
+        raise ExpressionLimitError(f"{name}() requires at least one argument")
+    _require_scalar_arg(node.args[0], name=name, symbolic_degree_limit=child_limit)
+    total_order = 0.0
+    for spec in node.args[1:]:
+        elts = _sequence_elements(spec)
+        if elts is not None:
+            if len(elts) != 2 or not _is_symbol_node(elts[0]):
+                raise ExpressionLimitError(
+                    f"{name}() tuple argument must have shape (symbol, order)"
+                )
+            total_order += _require_bounded_numeric(
+                elts[1],
+                name=name,
+                label="order",
+                limit=_MAX_DIFF_ORDER,
+                symbolic_degree_limit=child_limit,
+            )
+        elif _is_symbol_node(spec):
+            total_order += 1.0
+        else:
+            total_order += _require_bounded_numeric(
+                spec,
+                name=name,
+                label="order",
+                limit=_MAX_DIFF_ORDER,
+                symbolic_degree_limit=child_limit,
+            )
+        if total_order > _MAX_DIFF_ORDER:
+            raise ExpressionLimitError(
+                f"{name}() cumulative order {total_order:g} exceeds limit of {_MAX_DIFF_ORDER}"
+            )
+
+
+def _validate_integrate_call(node: ast.Call, name: str, *, child_limit: int | None) -> None:
+    _require_no_keywords(node, name)
+    if not node.args:
+        raise ExpressionLimitError(f"{name}() requires at least one argument")
+    _require_scalar_arg(node.args[0], name=name, symbolic_degree_limit=child_limit)
+    for spec in node.args[1:]:
+        elts = _sequence_elements(spec)
+        if elts is not None:
+            if len(elts) != 3 or not _is_symbol_node(elts[0]):
+                raise ExpressionLimitError(
+                    f"{name}() limit specification must be a 3-tuple (symbol, lower, upper)"
+                )
+            for bound_node in elts[1:]:
+                mag = _require_scalar_arg(bound_node, name=name, symbolic_degree_limit=child_limit)
+                if mag is not None and mag > _MAX_COMBINATORIAL_ARGUMENT:
+                    raise ExpressionLimitError(
+                        f"{name}() bound {mag:g} exceeds limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+                    )
+        elif not _is_symbol_node(spec):
+            raise ExpressionLimitError(
+                f"{name}() integration variable must be a symbol or (symbol, lower, upper) tuple"
+            )
+
+
+def _validate_series_call(node: ast.Call, *, child_limit: int | None) -> None:
+    if not 1 <= len(node.args) <= 5:
+        raise ExpressionLimitError("series() expects 1 to 5 positional arguments")
+    allowed_kw = {"x", "x0", "n", "dir"}
+    for idx, arg in enumerate(node.args):
+        if idx == 3:
+            _require_bounded_numeric(
+                arg,
+                name="series",
+                label="order n",
+                limit=_MAX_SERIES_ORDER,
+                symbolic_degree_limit=child_limit,
+            )
+        else:
+            mag = _require_scalar_arg(arg, name="series", symbolic_degree_limit=child_limit)
+            if mag is not None and mag > _MAX_COMBINATORIAL_ARGUMENT:
+                raise ExpressionLimitError(
+                    f"series() argument {mag:g} exceeds limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+                )
+    for kw in node.keywords:
+        if kw.arg not in allowed_kw:
+            raise ExpressionLimitError(f"unsupported keyword '{kw.arg}' for series()")
+        if kw.arg == "n":
+            _require_bounded_numeric(
+                kw.value,
+                name="series",
+                label="order n",
+                limit=_MAX_SERIES_ORDER,
+                symbolic_degree_limit=child_limit,
+            )
+        elif kw.arg == "dir":
+            if not isinstance(kw.value, ast.Constant) or kw.value.value not in ("+", "-", "+-"):
+                raise ExpressionLimitError("series() dir must be '+', '-', or '+-'")
+        else:
+            mag = _require_scalar_arg(kw.value, name="series", symbolic_degree_limit=child_limit)
+            if mag is not None and mag > _MAX_COMBINATORIAL_ARGUMENT:
+                raise ExpressionLimitError(
+                    f"series() {kw.arg} exceeds limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+                )
+
+
+def _validate_limit_call(node: ast.Call, name: str, *, child_limit: int | None) -> None:
+    if not 3 <= len(node.args) <= 4:
+        raise ExpressionLimitError(f"{name}() expects 3 or 4 positional arguments")
+    for idx, arg in enumerate(node.args):
+        if idx == 3:
+            if not isinstance(arg, ast.Constant) or arg.value not in ("+", "-", "+-"):
+                raise ExpressionLimitError(f"{name}() direction must be '+', '-', or '+-'")
+        else:
+            mag = _require_scalar_arg(arg, name=name, symbolic_degree_limit=child_limit)
+            if mag is not None and mag > _MAX_COMBINATORIAL_ARGUMENT:
+                raise ExpressionLimitError(
+                    f"{name}() argument {mag:g} exceeds limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+                )
+    for kw in node.keywords:
+        if (
+            kw.arg != "dir"
+            or not isinstance(kw.value, ast.Constant)
+            or kw.value.value
+            not in (
+                "+",
+                "-",
+                "+-",
+            )
+        ):
+            raise ExpressionLimitError(f"unsupported keyword '{kw.arg}' for {name}()")
+
+
+def _validate_matrix_call(node: ast.Call, name: str, *, symbolic_degree_limit: int | None) -> None:
+    _require_no_keywords(node, name)
+    if name in ("eye", "zeros", "ones"):
+        if not 1 <= len(node.args) <= 2:
+            raise ExpressionLimitError(f"{name}() expects 1 or 2 dimension arguments")
+        for arg in node.args:
+            _require_bounded_numeric(
+                arg,
+                name=name,
+                label="dimension",
+                limit=_MAX_MATRIX_DIM,
+                symbolic_degree_limit=symbolic_degree_limit,
+            )
+        return
+    if name == "MatrixSymbol":
+        if (
+            len(node.args) != 3
+            or not isinstance(node.args[0], ast.Constant)
+            or not isinstance(node.args[0].value, str)
+        ):
+            raise ExpressionLimitError("MatrixSymbol() expects (name, rows, cols)")
+        for arg in node.args[1:]:
+            _require_bounded_numeric(
+                arg,
+                name=name,
+                label="dimension",
+                limit=_MAX_MATRIX_DIM,
+                symbolic_degree_limit=symbolic_degree_limit,
+            )
+        return
+    if name in ("Matrix", "ImmutableMatrix"):
+        if len(node.args) == 1:
+            rows = _sequence_elements(node.args[0])
+            if rows is None or len(rows) > _MAX_MATRIX_DIM:
+                raise ExpressionLimitError(
+                    f"{name}() expects a sequence with at most {_MAX_MATRIX_DIM} rows"
+                )
+            for row in rows:
+                cols = _sequence_elements(row)
+                if cols is not None:
+                    if len(cols) > _MAX_MATRIX_DIM:
+                        raise ExpressionLimitError(
+                            f"{name}() row exceeds limit of {_MAX_MATRIX_DIM} columns"
+                        )
+                    for cell in cols:
+                        _require_scalar_arg(
+                            cell, name=name, symbolic_degree_limit=symbolic_degree_limit
+                        )
+                else:
+                    _require_scalar_arg(row, name=name, symbolic_degree_limit=symbolic_degree_limit)
+            return
+        if len(node.args) == 3:
+            r = _require_bounded_numeric(
+                node.args[0],
+                name=name,
+                label="rows",
+                limit=_MAX_MATRIX_DIM,
+                symbolic_degree_limit=symbolic_degree_limit,
+            )
+            c = _require_bounded_numeric(
+                node.args[1],
+                name=name,
+                label="cols",
+                limit=_MAX_MATRIX_DIM,
+                symbolic_degree_limit=symbolic_degree_limit,
+            )
+            flat = _sequence_elements(node.args[2])
+            if (
+                flat is None
+                or len(flat) > _MAX_MATRIX_DIM * _MAX_MATRIX_DIM
+                or r * c > (_MAX_MATRIX_DIM * _MAX_MATRIX_DIM)
+            ):
+                raise ExpressionLimitError(f"{name}() flat entries exceed matrix bounds")
+            for cell in flat:
+                _require_scalar_arg(cell, name=name, symbolic_degree_limit=symbolic_degree_limit)
+            return
+        raise ExpressionLimitError(f"unsupported argument shape for {name}()")
+    # diag(*args)
+    if not 1 <= len(node.args) <= _MAX_MATRIX_DIM:
+        raise ExpressionLimitError(f"diag() expects 1 to {_MAX_MATRIX_DIM} arguments")
+    for arg in node.args:
+        if (
+            isinstance(arg, ast.Call)
+            and isinstance(arg.func, ast.Name)
+            and arg.func.id in _MATRIX_CONSTRUCTORS
+        ):
+            _ast_magnitude(arg, symbolic_degree_limit=symbolic_degree_limit)
+        else:
+            _require_scalar_arg(arg, name="diag", symbolic_degree_limit=symbolic_degree_limit)
+
+
+def _call_ast_magnitude(node: ast.Call, *, symbolic_degree_limit: int | None) -> float | None:
+    name = node.func.id if isinstance(node.func, ast.Name) else ""
+    if len(node.args) + len(node.keywords) > _MAX_CONTAINER_ELEMENTS:
+        raise ExpressionLimitError(
+            f"{name}() with {len(node.args) + len(node.keywords)} arguments exceeds limit"
+        )
+    child_limit = (
+        _MAX_EXPONENT
+        if name in _EAGER_SYMBOLIC_CALLS and symbolic_degree_limit is None
+        else symbolic_degree_limit
+    )
+
+    if name == "Pow":
+        _require_no_keywords(node, name)
+        if len(node.args) != 2:
+            raise ExpressionLimitError("Pow() requires exactly 2 scalar arguments")
+        left = _require_scalar_arg(node.args[0], name=name, symbolic_degree_limit=child_limit)
+        right = _require_scalar_arg(node.args[1], name=name, symbolic_degree_limit=child_limit)
+        return _check_power_bounds(left, right, symbolic_degree_limit=symbolic_degree_limit)
+
+    if name in _SYMBOLIC_CONSTRUCTORS:
+        for arg in node.args:
+            _require_scalar_arg(arg, name=name, symbolic_degree_limit=child_limit)
+        for kw in node.keywords:
+            _require_scalar_arg(kw.value, name=name, symbolic_degree_limit=child_limit)
+        return None
+
+    if name in _NUMBER_CONSTRUCTORS:
+        _require_no_keywords(node, name)
+        nums = [
+            _require_scalar_arg(arg, name=name, symbolic_degree_limit=child_limit)
+            for arg in node.args
+        ]
+        if name == "Rational" and len(nums) == 2 and None not in nums:
+            return nums[0]
+        return nums[0] if nums else None
+
+    if name in _MATRIX_CONSTRUCTORS:
+        _validate_matrix_call(node, name, symbolic_degree_limit=child_limit)
+        return None
+
+    if name in _ITERATION_CALLS:
+        _validate_iteration_call(node, name, child_limit=child_limit)
+        return None
+
+    if name in _DIFF_CALLS:
+        _validate_diff_call(node, name, child_limit=child_limit)
+        return None
+
+    if name in _INTEGRATE_CALLS:
+        _validate_integrate_call(node, name, child_limit=child_limit)
+        return None
+
+    if name == "series":
+        _validate_series_call(node, child_limit=child_limit)
+        return None
+
+    if name in _LIMIT_CALLS:
+        _validate_limit_call(node, name, child_limit=child_limit)
+        return None
+
+    if name == "N":
+        _require_no_keywords(node, name)
+        if not 1 <= len(node.args) <= 2:
+            raise ExpressionLimitError("N() expects 1 or 2 scalar arguments")
+        val = _require_scalar_arg(node.args[0], name=name, symbolic_degree_limit=child_limit)
+        if len(node.args) == 2:
+            _require_bounded_numeric(
+                node.args[1],
+                name="N",
+                label="precision",
+                limit=_MAX_RESULT_DIGITS,
+                symbolic_degree_limit=child_limit,
+            )
+        return val
+
+    if name in _SYSTEM_SOLVER_CALLS:
+        _require_no_keywords(node, name)
+        if not 1 <= len(node.args) <= 3:
+            raise ExpressionLimitError(f"{name}() expects 1 to 3 arguments")
+        for arg in node.args:
+            elts = _sequence_elements(arg)
+            if elts is not None:
+                if len(elts) > _MAX_SYSTEM_ITEMS:
+                    raise ExpressionLimitError(
+                        f"{name}() sequence exceeds limit of {_MAX_SYSTEM_ITEMS} items"
+                    )
+                for el in elts:
+                    mag = _require_scalar_arg(el, name=name, symbolic_degree_limit=child_limit)
+                    if mag is not None and mag > _MAX_COMBINATORIAL_ARGUMENT:
+                        raise ExpressionLimitError(
+                            f"{name}() arg {mag:g} exceeds limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+                        )
+            else:
+                mag = _require_scalar_arg(arg, name=name, symbolic_degree_limit=child_limit)
+                if mag is not None and mag > _MAX_COMBINATORIAL_ARGUMENT:
+                    raise ExpressionLimitError(
+                        f"{name}() argument {mag:g} exceeds limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+                    )
+        return None
+
+    if name in _SCALAR_EAGER_CALLS:
+        _require_no_keywords(node, name)
+        for arg in node.args:
+            mag = _require_scalar_arg(arg, name=name, symbolic_degree_limit=child_limit)
+            if mag is not None and mag > _MAX_COMBINATORIAL_ARGUMENT:
+                raise ExpressionLimitError(
+                    f"{name}() argument {mag:g} exceeds limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+                )
+        return None
+
+    if name in _CONTAINER_CONSTRUCTORS:
+        _require_no_keywords(node, name)
+        for arg in node.args:
+            _ast_magnitude(arg, symbolic_degree_limit=child_limit)
+        return None
+
+    _require_no_keywords(node, name)
+    args = [
+        _require_scalar_arg(arg, name=name, symbolic_degree_limit=child_limit) for arg in node.args
+    ]
+    known = [arg for arg in args if arg is not None]
+    if name.lower() in _COMBINATORIAL_CALLS:
+        for mag_val in known:
+            if not math.isfinite(mag_val) or mag_val > _MAX_COMBINATORIAL_ARGUMENT:
+                raise ExpressionLimitError(
+                    f"{name}({mag_val:g}) exceeds the limit of {_MAX_COMBINATORIAL_ARGUMENT}"
+                )
+        if not known or len(known) != len(args):
+            return None
+        largest = max(known)
+        return math.exp(min(math.lgamma(largest + 1), 700.0))
+    if not known or len(known) != len(args):
+        return None
+    return max(known)
+
+
 def _check_expression(code: str, globals_dict: dict[str, Any]) -> ast.Expression:
     tree = ast.parse(code, mode="eval")
     allowed_names = set(globals_dict) - {"__builtins__"}
@@ -342,6 +1022,10 @@ def _check_expression(code: str, globals_dict: dict[str, Any]) -> ast.Expression
     for node in ast.walk(tree):
         if isinstance(node, ast.Attribute):
             raise ValueError("attributes are not allowed in symbolic expressions")
+        if not isinstance(node, _ALLOWED_EXPR_NODES):
+            raise ValueError(
+                f"unsupported construct '{type(node).__name__}' in symbolic expression"
+            )
         if isinstance(node, ast.Call) and (
             not isinstance(node.func, ast.Name) or node.func.id not in allowed_calls
         ):
@@ -351,8 +1035,18 @@ def _check_expression(code: str, globals_dict: dict[str, Any]) -> ast.Expression
     return tree
 
 
-def safe_sympify(expression: str, implicit_multiplication: bool = False):
-    """Parse a mathematical expression without Python builtins or imports."""
+def safe_sympify(
+    expression: str,
+    implicit_multiplication: bool = False,
+    *,
+    bound_symbolic_degree: bool = False,
+    max_symbolic_degree: int | None = None,
+):
+    """Parse a mathematical expression without Python builtins or imports.
+
+    Validates numeric growth, combinatorial arguments, and eager symbolic
+    operations directly on the compiled AST before evaluation.
+    """
     from tokenize import TokenError
 
     from sympy.parsing.sympy_parser import (
@@ -383,7 +1077,13 @@ def safe_sympify(expression: str, implicit_multiplication: bool = False):
         tree = _check_expression(code, globals_dict)
     except (SyntaxError, TokenError) as exc:
         raise ValueError("invalid mathematical expression") from exc
-    return eval(compile(tree, "<olivia-expression>", "eval"), globals_dict)  # nosec B307 - expression is validated by _check_expression and _CodePolicy
+    symbolic_limit = (
+        max_symbolic_degree
+        if max_symbolic_degree is not None
+        else (_MAX_EXPONENT if bound_symbolic_degree else None)
+    )
+    _ast_magnitude(tree, symbolic_degree_limit=symbolic_limit)
+    return eval(compile(tree, "<olivia-expression>", "eval"), globals_dict)  # nosec B307 - expression is validated by _check_expression, _CodePolicy, and _ast_magnitude
 
 
 def python_exec(code: str, timeout: float = 30.0) -> dict[str, Any]:
@@ -456,7 +1156,12 @@ def symbolic_math(expression: str, operation: str = "simplify", variable: str = 
     try:
         if not isinstance(variable, str) or not variable.isidentifier() or variable.startswith("_"):
             return "error: invalid variable name"
-        expr = safe_sympify(expression, implicit_multiplication=True)
+        expr = safe_sympify(
+            expression,
+            implicit_multiplication=True,
+            bound_symbolic_degree=(operation == "solve"),
+            max_symbolic_degree=(256 if operation in ("expand", "factor") else None),
+        )
         symbol = sympy.Symbol(variable)
         if symbol not in expr.free_symbols and expr.free_symbols:
             symbol = sorted(expr.free_symbols, key=lambda s: s.name)[0]

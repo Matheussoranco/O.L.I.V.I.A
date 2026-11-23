@@ -306,7 +306,7 @@ def _magnitude(node: ast.AST) -> float | None:
     if isinstance(node, ast.Expression):
         return _magnitude(node.body)
     if isinstance(node, ast.Constant):
-        if isinstance(node.value, bool) or not isinstance(node.value, (int, float, str)):
+        if isinstance(node.value, bool) or not isinstance(node.value, int | float | str):
             return None
         try:
             return abs(float(node.value))
@@ -343,7 +343,7 @@ def _binop_magnitude(node: ast.BinOp) -> float | None:
         return math.inf if digits > 300 else scale**right
     if left is None or right is None:
         return None
-    if isinstance(node.op, (ast.Add, ast.Sub)):
+    if isinstance(node.op, ast.Add | ast.Sub):
         return left + right
     if isinstance(node.op, ast.Mult):
         return left * right
@@ -400,6 +400,23 @@ def _check_growth(machine_text: str) -> None:
     except (SyntaxError, TokenError, ValueError, TypeError):
         return
     _magnitude(tree)
+
+
+def check_expression_growth(expression: str) -> None:
+    """Refuse expressions whose evaluation would explode before sympy runs.
+
+    Raises ``SolverParseError`` when ``expression`` denotes a power tower,
+    oversized symbolic degree, or huge combinatorial call beyond the offline
+    limits (``MAX_RESULT_DIGITS``, ``MAX_EXPONENT``,
+    ``MAX_COMBINATORIAL_ARGUMENT``).
+    """
+    try:
+        _check_growth(expression)
+    except _TooLarge as exc:
+        raise SolverParseError(
+            f"expression exceeds offline evaluation limits ({exc}): {expression}",
+            expression=expression,
+        ) from None
 
 
 def _is_known_word(name: str) -> bool:
