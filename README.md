@@ -28,17 +28,17 @@ specialised in study, learning, and scientific research and discovery.
 ## Install
 
 ```bash
-pip install -e .            # lean core (httpx, pydantic, typer, rich)
+pip install -e .            # lean core (httpx, pydantic, typer, rich, defusedxml)
 pip install -e ".[all]"     # + anthropic, langgraph, numpy/scipy/sympy, pymupdf, bs4
 ```
 
-Configure via environment (`OLIVIA_` prefix, `__` for nesting):
+Configure via environment or a local `.env` file (`OLIVIA_` prefix, `__` for nesting):
 
 ```bash
 OLIVIA_LLM__PROVIDER=anthropic   # or: ollama | none | auto (default)
 OLIVIA_LLM__MODEL=claude-opus-4-8
 OLIVIA_LLM__OLLAMA_MODEL=llama3.1:8b
-ANTHROPIC_API_KEY=sk-ant-...
+ANTHROPIC_API_KEY=sk-ant-...     # OLIVIA_ANTHROPIC_API_KEY also supported
 ```
 
 ## CLI
@@ -56,9 +56,10 @@ olivia study cards "Krebs cycle" -n 15            # flashcards → SM-2 deck
 olivia study quiz "Bayesian statistics"
 olivia study worksheet "quadratic equations" -n 8 # practice set + answer key
 olivia study review "Krebs cycle"                 # spaced-repetition session
-olivia tutor "special relativity"                 # Socratic tutor (interactive)
+olivia tutor "special relativity"                 # Socratic tutor (/hint, /summary, /exit)
 olivia lab "What limits perovskite solar cell stability?"   # multi-agent seminar
 olivia mcp-serve                                  # MCP stdio server for Claude
+olivia eval --check                               # offline evaluation gates
 olivia info                                       # backend/config status
 ```
 
@@ -67,7 +68,8 @@ olivia info                                       # backend/config status
 `olivia solve` (and the `science` expert behind `olivia ask`) is **symbolic-first**
 and works with no LLM backend:
 
-- **Maths** (sympy) — solve/factor equations, differentiate, integrate, evaluate.
+- **Maths** (sympy) — solve/factor/expand/simplify equations, differentiate,
+  integrate, evaluate, with pre-evaluation AST bounds against explosive powers.
   Equations are read as people write them: systems of any size separated by
   `,` `;` `and` or new lines (`solve for x and y: …`, `the system …`), caret or
   Unicode powers (`x^2`, `x²`), `−` `×` `÷` `√` `π`, explicit or implicit
@@ -75,11 +77,17 @@ and works with no LLM backend:
   Gaussian elimination; quadratics show the discriminant; every answer is
   checked by substitution. Text with words in it (`the value 2x = 4`) is never
   "solved" as a product of letters — it abstains instead.
-- **Chemistry** — molar mass from a 118-element table (groups & hydrates), and
-  equation balancing by exact conservation of atoms (`H2 + O2 → 2 H2O ... 2 H2 + O2`).
-- **Physics** — CODATA constant lookup (`speed of light`, `Planck constant`, `N_A`).
-- **Units** — SI/imperial/temperature conversion and dimensional analysis
-  (`60 mph → 26.82 m/s`; `N → kg·m·s⁻², force`).
+- **Chemistry** — molar mass from a 118-element table (groups & hydrates),
+  equation balancing by exact conservation of atoms (`2 H2 + O2 → 2 H2O`),
+  percent composition, IUPAC oxidation states, mass ↔ moles conversions, and
+  complete combustion stoichiometry.
+- **Physics** — CODATA constant lookup (`speed of light`, `Planck constant`,
+  `N_A`), constant-acceleration kinematics (including deceleration), free fall,
+  kinetic energy, Newton's second law, photon energy–wavelength–frequency, and
+  simple pendulum period.
+- **Units** — SI/imperial/temperature conversion (including full English unit
+  names and plurals) and dimensional analysis (`60 mph → 26.82 m/s`;
+  `N → kg·m·s⁻², force`).
 
 When nothing symbolic fits and an LLM is configured, it produces structured steps;
 with no backend it says so plainly rather than inventing an answer.
@@ -93,18 +101,19 @@ src/olivia/
 ├── llm/         client.py (Anthropic | Ollama | Null) · hermes.py (tool-calling loop)
 │                prompts.py · structured.py (tolerant JSON extraction)
 ├── tools/       registry.py · literature.py (arXiv/Crossref/S2) · science.py
-│                (restricted python_exec, sympy, Welch t-test, power analysis)
+│                (restricted python_exec, guarded safe_sympify, Welch t-test, power)
 │                units.py (dimensional analysis) · chemistry.py (molar mass,
-│                balancing) · physics.py (CODATA constants)
+│                balancing, oxidation states) · physics.py (CODATA constants)
 ├── research/    literature → hypothesis → experiment → analysis → critic → report
 ├── study/       srs.py (SM-2 decks) · flashcards · quiz · planner · tutor
-│                solver.py (step-by-step WorkedSolution) · worksheet.py
+│                solver.py · chemistry_solver.py · physics_solver.py · worksheet.py
 ├── experts/     Mixture-of-Experts: math, stats, science, code, literature,
 │                general + router
 ├── agents/      Hermes-style role-typed sub-agents (researcher, critic,
 │                experimenter, writer, tutor) · AgentPool · ResearchLab
 ├── meta/        MetaLearner (SQLite) — strategy win-rates feed expert routing
 ├── memory/      notebook.py — append-only lab notebook
+├── eval/        Offline research, study, and symbolic evaluation suites & gates
 └── mcp/         JSON-RPC 2.0 stdio server (Claude co-working)
 ```
 
@@ -121,9 +130,12 @@ question ─► literature review ─► hypotheses (falsifiable by construction
 ### MCP co-working
 
 `olivia mcp-serve` exposes the agent to Claude Code / Claude Desktop over
-stdio (17 tools: `olivia_ask`, `olivia_solve`, `olivia_research`,
-`olivia_worksheet`, `molar_mass`, `balance_equation`, `convert_units`,
-`physical_constant`, `notebook_*`, …). Register with the provided `.mcp.json` or:
+stdio (**19 tools**: `olivia_ask`, `olivia_solve`, `olivia_research`,
+`olivia_worksheet`, `olivia_study_plan`, `olivia_flashcards`, `olivia_quiz`,
+`olivia_lab`, `molar_mass`, `balance_equation`, `convert_units`,
+`physical_constant`, `literature_search`, `python_exec`, `notebook_add`,
+`notebook_search`, `notebook_entries`, `meta_stats`, and `ping`, plus the
+JSON-RPC `ping` method). Register with the provided `.mcp.json` or:
 
 ```json
 {"mcpServers": {"olivia": {"command": "olivia", "args": ["mcp-serve"]}}}
@@ -145,10 +157,11 @@ from GitHub; restart or refresh the Codex session if its skill inventory was
 already loaded. `olivia academic` reads the vendored directory, so it requires
 a source checkout; the wheel ships only the `olivia` package.
 
-## Tests
+## Tests & Evaluation
 
 ```bash
-python -m pytest -q     # 256 tests, fully offline by default
+python -m pytest -q        # fully offline by default
+olivia eval --check        # verify research, study, and symbolic eval gates
 ```
 
 ## Status
@@ -158,20 +171,13 @@ change; the offline-first contract will not.
 
 ## License
 
-[**Apache 2.0**]() — see [LICENSE](LICENSE).
+[**Apache-2.0**](https://www.apache.org/licenses/LICENSE-2.0) — see [LICENSE](LICENSE).
 
 Copyright © 2026 Matheus Soranço <matheussoranco@gmail.com>
-`SPDX-License-Identifier: CC-BY-NC-SA-4.0`
+`SPDX-License-Identifier: Apache-2.0`
 
-Noncommercial use only: you may use, study, modify and share OLIVIA for any
-purpose except a commercial one, on three conditions:
-
-- **NonCommercial** — not primarily for or directed towards commercial advantage
-  or monetary compensation (§1(k)).
-- **ShareAlike** — anything you share onward, including modified versions, must
-  carry these same terms. This is a copyleft licence (§3(b)).
-- **Attribution** — keep the copyright notice, the licence reference and the
-  warranty disclaimer, say if you changed it, and link back where practicable (§3(a)).
-
-Commercial use requires separate written permission from the copyright holder.
-Note the licence grants no patent or trademark rights (§2(b)(2)).
+Licensed under the Apache License, Version 2.0. You may obtain a copy of the
+License in [LICENSE](LICENSE) or at https://www.apache.org/licenses/LICENSE-2.0.
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied.
