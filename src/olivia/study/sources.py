@@ -15,24 +15,55 @@ import importlib
 import logging
 import re
 import zlib
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+
+import defusedxml.ElementTree as ET
 
 from olivia.core.errors import OliviaError
 
 logger = logging.getLogger(__name__)
 
 _MAX_STREAM_BYTES = 10 * 1024 * 1024  # 10 MiB safety cap per FlateDecode stream
-_MAX_PDF_BYTES = 50 * 1024 * 1024  # 50 MiB file-size cap
+_MAX_SOURCE_BYTES = 50 * 1024 * 1024  # 50 MiB file-size cap for all local study sources
+_MAX_PDF_BYTES = _MAX_SOURCE_BYTES
 
 _ARXIV_NEW_RE = re.compile(r"^\d{4}\.\d{4,5}(?:v\d+)?$", re.IGNORECASE)
 _ARXIV_OLD_RE = re.compile(r"^[a-z\-]+(?:\.[A-Z]{2})?/\d{7}(?:v\d+)?$")
 
-_SCRIPT_RE = re.compile(r"<(script|style)[^>]*>.*?</\1>", re.DOTALL | re.IGNORECASE)
-_TAG_RE = re.compile(r"<[^>]+>")
+_SKIP_HTML_TAGS = frozenset({"script", "style", "nav", "footer"})
 
 _ATOM = "{http://www.w3.org/2005/Atom}"
+
+
+class _PlainTextHTMLParser(HTMLParser):
+    """Linear-time stdlib HTML-to-text extractor immune to unclosed-tag ReDoS."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._skip_depth = 0
+        self._parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() in _SKIP_HTML_TAGS:
+            self._skip_depth += 1
+        elif self._skip_depth == 0:
+            self._parts.append(" ")
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in _SKIP_HTML_TAGS:
+            self._skip_depth = max(0, self._skip_depth - 1)
+        elif self._skip_depth == 0:
+            self._parts.append(" ")
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth == 0 and data:
+            self._parts.append(data)
+
+    def get_text(self) -> str:
+        return "".join(self._parts)
 
 
 class StudySourceError(OliviaError):
@@ -191,9 +222,12 @@ def _extract_text_from_content_stream(stream: bytes) -> str:
             elif b == ord("("):
                 text, i = _decode_pdf_literal(block, i)
                 tokens.append(("str", text))
-            elif b == ord("<") and i + 1 < n and block[i + 1] != ord("<"):
-                text, i = _decode_pdf_hex(block, i)
-                tokens.append(("str", text))
+            elif b == ord("<"):
+                if i + 1 < n and block[i + 1] == ord("<"):
+                    i += 2  # skip PDF dictionary opener '<<' in O(1)
+                else:
+                    text, i = _decode_pdf_hex(block, i)
+                    tokens.append(("str", text))
             elif b == ord("["):
                 arr_parts: list[str] = []
                 i += 1
@@ -202,9 +236,12 @@ def _extract_text_from_content_stream(stream: bytes) -> str:
                     if c == ord("("):
                         text, i = _decode_pdf_literal(block, i)
                         arr_parts.append(text)
-                    elif c == ord("<") and i + 1 < n and block[i + 1] != ord("<"):
-                        text, i = _decode_pdf_hex(block, i)
-                        arr_parts.append(text)
+                    elif c == ord("<"):
+                        if i + 1 < n and block[i + 1] == ord("<"):
+                            i += 2
+                        else:
+                            text, i = _decode_pdf_hex(block, i)
+                            arr_parts.append(text)
                     elif c in (ord("+"), ord("-"), ord(".")) or 0x30 <= c <= 0x39:
                         j = i + 1
                         while j < n and (block[j] in (ord("."),) or 0x30 <= block[j] <= 0x39):
@@ -246,6 +283,8 @@ def _extract_text_from_content_stream(stream: bytes) -> str:
                         block_parts.append("\n")
                     tokens.clear()
                 else:
+                    if len(tokens) > 32:
+                        tokens = tokens[-16:]
                     tokens.append(("op", op))
                 i = j
         if block_parts:
@@ -410,14 +449,8 @@ def normalize_arxiv_id(raw: str) -> str:
 
 
 def _parse_xml_root(xml_text: str) -> Any:
-    """Parse XML safely, preferring defusedxml when installed."""
-    try:
-        defused_et = importlib.import_module("defusedxml.ElementTree")
-        return defused_et.fromstring(xml_text)
-    except ImportError:
-        import xml.etree.ElementTree as ET  # nosec B405
-
-        return ET.fromstring(xml_text)  # nosec B314
+    """Parse XML safely with defusedxml (core dependency)."""
+    return ET.fromstring(xml_text)
 
 
 def fetch_arxiv_content(
@@ -475,8 +508,10 @@ def _extract_html_text(raw_html: str) -> str:
             tag.decompose()
         return clean_extracted_text(str(soup.get_text(" ", strip=True)))
     except ImportError:
-        stripped = _TAG_RE.sub(" ", _SCRIPT_RE.sub(" ", raw_html))
-        return clean_extracted_text(stripped)
+        parser = _PlainTextHTMLParser()
+        parser.feed(raw_html)
+        parser.close()
+        return clean_extracted_text(parser.get_text())
 
 
 def load_study_content(
@@ -493,6 +528,14 @@ def load_study_content(
         path = Path(content_file)
         if not path.exists():
             raise StudySourceError(f"Cannot read {path}: file does not exist.")
+        try:
+            size = path.stat().st_size
+        except OSError as exc:
+            raise StudySourceError(f"Cannot access {path}: {exc}") from exc
+        if size > _MAX_SOURCE_BYTES:
+            raise StudySourceError(
+                f"File {path} is too large ({size} bytes; limit is {_MAX_SOURCE_BYTES} bytes)."
+            )
         suffix = path.suffix.lower()
         if suffix == ".pdf":
             parts.append(extract_pdf_text(path, max_chars=max_chars))

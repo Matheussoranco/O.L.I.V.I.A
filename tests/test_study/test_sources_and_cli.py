@@ -169,13 +169,69 @@ def test_clean_extracted_text_rejoins_hyphenated_line_wraps():
 def test_load_study_content_strips_html(tmp_path: Path):
     html = tmp_path / "notes.html"
     html.write_text(
-        "<html><body><script>evil()</script><p>Entropy measures thermodynamic disorder.</p>"
+        "<html><body><p>Hello <b>world</b></p><script>var x = 1 < 2;</script>"
+        "<style>p{color:red}</style><p>Entropy measures thermodynamic disorder.</p>"
         "</body></html>",
         encoding="utf-8",
     )
     text = load_study_content(content_file=html)
+    assert "Hello" in text and "world" in text
     assert "Entropy measures thermodynamic disorder." in text
-    assert "evil()" not in text
+    assert "var x" not in text and "color:red" not in text
+
+
+def test_html_fallback_is_linear_on_hostile_unclosed_script_tags():
+    """Claude B1 regression: 40,000 unclosed <script> tags must finish in < 2s without bs4."""
+    import os
+    import subprocess
+    import sys
+
+    probe = (
+        "import sys, time\n"
+        "sys.modules['bs4'] = None\n"
+        "from olivia.study.sources import _extract_html_text\n"
+        "hostile = '<script>' * 40_000 + '<p>tail</p>'\n"
+        "t0 = time.perf_counter()\n"
+        "out = _extract_html_text(hostile)\n"
+        "dt = time.perf_counter() - t0\n"
+        "assert dt < 2.0, f'HTML fallback hung: {dt:.3f}s'\n"
+        "assert out == ''\n"
+        "normal = '<p>Hello <b>world</b></p><script>var x = 1 < 2;</script>"
+        "<style>p{}</style><p>again</p>'\n"
+        "clean = _extract_html_text(normal)\n"
+        "assert 'Hello' in clean and 'world' in clean and 'again' in clean\n"
+        "assert 'var x' not in clean and 'p{}' not in clean\n"
+    )
+    env = {**os.environ, "PYTHONPATH": os.pathsep.join(sys.path)}
+    proc = subprocess.run(
+        [sys.executable, "-c", probe],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        env=env,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stderr + proc.stdout
+
+
+def test_pdf_unclosed_hex_stream_and_text_size_cap(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Claude NB1 & NB2 regressions: linear PDF '<' runs and file-size cap on text/HTML."""
+    import time
+
+    from olivia.study import sources
+
+    # NB1: 500 KB of unclosed '<' inside a BT..ET block must finish quickly in linear time.
+    stream = b"BT " + (b"<" * 500_000) + b" ET"
+    t0 = time.perf_counter()
+    assert sources._extract_text_from_content_stream(stream) == ""
+    assert (time.perf_counter() - t0) < 1.5
+
+    # NB2: non-PDF text/HTML files enforce the same file-size ceiling before read_text().
+    big = tmp_path / "huge.txt"
+    big.write_text("x" * 200, encoding="utf-8")
+    monkeypatch.setattr(sources, "_MAX_SOURCE_BYTES", 100)
+    with pytest.raises(StudySourceError, match="too large"):
+        load_study_content(content_file=big)
 
 
 def test_extract_pdf_text_rejects_invalid_and_encrypted_pdfs(tmp_path: Path):
@@ -475,6 +531,20 @@ def test_worksheet_llm_rejects_off_topic_ungrounded_exercises(
             n=1,
             client=bare_num_client,
             content=stellar_source,
+        )
+        == []
+    )
+
+    # Generic maths words ("total", "number") must not spuriously ground off-topic exercises.
+    generic_word_client = fake_client(
+        json.dumps({"problems": ["Calculate the total number of apples if you have 3 + 4"]})
+    )
+    assert (
+        generate_worksheet(
+            "Roman history",
+            n=1,
+            client=generic_word_client,
+            content="The total number of Roman consuls elected each year was two.",
         )
         == []
     )
