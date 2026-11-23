@@ -186,7 +186,19 @@ def test_symbolic_math_tool_refuses_explosive_expressions_fast():
     probe = (
         "import time\n"
         "from olivia.tools.science import symbolic_math\n"
-        "for expr in ('9^9^9 * 2', '2^999999999 + 1', 'Pow(2, 999999999)', 'factorial(100000)'):\n"
+        "for expr in (\n"
+        "    '9^9^9 * 2',\n"
+        "    '2^999999999 + 1',\n"
+        "    'Pow(2, 999999999)',\n"
+        "    'factorial(100000)',\n"
+        "    'summation(i, (i, 1, 100000000))',\n"
+        "    'summation(i, Tuple(i, 1, 100000000))',\n"
+        "    'product(i, (i, 1, 100000))',\n"
+        "    'diff(sin(x), (x, 100000))',\n"
+        "    'series(sin(x), x, 0, n=100000)',\n"
+        "    'Matrix([[1]*1000000])',\n"
+        "    'N(pi, 100000)',\n"
+        "):\n"
         "    t0 = time.perf_counter()\n"
         "    out = symbolic_math(expr, 'simplify')\n"
         "    dt = time.perf_counter() - t0\n"
@@ -203,3 +215,63 @@ def test_symbolic_math_tool_refuses_explosive_expressions_fast():
         check=False,
     )
     assert proc.returncode == 0, proc.stderr + proc.stdout
+
+
+@pytest.mark.parametrize(
+    "expr",
+    [
+        "summation(i, (i, 1, 100000000))",
+        "summation(i, Tuple(i, 1, 100000000))",
+        "summation(i, (i, 1, n))",
+        "summation(1, (i, 1, 50), (j, 1, 50))",
+        "summation(i, (i, 1))",
+        "Sum(i, (i, 1, 100000000))",
+        "product(i, (i, 1, 100000))",
+        "product(i, (i, 1, n))",
+        "Product(i, (i, 1, 100000))",
+        "diff(sin(x), (x, 100000))",
+        "diff(sin(x), Tuple(x, 100000))",
+        "diff(sin(x), (x, n))",
+        "diff(sin(x), (x, 10), (x, 10))",
+        "Derivative(sin(x), (x, 100000))",
+        "series(sin(x), x, 0, 100000)",
+        "series(sin(x), x, 0, n=100000)",
+        "series(sin(x), x, 0, n=n)",
+        "integrate(x**2, (x, 0, 1000000))",
+        "integrate(x**2, (x, 0))",
+        "expand((x, 100000))",
+        "expand((x + 1)**10, modulus=100000)",
+        "Matrix([[1]*1000000])",
+        "zeros(1000, 1000)",
+        "zeros(x)",
+        "binomial(100000, x)",
+        "rf(x, 100000)",
+        "gamma(100000)",
+        "N(pi, 100000)",
+        "([1] * 100000000)",
+        "((1,) * 100000000)",
+        "('a' * 100000000)",
+        "[x for x in (1, 2)]",
+    ],
+)
+def test_safe_sympify_validates_or_declines_structured_eager_arguments(expr: str):
+    """Round 3 review: structured/tuple/keyword args to eager ops must be bounded or declined."""
+    pytest.importorskip("sympy")
+    from olivia.tools.science import safe_sympify
+
+    with pytest.raises(ValueError):
+        safe_sympify(expr)
+
+
+def test_safe_sympify_allows_bounded_structured_expressions():
+    """Bounded structured calls with validated shapes continue to evaluate normally."""
+    sympy = pytest.importorskip("sympy")
+    from olivia.tools.science import safe_sympify
+
+    assert safe_sympify("summation(i, (i, 1, 10))") == 55
+    assert safe_sympify("diff(sin(x), (x, 2))") == -sympy.sin(sympy.Symbol("x"))
+    assert safe_sympify("integrate(x**2, (x, 0, 1))") == sympy.Rational(1, 3)
+    assert safe_sympify("Matrix([[1, 2], [3, 4]])") == sympy.Matrix([[1, 2], [3, 4]])
+    assert safe_sympify("series(sin(x), x, 0, 4)").removeO() == sympy.Symbol("x") - (
+        sympy.Symbol("x") ** 3 / 6
+    )
