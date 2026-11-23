@@ -1,6 +1,6 @@
 # O.L.I.V.I.A.
 
-[![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/License-CC_BY--NC--SA_4.0-lightgrey.svg)](LICENSE)
+[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 **Open Learning Intelligence & Virtual Investigation Assistant** — an AI agent
 specialised in study, learning, and scientific research and discovery.
@@ -158,7 +158,7 @@ change; the offline-first contract will not.
 
 ## License
 
-[**CC BY-NC-SA 4.0**](https://creativecommons.org/licenses/by-nc-sa/4.0/) — see [LICENSE](LICENSE).
+[**Apache 2.0**]() — see [LICENSE](LICENSE).
 
 Copyright © 2026 Matheus Soranço <matheussoranco@gmail.com>
 `SPDX-License-Identifier: CC-BY-NC-SA-4.0`

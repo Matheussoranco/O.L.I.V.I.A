@@ -149,16 +149,143 @@ _PREFIXABLE = {
 }
 
 _TOKEN_RE = re.compile(r"([*/])?([A-Za-zµμΩ]+)(?:\^(-?\d+))?")
-# Temperature words that are unambiguous (bare "C"/"F" stay coulomb/farad).
+# Temperature words that are unambiguous (bare "C"/"F" stay coulomb/farad in parse_unit).
 _TEMP_UNITS = {"k", "kelvin", "°c", "celsius", "degc", "°f", "fahrenheit", "degf"}
+_TEMP_SHORTHAND = _TEMP_UNITS | {"c", "f"}
+
+# Full English unit names and common plurals mapped to canonical unit tokens.
+_UNIT_ALIASES: dict[str, str] = {
+    "meter": "m",
+    "meters": "m",
+    "metre": "m",
+    "metres": "m",
+    "kilometer": "km",
+    "kilometers": "km",
+    "kilometre": "km",
+    "kilometres": "km",
+    "centimeter": "cm",
+    "centimeters": "cm",
+    "centimetre": "cm",
+    "centimetres": "cm",
+    "millimeter": "mm",
+    "millimeters": "mm",
+    "millimetre": "mm",
+    "millimetres": "mm",
+    "micrometer": "um",
+    "micrometers": "um",
+    "micrometre": "um",
+    "micrometres": "um",
+    "nanometer": "nm",
+    "nanometers": "nm",
+    "nanometre": "nm",
+    "nanometres": "nm",
+    "picometer": "pm",
+    "picometers": "pm",
+    "picometre": "pm",
+    "picometres": "pm",
+    "miles": "mile",
+    "inches": "inch",
+    "feet": "ft",
+    "yard": "yd",
+    "yards": "yd",
+    "angstroms": "angstrom",
+    "lightyear": "ly",
+    "lightyears": "ly",
+    "gram": "g",
+    "grams": "g",
+    "kilogram": "kg",
+    "kilograms": "kg",
+    "milligram": "mg",
+    "milligrams": "mg",
+    "microgram": "ug",
+    "micrograms": "ug",
+    "pound": "lb",
+    "pounds": "lb",
+    "lbs": "lb",
+    "ounce": "oz",
+    "ounces": "oz",
+    "tonne": "t",
+    "tonnes": "t",
+    "second": "s",
+    "seconds": "s",
+    "sec": "s",
+    "secs": "s",
+    "millisecond": "ms",
+    "milliseconds": "ms",
+    "microsecond": "us",
+    "microseconds": "us",
+    "nanosecond": "ns",
+    "nanoseconds": "ns",
+    "minute": "min",
+    "minutes": "min",
+    "mins": "min",
+    "hour": "h",
+    "hours": "h",
+    "hrs": "h",
+    "days": "day",
+    "year": "yr",
+    "years": "yr",
+    "liter": "L",
+    "liters": "L",
+    "litre": "L",
+    "litres": "L",
+    "milliliter": "mL",
+    "milliliters": "mL",
+    "millilitre": "mL",
+    "millilitres": "mL",
+    "joule": "J",
+    "joules": "J",
+    "kilojoule": "kJ",
+    "kilojoules": "kJ",
+    "megajoule": "MJ",
+    "megajoules": "MJ",
+    "calorie": "cal",
+    "calories": "cal",
+    "kilocalorie": "kcal",
+    "kilocalories": "kcal",
+    "electronvolt": "eV",
+    "electronvolts": "eV",
+    "watt": "W",
+    "watts": "W",
+    "kilowatt": "kW",
+    "kilowatts": "kW",
+    "newton": "N",
+    "newtons": "N",
+    "kilonewton": "kN",
+    "kilonewtons": "kN",
+    "pascal": "Pa",
+    "pascals": "Pa",
+    "kilopascal": "kPa",
+    "kilopascals": "kPa",
+    "megapascal": "MPa",
+    "megapascals": "MPa",
+    "atmosphere": "atm",
+    "atmospheres": "atm",
+    "bars": "bar",
+    "hertz": "Hz",
+    "kilohertz": "kHz",
+    "megahertz": "MHz",
+    "gigahertz": "GHz",
+    "volt": "V",
+    "volts": "V",
+    "ampere": "A",
+    "amperes": "A",
+    "amp": "A",
+    "amps": "A",
+    "kelvins": "K",
+    "mole": "mol",
+    "moles": "mol",
+    "knots": "knot",
+}
 
 
 def _resolve(token: str) -> tuple[float, Dimension] | None:
-    """A single unit token → (factor, dim), applying a metric prefix if needed."""
-    if token in _UNITS:
-        return _UNITS[token]
+    """A single unit token → (factor, dim), applying aliases and metric prefixes."""
+    canonical = _UNIT_ALIASES.get(token.lower(), token) if token not in _UNITS else token
+    if canonical in _UNITS:
+        return _UNITS[canonical]
     for plen in (2, 1):  # 'da' (deca) before single-character prefixes
-        prefix, rest = token[:plen], token[plen:]
+        prefix, rest = canonical[:plen], canonical[plen:]
         if prefix in _PREFIXES and rest in _UNITS and rest in _PREFIXABLE:
             factor, dim = _UNITS[rest]
             return _PREFIXES[prefix] * factor, dim
@@ -202,13 +329,25 @@ def _is_temperature(unit: str) -> bool:
     return unit.strip().lower() in _TEMP_UNITS
 
 
+def _is_temperature_pair(from_unit: str, to_unit: str) -> bool:
+    """True when both tokens form a temperature pair, allowing bare 'C'/'F'."""
+    a, b = from_unit.strip().lower(), to_unit.strip().lower()
+    if a in _TEMP_UNITS and b in _TEMP_UNITS:
+        return True
+    if a in _TEMP_SHORTHAND and b in _TEMP_SHORTHAND and a != b:
+        return any(
+            tok in {"c", "f", "°c", "°f", "celsius", "fahrenheit", "degc", "degf"} for tok in (a, b)
+        )
+    return False
+
+
 def _to_kelvin(value: float, unit: str) -> float | None:
     key = unit.strip().lower()
     if key in ("k", "kelvin"):
         return value
-    if key in ("°c", "celsius", "degc"):
+    if key in ("c", "°c", "celsius", "degc"):
         return value + 273.15
-    if key in ("°f", "fahrenheit", "degf"):
+    if key in ("f", "°f", "fahrenheit", "degf"):
         return (value - 32.0) * 5.0 / 9.0 + 273.15
     return None
 
@@ -217,9 +356,9 @@ def _from_kelvin(value: float, unit: str) -> float | None:
     key = unit.strip().lower()
     if key in ("k", "kelvin"):
         return value
-    if key in ("°c", "celsius", "degc"):
+    if key in ("c", "°c", "celsius", "degc"):
         return value - 273.15
-    if key in ("°f", "fahrenheit", "degf"):
+    if key in ("f", "°f", "fahrenheit", "degf"):
         return (value - 273.15) * 9.0 / 5.0 + 32.0
     return None
 
@@ -233,9 +372,12 @@ def convert(value: float, from_unit: str, to_unit: str) -> float | None:
         return _from_kelvin(kelvin, to_unit) if kelvin is not None else None
     source = parse_unit(from_unit)
     target = parse_unit(to_unit)
-    if source is None or target is None or source[1] != target[1]:
-        return None
-    return value * source[0] / target[0]
+    if source is not None and target is not None and source[1] == target[1]:
+        return value * source[0] / target[0]
+    if _is_temperature_pair(from_unit, to_unit):
+        kelvin = _to_kelvin(value, from_unit)
+        return _from_kelvin(kelvin, to_unit) if kelvin is not None else None
+    return None
 
 
 def to_si(value: float, unit: str) -> tuple[float, Dimension] | None:
