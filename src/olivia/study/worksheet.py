@@ -130,6 +130,122 @@ def _extract_content_problems(content: str, limit: int) -> list[WorkedSolution]:
     return solutions
 
 
+_GROUNDING_STOPWORDS = frozenset(
+    {
+        "about",
+        "after",
+        "also",
+        "answer",
+        "because",
+        "before",
+        "between",
+        "calculate",
+        "compute",
+        "determine",
+        "does",
+        "during",
+        "each",
+        "evaluate",
+        "exercise",
+        "find",
+        "following",
+        "from",
+        "given",
+        "have",
+        "into",
+        "more",
+        "must",
+        "notes",
+        "only",
+        "over",
+        "problem",
+        "question",
+        "result",
+        "show",
+        "solve",
+        "solving",
+        "step",
+        "such",
+        "than",
+        "that",
+        "their",
+        "them",
+        "then",
+        "there",
+        "these",
+        "they",
+        "this",
+        "those",
+        "through",
+        "under",
+        "using",
+        "value",
+        "what",
+        "when",
+        "where",
+        "which",
+        "while",
+        "will",
+        "with",
+        "within",
+        "without",
+        "your",
+    }
+)
+_MATH_DOMAIN_RULES: tuple[tuple[tuple[str, ...], re.Pattern[str]], ...] = (
+    (
+        ("linear", "first-degree", "one variable", "algebra"),
+        re.compile(r"\bsolve\b[^=]*=[^=]+$", re.IGNORECASE),
+    ),
+    (
+        ("quadratic", "parabola", "discriminant", "roots"),
+        re.compile(r"(?:\*\*\s*2|\^\s*2|quadratic)", re.IGNORECASE),
+    ),
+    (
+        ("derivative", "differentiat", "calculus"),
+        re.compile(r"\b(?:differentiate|derivative)\b", re.IGNORECASE),
+    ),
+    (
+        ("integral", "integrat", "antiderivative", "calculus"),
+        re.compile(r"\b(?:integrate|integral)\b", re.IGNORECASE),
+    ),
+    (
+        ("factor", "polynomial", "expand"),
+        re.compile(r"\b(?:factor|expand|simplify)\b", re.IGNORECASE),
+    ),
+)
+
+
+def _content_tokens(text: str) -> tuple[set[str], set[str]]:
+    words = {
+        w.casefold()
+        for w in re.findall(r"[A-Za-z]{4,}", text)
+        if w.casefold() not in _GROUNDING_STOPWORDS
+    }
+    stems = {w[:5] if len(w) >= 6 else w for w in words}
+    literals = {
+        tok.casefold()
+        for tok in re.findall(r"\b\d+(?:\.\d+)?\b|\b[A-Z][a-z]?(?:\d+[A-Z]?[a-z]?\d*)+\b", text)
+    }
+    return stems, literals
+
+
+def _is_grounded_in_content(problem: str, content: str) -> bool:
+    """Return True if ``problem`` shares domain/numeric terms or math topic with ``content``."""
+    content_stems, content_literals = _content_tokens(content)
+    prob_stems, prob_literals = _content_tokens(problem)
+    if (prob_stems & content_stems) or (prob_literals & content_literals):
+        return True
+    low_content = content.casefold()
+    for cues, prob_re in _MATH_DOMAIN_RULES:
+        if any(cue in low_content for cue in cues) and prob_re.search(problem):
+            # Guard quadratic expressions from matching plain linear-only notes.
+            if cues[0] == "linear" and re.search(r"\*\*\s*[2-9]|\^\s*[2-9]", problem):
+                continue
+            return True
+    return False
+
+
 def _llm_worksheet(
     topic: str,
     n: int,
@@ -147,6 +263,16 @@ def _llm_worksheet(
     if not isinstance(payload, dict) or not isinstance(payload.get("problems"), list):
         return []
     problems = [str(item).strip() for item in payload["problems"] if str(item).strip()]
+    if content.strip():
+        grounded = [p for p in problems if _is_grounded_in_content(p, content)]
+        dropped = len(problems) - len(grounded)
+        if dropped:
+            logger.warning(
+                "worksheet: dropped %d ungrounded LLM problem(s) for topic %r",
+                dropped,
+                topic,
+            )
+        problems = grounded
     solutions = [solve_problem(problem, client=NullClient()) for problem in problems[:n]]
     return [solution for solution in solutions if solution.method != "none"]
 

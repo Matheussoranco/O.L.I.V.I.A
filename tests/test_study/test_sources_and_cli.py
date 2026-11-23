@@ -435,6 +435,43 @@ def test_worksheet_llm_receives_grounded_content(fake_client):
     assert "Notes on solving linear equations" in client.calls[0][0]["content"]
 
 
+@_needs_sympy
+def test_worksheet_llm_rejects_off_topic_ungrounded_exercises(
+    fake_client, caplog: pytest.LogCaptureFixture
+):
+    """Lead review: configured-provider output unrelated to supplied source must be rejected."""
+    stellar_source = (
+        "Stellar spectra exhibit Balmer hydrogen absorption lines, notably H-alpha at 656 nm "
+        "and H-beta at 486 nm, used to classify photospheric temperatures."
+    )
+    # 1. Provider returns only unrelated algebra -> dropped, returning [] honestly.
+    off_topic_client = fake_client(
+        json.dumps({"problems": ["solve x**2 - 5*x + 6 = 0 for x", "solve 2*x + 4 = 10 for x"]})
+    )
+    with caplog.at_level("WARNING", logger="olivia.study.worksheet"):
+        sheet = generate_worksheet(
+            "stellar spectra",
+            n=2,
+            client=off_topic_client,
+            content=stellar_source,
+        )
+    assert sheet == []
+    assert any("dropped 2 ungrounded LLM problem" in rec.message for rec in caplog.records)
+
+    # 2. Provider returns one grounded problem and one off-topic problem -> keep only grounded.
+    mixed_client = fake_client(
+        json.dumps({"problems": ["convert 656 nm to m", "solve x**2 - 9 = 0 for x"]})
+    )
+    mixed_sheet = generate_worksheet(
+        "stellar spectra",
+        n=2,
+        client=mixed_client,
+        content=stellar_source,
+    )
+    assert len(mixed_sheet) == 1
+    assert "656 nm" in mixed_sheet[0].problem
+
+
 def test_flashcards_offline_multi_pass_reaches_requested_count_without_duplicates():
     short_content = (
         "Mitochondria synthesize adenosine triphosphate via oxidative phosphorylation. "
