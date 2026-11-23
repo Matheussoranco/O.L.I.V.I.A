@@ -118,24 +118,30 @@ def study_plan(
 def study_cards(
     topic: str,
     n: int = typer.Option(10, "-n", min=1),
-    content_file: str = typer.Option("", help="Ground cards in this text file."),
+    content_file: str = typer.Option(
+        "", help="Ground cards in this local text, Markdown, HTML, or PDF file."
+    ),
+    arxiv: str = typer.Option("", help="Ground cards in an arXiv ID or URL (requires --network)."),
+    network: bool = typer.Option(
+        False, "--network", help="Explicitly enable outbound requests (for --arxiv)."
+    ),
 ) -> None:
     """Generate flashcards and add them to the topic's SM-2 deck."""
-    from pathlib import Path
+    from olivia.study import Deck, StudySourceError, generate_flashcards, load_study_content
 
-    from olivia.study import Deck, generate_flashcards
-
-    content = ""
-    if content_file:
-        try:
-            content = Path(content_file).read_text(encoding="utf-8")
-        except OSError as exc:
-            console.print(f"[red]Cannot read {content_file}: {exc}[/red]")
-            raise typer.Exit(2) from exc
+    try:
+        content = load_study_content(
+            content_file=content_file,
+            arxiv=arxiv,
+            allow_network=True if network else None,
+        )
+    except StudySourceError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
     cards = generate_flashcards(topic, content=content, n=n)
     if not cards:
         console.print(
-            "[yellow]No cards generated (need an LLM backend or --content-file).[/yellow]"
+            "[yellow]No cards generated (need an LLM backend, --content-file, or --arxiv).[/yellow]"
         )
         raise typer.Exit(1)
     deck = Deck(topic)
@@ -148,23 +154,33 @@ def study_cards(
 def study_quiz(
     topic: str,
     n: int = typer.Option(5, "-n", min=1),
-    content_file: str = typer.Option("", help="Ground the quiz in this text file."),
+    content_file: str = typer.Option(
+        "", help="Ground the quiz in this local text, Markdown, HTML, or PDF file."
+    ),
+    arxiv: str = typer.Option(
+        "", help="Ground the quiz in an arXiv ID or URL (requires --network)."
+    ),
+    network: bool = typer.Option(
+        False, "--network", help="Explicitly enable outbound requests (for --arxiv)."
+    ),
 ) -> None:
     """Take an interactive quiz on a topic."""
-    from pathlib import Path
+    from olivia.study import StudySourceError, generate_quiz, grade_quiz, load_study_content
 
-    from olivia.study import generate_quiz, grade_quiz
-
-    content = ""
-    if content_file:
-        try:
-            content = Path(content_file).read_text(encoding="utf-8")
-        except OSError as exc:
-            console.print(f"[red]Cannot read {content_file}: {exc}[/red]")
-            raise typer.Exit(2) from exc
+    try:
+        content = load_study_content(
+            content_file=content_file,
+            arxiv=arxiv,
+            allow_network=True if network else None,
+        )
+    except StudySourceError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
     questions = generate_quiz(topic, content=content, n=n)
     if not questions:
-        console.print("[yellow]No quiz generated (need an LLM backend or --content-file).[/yellow]")
+        console.print(
+            "[yellow]No quiz generated (need an LLM backend, --content-file, or --arxiv).[/yellow]"
+        )
         raise typer.Exit(1)
 
     answers: list[str] = []
@@ -194,19 +210,50 @@ def study_worksheet(
     n: int = typer.Option(5, "-n", min=1),
     difficulty: str = typer.Option("medium", help="easy | medium | hard."),
     seed: int = typer.Option(0, help="Seed for the offline problem generator."),
+    content_file: str = typer.Option(
+        "", help="Ground problems in this local text, Markdown, HTML, or PDF file."
+    ),
+    arxiv: str = typer.Option(
+        "", help="Ground problems in an arXiv ID or URL (requires --network)."
+    ),
+    network: bool = typer.Option(
+        False, "--network", help="Explicitly enable outbound requests (for --arxiv)."
+    ),
     output: str = typer.Option("", "--output", "-o", help="Write the worksheet here."),
 ) -> None:
     """Generate a practice worksheet with a worked-solution answer key."""
     from pathlib import Path
 
-    from olivia.study import generate_worksheet, worksheet_to_markdown
+    from olivia.study import (
+        StudySourceError,
+        generate_worksheet,
+        load_study_content,
+        worksheet_to_markdown,
+    )
 
-    solutions = generate_worksheet(topic, n=n, difficulty=difficulty, seed=seed)
-    if not solutions:
-        console.print(
-            "[yellow]No worksheet generated (need an LLM backend, or a maths topic "
-            "like 'linear equations', 'quadratics', 'derivatives').[/yellow]"
+    try:
+        content = load_study_content(
+            content_file=content_file,
+            arxiv=arxiv,
+            allow_network=True if network else None,
         )
+    except StudySourceError as exc:
+        console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+    solutions = generate_worksheet(topic, n=n, difficulty=difficulty, seed=seed, content=content)
+    if not solutions:
+        if content.strip():
+            console.print(
+                "[yellow]Insufficient solvable problems in supplied source "
+                "(configure an LLM backend to generate exercises from prose sources, "
+                "or omit --content-file/--arxiv to use offline maths templates).[/yellow]"
+            )
+        else:
+            console.print(
+                "[yellow]No worksheet generated (need an LLM backend, solvable problems in "
+                "--content-file/--arxiv, or a maths topic like 'linear equations', "
+                "'quadratics', 'derivatives').[/yellow]"
+            )
         raise typer.Exit(1)
     markdown = worksheet_to_markdown(solutions, topic=topic)
     console.print(Markdown(markdown))

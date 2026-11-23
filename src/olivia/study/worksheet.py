@@ -92,16 +92,198 @@ def _offline_worksheet(
     return [solution for solution in solutions if solution.method != "none"]
 
 
-def _llm_worksheet(topic: str, n: int, difficulty: str, client: LLMClient) -> list[WorkedSolution]:
+_CONTENT_PROBLEM_RE = re.compile(
+    r"^(?:(?:problem|exercise|question)\s*\d*\s*[:.)-]\s*)?"
+    r"(?P<problem>(?:solve|differentiate|integrate|factor|simplify|expand|convert|"
+    r"molar\s+mass|balance|what\s+is)\b.+)$",
+    re.IGNORECASE,
+)
+_EQUATION_LINE_RE = re.compile(r"^[0-9a-zA-Z\s+\-*/^().]+=\s*[0-9a-zA-Z\s+\-*/^().]+$")
+
+
+def _extract_content_problems(content: str, limit: int) -> list[WorkedSolution]:
+    """Extract explicitly solvable STEM problems from supplied source text."""
+    if not content.strip() or limit <= 0:
+        return []
+    solutions: list[WorkedSolution] = []
+    seen: set[str] = set()
+    for raw_segment in re.split(r"[\n;]+|(?<=[.!?])\s+", content):
+        line = " ".join(raw_segment.split()).strip(" .")
+        if not 4 <= len(line) <= 180:
+            continue
+        match = _CONTENT_PROBLEM_RE.match(line)
+        if match:
+            candidate = match.group("problem").strip()
+        elif _EQUATION_LINE_RE.match(line) and re.search(r"[a-zA-Z]", line):
+            candidate = f"solve {line}"
+        else:
+            continue
+        key = candidate.casefold()
+        if key in seen:
+            continue
+        sol = solve_problem(candidate, client=NullClient())
+        if sol.method != "none" and sol.final_answer:
+            seen.add(key)
+            solutions.append(sol)
+            if len(solutions) >= limit:
+                break
+    return solutions
+
+
+_GROUNDING_STOPWORDS = frozenset(
+    {
+        "about",
+        "after",
+        "also",
+        "answer",
+        "because",
+        "before",
+        "between",
+        "calculate",
+        "compute",
+        "determine",
+        "does",
+        "during",
+        "each",
+        "evaluate",
+        "exercise",
+        "find",
+        "following",
+        "from",
+        "given",
+        "have",
+        "into",
+        "more",
+        "must",
+        "notes",
+        "number",
+        "only",
+        "over",
+        "problem",
+        "question",
+        "result",
+        "show",
+        "solve",
+        "solving",
+        "step",
+        "such",
+        "than",
+        "that",
+        "their",
+        "them",
+        "then",
+        "there",
+        "these",
+        "they",
+        "this",
+        "those",
+        "through",
+        "total",
+        "under",
+        "using",
+        "value",
+        "what",
+        "when",
+        "where",
+        "which",
+        "while",
+        "will",
+        "with",
+        "within",
+        "without",
+        "your",
+    }
+)
+_MATH_DOMAIN_RULES: tuple[tuple[tuple[str, ...], re.Pattern[str]], ...] = (
+    (
+        ("linear", "first-degree", "one variable", "algebra"),
+        re.compile(r"\bsolve\b[^=]*=[^=]+$", re.IGNORECASE),
+    ),
+    (
+        ("quadratic", "parabola", "discriminant", "roots"),
+        re.compile(r"(?:\*\*\s*2|\^\s*2|quadratic)", re.IGNORECASE),
+    ),
+    (
+        ("derivative", "differentiat", "calculus"),
+        re.compile(r"\b(?:differentiate|derivative)\b", re.IGNORECASE),
+    ),
+    (
+        ("integral", "integrat", "antiderivative", "calculus"),
+        re.compile(r"\b(?:integrate|integral)\b", re.IGNORECASE),
+    ),
+    (
+        ("factor", "polynomial", "expand"),
+        re.compile(r"\b(?:factor|expand|simplify)\b", re.IGNORECASE),
+    ),
+)
+
+
+_MEASUREMENT_RE = re.compile(
+    r"\b(\d+(?:\.\d+)?)\s*"
+    r"(nm|um|mm|cm|km|mg|kg|m/s(?:\^2)?|km/h|ev|kev|mev|hz|khz|mhz|ghz|"
+    r"pa|kpa|mpa|atm|mol|mmol|ml|kj|mj|mw|kw|deg|°c|°f)\b",
+    re.IGNORECASE,
+)
+_CHEM_FORMULA_RE = re.compile(r"\b[A-Z][a-z]?(?:\d+[A-Z]?[a-z]?\d*)+\b")
+
+
+def _content_tokens(text: str) -> tuple[set[str], set[str]]:
+    words = {
+        w.casefold()
+        for w in re.findall(r"[A-Za-z]{4,}", text)
+        if w.casefold() not in _GROUNDING_STOPWORDS
+    }
+    stems = {w[:5] if len(w) >= 6 else w for w in words}
+    # Require contextual qualifiers (unit-qualified measurements or chemical formulas);
+    # never ground on bare isolated numbers (e.g. "2 BC" must not match "2*x + 4 = 10").
+    measurements = {f"{val} {unit.casefold()}" for val, unit in _MEASUREMENT_RE.findall(text)}
+    formulas = {tok.casefold() for tok in _CHEM_FORMULA_RE.findall(text)}
+    return stems, measurements | formulas
+
+
+def _is_grounded_in_content(problem: str, content: str) -> bool:
+    """Return True if ``problem`` shares domain/numeric terms or math topic with ``content``."""
+    content_stems, content_literals = _content_tokens(content)
+    prob_stems, prob_literals = _content_tokens(problem)
+    if (prob_stems & content_stems) or (prob_literals & content_literals):
+        return True
+    low_content = content.casefold()
+    for cues, prob_re in _MATH_DOMAIN_RULES:
+        if any(cue in low_content for cue in cues) and prob_re.search(problem):
+            # Guard quadratic expressions from matching plain linear-only notes.
+            if cues[0] == "linear" and re.search(r"\*\*\s*[2-9]|\^\s*[2-9]", problem):
+                continue
+            return True
+    return False
+
+
+def _llm_worksheet(
+    topic: str,
+    n: int,
+    difficulty: str,
+    client: LLMClient,
+    content: str = "",
+) -> list[WorkedSolution]:
     prompt = (
-        f"Create a {difficulty} practice worksheet of {n} problems on: {topic}\n\n"
-        'Respond as JSON: {"problems": [str]}. Each problem must be self-contained '
+        f"Create a {difficulty} practice worksheet of {n} problems on: {topic}\n"
+        + (f"\nGround them in this material:\n{content[:6000]}\n" if content else "")
+        + '\nRespond as JSON: {"problems": [str]}. Each problem must be self-contained '
         "and solvable without the original source material."
     )
     payload = ask_json(client, prompt, system=SOLVER_SYSTEM, max_tokens=1500)
     if not isinstance(payload, dict) or not isinstance(payload.get("problems"), list):
         return []
     problems = [str(item).strip() for item in payload["problems"] if str(item).strip()]
+    if content.strip():
+        grounded = [p for p in problems if _is_grounded_in_content(p, content)]
+        dropped = len(problems) - len(grounded)
+        if dropped:
+            logger.warning(
+                "worksheet: dropped %d ungrounded LLM problem(s) for topic %r",
+                dropped,
+                topic,
+            )
+        problems = grounded
     solutions = [solve_problem(problem, client=NullClient()) for problem in problems[:n]]
     return [solution for solution in solutions if solution.method != "none"]
 
@@ -112,14 +294,24 @@ def generate_worksheet(
     difficulty: str = "medium",
     client: LLMClient | None = None,
     seed: int | None = None,
+    content: str = "",
 ) -> list[WorkedSolution]:
     """Produce up to ``n`` practice problems on ``topic``, each fully solved."""
     n = min(max(int(n), 1), 100)
     client = client or get_client()
     if client.available:
-        solutions = _llm_worksheet(topic, n, difficulty, client)
+        solutions = _llm_worksheet(topic, n, difficulty, client, content=content)
         if solutions:
             return solutions
+    if content.strip():
+        extracted = _extract_content_problems(content, n)
+        if not extracted:
+            logger.warning(
+                "worksheet: insufficient solvable content in supplied source for topic %r",
+                topic,
+            )
+            return []
+        return extracted[:n]
     return _offline_worksheet(topic, n, difficulty, seed)
 
 

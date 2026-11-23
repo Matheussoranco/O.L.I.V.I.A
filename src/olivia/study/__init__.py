@@ -4,20 +4,34 @@ from olivia.study.flashcards import generate_flashcards
 from olivia.study.planner import make_study_plan, plan_to_markdown
 from olivia.study.quiz import generate_quiz, grade_quiz
 from olivia.study.solver import solution_to_markdown, solve_problem
+from olivia.study.sources import (
+    StudySourceError,
+    clean_extracted_text,
+    extract_pdf_text,
+    fetch_arxiv_content,
+    load_study_content,
+    normalize_arxiv_id,
+)
 from olivia.study.srs import Deck, review_card, slugify
 from olivia.study.tutor import TutorSession, TutorState, TutorSummary, summary_to_markdown
 from olivia.study.worksheet import generate_worksheet, worksheet_to_markdown
 
 __all__ = [
     "Deck",
+    "StudySourceError",
     "TutorSession",
     "TutorState",
     "TutorSummary",
+    "clean_extracted_text",
+    "extract_pdf_text",
+    "fetch_arxiv_content",
     "generate_flashcards",
     "generate_quiz",
     "generate_worksheet",
     "grade_quiz",
+    "load_study_content",
     "make_study_plan",
+    "normalize_arxiv_id",
     "plan_to_markdown",
     "review_card",
     "slugify",
