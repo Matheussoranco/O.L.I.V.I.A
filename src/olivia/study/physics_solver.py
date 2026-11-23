@@ -294,6 +294,10 @@ def _solve_newtons_second_law(
     return None
 
 
+_DOWNWARD_RE = re.compile(r"\b(?:downward|downwards|down)\b", re.IGNORECASE)
+_UPWARD_RE = re.compile(r"\b(?:upward|upwards|up)\b", re.IGNORECASE)
+
+
 def _solve_free_fall(
     problem: str, qty: dict[tuple[int, ...], list[tuple[float, float, str]]]
 ) -> WorkedSolution | None:
@@ -307,20 +311,43 @@ def _solve_free_fall(
     t_s, t_raw, t_unit = qty[_DIM_TIME][0]
     if t_s < 0:
         return None
+
+    # Respect nonzero initial velocity; abstain when direction/sign is ambiguous.
+    v0_ms = 0.0
+    v0_desc = "from rest"
+    if _DIM_VELOCITY in qty:
+        if len(qty[_DIM_VELOCITY]) > 1:
+            return None
+        v0_val, v0_raw, v0_unit = qty[_DIM_VELOCITY][0]
+        if abs(v0_val) >= 1e-12:
+            has_down = bool(_DOWNWARD_RE.search(problem))
+            has_up = bool(_UPWARD_RE.search(problem))
+            if has_down and not has_up and v0_val > 0:
+                v0_ms = v0_val
+                v0_desc = (
+                    f"with initial downward velocity v₀ = {v0_raw:g} {v0_unit} ({v0_ms:g} m/s)"
+                )
+            else:
+                return None
+
     g = _const("g")
-    asks_distance = any(kw in low for kw in ("how far", "distance", "height", "fall"))
-    asks_velocity = any(kw in low for kw in ("velocity", "speed", "fast"))
-    if asks_velocity and not ("how far" in low or "distance" in low):
-        v_ms = g * t_s
+    q_clause = _GIVEN_VEL_PHRASE_RE.sub(" ", _question_clause(problem))
+    asks_distance = any(kw in q_clause for kw in ("how far", "distance", "height", "fall"))
+    asks_velocity = any(kw in q_clause for kw in ("velocity", "speed", "fast"))
+    if asks_velocity and not any(kw in q_clause for kw in ("how far", "distance", "height")):
+        v_ms = v0_ms + g * t_s
         target = _requested_unit(problem, _DIM_VELOCITY, "m/s")
         out = convert(v_ms, "m/s", target)
         if out is None:
             return None
         steps: list[SolutionStep] = []
         _step(
-            steps, f"Free fall from rest for t = {t_raw:g} {t_unit} ({t_s:g} s)", f"g = {g} m/s^2"
+            steps,
+            f"Free fall {v0_desc} for t = {t_raw:g} {t_unit} ({t_s:g} s)",
+            f"g = {g} m/s^2",
         )
-        _step(steps, "Apply v = g·t", f"{_fmt(out)} {target}")
+        formula = "Apply v = v₀ + g·t" if v0_ms > 0 else "Apply v = g·t"
+        _step(steps, formula, f"{_fmt(out)} {target}")
         return WorkedSolution(
             problem=problem,
             subject="physics",
@@ -330,16 +357,19 @@ def _solve_free_fall(
             confidence=0.95,
         )
     if asks_distance:
-        d_m = 0.5 * g * t_s * t_s
+        d_m = v0_ms * t_s + 0.5 * g * t_s * t_s
         target = _requested_unit(problem, _DIM_LENGTH, "m")
         out = convert(d_m, "m", target)
         if out is None:
             return None
         steps = []
         _step(
-            steps, f"Free fall from rest for t = {t_raw:g} {t_unit} ({t_s:g} s)", f"g = {g} m/s^2"
+            steps,
+            f"Free fall {v0_desc} for t = {t_raw:g} {t_unit} ({t_s:g} s)",
+            f"g = {g} m/s^2",
         )
-        _step(steps, "Apply d = ½·g·t²", f"{_fmt(out)} {target}")
+        formula = "Apply d = v₀·t + ½·g·t²" if v0_ms > 0 else "Apply d = ½·g·t²"
+        _step(steps, formula, f"{_fmt(out)} {target}")
         return WorkedSolution(
             problem=problem,
             subject="physics",

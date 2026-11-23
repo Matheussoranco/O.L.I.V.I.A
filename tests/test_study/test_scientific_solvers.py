@@ -152,6 +152,33 @@ def test_physics_kinematics_and_free_fall():
     assert math.isclose(float(sol_fall_v.final_answer.split()[0]), 29.42, rel_tol=0.01)
 
 
+def test_physics_free_fall_respects_initial_velocity_or_abstains():
+    # Lead review regression: nonzero initial velocity must not silently fall back to v = g*t.
+    down_v = _solve(
+        "A ball is thrown downward at 10 m/s in free fall for 2 s. What is its velocity?"
+    )
+    assert down_v.method == "physics"
+    assert math.isclose(float(down_v.final_answer.split()[0]), 29.6133, rel_tol=1e-3)
+
+    down_d = _solve(
+        "A ball with initial velocity 10 m/s downward falls for 2 s. How far does it fall?"
+    )
+    assert down_d.method == "physics"
+    assert math.isclose(float(down_d.final_answer.split()[0]), 39.6133, rel_tol=1e-3)
+
+    # Ambiguous or upward initial speed in free fall abstains instead of ignoring v0.
+    assert (
+        _solve("An object with initial speed 10 m/s falls for 2 s. What is its velocity?").method
+        == "none"
+    )
+    assert (
+        _solve(
+            "An object thrown upward at 10 m/s in free fall for 2 s. What is its velocity?"
+        ).method
+        == "none"
+    )
+
+
 def test_physics_kinematics_same_givens_distinguishes_displacement_vs_velocity():
     # Lead review regression: initial velocity in givens must not hijack displacement queries.
     disp = _solve(
