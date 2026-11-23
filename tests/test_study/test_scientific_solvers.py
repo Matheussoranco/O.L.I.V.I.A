@@ -166,7 +166,14 @@ def test_physics_free_fall_respects_initial_velocity_or_abstains():
     assert down_d.method == "physics"
     assert math.isclose(float(down_d.final_answer.split()[0]), 39.6133, rel_tol=1e-3)
 
-    # Ambiguous or upward initial speed in free fall abstains instead of ignoring v0.
+    # Ambiguous, threshold, or upward velocities in free fall abstain instead of misbinding v0.
+    assert (
+        _solve(
+            "A ball is dropped from rest and falls for 2 s. "
+            "Does it reach a downward speed of 10 m/s?"
+        ).method
+        == "none"
+    )
     assert (
         _solve("An object with initial speed 10 m/s falls for 2 s. What is its velocity?").method
         == "none"

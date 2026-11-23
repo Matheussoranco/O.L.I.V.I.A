@@ -296,6 +296,25 @@ def _solve_newtons_second_law(
 
 _DOWNWARD_RE = re.compile(r"\b(?:downward|downwards|down)\b", re.IGNORECASE)
 _UPWARD_RE = re.compile(r"\b(?:upward|upwards|up)\b", re.IGNORECASE)
+_FROM_REST_RE = re.compile(r"\bfrom\s+rest\b", re.IGNORECASE)
+_INIT_COND_RE = re.compile(
+    r"\b(?:initial|starting|begin(?:ning)?|thrown|projected|launched|fired|tossed|released)\b",
+    re.IGNORECASE,
+)
+_BOOL_OR_THRESHOLD_Q_RE = re.compile(
+    r"^\s*(?:does|do|did|will|would|is|are|can|could|has|have|should)\b|"
+    r"\b(?:reach(?:es|ed|ing)?|exceed(?:s|ed|ing)?|at\s+least|at\s+most|"
+    r"more\s+than|less\s+than|greater\s+than|faster\s+than|slower\s+than)\b",
+    re.IGNORECASE,
+)
+
+
+def _split_givens_and_question(problem: str) -> tuple[str, str]:
+    q_clause = _question_clause(problem)
+    low = problem.lower()
+    idx = low.rfind(q_clause)
+    givens = problem[:idx].strip() if idx > 0 else problem
+    return givens, q_clause
 
 
 def _solve_free_fall(
@@ -312,17 +331,29 @@ def _solve_free_fall(
     if t_s < 0:
         return None
 
-    # Respect nonzero initial velocity; abstain when direction/sign is ambiguous.
+    givens_clause, q_clause_raw = _split_givens_and_question(problem)
+    # Never answer yes/no or threshold questions (e.g. "Does it reach 10 m/s?") with a raw speed.
+    if _BOOL_OR_THRESHOLD_Q_RE.search(q_clause_raw):
+        return None
+    # A velocity mentioned inside the question clause is a target/threshold, not v₀ -> abstain.
+    if _DIM_VELOCITY in _extract_quantities(q_clause_raw):
+        return None
+
+    # Bind nonzero initial velocity strictly to an explicit initial condition in the givens clause.
     v0_ms = 0.0
     v0_desc = "from rest"
     if _DIM_VELOCITY in qty:
-        if len(qty[_DIM_VELOCITY]) > 1:
+        if _FROM_REST_RE.search(problem) or len(qty[_DIM_VELOCITY]) > 1:
             return None
-        v0_val, v0_raw, v0_unit = qty[_DIM_VELOCITY][0]
+        givens_qty = _extract_quantities(givens_clause)
+        if _DIM_VELOCITY not in givens_qty or len(givens_qty[_DIM_VELOCITY]) != 1:
+            return None
+        v0_val, v0_raw, v0_unit = givens_qty[_DIM_VELOCITY][0]
         if abs(v0_val) >= 1e-12:
-            has_down = bool(_DOWNWARD_RE.search(problem))
-            has_up = bool(_UPWARD_RE.search(problem))
-            if has_down and not has_up and v0_val > 0:
+            has_down = bool(_DOWNWARD_RE.search(givens_clause))
+            has_up = bool(_UPWARD_RE.search(givens_clause))
+            has_init_cue = bool(_INIT_COND_RE.search(givens_clause))
+            if has_down and not has_up and has_init_cue and v0_val > 0:
                 v0_ms = v0_val
                 v0_desc = (
                     f"with initial downward velocity v₀ = {v0_raw:g} {v0_unit} ({v0_ms:g} m/s)"
@@ -331,7 +362,7 @@ def _solve_free_fall(
                 return None
 
     g = _const("g")
-    q_clause = _GIVEN_VEL_PHRASE_RE.sub(" ", _question_clause(problem))
+    q_clause = _GIVEN_VEL_PHRASE_RE.sub(" ", q_clause_raw)
     asks_distance = any(kw in q_clause for kw in ("how far", "distance", "height", "fall"))
     asks_velocity = any(kw in q_clause for kw in ("velocity", "speed", "fast"))
     if asks_velocity and not any(kw in q_clause for kw in ("how far", "distance", "height")):
