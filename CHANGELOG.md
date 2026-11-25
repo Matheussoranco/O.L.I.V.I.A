@@ -6,6 +6,21 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Security
+
+- Text ingestion no longer hangs on untrusted input (#34). `fetch_url` (used by
+  the research agents on arbitrary pages) and the study loader now share one
+  extractor that is linear by construction. Before, a hostile page of 80-160 KB
+  could take from 25 s to more than 45 s, through a `<script>` regex or the
+  quadratic cases of `html.parser` in CPython 3.12.10 / 3.13.5. `fetch_url` no
+  longer uses BeautifulSoup when it is installed.
+- The text clean-up applied to every study source no longer goes quadratic on a
+  long run of spaces after `page` or `problem`.
+- An HTML file with an enormous numeric character reference raised a raw
+  `ValueError`; it now loads.
+- Literature requests no longer carry a contact address built into the source.
+  Set `OLIVIA_CONTACT_EMAIL` to send one.
+
 ### Added
 
 - Equation parser for `olivia solve` (T4, #12): systems of any size separated
