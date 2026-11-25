@@ -1,0 +1,28 @@
+# before  tree=1762482367b58345a1c7fc33a5ab8921e84708e6
+## fetch_url, default install
+  fetch_url  unclosed <script>     40 KB: 0.68s
+  fetch_url  unclosed <script>     80 KB: 2.87s
+  fetch_url  unclosed <script>    160 KB: 42.71s
+  fetch_url  unclosed <!--         40 KB: 0.14s
+  fetch_url  unclosed <!--         80 KB: 0.61s
+  fetch_url  unclosed <!--        160 KB: 2.26s
+  fetch_url  unclosed <a href="    40 KB: 0.06s
+  fetch_url  unclosed <a href="    80 KB: 0.24s
+  fetch_url  unclosed <a href="   160 KB: 1.07s
+## fetch_url, with beautifulsoup4
+  fetch_url  unclosed <script>     40 KB: 0.13s
+  fetch_url  unclosed <script>     80 KB: 0.06s
+  fetch_url  unclosed <script>    160 KB: 0.09s
+  fetch_url  unclosed <!--         40 KB: 0.63s
+  fetch_url  unclosed <!--         80 KB: 2.58s
+  fetch_url  unclosed <!--        160 KB: 43.52s
+  fetch_url  unclosed <a href="    40 KB: 11.31s
+  fetch_url  unclosed <a href="    80 KB: HUNG (killed at 45 s)
+## study loader, text clean-up, huge reference
+== clean_extracted_text on one long line (applies to .txt, .md, .html, .pdf and arXiv text)
+  'page' + spaces + 'x'        5k: 0.11s  10k: 0.42s  20k: 1.81s
+  'problem' + spaces + 'x'     5k: 0.08s  10k: 1.21s  20k: 8.62s
+  '-' + spaces + 'x'           5k: 0.00s  10k: 0.00s  20k: 0.00s
+  control: words               5k: 0.00s  10k: 0.00s  20k: 0.00s
+== huge numeric character reference in a study file
+  load_study_content raised ValueError | is StudySourceError: False

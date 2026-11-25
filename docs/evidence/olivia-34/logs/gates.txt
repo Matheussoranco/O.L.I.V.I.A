@@ -1,0 +1,17 @@
+# HEAD 1599f4015ca476c19c4fbc5feeeefb23e5a41e62
+$ ruff check src tests && ruff format --check src tests
+All checks passed!
+99 files already formatted
+$ mypy
+Success: no issues found in 69 source files
+$ pytest -q
+........................................................................ [ 96%]
+............................                                             [100%]
+746 passed, 2 skipped in 39.94s
+$ olivia eval --check
+All gates hold.
+$ bandit 1.7.10 -r src/olivia (severity totals)
+		Undefined: 0
+		Low: 6
+		Medium: 0
+		High: 0
