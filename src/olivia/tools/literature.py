@@ -26,10 +26,30 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = 15.0
-_UA = {"User-Agent": "olivia-research-agent/0.1 (mailto:matheussoranco@gmail.com)"}
+_AGENT = "olivia-research-agent/0.1"
+# A plain address and nothing that could add a header or a second field.
+_CONTACT_RE = re.compile(r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,63}")
 
 _ATOM = "{http://www.w3.org/2005/Atom}"
 _ARXIV = "{http://arxiv.org/schemas/atom}"
+
+
+def _request_headers() -> dict[str, str]:
+    """Headers for outbound requests: no personal data unless the user opts in.
+
+    Some services (Crossref) give better rate limits to clients that name a
+    contact.  That address is only sent when the user sets
+    ``OLIVIA_CONTACT_EMAIL`` themselves; nothing is built into the source.
+    """
+    from olivia.config import settings
+
+    contact = settings.contact_email.strip()
+    if not contact:
+        return {"User-Agent": _AGENT}
+    if not _CONTACT_RE.fullmatch(contact):
+        logger.warning("OLIVIA_CONTACT_EMAIL is not a plain e-mail address; not sending it")
+        return {"User-Agent": _AGENT}
+    return {"User-Agent": f"{_AGENT} (mailto:{contact})"}
 
 
 def _network_enabled(allow_network: bool | None) -> bool:
@@ -70,7 +90,11 @@ def _get(url: str, params: dict | None = None, allow_network: bool | None = None
         return None
     try:
         response = httpx.get(
-            url, params=params, headers=_UA, timeout=_TIMEOUT, follow_redirects=False
+            url,
+            params=params,
+            headers=_request_headers(),
+            timeout=_TIMEOUT,
+            follow_redirects=False,
         )
         response.raise_for_status()
         return response
