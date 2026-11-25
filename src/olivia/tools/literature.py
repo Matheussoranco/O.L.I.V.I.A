@@ -19,6 +19,7 @@ import defusedxml.ElementTree as ET
 from defusedxml.common import DefusedXmlException
 
 from olivia.core.records import Paper
+from olivia.tools.html_text import html_to_text
 
 if TYPE_CHECKING:
     from olivia.tools.registry import ToolRegistry
@@ -164,7 +165,9 @@ def search_arxiv(
 # Crossref
 # ---------------------------------------------------------------------------
 
-_JATS_TAG_RE = re.compile(r"<[^>]+>")
+# "[^<>]" rather than "[^>]": each attempt stops at the next "<", so a long run of
+# unclosed "<" in an abstract cannot make this quadratic.
+_JATS_TAG_RE = re.compile(r"<[^<>]+>")
 
 
 def search_crossref(
@@ -332,27 +335,14 @@ def literature_search(
 # Page fetch
 # ---------------------------------------------------------------------------
 
-_SCRIPT_RE = re.compile(r"<(script|style)[^>]*>.*?</\1>", re.DOTALL | re.IGNORECASE)
-_TAG_RE = re.compile(r"<[^>]+>")
-
 
 def fetch_url(url: str, max_chars: int = 20000, allow_network: bool | None = None) -> str:
-    """Fetch a URL and return readable plain text (bs4 when installed)."""
+    """Fetch a URL and return readable plain text."""
     max_chars = min(max(int(max_chars), 100), 100_000)
     response = _get(url) if allow_network is None else _get(url, allow_network=allow_network)
     if response is None:
         return ""
-    html = response.text
-    try:
-        from bs4 import BeautifulSoup
-
-        soup = BeautifulSoup(html, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer"]):
-            tag.decompose()
-        text = soup.get_text(" ", strip=True)
-    except ImportError:
-        text = _TAG_RE.sub(" ", _SCRIPT_RE.sub(" ", html))
-    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\s+", " ", html_to_text(response.text)).strip()
     return text[:max_chars]
 
 
