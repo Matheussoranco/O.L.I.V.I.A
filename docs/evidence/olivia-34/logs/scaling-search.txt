@@ -1,0 +1,6 @@
+# HEAD 1599f4015ca476c19c4fbc5feeeefb23e5a41e62
+html_to_text: 1152 shapes, slowest 0.48s at 120 KB ('repeat', '&', '<')
+  super-linear candidates: 0
+clean_extracted_text: 1152 shapes, slowest 0.29s at 120 KB ('prefix', 'page ', '\n')
+  super-linear candidates: 0
+TOTAL candidates: 0

@@ -1,0 +1,29 @@
+# after  tree=1599f4015ca476c19c4fbc5feeeefb23e5a41e62
+## fetch_url, default install
+  fetch_url  unclosed <script>     40 KB: 0.00s
+  fetch_url  unclosed <script>     80 KB: 0.00s
+  fetch_url  unclosed <script>    160 KB: 0.00s
+  fetch_url  unclosed <!--         40 KB: 0.00s
+  fetch_url  unclosed <!--         80 KB: 0.00s
+  fetch_url  unclosed <!--        160 KB: 0.00s
+  fetch_url  unclosed <a href="    40 KB: 0.00s
+  fetch_url  unclosed <a href="    80 KB: 0.01s
+  fetch_url  unclosed <a href="   160 KB: 0.01s
+## fetch_url, with beautifulsoup4
+  fetch_url  unclosed <script>     40 KB: 0.00s
+  fetch_url  unclosed <script>     80 KB: 0.00s
+  fetch_url  unclosed <script>    160 KB: 0.00s
+  fetch_url  unclosed <!--         40 KB: 0.00s
+  fetch_url  unclosed <!--         80 KB: 0.00s
+  fetch_url  unclosed <!--        160 KB: 0.00s
+  fetch_url  unclosed <a href="    40 KB: 0.00s
+  fetch_url  unclosed <a href="    80 KB: 0.00s
+  fetch_url  unclosed <a href="   160 KB: 0.00s
+## study loader, text clean-up, huge reference
+== clean_extracted_text on one long line (applies to .txt, .md, .html, .pdf and arXiv text)
+  'page' + spaces + 'x'        5k: 0.00s  10k: 0.00s  20k: 0.00s
+  'problem' + spaces + 'x'     5k: 0.00s  10k: 0.00s  20k: 0.00s
+  '-' + spaces + 'x'           5k: 0.00s  10k: 0.00s  20k: 0.00s
+  control: words               5k: 0.00s  10k: 0.00s  20k: 0.00s
+== huge numeric character reference in a study file
+  ok

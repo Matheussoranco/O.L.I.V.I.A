@@ -19,6 +19,7 @@ import defusedxml.ElementTree as ET
 from defusedxml.common import DefusedXmlException
 
 from olivia.core.records import Paper
+from olivia.tools.html_text import html_to_text
 
 if TYPE_CHECKING:
     from olivia.tools.registry import ToolRegistry
@@ -26,10 +27,30 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = 15.0
-_UA = {"User-Agent": "olivia-research-agent/0.1 (mailto:matheussoranco@gmail.com)"}
+_AGENT = "olivia-research-agent/0.1"
+# A plain address and nothing that could add a header or a second field.
+_CONTACT_RE = re.compile(r"[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,255}\.[A-Za-z]{2,63}")
 
 _ATOM = "{http://www.w3.org/2005/Atom}"
 _ARXIV = "{http://arxiv.org/schemas/atom}"
+
+
+def _request_headers() -> dict[str, str]:
+    """Headers for outbound requests: no personal data unless the user opts in.
+
+    Some services (Crossref) give better rate limits to clients that name a
+    contact.  That address is only sent when the user sets
+    ``OLIVIA_CONTACT_EMAIL`` themselves; nothing is built into the source.
+    """
+    from olivia.config import settings
+
+    contact = settings.contact_email.strip()
+    if not contact:
+        return {"User-Agent": _AGENT}
+    if not _CONTACT_RE.fullmatch(contact):
+        logger.warning("OLIVIA_CONTACT_EMAIL is not a plain e-mail address; not sending it")
+        return {"User-Agent": _AGENT}
+    return {"User-Agent": f"{_AGENT} (mailto:{contact})"}
 
 
 def _network_enabled(allow_network: bool | None) -> bool:
@@ -70,7 +91,11 @@ def _get(url: str, params: dict | None = None, allow_network: bool | None = None
         return None
     try:
         response = httpx.get(
-            url, params=params, headers=_UA, timeout=_TIMEOUT, follow_redirects=False
+            url,
+            params=params,
+            headers=_request_headers(),
+            timeout=_TIMEOUT,
+            follow_redirects=False,
         )
         response.raise_for_status()
         return response
@@ -140,7 +165,9 @@ def search_arxiv(
 # Crossref
 # ---------------------------------------------------------------------------
 
-_JATS_TAG_RE = re.compile(r"<[^>]+>")
+# "[^<>]" rather than "[^>]": each attempt stops at the next "<", so a long run of
+# unclosed "<" in an abstract cannot make this quadratic.
+_JATS_TAG_RE = re.compile(r"<[^<>]+>")
 
 
 def search_crossref(
@@ -308,27 +335,14 @@ def literature_search(
 # Page fetch
 # ---------------------------------------------------------------------------
 
-_SCRIPT_RE = re.compile(r"<(script|style)[^>]*>.*?</\1>", re.DOTALL | re.IGNORECASE)
-_TAG_RE = re.compile(r"<[^>]+>")
-
 
 def fetch_url(url: str, max_chars: int = 20000, allow_network: bool | None = None) -> str:
-    """Fetch a URL and return readable plain text (bs4 when installed)."""
+    """Fetch a URL and return readable plain text."""
     max_chars = min(max(int(max_chars), 100), 100_000)
     response = _get(url) if allow_network is None else _get(url, allow_network=allow_network)
     if response is None:
         return ""
-    html = response.text
-    try:
-        from bs4 import BeautifulSoup
-
-        soup = BeautifulSoup(html, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer"]):
-            tag.decompose()
-        text = soup.get_text(" ", strip=True)
-    except ImportError:
-        text = _TAG_RE.sub(" ", _SCRIPT_RE.sub(" ", html))
-    text = re.sub(r"\s+", " ", text).strip()
+    text = re.sub(r"\s+", " ", html_to_text(response.text)).strip()
     return text[:max_chars]
 
 

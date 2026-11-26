@@ -58,6 +58,9 @@ class Settings(BaseSettings):
     research: ResearchSettings = Field(default_factory=ResearchSettings)
     network_enabled: bool = False
     """Allow outbound literature/page requests; disabled by default."""
+    contact_email: str = ""
+    """Opt-in contact address added to the User-Agent of literature requests
+    (``OLIVIA_CONTACT_EMAIL``).  Empty means no personal data is sent."""
     home_dir: Path = Field(default_factory=lambda: Path.home() / ".olivia")
     anthropic_api_key: str = Field(
         default="",

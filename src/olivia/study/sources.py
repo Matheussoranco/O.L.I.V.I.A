@@ -15,7 +15,6 @@ import importlib
 import logging
 import re
 import zlib
-from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
@@ -23,6 +22,7 @@ from urllib.parse import urlparse
 import defusedxml.ElementTree as ET
 
 from olivia.core.errors import OliviaError
+from olivia.tools.html_text import html_to_text
 
 logger = logging.getLogger(__name__)
 
@@ -33,37 +33,7 @@ _MAX_PDF_BYTES = _MAX_SOURCE_BYTES
 _ARXIV_NEW_RE = re.compile(r"^\d{4}\.\d{4,5}(?:v\d+)?$", re.IGNORECASE)
 _ARXIV_OLD_RE = re.compile(r"^[a-z\-]+(?:\.[A-Z]{2})?/\d{7}(?:v\d+)?$")
 
-_SKIP_HTML_TAGS = frozenset({"script", "style", "nav", "footer"})
-
 _ATOM = "{http://www.w3.org/2005/Atom}"
-
-
-class _PlainTextHTMLParser(HTMLParser):
-    """Linear-time stdlib HTML-to-text extractor immune to unclosed-tag ReDoS."""
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self._skip_depth = 0
-        self._parts: list[str] = []
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag.lower() in _SKIP_HTML_TAGS:
-            self._skip_depth += 1
-        elif self._skip_depth == 0:
-            self._parts.append(" ")
-
-    def handle_endtag(self, tag: str) -> None:
-        if tag.lower() in _SKIP_HTML_TAGS:
-            self._skip_depth = max(0, self._skip_depth - 1)
-        elif self._skip_depth == 0:
-            self._parts.append(" ")
-
-    def handle_data(self, data: str) -> None:
-        if self._skip_depth == 0 and data:
-            self._parts.append(data)
-
-    def get_text(self) -> str:
-        return "".join(self._parts)
 
 
 class StudySourceError(OliviaError):
@@ -71,7 +41,9 @@ class StudySourceError(OliviaError):
 
 
 _STANDALONE_LINE_RE = re.compile(
-    r"^(?:(?:problem|exercise|question)\s*\d*\s*[:.)-]|"
+    # "(?:\d+\s*)?" rather than "\d*\s*": two adjacent \s* are quadratic on a
+    # long run of spaces.  The same applies to the page-number pattern below.
+    r"^(?:(?:problem|exercise|question)\s*(?:\d+\s*)?[:.)-]|"
     r"(?:solve|differentiate|integrate|factor|simplify|expand|convert|balance)\b|"
     r"\d{1,3}[.)]\s+)",
     re.IGNORECASE,
@@ -87,7 +59,7 @@ def clean_extracted_text(text: str) -> str:
     for raw_line in normalized.split("\n"):
         line = raw_line.strip()
         # Drop bare page numbers ("12", "Page 12", "- 4 -") that fragment sentences.
-        if re.fullmatch(r"(?:page\s*)?[-–—]?\s*\d{1,4}\s*[-–—]?", line, re.IGNORECASE):
+        if re.fullmatch(r"(?:page\s*)?(?:[-–—]\s*)?\d{1,4}(?:\s*[-–—])?", line, re.IGNORECASE):
             continue
         cleaned_lines.append(line)
 
@@ -501,17 +473,7 @@ def fetch_arxiv_content(
 
 
 def _extract_html_text(raw_html: str) -> str:
-    try:
-        bs4 = importlib.import_module("bs4")
-        soup = bs4.BeautifulSoup(raw_html, "html.parser")
-        for tag in soup(["script", "style", "nav", "footer"]):
-            tag.decompose()
-        return clean_extracted_text(str(soup.get_text(" ", strip=True)))
-    except ImportError:
-        parser = _PlainTextHTMLParser()
-        parser.feed(raw_html)
-        parser.close()
-        return clean_extracted_text(parser.get_text())
+    return clean_extracted_text(html_to_text(raw_html))
 
 
 def load_study_content(

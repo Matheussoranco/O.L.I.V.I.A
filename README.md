@@ -63,6 +63,14 @@ olivia eval --check                               # offline evaluation gates
 olivia info                                       # backend/config status
 ```
 
+### Network requests and privacy
+
+Network access is off unless you pass `--network` or set
+`OLIVIA_NETWORK_ENABLED=true`. Requests to literature services identify only the
+agent. Crossref gives better rate limits to clients that name a contact; if you
+want that, set `OLIVIA_CONTACT_EMAIL` (environment or `.env`) and only then is
+your address added to the `User-Agent`.
+
 ### Step-by-step STEM solving
 
 `olivia solve` (and the `science` expert behind `olivia ask`) is **symbolic-first**
