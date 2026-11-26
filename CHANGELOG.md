@@ -93,6 +93,10 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Removed unused top-level packages and the duplicate MCP argument validator.
 - Source distributions now contain only the package, tests, and project metadata;
   the vendored `skills/` tree is no longer bundled.
+- Package metadata now declares `Apache-2.0`, matching `LICENSE`. It still said
+  `CC-BY-NC-SA-4.0` after the relicensing, so a built wheel would have carried
+  the wrong licence. The vendored academic research suite keeps its own
+  upstream licence.
 
 ## [0.4.0] — 2026-09-03 — Security boundaries and ARS-Codex integration
 
