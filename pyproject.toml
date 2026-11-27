@@ -7,8 +7,8 @@ name = "olivia"
 version = "0.4.0"
 description = "Open Learning Intelligence & Virtual Investigation Assistant — an AI agent for study, learning, and scientific discovery"
 readme = "README.md"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
+license = "AGPL-3.0-only"
+license-files = ["LICENSE", "LICENSES/*"]
 requires-python = ">=3.10"
 authors = [{ name = "Matheus Soranço", email = "matheussoranco@gmail.com" }]
 keywords = ["agent", "science", "research", "learning", "neuro-symbolic", "langgraph"]
@@ -81,6 +81,7 @@ include = [
     "/README.md",
     "/CHANGELOG.md",
     "/LICENSE",
+    "/LICENSES",
     "/pyproject.toml",
 ]
 

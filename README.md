@@ -1,6 +1,6 @@
 # O.L.I.V.I.A.
 
-[![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
+[![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)
 
 **Open Learning Intelligence & Virtual Investigation Assistant** — an AI agent
 specialised in study, learning, and scientific research and discovery.
@@ -179,13 +179,12 @@ change; the offline-first contract will not.
 
 ## License
 
-[**Apache-2.0**](https://www.apache.org/licenses/LICENSE-2.0) — see [LICENSE](LICENSE).
+Original project code is licensed under the [GNU Affero General Public License v3.0 only](LICENSE) (`AGPL-3.0-only`).
 
-Copyright © 2026 Matheus Soranço <matheussoranco@gmail.com>
-`SPDX-License-Identifier: Apache-2.0`
+Copyright (c) 2025–2026 Matheus Pullig Soranço de Carvalho (Matheus Soranço).
 
-Licensed under the Apache License, Version 2.0. You may obtain a copy of the
-License in [LICENSE](LICENSE) or at https://www.apache.org/licenses/LICENSE-2.0.
-Unless required by applicable law or agreed to in writing, software distributed
-under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
-CONDITIONS OF ANY KIND, either express or implied.
+The AGPL permits commercial and noncommercial use. If you modify the program and let users interact with that version remotely through a network, offer them its corresponding source under the AGPL. Distribution is subject to the license’s corresponding-source and notice requirements.
+
+The separately licensed material under [`skills/academic-research-suite/`](skills/academic-research-suite/) and upstream material in [`patches/`](patches/) retain their applicable terms. See the [upstream notices](skills/academic-research-suite/ars/NOTICE.md).
+
+Previously published versions retain their original terms. The previous [license text](LICENSES/Apache-2.0.previous.txt) is retained for reference.
